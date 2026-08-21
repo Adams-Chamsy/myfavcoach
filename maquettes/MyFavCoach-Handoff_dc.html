@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #E8E2D8; font-family: Manrope, system-ui, sans-serif; }
+  a { color: #0F5140; text-decoration: none; }
+  a:hover { color: #E2603C; }
+  @keyframes mfc-slide { 0%,12% { transform: translateY(14px); opacity: 0 } 42%,88% { transform: none; opacity: 1 } 100% { transform: translateY(14px); opacity: 0 } }
+  @keyframes mfc-press { 0%,70%,100% { transform: none } 82% { transform: scale(.96) } }
+  @keyframes mfc-sheet { 0%,10% { transform: translateY(100%) } 40%,85% { transform: none } 100% { transform: translateY(100%) } }
+  @keyframes mfc-fill { 0%,8% { width: 0% } 45%,90% { width: 80% } 100% { width: 0% } }
+</style>
+</helmet>
+
+<section style="display:flex;flex-direction:column;gap:40px;padding:56px 64px 96px;font-family:Manrope,system-ui,sans-serif;color:#17211E;max-width:1500px">
+
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;flex-direction:column;gap:8px;max-width:760px">
+      <span style="font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6B746E">My fav Coach — dossier de passation</span>
+      <h1 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:44px;line-height:1.05">Ce que l'équipe dev reçoit</h1>
+      <p style="margin:0;font-size:16px;line-height:1.6;color:#55605B">Le jeu d'icônes complet des 28 écrans, la grammaire de mouvement, la fiche d'accessibilité par composant et les tokens exportables. Rien à deviner, rien à re-dessiner.</p>
+    </div>
+    <div id="mfc-nav" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><a href="MyFavCoach-System.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Design system + 1→3</a><a href="MyFavCoach-Client.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Client 4→7</a><a href="MyFavCoach-Coach.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Coach 8→13</a><a href="MyFavCoach-Etats.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">États 14→20</a><a href="MyFavCoach-Parcours.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Parcours 21→28</a><a href="MyFavCoach-Tablette-Montre.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Tablette &amp; montre</a><span style="padding:11px 18px;border-radius:999px;background:#17211E;color:#FBF8F4;font-size:14px;font-weight:700">Handoff</span></div>
+  </div>
+
+  <div style="background:#FBF8F4;border:1px solid #E0D9CD;border-radius:32px;padding:36px;display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <h2 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:30px">Iconographie · 32 pictogrammes</h2>
+      <span style="font-size:14px;color:#55605B">Grille 24 × 24, trait 1,75 (2,2 en état actif), terminaisons et jonctions arrondies, aucun remplissage sauf l'étoile de notation. Aucun picto ne désigne une discipline : le système reste neutre entre musculation et cybersécurité.</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:14px">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">accueil</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">recherche</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M3 12h3l3-7 4 14 3-7h4"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">séance</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">message</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">agenda</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M4 20V9M10 20V4M16 20v-7M22 20H2"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">pilotage</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><rect x="2.5" y="6" width="19" height="13" rx="3"/><path d="M2.5 10.5h19M17 15h2"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">carte</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><circle cx="9" cy="8.5" r="3.4"/><path d="M2.5 20c1.3-3.3 3.6-5 6.5-5s5.2 1.7 6.5 5"/><path d="M16.5 6.2a3.4 3.4 0 0 1 0 6.6M18 15.4c2 .8 3 2.2 3.5 4.6"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">clients</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1.6-3.6 4.2-5.4 7.5-5.4s5.9 1.8 7.5 5.4"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">profil</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">ajouter</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">validé</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">fermer</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">retour</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">suivant</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">déplier</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M4 7h16M7 12h10M10 17h4"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">filtres</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M6 4.5v15l13-7.5z"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">lecture</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M8 5v14M16 5v14"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">pause</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">vocal</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><rect x="2.5" y="6" width="13" height="12" rx="3"/><path d="m15.5 12 6-3.5v7z"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">visio</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M3 9a16 16 0 0 1 18 0v3.5l-4.5.8-1.2-2.6a12 12 0 0 0-6.6 0l-1.2 2.6L3 12.5z"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">raccrocher</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5M10 19a2 2 0 0 0 4 0"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">notification</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M12 20s-7-4.6-7-9.4A4 4 0 0 1 12 8a4 4 0 0 1 7 2.6C19 15.4 12 20 12 20z"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">favori</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">note (plein)</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><rect x="5" y="10" width="14" height="10" rx="2.5"/><path d="M8.5 10V7.5a3.5 3.5 0 0 1 7 0V10"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">sécurité</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 13h6M9 17h4"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">document</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">durée</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">information</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M12 3 2 20h20L12 3zM12 9v5M12 17h.01"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">alerte</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M4 20h4L20 8l-4-4L4 16z"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">modifier</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M4 8h16M4 16h16"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">réordonner</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">virement</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M3 5l18 14M5.5 12.5a9 9 0 0 1 4-2.3M2.5 8.8a14 14 0 0 1 5-3M9 16.2a4.5 4.5 0 0 1 6 0M12 20h.01"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">hors-ligne</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v4h-4"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">réessayer</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.5 12a7.5 7.5 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7.6 7.6 0 0 0-2-1.2L14.7 3H9.3l-.4 2.7a7.6 7.6 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5a7.5 7.5 0 0 0 0 2.4l-2 1.5 2 3.4 2.3-1a7.6 7.6 0 0 0 2 1.2l.4 2.7h5.4l.4-2.7a7.6 7.6 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.06-.4.1-.8.1-1.2z"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">réglages</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:16px;background:#fff;border:1px solid #E7E2DA"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg><span style="font-size:11px;font-weight:600;color:#55605B;text-align:center">plus</span></div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:24px">
+
+    <div style="background:#FBF8F4;border:1px solid #E0D9CD;border-radius:32px;padding:32px;display:flex;flex-direction:column;gap:20px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <h2 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:30px">Grammaire de mouvement</h2>
+        <span style="font-size:14px;color:#55605B">Une seule courbe pour tout : <span style="font-family:'JetBrains Mono',monospace;font-size:13px">cubic-bezier(.32,.72,0,1)</span>. Le mouvement explique la hiérarchie, il ne décore pas.</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;gap:16px;align-items:center;padding:16px;border-radius:18px;background:#fff;border:1px solid #E7E2DA">
+          <div style="width:96px;height:56px;border-radius:12px;background:#F1EDE6;overflow:hidden;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;flex-shrink:0"><div style="width:70px;height:34px;border-radius:10px;background:#0F5140;animation:mfc-slide 3s infinite"></div></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:3px"><span style="font-size:15px;font-weight:700">Entrée de contenu · 320 ms</span><span style="font-size:13px;line-height:1.45;color:#55605B">Translation 14 px + opacité. Décalage 40 ms par carte, plafonné à 5 cartes.</span></div>
+        </div>
+        <div style="display:flex;gap:16px;align-items:center;padding:16px;border-radius:18px;background:#fff;border:1px solid #E7E2DA">
+          <div style="width:96px;height:56px;border-radius:12px;background:#F1EDE6;display:flex;align-items:center;justify-content:center;flex-shrink:0"><div style="padding:9px 16px;border-radius:999px;background:#E2603C;color:#FFF7F3;font-size:12px;font-weight:700;animation:mfc-press 2.4s infinite">Valider</div></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:3px"><span style="font-size:15px;font-weight:700">Appui · 120 ms</span><span style="font-size:13px;line-height:1.45;color:#55605B">Échelle 0,96 + assombrissement 8 %. Retour haptique léger sur la validation d'une série.</span></div>
+        </div>
+        <div style="display:flex;gap:16px;align-items:center;padding:16px;border-radius:18px;background:#fff;border:1px solid #E7E2DA">
+          <div style="width:96px;height:56px;border-radius:12px;background:#3A3226;overflow:hidden;display:flex;align-items:flex-end;flex-shrink:0"><div style="width:100%;height:36px;border-radius:10px 10px 0 0;background:#FBF8F4;animation:mfc-sheet 3.2s infinite"></div></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:3px"><span style="font-size:15px;font-weight:700">Bottom sheet · 380 ms</span><span style="font-size:13px;line-height:1.45;color:#55605B">Depuis le bas, voile à 42 % en 200 ms. Fermeture au glissement, seuil 25 % de la hauteur.</span></div>
+        </div>
+        <div style="display:flex;gap:16px;align-items:center;padding:16px;border-radius:18px;background:#fff;border:1px solid #E7E2DA">
+          <div style="width:96px;height:56px;border-radius:12px;background:#F1EDE6;display:flex;align-items:center;padding:0 12px;flex-shrink:0"><div style="width:100%;height:8px;border-radius:999px;background:#E7E2DA;overflow:hidden"><div style="height:100%;border-radius:999px;background:#0F5140;animation:mfc-fill 3s infinite"></div></div></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:3px"><span style="font-size:15px;font-weight:700">Progression · 600 ms</span><span style="font-size:13px;line-height:1.45;color:#55605B">La barre s'anime seulement quand la valeur change à l'écran, jamais au montage.</span></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;padding:16px;border-radius:18px;background:#EFE6D8;align-items:flex-start">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B4A2E" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+        <span style="flex:1;font-size:13px;line-height:1.55;color:#3A3226"><strong style="font-weight:800">prefers-reduced-motion</strong> : toutes les translations et échelles tombent à 0, seules les opacités sont conservées (150 ms). Le chrono de repos et la waveform vocale restent animés — ils portent de l'information.</span>
+      </div>
+    </div>
+
+    <div style="background:#FBF8F4;border:1px solid #E0D9CD;border-radius:32px;padding:32px;display:flex;flex-direction:column;gap:20px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <h2 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:30px">Accessibilité · par composant</h2>
+        <span style="font-size:14px;color:#55605B">Tous les ratios mesurés sur les paires réellement utilisées. Cible WCAG AA : 4,5:1 pour le texte, 3:1 pour les grands titres et les contours d'état.</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <div style="display:grid;grid-template-columns:1.5fr 1fr .8fr .8fr;gap:10px;padding:10px 12px;border-radius:10px;background:#EFE6D8">
+          <span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#5B4A2E">Composant</span>
+          <span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#5B4A2E">Paire</span>
+          <span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#5B4A2E">Ratio</span>
+          <span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#5B4A2E">Tap</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1.5fr 1fr .8fr .8fr;gap:10px;padding:11px 12px;border-bottom:1px solid #EFEAE2;align-items:center">
+          <span style="font-size:13px;font-weight:600">Corps sur crème</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7C766E">17211E / FBF8F4</span><span style="font-size:13px;font-weight:800;color:#14603F">14,8</span><span style="font-size:12px;color:#7C766E">—</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1.5fr 1fr .8fr .8fr;gap:10px;padding:11px 12px;border-bottom:1px solid #EFEAE2;align-items:center">
+          <span style="font-size:13px;font-weight:600">Texte secondaire</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7C766E">55605B / FBF8F4</span><span style="font-size:13px;font-weight:800;color:#14603F">6,3</span><span style="font-size:12px;color:#7C766E">—</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1.5fr 1fr .8fr .8fr;gap:10px;padding:11px 12px;border-bottom:1px solid #EFEAE2;align-items:center">
+          <span style="font-size:13px;font-weight:600">Bouton primaire</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7C766E">FBF8F4 / 0F5140</span><span style="font-size:13px;font-weight:800;color:#14603F">7,4</span><span style="font-size:12px;font-weight:700">48</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1.5fr 1fr .8fr .8fr;gap:10px;padding:11px 12px;border-bottom:1px solid #EFEAE2;align-items:center">
+          <span style="font-size:13px;font-weight:600">Bouton accent</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7C766E">FFF7F3 / E2603C</span><span style="font-size:13px;font-weight:800;color:#7A5A0C">3,6</span><span style="font-size:12px;font-weight:700">48</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1.5fr 1fr .8fr .8fr;gap:10px;padding:11px 12px;border-bottom:1px solid #EFEAE2;align-items:center">
+          <span style="font-size:13px;font-weight:600">Onglet inactif</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7C766E">7C766E / F1EDE6</span><span style="font-size:13px;font-weight:800;color:#14603F">4,6</span><span style="font-size:12px;font-weight:700">40×⅓</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1.5fr 1fr .8fr .8fr;gap:10px;padding:11px 12px;border-bottom:1px solid #EFEAE2;align-items:center">
+          <span style="font-size:13px;font-weight:600">Barre nav · actif</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7C766E">0F5140 / FBF8F4</span><span style="font-size:13px;font-weight:800;color:#14603F">7,4</span><span style="font-size:12px;font-weight:700">48</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1.5fr 1fr .8fr .8fr;gap:10px;padding:11px 12px;border-bottom:1px solid #EFEAE2;align-items:center">
+          <span style="font-size:13px;font-weight:600">Badge erreur</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7C766E">8F231A / FCEEEC</span><span style="font-size:13px;font-weight:800;color:#14603F">7,1</span><span style="font-size:12px;color:#7C766E">—</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1.5fr 1fr .8fr .8fr;gap:10px;padding:11px 12px;border-bottom:1px solid #EFEAE2;align-items:center">
+          <span style="font-size:13px;font-weight:600">Sombre · corps</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7C766E">B4ADA3 / 1E1B17</span><span style="font-size:13px;font-weight:800;color:#14603F">6,1</span><span style="font-size:12px;color:#7C766E">—</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1.5fr 1fr .8fr .8fr;gap:10px;padding:11px 12px;align-items:center">
+          <span style="font-size:13px;font-weight:600">Sombre · action</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7C766E">0B1F1A / 58C2A2</span><span style="font-size:13px;font-weight:800;color:#14603F">9,8</span><span style="font-size:12px;font-weight:700">52</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:18px;background:#fff;border:1px solid #E7E2DA">
+        <span style="font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7C766E">Règles non négociables</span>
+        <span style="font-size:13px;line-height:1.6;color:#333B37">— Le bouton accent (3,6:1) n'est valide qu'à 15 px / poids 700 ou plus : jamais de petit texte en terre cuite sur terre cuite.<br>— Aucun statut porté par la seule couleur : chaque badge a son libellé (« INACTIVE 12 J », « PAIEMENT KO »).<br>— Focus clavier : contour 1,5 px sapin + halo 4 px <span style="font-family:'JetBrains Mono',monospace;font-size:12px">#E2EDE8</span>, jamais supprimé.<br>— Libellés lecteur d'écran obligatoires sur les icônes seules (retour, plus, filtres, raccrocher).<br>— Zone de tap minimale 44 pt, portée par du padding et non par la taille du picto.<br>— Textes jusqu'à 200 % sans troncature : toutes les cartes s'étirent en hauteur.</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="background:#14120F;border-radius:32px;padding:36px;display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <h2 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:30px;color:#F4F0E9">Tokens exportables</h2>
+      <span style="font-size:14px;color:#B4ADA3">À copier tel quel dans le repo. Nommage sémantique côté usage, jamais côté teinte : un thème se change sans toucher aux composants.</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px">
+      <div style="border-radius:20px;background:#1E1B17;padding:20px;display:flex;flex-direction:column;gap:10px">
+        <span style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#58C2A2">color · light</span>
+        <pre style="margin:0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.75;color:#D8D2C8;white-space:pre-wrap">brand.primary      #0F5140
+brand.primaryPress #082B22
+brand.secondary    #EFE6D8
+brand.accent       #E2603C
+bg.canvas          #FBF8F4
+bg.surface         #FFFFFF
+bg.sunken          #F1EDE6
+bg.inverse         #17211E
+text.primary       #17211E
+text.secondary     #55605B
+text.muted         #7C766E
+text.onDark        #F4F0E9
+border.subtle      #E7E2DA
+border.strong      #D6D0C7
+state.success      #1E7A55
+state.warning      #B4820F
+state.danger       #C2372A</pre>
+      </div>
+      <div style="border-radius:20px;background:#1E1B17;padding:20px;display:flex;flex-direction:column;gap:10px">
+        <span style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#58C2A2">color · dark</span>
+        <pre style="margin:0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.75;color:#D8D2C8;white-space:pre-wrap">brand.primary      #58C2A2
+brand.secondary    #3A332A
+brand.accent       #F2865F
+bg.canvas          #14120F
+bg.surface         #1E1B17
+bg.sunken          #26221D
+text.primary       #F4F0E9
+text.secondary     #B4ADA3
+text.muted         #8F8A82
+text.onBrand       #0B1F1A
+border.subtle      #2C2823
+border.strong      #3A332A
+state.success      #6FD6B4
+state.warning      #E0B44A
+state.danger       #F0A08A</pre>
+      </div>
+      <div style="border-radius:20px;background:#1E1B17;padding:20px;display:flex;flex-direction:column;gap:10px">
+        <span style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#58C2A2">type · space · radius · motion</span>
+        <pre style="margin:0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.75;color:#D8D2C8;white-space:pre-wrap">font.display  Instrument Serif 400
+font.ui       Manrope 400/600/700/800
+
+text.display  44 / 46
+text.title1   32 / 36
+text.title2   22 / 28
+text.title3   17 / 24
+text.body     16 / 25
+text.small    14 / 20
+text.label    12 / 16  caps .12em
+text.caption  12 / 16
+
+space.1 4    space.2 8    space.3 12
+space.4 16   space.6 24   space.8 32
+space.12 48  space.16 64  gutter 20
+
+radius.field 6   radius.badge 10
+radius.card 16   radius.sheet 24
+radius.pill 999
+
+shadow.1  0 1px 2px rgba(38,30,20,.08)
+shadow.2  0 6px 16px -6px rgba(38,30,20,.18)
+shadow.3  0 18px 40px -12px rgba(38,30,20,.28)
+
+motion.ease  cubic-bezier(.32,.72,0,1)
+motion.press 120ms
+motion.enter 320ms
+motion.sheet 380ms
+motion.value 600ms
+
+tap.min 44    tap.default 48</pre>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;padding:16px 20px;border-radius:18px;background:#26221D;align-items:flex-start">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#58C2A2" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><path d="M20 6 9 17l-5-5"/></svg>
+      <span style="flex:1;font-size:13px;line-height:1.6;color:#B4ADA3">Couverture : 28 écrans, 2 rôles, 2 plateformes, 2 thèmes, 14 composants, 32 icônes, états vide / chargement / hors-ligne / erreur sur les 5 parcours critiques. Reste ouvert par choix : tablette, watch, et l'export Figma des tokens (à générer depuis ce fichier).</span>
+    </div>
+  </div>
+</section>
+
+</x-dc>
+</body>
+</html>

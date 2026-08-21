@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+  body { margin: 0; background: #E8E2D8; font-family: Manrope, system-ui, sans-serif; }
+  a { color: #0F5140; text-decoration: none; }
+  a:hover { color: #E2603C; }
+  @keyframes mfc-pulse { 0%,100% { opacity: .55 } 50% { opacity: 1 } }
+  @keyframes mfc-shimmer { 0% { background-position: -220px 0 } 100% { background-position: 220px 0 } }
+</style>
+</helmet>
+
+<section style="display:flex;flex-direction:column;gap:36px;padding:56px 64px 40px;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:40px;flex-wrap:wrap">
+    <div style="display:flex;flex-direction:column;gap:8px;max-width:720px">
+      <span style="font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6B746E">My fav Coach — lots 1 &amp; 2 complets</span>
+      <h1 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:44px;line-height:1.05">Les 13 écrans</h1>
+      <p style="margin:0;font-size:16px;line-height:1.6;color:#55605B">Espace client en crème (respiration, photo, progression), espace coach en encre (densité, chiffres, actions rapides). Même grille, même typo, même barre du bas à 5 entrées — seul le rôle change.</p>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <div id="mfc-nav" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><a href="MyFavCoach-System.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Design system + 1→3</a><span style="padding:11px 18px;border-radius:999px;background:#17211E;color:#FBF8F4;font-size:14px;font-weight:700">Client 4→7</span><a href="MyFavCoach-Coach.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Coach 8→13</a><a href="MyFavCoach-Etats.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">États 14→20</a><a href="MyFavCoach-Parcours.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Parcours 21→28</a><a href="MyFavCoach-Tablette-Montre.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Tablette &amp; montre</a><a href="MyFavCoach-Handoff.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Handoff</a></div>
+      
+      
+    </div>
+  </div>
+
+  <div id="2a" style="display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="padding:6px 12px;border-radius:999px;background:#0F5140;color:#FBF8F4;font-size:12px;font-weight:700;letter-spacing:.08em">2a</span>
+      <span style="font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6B746E">Lot 1 — abonnement, séance, suivi, messagerie</span>
+    </div>
+    <div style="display:flex;gap:56px;flex-wrap:wrap;align-items:flex-start">
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:14px;font-weight:700">04a · Choix de l'offre <span style="color:#7C766E;font-weight:500">— iOS</span></span>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+          <div data-screen-label="04a Choix offre" style="height:100%;background:#FBF8F4;display:flex;flex-direction:column;padding-top:58px;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+            <div style="display:flex;align-items:center;gap:12px;padding:8px 20px 14px">
+              <div style="width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid #E7E2DA;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="2" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg></div>
+              <div style="flex:1;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:700">S'abonner à Yannick</span><span style="font-size:12px;color:#7C766E">Étape 1 sur 3</span></div>
+              <div style="width:40px;height:40px;border-radius:999px;overflow:hidden;border:1.5px solid #E7E2DA"><image-slot id="t-av" shape="circle" placeholder=" "></image-slot></div>
+            </div>
+            <div style="display:flex;gap:5px;padding:0 20px 20px">
+              <div style="flex:1;height:4px;border-radius:999px;background:#0F5140"></div>
+              <div style="flex:1;height:4px;border-radius:999px;background:#E7E2DA"></div>
+              <div style="flex:1;height:4px;border-radius:999px;background:#E7E2DA"></div>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:14px">
+              <span style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1.1">Quelle formule te ressemble ?</span>
+              <div style="border-radius:20px;background:#fff;border:2px solid #0F5140;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 16px -8px rgba(38,30,20,.2)">
+                <div style="display:flex;gap:12px;align-items:flex-start">
+                  <div style="width:24px;height:24px;border-radius:999px;border:2px solid #0F5140;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px"><div style="width:12px;height:12px;border-radius:999px;background:#0F5140"></div></div>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:700">Suivi complet</span><span style="font-size:20px;font-weight:800">49 €</span></div>
+                    <span style="font-size:13px;color:#55605B">Programme réajusté chaque semaine, 1 visio par mois, réponse en 24 h.</span>
+                  </div>
+                </div>
+                <span style="padding:6px 10px;border-radius:9px;background:#DDEBE3;color:#14603F;font-size:12px;font-weight:700;align-self:flex-start">Choisi par 8 abonnés sur 10</span>
+              </div>
+              <div style="border-radius:20px;background:#fff;border:1px solid #E7E2DA;padding:16px;display:flex;gap:12px;align-items:flex-start">
+                <div style="width:24px;height:24px;border-radius:999px;border:2px solid #D6D0C7;flex-shrink:0;margin-top:2px"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:17px;font-weight:700">Programme seul</span><span style="font-size:20px;font-weight:800">24 €</span></div>
+                  <span style="font-size:13px;color:#55605B">8 semaines en autonomie, sans échange direct.</span>
+                </div>
+              </div>
+              <div style="border-radius:20px;background:#EFE6D8;padding:14px 16px;display:flex;gap:10px;align-items:flex-start">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5B4A2E" stroke-width="2" stroke-linecap="round" style="margin-top:2px;flex-shrink:0"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+                <span style="font-size:13px;line-height:1.5;color:#3A3226">Sans engagement : tu peux mettre en pause ou arrêter à tout moment depuis ton profil.</span>
+              </div>
+            </div>
+            <div style="padding:14px 20px 38px;background:rgba(251,248,244,.94);border-top:1px solid #E7E2DA;display:flex;flex-direction:column;gap:8px">
+              <div style="height:52px;border-radius:999px;background:#0F5140;color:#FBF8F4;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700">Continuer · 49 €/mois</div>
+              <span style="font-size:12px;color:#7C766E;text-align:center">Premier prélèvement aujourd'hui, puis le 18 de chaque mois.</span>
+            </div>
+          </div>
+        </x-import>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:14px;font-weight:700">04b · Récapitulatif &amp; paiement <span style="color:#7C766E;font-weight:500">— iOS</span></span>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+          <div data-screen-label="04b Paiement" style="height:100%;background:#FBF8F4;display:flex;flex-direction:column;padding-top:58px;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+            <div style="display:flex;align-items:center;gap:12px;padding:8px 20px 14px">
+              <div style="width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid #E7E2DA;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="2" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg></div>
+              <div style="flex:1;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:700">Paiement</span><span style="font-size:12px;color:#7C766E">Étape 3 sur 3</span></div>
+              <div style="display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:9px;background:#DDEBE3"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#14603F" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="10" width="14" height="10" rx="2.5"/><path d="M8.5 10V7.5a3.5 3.5 0 0 1 7 0V10"/></svg><span style="font-size:12px;font-weight:700;color:#14603F">Sécurisé</span></div>
+            </div>
+            <div style="display:flex;gap:5px;padding:0 20px 20px">
+              <div style="flex:1;height:4px;border-radius:999px;background:#0F5140"></div>
+              <div style="flex:1;height:4px;border-radius:999px;background:#0F5140"></div>
+              <div style="flex:1;height:4px;border-radius:999px;background:#0F5140"></div>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:16px">
+              <div style="border-radius:20px;background:#fff;border:1px solid #E7E2DA;padding:16px;display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;gap:12px;align-items:center">
+                  <div style="width:52px;height:52px;border-radius:14px;overflow:hidden;flex-shrink:0"><image-slot id="t-coach" shape="rounded" radius="14" placeholder="Coach"></image-slot></div>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:700">Suivi complet</span><span style="font-size:13px;color:#55605B">Yannick Berthaud · préparation physique</span></div>
+                </div>
+                <div style="height:1px;background:#F1EDE6"></div>
+                <div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#55605B">Abonnement mensuel</span><span style="font-weight:600">49,00 €</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#55605B">Bienvenue -20 % le 1<sup>er</sup> mois</span><span style="font-weight:700;color:#1E7A55">-9,80 €</span></div>
+                <div style="height:1px;background:#F1EDE6"></div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:16px;font-weight:700">À payer aujourd'hui</span><span style="font-family:'Instrument Serif',serif;font-size:28px">39,20 €</span></div>
+              </div>
+              <div style="display:flex;gap:10px">
+                <div style="flex:1;height:48px;border-radius:14px;border:1.5px solid #D6D0C7;background:#FBF8F4;display:flex;align-items:center;padding:0 14px;font-size:15px;color:#A9A29A">Code promo</div>
+                <div style="height:48px;padding:0 18px;border-radius:14px;background:#E2EDE8;color:#0F5140;display:flex;align-items:center;font-size:15px;font-weight:700">Appliquer</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <span style="font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7C766E">Moyen de paiement</span>
+                <div style="display:flex;gap:12px;padding:14px;border-radius:16px;background:#fff;border:2px solid #0F5140;align-items:center">
+                  <div style="width:40px;height:28px;border-radius:6px;background:#17211E;display:flex;align-items:center;justify-content:center;color:#FBF8F4;font-size:10px;font-weight:800">VISA</div>
+                  <span style="flex:1;font-size:15px;font-weight:600">•••• 4218 · 07/28</span>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0F5140" stroke-width="2.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>
+                </div>
+                <div style="display:flex;gap:12px;padding:14px;border-radius:16px;background:#fff;border:1px solid #E7E2DA;align-items:center">
+                  <div style="width:40px;height:28px;border-radius:6px;background:#F1EDE6;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#55605B" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+                  <span style="flex:1;font-size:15px;font-weight:600;color:#55605B">Ajouter une carte</span>
+                </div>
+              </div>
+            </div>
+            <div style="padding:14px 20px 38px;background:rgba(251,248,244,.94);border-top:1px solid #E7E2DA;display:flex;flex-direction:column;gap:8px">
+              <div style="height:52px;border-radius:999px;background:#E2603C;color:#FFF7F3;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700">Payer 39,20 €</div>
+              <span style="font-size:12px;color:#7C766E;text-align:center;line-height:1.4">En continuant tu acceptes les conditions d'abonnement. Résiliable en 2 appuis.</span>
+            </div>
+          </div>
+        </x-import>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:14px;font-weight:700">05 · Ma séance du jour <span style="color:#7C766E;font-weight:500">— iOS</span></span>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+          <div data-screen-label="05 Seance du jour" style="height:100%;background:#14120F;display:flex;flex-direction:column;padding-top:58px;font-family:Manrope,system-ui,sans-serif;color:#F4F0E9">
+            <div style="padding:8px 20px 16px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="width:44px;height:44px;border-radius:999px;background:#26221D;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F4F0E9" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></div>
+                <span style="font-size:13px;font-weight:700;color:#B4ADA3">18:42 écoulées</span>
+                <div style="width:44px;height:44px;border-radius:999px;background:#26221D;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F4F0E9" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></div>
+              </div>
+              <span style="font-family:'Instrument Serif',serif;font-size:32px;line-height:1.1">Bas du corps · force</span>
+              <div style="display:flex;gap:5px">
+                <div style="flex:1;height:6px;border-radius:999px;background:#58C2A2"></div>
+                <div style="flex:1;height:6px;border-radius:999px;background:#58C2A2"></div>
+                <div style="flex:1;height:6px;border-radius:999px;background:#E2603C"></div>
+                <div style="flex:1;height:6px;border-radius:999px;background:#3A332A"></div>
+                <div style="flex:1;height:6px;border-radius:999px;background:#3A332A"></div>
+                <div style="flex:1;height:6px;border-radius:999px;background:#3A332A"></div>
+              </div>
+              <span style="font-size:13px;color:#B4ADA3">Exercice 3 sur 6 · il te reste ~24 min</span>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;gap:12px;padding:14px;border-radius:16px;background:#1E1B17;align-items:center;opacity:.62">
+                <div style="width:26px;height:26px;border-radius:999px;background:#58C2A2;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0B1F1A" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+                <span style="flex:1;font-size:15px;font-weight:600;text-decoration:line-through">Échauffement · 6 min</span>
+              </div>
+              <div style="display:flex;gap:12px;padding:14px;border-radius:16px;background:#1E1B17;align-items:center;opacity:.62">
+                <div style="width:26px;height:26px;border-radius:999px;background:#58C2A2;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0B1F1A" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+                <span style="flex:1;font-size:15px;font-weight:600;text-decoration:line-through">Squat gobelet · 3 × 12</span>
+              </div>
+              <div style="border-radius:20px;background:#FBF8F4;color:#17211E;overflow:hidden;box-shadow:0 18px 40px -12px rgba(0,0,0,.5)">
+                <div style="position:relative;height:150px"><image-slot id="w-demo" shape="rect" placeholder="Démo vidéo de l'exercice"></image-slot>
+                  <div style="position:absolute;left:12px;bottom:12px;padding:6px 10px;border-radius:9px;background:rgba(23,33,30,.75);color:#FBF8F4;font-size:11px;font-weight:700;pointer-events:none">Démo 0:24 · par Yannick</div>
+                </div>
+                <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline">
+                    <span style="font-size:19px;font-weight:800">Fentes bulgares</span>
+                    <span style="padding:5px 10px;border-radius:9px;background:#FBE6DE;color:#8F3418;font-size:12px;font-weight:700">En cours</span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:#F1EDE6">
+                      <span style="font-size:13px;font-weight:700;color:#7C766E;width:52px">Série 1</span>
+                      <span style="flex:1;font-size:15px;font-weight:600">10 reps · 12 kg</span>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E7A55" stroke-width="2.6" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:#F1EDE6">
+                      <span style="font-size:13px;font-weight:700;color:#7C766E;width:52px">Série 2</span>
+                      <span style="flex:1;font-size:15px;font-weight:600">10 reps · 12 kg</span>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E7A55" stroke-width="2.6" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:#fff;border:1.5px solid #0F5140">
+                      <span style="font-size:13px;font-weight:700;color:#0F5140;width:52px">Série 3</span>
+                      <span style="flex:1;font-size:15px;font-weight:600">10 reps · 12 kg</span>
+                      <span style="padding:7px 12px;border-radius:999px;background:#0F5140;color:#FBF8F4;font-size:13px;font-weight:700">Valider</span>
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:12px;background:#EFE6D8">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5B4A2E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>
+                    <span style="flex:1;font-size:13px;color:#3A3226">Repos conseillé 90 s entre les séries</span>
+                    <span style="font-size:15px;font-weight:800;color:#3A3226">1:12</span>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;padding:14px;border-radius:16px;background:#1E1B17;align-items:center">
+                <span style="width:26px;height:26px;border-radius:999px;border:2px solid #3A332A;flex-shrink:0"></span>
+                <span style="flex:1;font-size:15px;font-weight:600;color:#B4ADA3">Soulevé de terre jambes tendues · 3 × 10</span>
+              </div>
+              <div style="display:flex;gap:12px;padding:14px;border-radius:16px;background:#1E1B17;align-items:center">
+                <span style="width:26px;height:26px;border-radius:999px;border:2px solid #3A332A;flex-shrink:0"></span>
+                <span style="flex:1;font-size:15px;font-weight:600;color:#B4ADA3">Gainage latéral · 3 × 40 s</span>
+              </div>
+            </div>
+            <div style="padding:14px 20px 38px;background:rgba(20,18,15,.94);border-top:1px solid #2C2823;display:flex;gap:12px;align-items:center">
+              <div style="width:52px;height:52px;border-radius:999px;background:#26221D;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F4F0E9" stroke-width="1.9" stroke-linecap="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg></div>
+              <div style="flex:1;height:52px;border-radius:999px;background:#58C2A2;color:#0B1F1A;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800">Exercice suivant</div>
+            </div>
+          </div>
+        </x-import>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:14px;font-weight:700">06 · Suivi <span style="color:#7C766E;font-weight:500">— Android</span></span>
+        <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+          <div data-screen-label="06 Suivi" style="height:100%;background:#FBF8F4;display:flex;flex-direction:column;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+            <div style="padding:8px 20px 14px;display:flex;align-items:flex-end;justify-content:space-between">
+              <span style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1.1">Ta progression</span>
+              <span style="font-size:14px;font-weight:700;color:#0F5140">Ajouter</span>
+            </div>
+            <div style="padding:0 20px 16px"><div style="display:flex;background:#F1EDE6;border-radius:999px;padding:4px">
+              <div style="flex:1;height:40px;border-radius:999px;background:#fff;box-shadow:0 1px 2px rgba(38,30,20,.1);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">Poids</div>
+              <div style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#7C766E">Mesures</div>
+              <div style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#7C766E">Photos</div>
+            </div></div>
+            <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:16px">
+              <div style="border-radius:22px;background:#fff;border:1px solid #E7E2DA;padding:18px;display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                  <div style="display:flex;flex-direction:column;gap:2px">
+                    <span style="font-family:'Instrument Serif',serif;font-size:38px;line-height:1">68,4 <span style="font-size:18px">kg</span></span>
+                    <span style="font-size:13px;color:#55605B">Dernière pesée mardi</span>
+                  </div>
+                  <span style="padding:7px 11px;border-radius:10px;background:#DDEBE3;color:#14603F;font-size:13px;font-weight:800">-2,6 kg</span>
+                </div>
+                <svg viewBox="0 0 300 96" style="width:100%;height:96px">
+                  <polyline points="6,20 54,26 102,34 150,32 198,48 246,58 294,66" fill="none" stroke="#0F5140" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="294" cy="66" r="5" fill="#E2603C"/>
+                  <line x1="6" y1="88" x2="294" y2="88" stroke="#E7E2DA" stroke-width="1"/>
+                </svg>
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:#A9A29A;font-weight:600"><span>mars</span><span>avr</span><span>mai</span><span>juin</span><span>juil</span><span>août</span></div>
+              </div>
+              <div style="display:flex;gap:12px">
+                <div style="flex:1;border-radius:18px;background:#fff;border:1px solid #E7E2DA;padding:14px;display:flex;flex-direction:column;gap:4px">
+                  <span style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#7C766E">Taille</span>
+                  <span style="font-size:22px;font-weight:800">74 cm</span>
+                  <span style="font-size:12px;font-weight:700;color:#1E7A55">-4 cm</span>
+                </div>
+                <div style="flex:1;border-radius:18px;background:#fff;border:1px solid #E7E2DA;padding:14px;display:flex;flex-direction:column;gap:4px">
+                  <span style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#7C766E">Séances</span>
+                  <span style="font-size:22px;font-weight:800">37</span>
+                  <span style="font-size:12px;font-weight:700;color:#7C766E">depuis mars</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline">
+                  <span style="font-size:17px;font-weight:700">Photos de suivi</span>
+                  <span style="font-size:13px;color:#7C766E">visibles par Yannick</span>
+                </div>
+                <div style="display:flex;gap:10px">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:6px"><div style="height:130px;border-radius:14px;overflow:hidden"><image-slot id="f-ph1" shape="rounded" radius="14" placeholder="mars"></image-slot></div><span style="font-size:12px;color:#7C766E;text-align:center">2 mars</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:6px"><div style="height:130px;border-radius:14px;overflow:hidden"><image-slot id="f-ph2" shape="rounded" radius="14" placeholder="juin"></image-slot></div><span style="font-size:12px;color:#7C766E;text-align:center">4 juin</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:6px"><div style="height:130px;border-radius:14px;border:1px dashed #D6D0C7;background:#F6F2EC;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A9A29A" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span style="font-size:11px;color:#7C766E;font-weight:600">Août</span></div><span style="font-size:12px;color:#7C766E;text-align:center">à faire</span></div>
+                </div>
+              </div>
+              <div style="display:flex;gap:10px;padding:14px;border-radius:16px;background:#EFE6D8;align-items:flex-start">
+                <div style="width:32px;height:32px;border-radius:999px;overflow:hidden;flex-shrink:0"><image-slot id="f-cav" shape="circle" placeholder=" "></image-slot></div>
+                <span style="flex:1;font-size:13px;line-height:1.5;color:#3A3226">« Ton tour de taille bouge plus vite que la balance : c'est exactement ce qu'on veut. On garde le cap. »</span>
+              </div>
+            </div>
+            <div style="padding:10px 12px 16px;background:rgba(251,248,244,.95);border-top:1px solid #E7E2DA;display:flex">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7C766E" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></svg><span style="font-size:11px;font-weight:600;color:#7C766E">Accueil</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7C766E" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span style="font-size:11px;font-weight:600;color:#7C766E">Explorer</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F5140" stroke-width="1.9" stroke-linecap="round"><path d="M3 12h3l3-7 4 14 3-7h4"/></svg><span style="font-size:11px;font-weight:700;color:#0F5140">Séance</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7C766E" stroke-width="1.9" stroke-linecap="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg><span style="font-size:11px;font-weight:600;color:#7C766E">Messages</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><div style="width:24px;height:24px;border-radius:999px;overflow:hidden;border:1.5px solid #D6D0C7"><image-slot id="f-nav-av" shape="circle" placeholder=" "></image-slot></div><span style="font-size:11px;font-weight:600;color:#7C766E">Moi</span></div>
+            </div>
+          </div>
+        </x-import>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:14px;font-weight:700">07 · Messagerie <span style="color:#7C766E;font-weight:500">— iOS</span></span>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+          <div data-screen-label="07 Messagerie" style="height:100%;background:#FBF8F4;display:flex;flex-direction:column;padding-top:58px;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+            <div style="display:flex;align-items:center;gap:12px;padding:8px 16px 12px;border-bottom:1px solid #E7E2DA">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="2" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg>
+              <div style="width:42px;height:42px;border-radius:999px;overflow:hidden;position:relative;flex-shrink:0"><image-slot id="m-av" shape="circle" placeholder="Coach"></image-slot></div>
+              <div style="flex:1;display:flex;flex-direction:column"><span style="font-size:16px;font-weight:700">Yannick Berthaud</span><span style="font-size:12px;color:#1E7A55;font-weight:600">En ligne · répond en 24 h</span></div>
+              <div style="width:44px;height:44px;border-radius:999px;background:#F1EDE6;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.9" stroke-linecap="round"><rect x="2.5" y="6" width="13" height="12" rx="3"/><path d="m15.5 12 6-3.5v7z"/></svg></div>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:16px;display:flex;flex-direction:column;gap:12px">
+              <span style="font-size:12px;font-weight:700;color:#A9A29A;text-align:center">Hier</span>
+              <div style="max-width:78%;align-self:flex-start;background:#EFE6D8;border-radius:18px 18px 18px 6px;padding:12px 14px">
+                <span style="font-size:15px;line-height:1.5;color:#3A3226">Alors, cette semaine 3 ? J'ai vu que tu avais sauté la séance de jeudi 👀</span>
+              </div>
+              <div style="max-width:78%;align-self:flex-end;background:#0F5140;border-radius:18px 18px 6px 18px;padding:12px 14px">
+                <span style="font-size:15px;line-height:1.5;color:#F0F7F4">Réunion qui a débordé… j'ai rattrapé vendredi matin par contre !</span>
+              </div>
+              <div style="max-width:82%;align-self:flex-start;background:#EFE6D8;border-radius:18px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+                <div style="width:38px;height:38px;border-radius:999px;background:#3A3226;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="#EFE6D8"><path d="M7 4.5v15l13-7.5z"/></svg></div>
+                <div style="flex:1;display:flex;align-items:center;gap:3px;height:26px">
+                  <div style="width:3px;height:8px;border-radius:2px;background:#8C7A57"></div><div style="width:3px;height:16px;border-radius:2px;background:#8C7A57"></div><div style="width:3px;height:24px;border-radius:2px;background:#3A3226"></div><div style="width:3px;height:12px;border-radius:2px;background:#3A3226"></div><div style="width:3px;height:20px;border-radius:2px;background:#3A3226"></div><div style="width:3px;height:10px;border-radius:2px;background:#C4B393"></div><div style="width:3px;height:18px;border-radius:2px;background:#C4B393"></div><div style="width:3px;height:8px;border-radius:2px;background:#C4B393"></div><div style="width:3px;height:14px;border-radius:2px;background:#C4B393"></div><div style="width:3px;height:22px;border-radius:2px;background:#C4B393"></div><div style="width:3px;height:11px;border-radius:2px;background:#C4B393"></div><div style="width:3px;height:16px;border-radius:2px;background:#C4B393"></div>
+                </div>
+                <span style="font-size:13px;font-weight:700;color:#3A3226">0:38</span>
+              </div>
+              <span style="font-size:12px;font-weight:700;color:#A9A29A;text-align:center">Aujourd'hui</span>
+              <div style="max-width:78%;align-self:flex-start;display:flex;flex-direction:column;gap:6px">
+                <div style="position:relative;width:200px;height:260px;border-radius:18px;overflow:hidden">
+                  <image-slot id="m-vid" shape="rounded" radius="18" placeholder="Vidéo du coach"></image-slot>
+                  <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none"><div style="width:52px;height:52px;border-radius:999px;background:rgba(251,248,244,.92);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="#17211E"><path d="M7 4.5v15l13-7.5z"/></svg></div></div>
+                  <span style="position:absolute;right:10px;bottom:10px;padding:4px 8px;border-radius:8px;background:rgba(23,33,30,.75);color:#FBF8F4;font-size:11px;font-weight:700;pointer-events:none">1:12</span>
+                </div>
+                <span style="font-size:13px;color:#55605B;line-height:1.45">Regarde ta position de dos ici — tu creuses un peu trop. Essaie comme ça.</span>
+              </div>
+              <div style="align-self:flex-start;display:flex;gap:4px;padding:12px 14px;border-radius:18px;background:#EFE6D8">
+                <div style="width:7px;height:7px;border-radius:999px;background:#8C7A57;animation:mfc-pulse 1.1s infinite"></div>
+                <div style="width:7px;height:7px;border-radius:999px;background:#8C7A57;animation:mfc-pulse 1.1s infinite .2s"></div>
+                <div style="width:7px;height:7px;border-radius:999px;background:#8C7A57;animation:mfc-pulse 1.1s infinite .4s"></div>
+              </div>
+            </div>
+            <div style="padding:10px 12px 34px;border-top:1px solid #E7E2DA;background:#FBF8F4;display:flex;align-items:center;gap:8px">
+              <div style="width:44px;height:44px;border-radius:999px;background:#F1EDE6;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+              <div style="flex:1;height:44px;border-radius:999px;background:#fff;border:1px solid #E7E2DA;display:flex;align-items:center;padding:0 16px;font-size:15px;color:#A9A29A">Écrire à Yannick…</div>
+              <div style="width:44px;height:44px;border-radius:999px;background:#0F5140;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FBF8F4" stroke-width="1.9" stroke-linecap="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5"/></svg></div>
+            </div>
+          </div>
+        </x-import>
+      </div>
+
+    </div>
+  </div>
+
+  
+</section>
+</x-dc>
+</body>
+</html>

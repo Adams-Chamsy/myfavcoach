@@ -1,0 +1,12 @@
+node_modules
+.expo
+dist
+web-build
+coverage
+ios
+android
+package-lock.json
+maquettes
+docs
+design
+CLAUDE.md

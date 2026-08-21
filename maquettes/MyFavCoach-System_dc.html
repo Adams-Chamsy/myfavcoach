@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+  body { margin: 0; background: #E8E2D8; font-family: Manrope, system-ui, sans-serif; }
+  a { color: #0F5140; text-decoration: none; }
+  a:hover { color: #E2603C; }
+  @keyframes mfc-pulse { 0%,100% { opacity: .55 } 50% { opacity: 1 } }
+  @keyframes mfc-shimmer { 0% { background-position: -220px 0 } 100% { background-position: 220px 0 } }
+</style>
+</helmet>
+
+<section style="display:flex;flex-direction:column;gap:36px;padding:56px 64px 96px;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:40px;flex-wrap:wrap">
+    <div style="display:flex;flex-direction:column;gap:10px;max-width:760px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:34px;height:34px;border-radius:11px;background:#0F5140;display:flex;align-items:center;justify-content:center;color:#FBF8F4;font-family:'Instrument Serif',serif;font-size:21px;line-height:1">M</div>
+        <span style="font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6B746E">My fav Coach — direction 01</span>
+      </div>
+      <h1 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:52px;line-height:1.05;letter-spacing:-.01em">Le système « Atelier chaleureux »</h1>
+      <p style="margin:0;font-size:17px;line-height:1.6;color:#55605B;text-wrap:pretty">Un socle neutre entre disciplines : fond crème, vert sapin crédible, terre cuite pour l'action. La photo du coach porte l'émotion, l'interface reste en retrait. Éditorial pour les titres, grotesque compact pour la densité côté coach.</p>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <div id="mfc-nav" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><span style="padding:11px 18px;border-radius:999px;background:#17211E;color:#FBF8F4;font-size:14px;font-weight:700">Design system + 1→3</span><a href="MyFavCoach-Client.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Client 4→7</a><a href="MyFavCoach-Coach.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Coach 8→13</a><a href="MyFavCoach-Etats.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">États 14→20</a><a href="MyFavCoach-Parcours.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Parcours 21→28</a><a href="MyFavCoach-Tablette-Montre.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Tablette &amp; montre</a><a href="MyFavCoach-Handoff.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Handoff</a></div>
+      
+    </div>
+  </div>
+
+  <div id="1a" style="display:flex;flex-direction:column;gap:24px;background:#FBF8F4;border:1px solid #E0D9CD;border-radius:32px;padding:40px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="padding:6px 12px;border-radius:999px;background:#17211E;color:#FBF8F4;font-size:12px;font-weight:700;letter-spacing:.08em">1a</span>
+      <span style="font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6B746E">Fondations &amp; composants</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px">
+
+      <div style="background:#FFFFFF;border:1px solid #E7E2DA;border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:16px">
+        <h3 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:24px">Palette — mode clair</h3>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:64px;border-radius:14px;background:#0F5140"></div><span style="font-size:11px;font-weight:700">Sapin</span><span style="font-size:11px;color:#7C766E">#0F5140</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:64px;border-radius:14px;background:#EFE6D8"></div><span style="font-size:11px;font-weight:700">Sable</span><span style="font-size:11px;color:#7C766E">#EFE6D8</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:64px;border-radius:14px;background:#E2603C"></div><span style="font-size:11px;font-weight:700">Terre cuite</span><span style="font-size:11px;color:#7C766E">#E2603C</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:64px;border-radius:14px;background:#FBF8F4;border:1px solid #E7E2DA"></div><span style="font-size:11px;font-weight:700">Crème</span><span style="font-size:11px;color:#7C766E">#FBF8F4</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:40px;border-radius:12px;background:#1E7A55"></div><span style="font-size:11px;font-weight:700">Succès</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:40px;border-radius:12px;background:#B4820F"></div><span style="font-size:11px;font-weight:700">Alerte</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:40px;border-radius:12px;background:#C2372A"></div><span style="font-size:11px;font-weight:700">Erreur</span></div>
+        </div>
+        <div style="display:flex;border-radius:12px;overflow:hidden;border:1px solid #E7E2DA">
+          <div style="flex:1;height:34px;background:#FBF8F4"></div>
+          <div style="flex:1;height:34px;background:#F1EDE6"></div>
+          <div style="flex:1;height:34px;background:#E7E2DA"></div>
+          <div style="flex:1;height:34px;background:#D6D0C7"></div>
+          <div style="flex:1;height:34px;background:#A9A29A"></div>
+          <div style="flex:1;height:34px;background:#7C766E"></div>
+          <div style="flex:1;height:34px;background:#55605B"></div>
+          <div style="flex:1;height:34px;background:#333B37"></div>
+          <div style="flex:1;height:34px;background:#17211E"></div>
+        </div>
+        <span style="font-size:12px;color:#7C766E">Gris 50 → 900, teintés chauds. Texte principal #17211E sur crème = 14,8:1.</span>
+      </div>
+
+      <div style="background:#14120F;border:1px solid #2C2823;border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:16px">
+        <h3 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:24px;color:#F4F0E9">Palette — mode sombre</h3>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:64px;border-radius:14px;background:#58C2A2"></div><span style="font-size:11px;font-weight:700;color:#F4F0E9">Sapin clair</span><span style="font-size:11px;color:#8F8A82">#58C2A2</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:64px;border-radius:14px;background:#3A332A"></div><span style="font-size:11px;font-weight:700;color:#F4F0E9">Sable nuit</span><span style="font-size:11px;color:#8F8A82">#3A332A</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:64px;border-radius:14px;background:#F2865F"></div><span style="font-size:11px;font-weight:700;color:#F4F0E9">Terre vive</span><span style="font-size:11px;color:#8F8A82">#F2865F</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:64px;border-radius:14px;background:#1E1B17;border:1px solid #322D27"></div><span style="font-size:11px;font-weight:700;color:#F4F0E9">Surface</span><span style="font-size:11px;color:#8F8A82">#1E1B17</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;background:#1E1B17;border-radius:16px;padding:16px">
+          <span style="font-family:'Instrument Serif',serif;font-size:22px;color:#F4F0E9">Ta séance du jour</span>
+          <span style="font-size:13px;color:#B4ADA3">Le même contenu, contraste AA garanti : #B4ADA3 sur #1E1B17 = 6,1:1.</span>
+          <div style="display:flex;gap:8px">
+            <span style="padding:8px 14px;border-radius:999px;background:#58C2A2;color:#0B1F1A;font-size:13px;font-weight:700">Commencer</span>
+            <span style="padding:8px 14px;border-radius:999px;background:#2A2621;color:#F4F0E9;font-size:13px;font-weight:600">Plus tard</span>
+          </div>
+        </div>
+        <span style="font-size:12px;color:#8F8A82">Le sombre décale les teintes vers le chaud : jamais de gris bleuté.</span>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7E2DA;border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:14px">
+        <h3 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:24px">Typographie</h3>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-family:'Instrument Serif',serif;font-size:44px;line-height:1.05">Display 44/46</span>
+          <span style="font-size:11px;color:#7C766E">Instrument Serif · titres d'écran, chiffres clés</span>
+        </div>
+        <div style="height:1px;background:#F1EDE6"></div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-family:'Instrument Serif',serif;font-size:32px;line-height:1.1">Titre 1 — 32/36</span>
+          <span style="font-size:22px;font-weight:700;line-height:1.25">Titre 2 — 22/28 Manrope 700</span>
+          <span style="font-size:17px;font-weight:600">Titre 3 — 17/24 Manrope 600</span>
+          <span style="font-size:16px;line-height:1.55;color:#333B37">Corps — 16/25. Manrope 400, longueur de ligne 38-42 caractères sur mobile.</span>
+          <span style="font-size:14px;color:#55605B">Petit — 14/20, métadonnées et listes denses côté coach.</span>
+          <span style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#7C766E">Label — 12/16 caps</span>
+          <span style="font-size:12px;color:#7C766E">Caption — 12/16</span>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7E2DA;border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:18px">
+        <h3 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:24px">Espace, rayons, ombres</h3>
+        <div style="display:flex;align-items:flex-end;gap:8px">
+          <div style="width:4px;height:16px;background:#0F5140;border-radius:2px"></div>
+          <div style="width:8px;height:24px;background:#0F5140;border-radius:2px"></div>
+          <div style="width:12px;height:32px;background:#0F5140;border-radius:2px"></div>
+          <div style="width:16px;height:40px;background:#0F5140;border-radius:3px"></div>
+          <div style="width:24px;height:48px;background:#0F5140;border-radius:3px"></div>
+          <div style="width:32px;height:56px;background:#0F5140;border-radius:4px"></div>
+          <div style="width:48px;height:64px;background:#17211E;border-radius:4px"></div>
+        </div>
+        <span style="font-size:12px;color:#7C766E">Base 4 pt : 4 · 8 · 12 · 16 · 24 · 32 · 48 · 64. Gouttière écran 20 pt.</span>
+        <div style="display:flex;gap:10px;align-items:flex-end">
+          <div style="width:52px;height:52px;background:#EFE6D8;border-radius:6px"></div>
+          <div style="width:52px;height:52px;background:#EFE6D8;border-radius:10px"></div>
+          <div style="width:52px;height:52px;background:#EFE6D8;border-radius:16px"></div>
+          <div style="width:52px;height:52px;background:#EFE6D8;border-radius:24px"></div>
+          <div style="width:52px;height:52px;background:#EFE6D8;border-radius:999px"></div>
+        </div>
+        <span style="font-size:12px;color:#7C766E">r6 champs internes · r10 badges · r16 cartes · r24 médias &amp; sheets · r∞ pilules</span>
+        <div style="display:flex;gap:14px">
+          <div style="flex:1;height:56px;border-radius:16px;background:#fff;box-shadow:0 1px 2px rgba(38,30,20,.08)"></div>
+          <div style="flex:1;height:56px;border-radius:16px;background:#fff;box-shadow:0 6px 16px -6px rgba(38,30,20,.18)"></div>
+          <div style="flex:1;height:56px;border-radius:16px;background:#fff;box-shadow:0 18px 40px -12px rgba(38,30,20,.28)"></div>
+        </div>
+        <span style="font-size:12px;color:#7C766E">Ombres chaudes (base brune), jamais noires : niveau 1 carte, 2 flottant, 3 sheet/modale.</span>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7E2DA;border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:16px">
+        <h3 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:24px">Boutons — 4 variantes × états</h3>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:center">
+          <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#A9A29A">Défaut</span>
+          <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#A9A29A">Survol</span>
+          <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#A9A29A">Pressé</span>
+          <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#A9A29A">Désactivé</span>
+
+          <div style="height:48px;border-radius:999px;background:#0F5140;color:#FBF8F4;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">S'abonner</div>
+          <div style="height:48px;border-radius:999px;background:#0B3E31;color:#FBF8F4;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">S'abonner</div>
+          <div style="height:48px;border-radius:999px;background:#082B22;color:#CFE3DB;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;transform:scale(.97)">S'abonner</div>
+          <div style="height:48px;border-radius:999px;background:#E7E2DA;color:#A9A29A;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">S'abonner</div>
+
+          <div style="height:48px;border-radius:999px;background:#FBF8F4;border:1.5px solid #17211E;color:#17211E;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">Message</div>
+          <div style="height:48px;border-radius:999px;background:#F1EDE6;border:1.5px solid #17211E;color:#17211E;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">Message</div>
+          <div style="height:48px;border-radius:999px;background:#E7E2DA;border:1.5px solid #17211E;color:#17211E;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;transform:scale(.97)">Message</div>
+          <div style="height:48px;border-radius:999px;background:#FBF8F4;border:1.5px solid #D6D0C7;color:#BDB6AC;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">Message</div>
+
+          <div style="height:48px;border-radius:999px;color:#0F5140;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">Voir tout</div>
+          <div style="height:48px;border-radius:999px;background:#E2EDE8;color:#0F5140;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">Voir tout</div>
+          <div style="height:48px;border-radius:999px;background:#CFE3DB;color:#0B3E31;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;transform:scale(.97)">Voir tout</div>
+          <div style="height:48px;border-radius:999px;color:#BDB6AC;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">Voir tout</div>
+
+          <div style="height:48px;border-radius:999px;background:#E2603C;color:#FFF7F3;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:700"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF7F3" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Séance</div>
+          <div style="height:48px;border-radius:999px;background:#C94E2C;color:#FFF7F3;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:700"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF7F3" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Séance</div>
+          <div style="height:48px;border-radius:999px;background:#A93D20;color:#F7DCD2;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:700;transform:scale(.97)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F7DCD2" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Séance</div>
+          <div style="height:48px;border-radius:999px;background:#F3E9E4;color:#C9B6AD;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:700"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9B6AD" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Séance</div>
+        </div>
+        <span style="font-size:12px;color:#7C766E">Hauteur 48 pt (zone de tap 48 ≥ 44). Accent terre cuite réservé à l'action créative/urgente : une seule par écran.</span>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7E2DA;border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:16px">
+        <h3 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:24px">Champs, onglets, progression</h3>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7C766E">Objectif</span>
+          <div style="height:52px;border-radius:14px;border:1.5px solid #D6D0C7;background:#FBF8F4;display:flex;align-items:center;padding:0 16px;font-size:16px;color:#A9A29A">Reprendre le sport en douceur</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#0F5140">Objectif · focus</span>
+          <div style="height:52px;border-radius:14px;border:1.5px solid #0F5140;background:#fff;box-shadow:0 0 0 4px #E2EDE8;display:flex;align-items:center;padding:0 16px;font-size:16px;color:#17211E">Perdre 4 kg avant juin<span style="width:1.5px;height:22px;background:#E2603C;margin-left:2px;animation:mfc-pulse 1.1s infinite"></span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="height:52px;border-radius:14px;border:1.5px solid #C2372A;background:#fff;display:flex;align-items:center;padding:0 16px;font-size:16px;color:#17211E">camille.dupreelaposte</div>
+          <span style="font-size:12px;color:#C2372A;display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C2372A" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>Il manque un @ dans ton adresse.</span>
+        </div>
+        <div style="display:flex;background:#F1EDE6;border-radius:999px;padding:4px">
+          <div style="flex:1;height:40px;border-radius:999px;background:#fff;box-shadow:0 1px 2px rgba(38,30,20,.1);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">Offres</div>
+          <div style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#7C766E">Avis</div>
+          <div style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#7C766E">Parcours</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600"><span>Semaine 3 · 4 séances sur 5</span><span style="color:#0F5140">80 %</span></div>
+          <div style="height:10px;border-radius:999px;background:#E7E2DA;overflow:hidden"><div style="width:80%;height:100%;border-radius:999px;background:#0F5140"></div></div>
+          <div style="display:flex;gap:6px">
+            <div style="flex:1;height:6px;border-radius:999px;background:#0F5140"></div>
+            <div style="flex:1;height:6px;border-radius:999px;background:#0F5140"></div>
+            <div style="flex:1;height:6px;border-radius:999px;background:#0F5140"></div>
+            <div style="flex:1;height:6px;border-radius:999px;background:#E2603C"></div>
+            <div style="flex:1;height:6px;border-radius:999px;background:#E7E2DA"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span style="padding:7px 12px;border-radius:10px;background:#E2EDE8;color:#0B3E31;font-size:13px;font-weight:700">Musculation</span>
+          <span style="padding:7px 12px;border-radius:10px;background:#EFE6D8;color:#5B4A2E;font-size:13px;font-weight:700">Nutrition</span>
+          <span style="padding:7px 12px;border-radius:10px;background:#FBE6DE;color:#8F3418;font-size:13px;font-weight:700">Nouveau</span>
+          <span style="padding:7px 12px;border-radius:10px;background:#DDEBE3;color:#14603F;font-size:13px;font-weight:700;display:flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#14603F" stroke-width="2.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>Certifié</span>
+          <span style="padding:7px 12px;border-radius:10px;background:#17211E;color:#FBF8F4;font-size:13px;font-weight:700">En visio</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:56px;height:56px;border-radius:999px;overflow:hidden;border:2px solid #fff;box-shadow:0 1px 2px rgba(38,30,20,.14)"><image-slot id="ds-av-1" shape="circle" placeholder="Portrait"></image-slot></div>
+          <div style="width:44px;height:44px;border-radius:999px;background:#0F5140;color:#FBF8F4;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700">CD</div>
+          <div style="width:44px;height:44px;border-radius:999px;background:#EFE6D8;display:flex;align-items:center;justify-content:center;position:relative"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7C766E" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1.6-3.6 4.2-5.4 7.5-5.4s5.9 1.8 7.5 5.4"/></svg><span style="position:absolute;right:-1px;bottom:-1px;width:14px;height:14px;border-radius:999px;background:#1E7A55;border:2px solid #fff"></span></div>
+          <span style="font-size:12px;color:#7C766E">Avatars 56 / 44 / 44 + présence</span>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7E2DA;border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:16px">
+        <h3 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:24px">Cartes</h3>
+        <div style="border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 6px 16px -6px rgba(38,30,20,.18)">
+          <div style="position:relative;height:170px"><image-slot id="ds-coach-card" shape="rect" placeholder="Portrait coach 4:3"></image-slot>
+            <span style="position:absolute;top:12px;left:12px;padding:6px 10px;border-radius:10px;background:rgba(23,33,30,.72);color:#FBF8F4;font-size:12px;font-weight:700;pointer-events:none">Cybersécurité</span>
+          </div>
+          <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+              <span style="font-size:17px;font-weight:700">Nadia Belkacem</span>
+              <span style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg>4,9</span>
+            </div>
+            <span style="font-size:14px;color:#55605B">Sécuriser sa boîte sans DSI · 12 semaines</span>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+              <span style="font-size:13px;color:#7C766E">128 abonnés</span>
+              <span style="font-size:15px;font-weight:700">39 €<span style="font-size:12px;font-weight:600;color:#7C766E"> /mois</span></span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;padding:12px;border-radius:18px;background:#FBF8F4;border:1px solid #E7E2DA;align-items:center">
+          <div style="width:64px;height:64px;border-radius:14px;overflow:hidden;flex-shrink:0"><image-slot id="ds-prog-card" shape="rounded" radius="14" placeholder="Visuel"></image-slot></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+            <span style="font-size:15px;font-weight:700">Batch cooking d'automne</span>
+            <span style="font-size:13px;color:#55605B">8 modules · 3 h par semaine</span>
+            <div style="height:6px;border-radius:999px;background:#E7E2DA;overflow:hidden;margin-top:4px"><div style="width:35%;height:100%;background:#0F5140;border-radius:999px"></div></div>
+          </div>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A9A29A" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>
+        </div>
+        <div style="display:flex;gap:12px;padding:14px;border-radius:18px;background:#fff;border:1px solid #E7E2DA;align-items:center">
+          <div style="width:44px;height:44px;border-radius:12px;background:#E2EDE8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F5140" stroke-width="1.9" stroke-linecap="round"><path d="M3 12h3l3-7 4 14 3-7h4"/></svg></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+            <span style="font-size:15px;font-weight:700">Bas du corps · force</span>
+            <span style="font-size:13px;color:#55605B">6 exercices · 42 min</span>
+          </div>
+          <span style="padding:7px 12px;border-radius:999px;background:#17211E;color:#FBF8F4;font-size:13px;font-weight:700">Aujourd'hui</span>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7E2DA;border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:16px">
+        <h3 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:24px">Navigation &amp; bascule de rôle</h3>
+        <div style="border-radius:20px;border:1px solid #E7E2DA;overflow:hidden">
+          <div style="display:flex;justify-content:space-between;padding:10px 12px 12px;background:#fff">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:4px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F5140" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></svg><span style="font-size:11px;font-weight:700;color:#0F5140">Accueil</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:4px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7C766E" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span style="font-size:11px;font-weight:600;color:#7C766E">Explorer</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:4px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7C766E" stroke-width="1.9" stroke-linecap="round"><path d="M3 12h3l3-7 4 14 3-7h4"/></svg><span style="font-size:11px;font-weight:600;color:#7C766E">Séance</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:4px;position:relative"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7C766E" stroke-width="1.9" stroke-linecap="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg><span style="position:absolute;top:2px;right:22px;width:8px;height:8px;border-radius:999px;background:#E2603C"></span><span style="font-size:11px;font-weight:600;color:#7C766E">Messages</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:4px"><div style="width:24px;height:24px;border-radius:999px;overflow:hidden"><image-slot id="ds-nav-av" shape="circle" placeholder=" "></image-slot></div><span style="font-size:11px;font-weight:600;color:#7C766E">Moi</span></div>
+          </div>
+          <div style="padding:8px 12px;background:#F1EDE6;font-size:11px;color:#7C766E;text-align:center">Barre client — 5 entrées</div>
+        </div>
+        <div style="border-radius:20px;border:1px solid #E7E2DA;overflow:hidden">
+          <div style="display:flex;justify-content:space-between;padding:10px 12px 12px;background:#17211E">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:4px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#58C2A2" stroke-width="1.9" stroke-linecap="round"><path d="M4 20V9M10 20V4M16 20v-7M22 20H2"/></svg><span style="font-size:11px;font-weight:700;color:#58C2A2">Pilotage</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:4px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B4ADA3" stroke-width="1.9" stroke-linecap="round"><circle cx="9" cy="8.5" r="3.4"/><path d="M2.5 20c1.3-3.3 3.6-5 6.5-5s5.2 1.7 6.5 5"/><path d="M16.5 6.2a3.4 3.4 0 0 1 0 6.6M18 15.4c2 .8 3 2.2 3.5 4.6"/></svg><span style="font-size:11px;font-weight:600;color:#B4ADA3">Clients</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:44px;height:44px;border-radius:999px;background:#E2603C;display:flex;align-items:center;justify-content:center;margin-top:-14px;box-shadow:0 6px 16px -4px rgba(226,96,60,.6)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFF7F3" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div><span style="font-size:11px;font-weight:600;color:#B4ADA3">Créer</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:4px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B4ADA3" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span style="font-size:11px;font-weight:600;color:#B4ADA3">Agenda</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:4px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B4ADA3" stroke-width="1.9" stroke-linecap="round"><rect x="2.5" y="6" width="19" height="13" rx="3"/><path d="M2.5 10.5h19M17 15h2"/></svg><span style="font-size:11px;font-weight:600;color:#B4ADA3">Revenus</span></div>
+          </div>
+          <div style="padding:8px 12px;background:#F1EDE6;font-size:11px;color:#7C766E;text-align:center">Barre coach — fond encre = changement d'espace immédiatement lisible</div>
+        </div>
+        <div style="border-radius:24px;background:#FBF8F4;border:1px solid #E7E2DA;padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="width:40px;height:4px;border-radius:999px;background:#D6D0C7;align-self:center"></div>
+          <span style="font-size:17px;font-weight:700">Camille Dupré</span>
+          <div style="display:flex;gap:10px;padding:12px;border-radius:16px;background:#E2EDE8;align-items:center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B3E31" stroke-width="2" stroke-linecap="round"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></svg>
+            <span style="flex:1;font-size:15px;font-weight:700;color:#0B3E31">Espace client</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B3E31" stroke-width="2.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <div style="display:flex;gap:10px;padding:12px;border-radius:16px;background:#17211E;align-items:center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#58C2A2" stroke-width="2" stroke-linecap="round"><path d="M4 20V9M10 20V4M16 20v-7M22 20H2"/></svg>
+            <span style="flex:1;font-size:15px;font-weight:700;color:#F4F0E9">Espace coach<span style="display:block;font-size:12px;font-weight:500;color:#B4ADA3">3 demandes en attente</span></span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B4ADA3" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>
+          </div>
+          <span style="font-size:12px;color:#7C766E">Bottom sheet appelé depuis l'avatar : un appui, deux espaces, aucun onglet gaspillé.</span>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7E2DA;border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:16px">
+        <h3 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:24px">États système</h3>
+        <div style="display:flex;gap:12px;padding:14px 16px;border-radius:16px;background:#17211E;align-items:center;box-shadow:0 18px 40px -12px rgba(38,30,20,.28)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#58C2A2" stroke-width="2.4" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>
+          <span style="flex:1;font-size:14px;font-weight:600;color:#F4F0E9">Séance validée. Bravo !</span>
+          <span style="font-size:13px;font-weight:700;color:#58C2A2">Annuler</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px;border-radius:18px;background:#FBF8F4;border:1px dashed #D6D0C7;text-align:center">
+          <div style="width:52px;height:52px;border-radius:999px;background:#EFE6D8;display:flex;align-items:center;justify-content:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#8C7A57" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg></div>
+          <span style="font-size:16px;font-weight:700">Aucun coach ne correspond</span>
+          <span style="font-size:14px;color:#55605B;max-width:260px">Essaie d'élargir la zone ou de retirer le filtre « en visio ».</span>
+          <span style="padding:10px 16px;border-radius:999px;background:#FBF8F4;border:1.5px solid #17211E;font-size:14px;font-weight:700">Réinitialiser les filtres</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="height:120px;border-radius:16px;background:linear-gradient(90deg,#F1EDE6 25%,#E7E2DA 37%,#F1EDE6 63%);background-size:440px 100%;animation:mfc-shimmer 1.3s linear infinite"></div>
+          <div style="height:14px;width:60%;border-radius:999px;background:#F1EDE6"></div>
+          <div style="height:14px;width:38%;border-radius:999px;background:#F1EDE6"></div>
+          <span style="font-size:12px;color:#7C766E">Chargement : squelettes aux formes finales, jamais de spinner plein écran.</span>
+        </div>
+        <div style="display:flex;gap:12px;padding:14px;border-radius:16px;background:#FCEEEC;border:1px solid #F0CDC7;align-items:flex-start">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C2372A" stroke-width="2" stroke-linecap="round"><path d="M12 3 2 20h20L12 3zM12 9v5M12 17h.01"/></svg>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+            <span style="font-size:14px;font-weight:700;color:#8F231A">Paiement refusé</span>
+            <span style="font-size:13px;color:#8F231A">Ta banque a bloqué le prélèvement. Ton abonnement reste actif 48 h.</span>
+            <span style="font-size:13px;font-weight:700;color:#C2372A">Changer de carte</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7E2DA;border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:16px">
+        <h3 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:24px">Modale &amp; iconographie</h3>
+        <div style="border-radius:24px;background:#fff;box-shadow:0 18px 40px -12px rgba(38,30,20,.28);padding:20px;display:flex;flex-direction:column;gap:12px;border:1px solid #F1EDE6">
+          <span style="font-family:'Instrument Serif',serif;font-size:26px;line-height:1.15">Mettre en pause ton abonnement ?</span>
+          <span style="font-size:14px;line-height:1.5;color:#55605B">Ton programme est gardé 60 jours. Nadia sera prévenue de ta pause.</span>
+          <div style="display:flex;gap:10px;margin-top:4px">
+            <div style="flex:1;height:48px;border-radius:999px;border:1.5px solid #17211E;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">Annuler</div>
+            <div style="flex:1;height:48px;border-radius:999px;background:#0F5140;color:#FBF8F4;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">Mettre en pause</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:16px;border-radius:16px;background:#FBF8F4">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></svg>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M3 12h3l3-7 4 14 3-7h4"/></svg>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M4 20V9M10 20V4M16 20v-7M22 20H2"/></svg>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><rect x="2.5" y="6" width="19" height="13" rx="3"/><path d="M2.5 10.5h19M17 15h2"/></svg>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M6 4.5v15l13-7.5z"/></svg>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5"/></svg>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><rect x="2.5" y="6" width="13" height="12" rx="3"/><path d="m15.5 12 6-3.5v7z"/></svg>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.75" stroke-linecap="round"><path d="M12 3.5 14.6 9l6 .9-4.3 4.1 1 6-5.3-2.9L6.7 20l1-6L3.4 9.9 9.4 9z"/></svg>
+        </div>
+        <span style="font-size:12px;color:#7C766E">Grille 24, trait 1,75, terminaisons arrondies, angles à 2 pt. Un seul jeu pour les deux espaces ; le pictogramme ne dit jamais la discipline.</span>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="1b" style="display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="padding:6px 12px;border-radius:999px;background:#17211E;color:#FBF8F4;font-size:12px;font-weight:700;letter-spacing:.08em">1b</span>
+      <span style="font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6B746E">Lot 1 — écrans 1 · 2 · 3</span>
+    </div>
+    <div style="display:flex;gap:56px;flex-wrap:wrap;align-items:flex-start">
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:14px;font-weight:700">01 · Accueil / découverte <span style="color:#7C766E;font-weight:500">— iOS</span></span>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+          <div data-screen-label="01 Accueil" style="min-height:100%;background:#FBF8F4;display:flex;flex-direction:column;padding-top:58px;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px 16px">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <span style="font-size:13px;color:#7C766E">Mardi 18 août</span>
+                <span style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1.1">Salut Camille</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid #E7E2DA;display:flex;align-items:center;justify-content:center;position:relative"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.8" stroke-linecap="round"><path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5M10 19a2 2 0 0 0 4 0"/></svg><span style="position:absolute;top:9px;right:11px;width:8px;height:8px;border-radius:999px;background:#E2603C;border:1.5px solid #fff"></span></div>
+                <div style="position:relative;width:48px;height:48px">
+                  <div style="width:48px;height:48px;border-radius:999px;overflow:hidden;border:2px solid #fff;box-shadow:0 2px 6px rgba(38,30,20,.16)"><image-slot id="h-me" shape="circle" placeholder="Moi"></image-slot></div>
+                  <span style="position:absolute;-webkit-box-align:center;bottom:-6px;left:50%;transform:translateX(-50%);padding:2px 7px;border-radius:999px;background:#17211E;color:#FBF8F4;font-size:9px;font-weight:800;letter-spacing:.06em;white-space:nowrap">CLIENT</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="padding:0 20px 16px">
+              <div style="height:48px;border-radius:14px;background:#fff;border:1px solid #E7E2DA;display:flex;align-items:center;gap:10px;padding:0 14px">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A9A29A" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
+                <span style="font-size:15px;color:#A9A29A">Un coach, une discipline…</span>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;overflow:hidden;padding:0 20px 20px">
+              <span style="padding:9px 14px;border-radius:999px;background:#17211E;color:#FBF8F4;font-size:13px;font-weight:700;white-space:nowrap">Tout</span>
+              <span style="padding:9px 14px;border-radius:999px;background:#fff;border:1px solid #E7E2DA;font-size:13px;font-weight:600;white-space:nowrap">Musculation</span>
+              <span style="padding:9px 14px;border-radius:999px;background:#fff;border:1px solid #E7E2DA;font-size:13px;font-weight:600;white-space:nowrap">Nutrition</span>
+              <span style="padding:9px 14px;border-radius:999px;background:#fff;border:1px solid #E7E2DA;font-size:13px;font-weight:600;white-space:nowrap">Cuisine</span>
+            </div>
+
+            <div style="padding:0 20px 24px">
+              <div style="border-radius:22px;background:#17211E;padding:18px;display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <span style="font-size:11px;font-weight:800;letter-spacing:.12em;color:#58C2A2">TA SÉANCE DU JOUR</span>
+                    <span style="font-family:'Instrument Serif',serif;font-size:26px;color:#F4F0E9;line-height:1.15">Bas du corps · force</span>
+                    <span style="font-size:13px;color:#B4ADA3">6 exercices · 42 min · avec Yannick</span>
+                  </div>
+                  <div style="width:44px;height:44px;border-radius:999px;overflow:hidden;border:2px solid #2C2823;flex-shrink:0"><image-slot id="h-coach-av" shape="circle" placeholder="Coach"></image-slot></div>
+                </div>
+                <div style="display:flex;gap:5px">
+                  <div style="flex:1;height:6px;border-radius:999px;background:#58C2A2"></div>
+                  <div style="flex:1;height:6px;border-radius:999px;background:#58C2A2"></div>
+                  <div style="flex:1;height:6px;border-radius:999px;background:#58C2A2"></div>
+                  <div style="flex:1;height:6px;border-radius:999px;background:#3A332A"></div>
+                  <div style="flex:1;height:6px;border-radius:999px;background:#3A332A"></div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+                  <span style="font-size:13px;color:#B4ADA3">Semaine 3 · 3/5 faites</span>
+                  <div style="height:44px;padding:0 20px;border-radius:999px;background:#E2603C;color:#FFF7F3;display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700"><svg width="16" height="16" viewBox="0 0 24 24" fill="#FFF7F3"><path d="M6 4.5v15l13-7.5z"/></svg>Commencer</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 20px 12px">
+              <span style="font-family:'Instrument Serif',serif;font-size:24px">Coachs pour toi</span>
+              <span style="font-size:14px;font-weight:700;color:#0F5140">Voir tout</span>
+            </div>
+            <div style="display:flex;gap:14px;padding:0 20px 26px;overflow:hidden">
+              <div style="width:216px;flex-shrink:0;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 6px 16px -8px rgba(38,30,20,.22)">
+                <div style="position:relative;height:150px"><image-slot id="h-c1" shape="rect" placeholder="Coach 1"></image-slot>
+                  <span style="position:absolute;top:10px;left:10px;padding:5px 9px;border-radius:9px;background:rgba(23,33,30,.72);color:#FBF8F4;font-size:11px;font-weight:700;pointer-events:none">Yoga · mobilité</span>
+                </div>
+                <div style="padding:12px 14px 14px;display:flex;flex-direction:column;gap:5px">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:16px;font-weight:700">Inès Marchand</span><span style="font-size:13px;font-weight:700;display:flex;gap:3px;align-items:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg>4,8</span></div>
+                  <span style="font-size:13px;color:#55605B;line-height:1.4">Dos souple en 20 min par jour</span>
+                  <span style="font-size:14px;font-weight:700;margin-top:2px">29 €<span style="font-size:12px;color:#7C766E;font-weight:600"> /mois</span></span>
+                </div>
+              </div>
+              <div style="width:216px;flex-shrink:0;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 6px 16px -8px rgba(38,30,20,.22)">
+                <div style="position:relative;height:150px"><image-slot id="h-c2" shape="rect" placeholder="Coach 2"></image-slot>
+                  <span style="position:absolute;top:10px;left:10px;padding:5px 9px;border-radius:9px;background:rgba(23,33,30,.72);color:#FBF8F4;font-size:11px;font-weight:700;pointer-events:none">Cybersécurité</span>
+                </div>
+                <div style="padding:12px 14px 14px;display:flex;flex-direction:column;gap:5px">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:16px;font-weight:700">Nadia Belkacem</span><span style="font-size:13px;font-weight:700;display:flex;gap:3px;align-items:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg>4,9</span></div>
+                  <span style="font-size:13px;color:#55605B;line-height:1.4">Sécuriser sa boîte sans DSI</span>
+                  <span style="font-size:14px;font-weight:700;margin-top:2px">39 €<span style="font-size:12px;color:#7C766E;font-weight:600"> /mois</span></span>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 20px 12px">
+              <span style="font-family:'Instrument Serif',serif;font-size:24px">Reprends là où tu t'es arrêtée</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;padding:0 20px 120px">
+              <div style="display:flex;gap:12px;padding:12px;border-radius:18px;background:#fff;border:1px solid #E7E2DA;align-items:center">
+                <div style="width:60px;height:60px;border-radius:14px;overflow:hidden;flex-shrink:0"><image-slot id="h-p1" shape="rounded" radius="14" placeholder="Prog"></image-slot></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+                  <span style="font-size:15px;font-weight:700">Batch cooking d'automne</span>
+                  <span style="font-size:13px;color:#55605B">Module 3 sur 8 · Ophélie Renard</span>
+                  <div style="height:6px;border-radius:999px;background:#E7E2DA;overflow:hidden;margin-top:2px"><div style="width:35%;height:100%;background:#0F5140;border-radius:999px"></div></div>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;padding:12px;border-radius:18px;background:#fff;border:1px solid #E7E2DA;align-items:center">
+                <div style="width:60px;height:60px;border-radius:14px;overflow:hidden;flex-shrink:0"><image-slot id="h-p2" shape="rounded" radius="14" placeholder="Prog"></image-slot></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+                  <span style="font-size:15px;font-weight:700">Négocier son augmentation</span>
+                  <span style="font-size:13px;color:#55605B">Module 5 sur 6 · Thomas Kieffer</span>
+                  <div style="height:6px;border-radius:999px;background:#E7E2DA;overflow:hidden;margin-top:2px"><div style="width:78%;height:100%;background:#0F5140;border-radius:999px"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <div style="position:absolute;left:0;right:0;bottom:0;padding:10px 12px 34px;background:rgba(251,248,244,.92);border-top:1px solid #E7E2DA;display:flex">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F5140" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></svg><span style="font-size:11px;font-weight:700;color:#0F5140">Accueil</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7C766E" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span style="font-size:11px;font-weight:600;color:#7C766E">Explorer</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7C766E" stroke-width="1.9" stroke-linecap="round"><path d="M3 12h3l3-7 4 14 3-7h4"/></svg><span style="font-size:11px;font-weight:600;color:#7C766E">Séance</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center;position:relative"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7C766E" stroke-width="1.9" stroke-linecap="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg><span style="position:absolute;top:6px;right:20px;width:8px;height:8px;border-radius:999px;background:#E2603C"></span><span style="font-size:11px;font-weight:600;color:#7C766E">Messages</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><div style="width:24px;height:24px;border-radius:999px;overflow:hidden;border:1.5px solid #D6D0C7"><image-slot id="h-nav-av" shape="circle" placeholder=" "></image-slot></div><span style="font-size:11px;font-weight:600;color:#7C766E">Moi</span></div>
+            </div>
+          </div>
+        </x-import>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:14px;font-weight:700">02 · Recherche + filtres actifs <span style="color:#7C766E;font-weight:500">— Android</span></span>
+        <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+          <div data-screen-label="02 Recherche" style="min-height:100%;background:#FBF8F4;display:flex;flex-direction:column;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+            <div style="padding:8px 20px 12px;display:flex;align-items:center;gap:10px">
+              <div style="flex:1;height:48px;border-radius:14px;background:#fff;border:1px solid #E7E2DA;display:flex;align-items:center;gap:10px;padding:0 14px">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.9" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg>
+                <span style="flex:1;font-size:15px;font-weight:600">cybersécurité</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A9A29A" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+              </div>
+              <div style="width:48px;height:48px;border-radius:14px;background:#17211E;display:flex;align-items:center;justify-content:center;position:relative"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FBF8F4" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M7 12h10M10 17h4"/></svg><span style="position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;border-radius:999px;background:#E2603C;color:#FFF7F3;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center">3</span></div>
+            </div>
+            <div style="display:flex;gap:8px;padding:0 20px 14px;overflow:hidden">
+              <span style="padding:9px 12px;border-radius:999px;background:#E2EDE8;border:1px solid #0F5140;color:#0B3E31;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap">En visio<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0B3E31" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+              <span style="padding:9px 12px;border-radius:999px;background:#E2EDE8;border:1px solid #0F5140;color:#0B3E31;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap">≤ 60 €/mois<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0B3E31" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+              <span style="padding:9px 12px;border-radius:999px;background:#E2EDE8;border:1px solid #0F5140;color:#0B3E31;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap">4,5 ★+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0B3E31" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:0 20px 12px">
+              <span style="font-size:14px;color:#55605B">7 coachs · Lyon et visio</span>
+              <span style="font-size:14px;font-weight:700;display:flex;align-items:center;gap:5px">Pertinence<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;padding:0 20px 300px">
+              <div style="display:flex;gap:12px;padding:12px;border-radius:20px;background:#fff;border:1px solid #E7E2DA">
+                <div style="width:92px;height:112px;border-radius:16px;overflow:hidden;flex-shrink:0"><image-slot id="s-c1" shape="rounded" radius="16" placeholder="Coach"></image-slot></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:16px;font-weight:700">Nadia Belkacem</span><span style="font-size:13px;font-weight:700;display:flex;gap:3px;align-items:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg>4,9</span></div>
+                  <span style="font-size:13px;color:#55605B;line-height:1.4">Sécurité offensive · sensibilisation d'équipe</span>
+                  <div style="display:flex;gap:6px;margin-top:2px"><span style="padding:5px 9px;border-radius:9px;background:#DDEBE3;color:#14603F;font-size:11px;font-weight:700">Certifiée OSCP</span><span style="padding:5px 9px;border-radius:9px;background:#F1EDE6;color:#55605B;font-size:11px;font-weight:700">Visio</span></div>
+                  <span style="font-size:15px;font-weight:700;margin-top:auto">39 €<span style="font-size:12px;color:#7C766E;font-weight:600"> /mois</span></span>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;padding:12px;border-radius:20px;background:#fff;border:1px solid #E7E2DA">
+                <div style="width:92px;height:112px;border-radius:16px;overflow:hidden;flex-shrink:0"><image-slot id="s-c2" shape="rounded" radius="16" placeholder="Coach"></image-slot></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:16px;font-weight:700">Marc Ferreira</span><span style="font-size:13px;font-weight:700;display:flex;gap:3px;align-items:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg>4,7</span></div>
+                  <span style="font-size:13px;color:#55605B;line-height:1.4">RGPD et hygiène numérique pour TPE</span>
+                  <div style="display:flex;gap:6px;margin-top:2px"><span style="padding:5px 9px;border-radius:9px;background:#F1EDE6;color:#55605B;font-size:11px;font-weight:700">Visio</span><span style="padding:5px 9px;border-radius:9px;background:#FBE6DE;color:#8F3418;font-size:11px;font-weight:700">2 places</span></div>
+                  <span style="font-size:15px;font-weight:700;margin-top:auto">54 €<span style="font-size:12px;color:#7C766E;font-weight:600"> /mois</span></span>
+                </div>
+              </div>
+            </div>
+
+            <div style="position:absolute;inset:0;background:rgba(23,33,30,.42)"></div>
+            <div style="position:absolute;left:0;right:0;bottom:0;border-radius:28px 28px 0 0;background:#FBF8F4;box-shadow:0 -18px 40px -12px rgba(38,30,20,.35);display:flex;flex-direction:column;gap:16px;padding:12px 20px 28px">
+              <div style="width:40px;height:4px;border-radius:999px;background:#D6D0C7;align-self:center"></div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-family:'Instrument Serif',serif;font-size:26px">Filtres</span>
+                <span style="font-size:14px;font-weight:700;color:#0F5140">Tout effacer</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <span style="font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7C766E">Format</span>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <span style="padding:10px 14px;border-radius:999px;background:#17211E;color:#FBF8F4;font-size:14px;font-weight:700">En visio</span>
+                  <span style="padding:10px 14px;border-radius:999px;background:#fff;border:1px solid #D6D0C7;font-size:14px;font-weight:600">En présentiel</span>
+                  <span style="padding:10px 14px;border-radius:999px;background:#fff;border:1px solid #D6D0C7;font-size:14px;font-weight:600">Asynchrone</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7C766E">Budget mensuel</span><span style="font-size:14px;font-weight:700">20 – 60 €</span></div>
+                <div style="position:relative;height:24px;display:flex;align-items:center">
+                  <div style="height:6px;border-radius:999px;background:#E7E2DA;width:100%"></div>
+                  <div style="position:absolute;left:12%;width:52%;height:6px;border-radius:999px;background:#0F5140"></div>
+                  <div style="position:absolute;left:12%;width:24px;height:24px;border-radius:999px;background:#fff;border:2px solid #0F5140;box-shadow:0 2px 4px rgba(38,30,20,.2);transform:translateX(-50%)"></div>
+                  <div style="position:absolute;left:64%;width:24px;height:24px;border-radius:999px;background:#fff;border:2px solid #0F5140;box-shadow:0 2px 4px rgba(38,30,20,.2);transform:translateX(-50%)"></div>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid #E7E2DA;border-bottom:1px solid #E7E2DA">
+                <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:700">Coachs certifiés uniquement</span><span style="font-size:12px;color:#7C766E">Diplôme ou certification vérifiée</span></div>
+                <div style="width:52px;height:32px;border-radius:999px;background:#0F5140;display:flex;align-items:center;justify-content:flex-end;padding:3px"><div style="width:26px;height:26px;border-radius:999px;background:#fff"></div></div>
+              </div>
+              <div style="height:52px;border-radius:999px;background:#E2603C;color:#FFF7F3;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700">Voir les 7 coachs</div>
+            </div>
+          </div>
+        </x-import>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:14px;font-weight:700">03 · Profil coach <span style="color:#7C766E;font-weight:500">— iOS</span></span>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+          <div data-screen-label="03 Profil coach" style="min-height:100%;background:#FBF8F4;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+            <div style="position:relative;height:400px">
+              <image-slot id="p-hero" shape="rect" placeholder="Vidéo d'intro — portrait plein cadre"></image-slot>
+              <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(23,33,30,.45) 0 18%,rgba(23,33,30,0) 45%,rgba(23,33,30,.78) 100%);pointer-events:none"></div>
+              <div style="position:absolute;top:58px;left:16px;right:16px;display:flex;justify-content:space-between;pointer-events:none">
+                <div style="width:44px;height:44px;border-radius:999px;background:rgba(251,248,244,.9);display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="2" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg></div>
+                <div style="display:flex;gap:10px">
+                  <div style="width:44px;height:44px;border-radius:999px;background:rgba(251,248,244,.9);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.9" stroke-linecap="round"><path d="M12 20s-7-4.6-7-9.4A4 4 0 0 1 12 8a4 4 0 0 1 7 2.6C19 15.4 12 20 12 20z"/></svg></div>
+                  <div style="width:44px;height:44px;border-radius:999px;background:rgba(251,248,244,.9);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></div>
+                </div>
+              </div>
+              <div style="position:absolute;top:170px;left:50%;transform:translate(-50%,-50%);width:68px;height:68px;border-radius:999px;background:rgba(251,248,244,.94);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px -6px rgba(0,0,0,.4)"><svg width="26" height="26" viewBox="0 0 24 24" fill="#17211E"><path d="M7 4.5v15l13-7.5z"/></svg></div>
+              <div style="position:absolute;left:20px;right:20px;bottom:20px;display:flex;flex-direction:column;gap:8px;pointer-events:none">
+                <span style="padding:6px 10px;border-radius:9px;background:rgba(251,248,244,.92);color:#17211E;font-size:11px;font-weight:800;letter-spacing:.08em;align-self:flex-start">PRÉPARATION PHYSIQUE</span>
+                <span style="font-family:'Instrument Serif',serif;font-size:36px;line-height:1.05;color:#FBF8F4">Yannick Berthaud</span>
+                <div style="display:flex;align-items:center;gap:12px;color:#EDE7DE;font-size:13px;font-weight:600">
+                  <span style="display:flex;align-items:center;gap:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg>4,9 · 214 avis</span>
+                  <span>Lyon &amp; visio</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="padding:20px 20px 0;display:flex;flex-direction:column;gap:18px">
+              <p style="margin:0;font-size:16px;line-height:1.6;color:#333B37;text-wrap:pretty">Je remets en mouvement les gens qui n'aiment pas les salles de sport. 12 ans de préparation physique, dont 4 en rééducation. On avance par paliers, sans culpabilité — et tu me dis tout, même les semaines ratées.</p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <span style="padding:8px 12px;border-radius:10px;background:#DDEBE3;color:#14603F;font-size:13px;font-weight:700;display:flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#14603F" stroke-width="2.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>BPJEPS AF</span>
+                <span style="padding:8px 12px;border-radius:10px;background:#F1EDE6;color:#55605B;font-size:13px;font-weight:700">Préparateur physique FFA</span>
+                <span style="padding:8px 12px;border-radius:10px;background:#F1EDE6;color:#55605B;font-size:13px;font-weight:700">Réathlétisation</span>
+              </div>
+              <div style="display:flex;background:#F1EDE6;border-radius:999px;padding:4px">
+                <div style="flex:1;height:40px;border-radius:999px;background:#fff;box-shadow:0 1px 2px rgba(38,30,20,.1);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">Offres</div>
+                <div style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#7C766E">Avis</div>
+                <div style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#7C766E">Parcours</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div style="border-radius:20px;background:#fff;border:1.5px solid #0F5140;padding:16px;display:flex;flex-direction:column;gap:10px;position:relative">
+                  <span style="position:absolute;top:-11px;left:16px;padding:4px 10px;border-radius:8px;background:#0F5140;color:#FBF8F4;font-size:11px;font-weight:800;letter-spacing:.06em">LE PLUS CHOISI</span>
+                  <div style="display:flex;justify-content:space-between;align-items:baseline">
+                    <span style="font-size:17px;font-weight:700">Suivi complet</span>
+                    <span style="font-size:22px;font-weight:800">49 €<span style="font-size:13px;font-weight:600;color:#7C766E"> /mois</span></span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:#333B37">
+                    <span style="display:flex;gap:8px;align-items:flex-start"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F5140" stroke-width="2.4" stroke-linecap="round" style="margin-top:2px;flex-shrink:0"><path d="M20 6 9 17l-5-5"/></svg>Programme adapté chaque semaine</span>
+                    <span style="display:flex;gap:8px;align-items:flex-start"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F5140" stroke-width="2.4" stroke-linecap="round" style="margin-top:2px;flex-shrink:0"><path d="M20 6 9 17l-5-5"/></svg>1 visio de 30 min par mois</span>
+                    <span style="display:flex;gap:8px;align-items:flex-start"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F5140" stroke-width="2.4" stroke-linecap="round" style="margin-top:2px;flex-shrink:0"><path d="M20 6 9 17l-5-5"/></svg>Messagerie illimitée, réponse en 24 h</span>
+                  </div>
+                </div>
+                <div style="border-radius:20px;background:#fff;border:1px solid #E7E2DA;padding:16px;display:flex;justify-content:space-between;align-items:center">
+                  <div style="display:flex;flex-direction:column;gap:3px">
+                    <span style="font-size:17px;font-weight:700">Programme seul</span>
+                    <span style="font-size:13px;color:#55605B">8 semaines en autonomie</span>
+                  </div>
+                  <span style="font-size:20px;font-weight:800">24 €<span style="font-size:13px;font-weight:600;color:#7C766E"> /mois</span></span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px;padding-bottom:130px">
+                <span style="font-family:'Instrument Serif',serif;font-size:24px">Ce qu'en disent ses abonnés</span>
+                <div style="border-radius:18px;background:#EFE6D8;padding:16px;display:flex;flex-direction:column;gap:10px">
+                  <div style="display:flex;gap:3px"><svg width="14" height="14" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg></div>
+                  <p style="margin:0;font-size:15px;line-height:1.55;color:#3A3226">« Trois mois et je ne rate plus une séance. Il ajuste dès que je bloque, et il ne me sort jamais le discours "no pain no gain". »</p>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <div style="width:32px;height:32px;border-radius:999px;overflow:hidden"><image-slot id="p-rev" shape="circle" placeholder=" "></image-slot></div>
+                    <span style="font-size:13px;font-weight:700;color:#3A3226">Sophie L. · abonnée depuis 3 mois</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="position:absolute;left:0;right:0;bottom:0;padding:14px 20px 38px;background:rgba(251,248,244,.94);border-top:1px solid #E7E2DA;display:flex;align-items:center;gap:12px">
+              <div style="width:52px;height:52px;border-radius:999px;background:#FBF8F4;border:1.5px solid #17211E;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.9" stroke-linecap="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg></div>
+              <div style="flex:1;height:52px;border-radius:999px;background:#0F5140;color:#FBF8F4;display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:700">S'abonner · 49 €/mois</div>
+            </div>
+          </div>
+        </x-import>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+</x-dc>
+</body>
+</html>
+</x-dc>
+</body>
+</html>

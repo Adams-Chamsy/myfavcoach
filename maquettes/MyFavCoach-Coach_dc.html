@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+  body { margin: 0; background: #E8E2D8; font-family: Manrope, system-ui, sans-serif; }
+  a { color: #0F5140; text-decoration: none; }
+  a:hover { color: #E2603C; }
+  @keyframes mfc-pulse { 0%,100% { opacity: .55 } 50% { opacity: 1 } }
+  @keyframes mfc-shimmer { 0% { background-position: -220px 0 } 100% { background-position: 220px 0 } }
+</style>
+</helmet>
+<section style="display:flex;flex-direction:column;gap:36px;padding:56px 64px 96px;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;flex-direction:column;gap:8px;max-width:720px">
+      <span style="font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6B746E">My fav Coach — espace coach</span>
+      <h1 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:44px;line-height:1.05">Piloter son activité entre deux séances</h1>
+      <p style="margin:0;font-size:16px;line-height:1.6;color:#55605B">Fond encre, densité assumée, chiffres en gros. Barre du bas à 5 entrées avec un bouton Créer central : le coach publie en deux appuis.</p>
+    </div>
+    <div id="mfc-nav" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><a href="MyFavCoach-System.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Design system + 1→3</a><a href="MyFavCoach-Client.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Client 4→7</a><span style="padding:11px 18px;border-radius:999px;background:#17211E;color:#FBF8F4;font-size:14px;font-weight:700">Coach 8→13</span><a href="MyFavCoach-Etats.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">États 14→20</a><a href="MyFavCoach-Parcours.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Parcours 21→28</a><a href="MyFavCoach-Tablette-Montre.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Tablette &amp; montre</a><a href="MyFavCoach-Handoff.dc.html" style="padding:11px 18px;border-radius:999px;background:#FBF8F4;color:#17211E;font-size:14px;font-weight:600;border:1px solid #D6D0C7">Handoff</a></div>
+  </div>
+<div id="2b" style="display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="padding:6px 12px;border-radius:999px;background:#17211E;color:#FBF8F4;font-size:12px;font-weight:700;letter-spacing:.08em">2b</span>
+      <span style="font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6B746E">Lot 2 — espace coach</span>
+    </div>
+    <div id="coach-row" style="display:flex;gap:56px;flex-wrap:wrap;align-items:flex-start">
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:14px;font-weight:700">08 · Tableau de bord coach <span style="color:#7C766E;font-weight:500">— Android</span></span>
+        <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+          <div data-screen-label="08 Pilotage coach" style="height:100%;background:#FBF8F4;display:flex;flex-direction:column;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+            <div style="background:#17211E;padding:12px 20px 22px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:12px;font-weight:800;letter-spacing:.12em;color:#58C2A2">ESPACE COACH</span>
+                  <span style="font-family:'Instrument Serif',serif;font-size:26px;color:#F4F0E9;line-height:1.1">Bonjour Yannick</span>
+                </div>
+                <div style="position:relative;width:46px;height:46px">
+                  <div style="width:46px;height:46px;border-radius:999px;overflow:hidden;border:2px solid #3A332A"><image-slot id="c-me" shape="circle" placeholder="Moi"></image-slot></div>
+                  <span style="position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);padding:2px 6px;border-radius:999px;background:#58C2A2;color:#0B1F1A;font-size:9px;font-weight:800;letter-spacing:.06em">COACH</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <span style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#B4ADA3">Revenus d'août</span>
+                <div style="display:flex;align-items:flex-end;gap:12px">
+                  <span style="font-family:'Instrument Serif',serif;font-size:44px;line-height:1;color:#F4F0E9">3 240 €</span>
+                  <span style="padding:5px 9px;border-radius:9px;background:#1E4A3C;color:#6FD6B4;font-size:12px;font-weight:800;margin-bottom:6px">+12 %</span>
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:6px;height:44px">
+                  <div style="flex:1;height:44%;border-radius:4px;background:#3A332A"></div>
+                  <div style="flex:1;height:58%;border-radius:4px;background:#3A332A"></div>
+                  <div style="flex:1;height:50%;border-radius:4px;background:#3A332A"></div>
+                  <div style="flex:1;height:72%;border-radius:4px;background:#3A332A"></div>
+                  <div style="flex:1;height:66%;border-radius:4px;background:#3A332A"></div>
+                  <div style="flex:1;height:100%;border-radius:4px;background:#58C2A2"></div>
+                </div>
+              </div>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:16px 20px 0;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;gap:12px">
+                <div style="flex:1;border-radius:18px;background:#fff;border:1px solid #E7E2DA;padding:14px;display:flex;flex-direction:column;gap:3px"><span style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#7C766E">Clients actifs</span><span style="font-size:24px;font-weight:800">28</span><span style="font-size:12px;font-weight:700;color:#1E7A55">+2 cette semaine</span></div>
+                <div style="flex:1;border-radius:18px;background:#fff;border:1px solid #E7E2DA;padding:14px;display:flex;flex-direction:column;gap:3px"><span style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#7C766E">Assiduité</span><span style="font-size:24px;font-weight:800">81 %</span><span style="font-size:12px;font-weight:700;color:#B4820F">-3 pts</span></div>
+              </div>
+              <div style="border-radius:18px;background:#FCEEEC;border:1px solid #F0CDC7;padding:14px;display:flex;flex-direction:column;gap:10px">
+                <span style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8F231A">À traiter · 3</span>
+                <div style="display:flex;gap:10px;align-items:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C2372A" stroke-width="2" stroke-linecap="round"><rect x="2.5" y="6" width="19" height="13" rx="3"/><path d="M2.5 10.5h19"/></svg><span style="flex:1;font-size:14px;font-weight:600;color:#8F231A">2 paiements échoués</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C2372A" stroke-width="2.2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg></div>
+                <div style="display:flex;gap:10px;align-items:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C2372A" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg><span style="flex:1;font-size:14px;font-weight:600;color:#8F231A">Léa D. inactive depuis 12 jours</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C2372A" stroke-width="2.2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline">
+                <span style="font-size:17px;font-weight:700">Aujourd'hui</span>
+                <span style="font-size:13px;font-weight:700;color:#0F5140">Voir l'agenda</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;gap:12px;padding:12px;border-radius:16px;background:#fff;border:1px solid #E7E2DA;align-items:center">
+                  <div style="display:flex;flex-direction:column;align-items:center;width:46px;flex-shrink:0"><span style="font-size:16px;font-weight:800">14:00</span><span style="font-size:11px;color:#7C766E">45 min</span></div>
+                  <div style="width:1px;height:34px;background:#E7E2DA"></div>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:700">Camille Dupré</span><span style="font-size:12px;color:#55605B">Visio · bilan semaine 3</span></div>
+                  <div style="width:36px;height:36px;border-radius:999px;overflow:hidden"><image-slot id="c-s1" shape="circle" placeholder=" "></image-slot></div>
+                </div>
+                <div style="display:flex;gap:12px;padding:12px;border-radius:16px;background:#fff;border:1px solid #E7E2DA;align-items:center">
+                  <div style="display:flex;flex-direction:column;align-items:center;width:46px;flex-shrink:0"><span style="font-size:16px;font-weight:800">16:30</span><span style="font-size:11px;color:#7C766E">60 min</span></div>
+                  <div style="width:1px;height:34px;background:#E7E2DA"></div>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:700">Karim Osei</span><span style="font-size:12px;color:#55605B">Salle Part-Dieu · séance 8</span></div>
+                  <div style="width:36px;height:36px;border-radius:999px;overflow:hidden"><image-slot id="c-s2" shape="circle" placeholder=" "></image-slot></div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:10px 12px 16px;background:#17211E;display:flex">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#58C2A2" stroke-width="1.9" stroke-linecap="round"><path d="M4 20V9M10 20V4M16 20v-7M22 20H2"/></svg><span style="font-size:11px;font-weight:700;color:#58C2A2">Pilotage</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B4ADA3" stroke-width="1.9" stroke-linecap="round"><circle cx="9" cy="8.5" r="3.4"/><path d="M2.5 20c1.3-3.3 3.6-5 6.5-5s5.2 1.7 6.5 5"/><path d="M16.5 6.2a3.4 3.4 0 0 1 0 6.6M18 15.4c2 .8 3 2.2 3.5 4.6"/></svg><span style="font-size:11px;font-weight:600;color:#B4ADA3">Clients</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;justify-content:center"><div style="width:46px;height:46px;border-radius:999px;background:#E2603C;display:flex;align-items:center;justify-content:center;margin-top:-16px;box-shadow:0 8px 18px -6px rgba(226,96,60,.7)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFF7F3" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div><span style="font-size:11px;font-weight:600;color:#B4ADA3">Créer</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B4ADA3" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span style="font-size:11px;font-weight:600;color:#B4ADA3">Agenda</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B4ADA3" stroke-width="1.9" stroke-linecap="round"><rect x="2.5" y="6" width="19" height="13" rx="3"/><path d="M2.5 10.5h19M17 15h2"/></svg><span style="font-size:11px;font-weight:600;color:#B4ADA3">Revenus</span></div>
+            </div>
+          </div>
+        </x-import>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:14px;font-weight:700">09 · Liste clients <span style="color:#7C766E;font-weight:500">— iOS</span></span>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+          <div data-screen-label="09 Clients" style="height:100%;background:#FBF8F4;display:flex;flex-direction:column;padding-top:58px;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+            <div style="padding:8px 20px 12px;display:flex;align-items:flex-end;justify-content:space-between">
+              <span style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1.1">Mes clients</span>
+              <span style="font-size:14px;font-weight:700;color:#0F5140">Inviter</span>
+            </div>
+            <div style="padding:0 20px 12px">
+              <div style="height:46px;border-radius:14px;background:#fff;border:1px solid #E7E2DA;display:flex;align-items:center;gap:10px;padding:0 14px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#A9A29A" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><span style="font-size:15px;color:#A9A29A">Chercher un client</span></div>
+            </div>
+            <div style="display:flex;gap:8px;padding:0 20px 14px;overflow:hidden">
+              <span style="padding:8px 13px;border-radius:999px;background:#17211E;color:#FBF8F4;font-size:13px;font-weight:700;white-space:nowrap">Tous · 28</span>
+              <span style="padding:8px 13px;border-radius:999px;background:#FCEEEC;border:1px solid #F0CDC7;color:#8F231A;font-size:13px;font-weight:700;white-space:nowrap">À relancer · 4</span>
+              <span style="padding:8px 13px;border-radius:999px;background:#fff;border:1px solid #E7E2DA;font-size:13px;font-weight:600;white-space:nowrap">Nouveaux · 2</span>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;gap:12px;padding:12px;border-radius:18px;background:#fff;border:1px solid #E7E2DA;align-items:center">
+                <div style="width:48px;height:48px;border-radius:999px;overflow:hidden;flex-shrink:0"><image-slot id="cl-1" shape="circle" placeholder=" "></image-slot></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+                  <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:15px;font-weight:700">Camille Dupré</span><span style="padding:4px 9px;border-radius:8px;background:#DDEBE3;color:#14603F;font-size:11px;font-weight:800">À JOUR</span></div>
+                  <span style="font-size:12px;color:#55605B">Suivi complet · semaine 3 · vue il y a 2 h</span>
+                  <div style="height:5px;border-radius:999px;background:#E7E2DA;overflow:hidden"><div style="width:80%;height:100%;background:#0F5140;border-radius:999px"></div></div>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;padding:12px;border-radius:18px;background:#fff;border:1px solid #F0CDC7;align-items:center">
+                <div style="width:48px;height:48px;border-radius:999px;overflow:hidden;flex-shrink:0"><image-slot id="cl-2" shape="circle" placeholder=" "></image-slot></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+                  <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:15px;font-weight:700">Léa Dumont</span><span style="padding:4px 9px;border-radius:8px;background:#FCEEEC;color:#8F231A;font-size:11px;font-weight:800">INACTIVE 12 J</span></div>
+                  <span style="font-size:12px;color:#55605B">Programme seul · semaine 5 · 0 séance</span>
+                  <div style="height:5px;border-radius:999px;background:#E7E2DA;overflow:hidden"><div style="width:22%;height:100%;background:#C2372A;border-radius:999px"></div></div>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;padding:12px;border-radius:18px;background:#fff;border:1px solid #E7E2DA;align-items:center">
+                <div style="width:48px;height:48px;border-radius:999px;overflow:hidden;flex-shrink:0"><image-slot id="cl-3" shape="circle" placeholder=" "></image-slot></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+                  <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:15px;font-weight:700">Karim Osei</span><span style="padding:4px 9px;border-radius:8px;background:#FBE6DE;color:#8F3418;font-size:11px;font-weight:800">NOUVEAU</span></div>
+                  <span style="font-size:12px;color:#55605B">Suivi complet · bilan à planifier</span>
+                  <div style="height:5px;border-radius:999px;background:#E7E2DA;overflow:hidden"><div style="width:8%;height:100%;background:#E2603C;border-radius:999px"></div></div>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;padding:12px;border-radius:18px;background:#fff;border:1px solid #E7E2DA;align-items:center">
+                <div style="width:48px;height:48px;border-radius:999px;overflow:hidden;flex-shrink:0"><image-slot id="cl-4" shape="circle" placeholder=" "></image-slot></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+                  <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:15px;font-weight:700">Sophie Lambert</span><span style="padding:4px 9px;border-radius:8px;background:#DDEBE3;color:#14603F;font-size:11px;font-weight:800">À JOUR</span></div>
+                  <span style="font-size:12px;color:#55605B">Suivi complet · semaine 11 · 4/4 séances</span>
+                  <div style="height:5px;border-radius:999px;background:#E7E2DA;overflow:hidden"><div style="width:96%;height:100%;background:#0F5140;border-radius:999px"></div></div>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;padding:12px;border-radius:18px;background:#fff;border:1px solid #E7E2DA;align-items:center">
+                <div style="width:48px;height:48px;border-radius:999px;overflow:hidden;flex-shrink:0"><image-slot id="cl-5" shape="circle" placeholder=" "></image-slot></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+                  <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:15px;font-weight:700">Bruno Mercier</span><span style="padding:4px 9px;border-radius:8px;background:#F5EEDC;color:#7A5A0C;font-size:11px;font-weight:800">PAIEMENT KO</span></div>
+                  <span style="font-size:12px;color:#55605B">Suivi complet · relance envoyée hier</span>
+                  <div style="height:5px;border-radius:999px;background:#E7E2DA;overflow:hidden"><div style="width:64%;height:100%;background:#B4820F;border-radius:999px"></div></div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:10px 12px 34px;background:#17211E;display:flex">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B4ADA3" stroke-width="1.9" stroke-linecap="round"><path d="M4 20V9M10 20V4M16 20v-7M22 20H2"/></svg><span style="font-size:11px;font-weight:600;color:#B4ADA3">Pilotage</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#58C2A2" stroke-width="1.9" stroke-linecap="round"><circle cx="9" cy="8.5" r="3.4"/><path d="M2.5 20c1.3-3.3 3.6-5 6.5-5s5.2 1.7 6.5 5"/><path d="M16.5 6.2a3.4 3.4 0 0 1 0 6.6M18 15.4c2 .8 3 2.2 3.5 4.6"/></svg><span style="font-size:11px;font-weight:700;color:#58C2A2">Clients</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;justify-content:center"><div style="width:46px;height:46px;border-radius:999px;background:#E2603C;display:flex;align-items:center;justify-content:center;margin-top:-16px;box-shadow:0 8px 18px -6px rgba(226,96,60,.7)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFF7F3" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div><span style="font-size:11px;font-weight:600;color:#B4ADA3">Créer</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B4ADA3" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span style="font-size:11px;font-weight:600;color:#B4ADA3">Agenda</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B4ADA3" stroke-width="1.9" stroke-linecap="round"><rect x="2.5" y="6" width="19" height="13" rx="3"/><path d="M2.5 10.5h19M17 15h2"/></svg><span style="font-size:11px;font-weight:600;color:#B4ADA3">Revenus</span></div>
+            </div>
+          </div>
+        </x-import>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:14px;font-weight:700">10 · Fiche client <span style="color:#7C766E;font-weight:500">— Android</span></span>
+        <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+          <div data-screen-label="10 Fiche client" style="height:100%;background:#FBF8F4;display:flex;flex-direction:column;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+            <div style="background:#17211E;padding:10px 20px 20px;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F4F0E9" stroke-width="2" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F4F0E9" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+              </div>
+              <div style="display:flex;gap:14px;align-items:center">
+                <div style="width:64px;height:64px;border-radius:999px;overflow:hidden;border:2px solid #3A332A;flex-shrink:0"><image-slot id="fc-av" shape="circle" placeholder="Client"></image-slot></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+                  <span style="font-family:'Instrument Serif',serif;font-size:26px;color:#F4F0E9;line-height:1.1">Camille Dupré</span>
+                  <span style="font-size:13px;color:#B4ADA3">Suivi complet · cliente depuis mars</span>
+                  <span style="padding:4px 9px;border-radius:8px;background:#1E4A3C;color:#6FD6B4;font-size:11px;font-weight:800;align-self:flex-start">À JOUR · 49 €/MOIS</span>
+                </div>
+              </div>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:16px 20px 0;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;gap:10px">
+                <div style="flex:1;border-radius:16px;background:#fff;border:1px solid #E7E2DA;padding:12px;display:flex;flex-direction:column;gap:2px"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#7C766E">Assiduité</span><span style="font-size:20px;font-weight:800">80 %</span></div>
+                <div style="flex:1;border-radius:16px;background:#fff;border:1px solid #E7E2DA;padding:12px;display:flex;flex-direction:column;gap:2px"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#7C766E">Poids</span><span style="font-size:20px;font-weight:800">-2,6 kg</span></div>
+                <div style="flex:1;border-radius:16px;background:#fff;border:1px solid #E7E2DA;padding:12px;display:flex;flex-direction:column;gap:2px"><span style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#7C766E">Séances</span><span style="font-size:20px;font-weight:800">37</span></div>
+              </div>
+              <div style="border-radius:18px;background:#fff;border:1px solid #E7E2DA;padding:16px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:15px;font-weight:700">Séances par semaine</span><span style="font-size:12px;color:#7C766E">8 dernières</span></div>
+                <div style="display:flex;align-items:flex-end;gap:7px;height:64px">
+                  <div style="flex:1;height:50%;border-radius:4px;background:#CFE3DB"></div>
+                  <div style="flex:1;height:75%;border-radius:4px;background:#CFE3DB"></div>
+                  <div style="flex:1;height:100%;border-radius:4px;background:#0F5140"></div>
+                  <div style="flex:1;height:75%;border-radius:4px;background:#CFE3DB"></div>
+                  <div style="flex:1;height:25%;border-radius:4px;background:#F0CDC7"></div>
+                  <div style="flex:1;height:75%;border-radius:4px;background:#CFE3DB"></div>
+                  <div style="flex:1;height:100%;border-radius:4px;background:#0F5140"></div>
+                  <div style="flex:1;height:60%;border-radius:4px;background:#CFE3DB"></div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-size:15px;font-weight:700">Historique</span>
+                <div style="display:flex;gap:12px;padding:12px;border-radius:14px;background:#fff;border:1px solid #E7E2DA;align-items:center"><div style="width:34px;height:34px;border-radius:999px;background:#DDEBE3;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#14603F" stroke-width="2.6" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></div><div style="flex:1;display:flex;flex-direction:column"><span style="font-size:14px;font-weight:700">Bas du corps · force</span><span style="font-size:12px;color:#7C766E">hier · 42 min · RPE 7</span></div></div>
+                <div style="display:flex;gap:12px;padding:12px;border-radius:14px;background:#fff;border:1px solid #E7E2DA;align-items:center"><div style="width:34px;height:34px;border-radius:999px;background:#F5EEDC;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#7A5A0C" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></div><div style="flex:1;display:flex;flex-direction:column"><span style="font-size:14px;font-weight:700">Haut du corps</span><span style="font-size:12px;color:#7C766E">jeudi · non réalisée</span></div></div>
+              </div>
+              <div style="border-radius:18px;background:#EFE6D8;padding:14px;display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#5B4A2E">Notes privées</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B4A2E" stroke-width="2" stroke-linecap="round"><path d="M4 20h4L20 8l-4-4L4 16z"/></svg></div>
+                <span style="font-size:13px;line-height:1.5;color:#3A3226">Genou droit sensible en fin de série — éviter les fentes sautées. Très motivée le matin, jamais après 19 h.</span>
+              </div>
+            </div>
+            <div style="padding:12px 20px 18px;background:rgba(251,248,244,.96);border-top:1px solid #E7E2DA;display:flex;gap:10px">
+              <div style="width:52px;height:52px;border-radius:999px;border:1.5px solid #17211E;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="1.9" stroke-linecap="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg></div>
+              <div style="flex:1;height:52px;border-radius:999px;background:#0F5140;color:#FBF8F4;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700">Ajuster le programme</div>
+            </div>
+          </div>
+        </x-import>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:14px;font-weight:700">11 · Studio de contenu <span style="color:#7C766E;font-weight:500">— iOS</span></span>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+          <div data-screen-label="11 Studio" style="height:100%;background:#FBF8F4;display:flex;flex-direction:column;padding-top:58px;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+            <div style="padding:8px 20px 12px;display:flex;align-items:flex-end;justify-content:space-between">
+              <span style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1.1">Studio</span>
+              <span style="font-size:14px;font-weight:700;color:#0F5140">Importer</span>
+            </div>
+            <div style="padding:0 20px 16px"><div style="display:flex;background:#F1EDE6;border-radius:999px;padding:4px">
+              <div style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#7C766E">Bibliothèque</div>
+              <div style="flex:1;height:40px;border-radius:999px;background:#fff;box-shadow:0 1px 2px rgba(38,30,20,.1);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">Programme</div>
+            </div></div>
+            <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:14px">
+              <div style="border-radius:18px;background:#fff;border:1px solid #E7E2DA;padding:14px;display:flex;flex-direction:column;gap:4px">
+                <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:16px;font-weight:700">Remise en route · 8 semaines</span><span style="padding:4px 9px;border-radius:8px;background:#F5EEDC;color:#7A5A0C;font-size:11px;font-weight:800">BROUILLON</span></div>
+                <span style="font-size:13px;color:#55605B">3 séances par semaine · 12 clients concernés</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7C766E">Semaine 1</span><span style="font-size:13px;font-weight:700;color:#0F5140">Dupliquer</span></div>
+                <div style="display:flex;gap:10px;padding:10px;border-radius:14px;background:#fff;border:1px solid #E7E2DA;align-items:center">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A9A29A" stroke-width="2" stroke-linecap="round"><path d="M4 8h16M4 16h16"/></svg>
+                  <div style="width:44px;height:44px;border-radius:10px;overflow:hidden;flex-shrink:0"><image-slot id="st-1" shape="rounded" radius="10" placeholder=" "></image-slot></div>
+                  <div style="flex:1;display:flex;flex-direction:column"><span style="font-size:14px;font-weight:700">Mobilité douce</span><span style="font-size:12px;color:#7C766E">Vidéo 18 min</span></div>
+                  <span style="font-size:12px;font-weight:700;color:#7C766E">Lun</span>
+                </div>
+                <div style="display:flex;gap:10px;padding:10px;border-radius:14px;background:#fff;border:1px solid #E7E2DA;align-items:center">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A9A29A" stroke-width="2" stroke-linecap="round"><path d="M4 8h16M4 16h16"/></svg>
+                  <div style="width:44px;height:44px;border-radius:10px;overflow:hidden;flex-shrink:0"><image-slot id="st-2" shape="rounded" radius="10" placeholder=" "></image-slot></div>
+                  <div style="flex:1;display:flex;flex-direction:column"><span style="font-size:14px;font-weight:700">Bas du corps · découverte</span><span style="font-size:12px;color:#7C766E">6 exercices</span></div>
+                  <span style="font-size:12px;font-weight:700;color:#7C766E">Mer</span>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:8px;height:48px;border-radius:14px;border:1.5px dashed #D6D0C7;color:#55605B;font-size:14px;font-weight:700"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#55605B" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Ajouter une séance</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <span style="font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7C766E">Blocs réutilisables</span>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                  <div style="border-radius:14px;overflow:hidden;background:#fff;border:1px solid #E7E2DA">
+                    <div style="position:relative;height:84px"><image-slot id="st-3" shape="rect" placeholder="Vidéo"></image-slot><span style="position:absolute;right:8px;bottom:8px;padding:3px 7px;border-radius:7px;background:rgba(23,33,30,.75);color:#FBF8F4;font-size:10px;font-weight:700;pointer-events:none">4:12</span></div>
+                    <div style="padding:10px"><span style="font-size:13px;font-weight:700">Gainage guidé</span></div>
+                  </div>
+                  <div style="border-radius:14px;overflow:hidden;background:#fff;border:1px solid #E7E2DA">
+                    <div style="height:84px;background:#EFE6D8;display:flex;align-items:center;justify-content:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#8C7A57" stroke-width="1.8" stroke-linecap="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg></div>
+                    <div style="padding:10px"><span style="font-size:13px;font-weight:700">Fiche nutrition PDF</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:12px 20px 38px;background:rgba(251,248,244,.96);border-top:1px solid #E7E2DA;display:flex;gap:10px">
+              <div style="flex:1;height:52px;border-radius:999px;border:1.5px solid #17211E;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">Aperçu client</div>
+              <div style="flex:1;height:52px;border-radius:999px;background:#E2603C;color:#FFF7F3;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">Publier</div>
+            </div>
+          </div>
+        </x-import>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:14px;font-weight:700">12 · Agenda &amp; disponibilités <span style="color:#7C766E;font-weight:500">— Android</span></span>
+        <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+          <div data-screen-label="12 Agenda" style="height:100%;background:#FBF8F4;display:flex;flex-direction:column;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+            <div style="padding:8px 20px 12px;display:flex;align-items:flex-end;justify-content:space-between">
+              <div style="display:flex;flex-direction:column"><span style="font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7C766E">Semaine 34</span><span style="font-family:'Instrument Serif',serif;font-size:28px;line-height:1.1">17 – 23 août</span></div>
+              <div style="display:flex;gap:8px"><div style="width:40px;height:40px;border-radius:999px;background:#fff;border:1px solid #E7E2DA;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="2" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg></div><div style="width:40px;height:40px;border-radius:999px;background:#fff;border:1px solid #E7E2DA;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="2" stroke-linecap="round"><path d="m10 6 6 6-6 6"/></svg></div></div>
+            </div>
+            <div style="display:flex;gap:6px;padding:0 20px 14px">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;border-radius:12px;background:#fff;border:1px solid #E7E2DA"><span style="font-size:11px;color:#7C766E;font-weight:700">L</span><span style="font-size:15px;font-weight:800">17</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;border-radius:12px;background:#17211E"><span style="font-size:11px;color:#B4ADA3;font-weight:700">M</span><span style="font-size:15px;font-weight:800;color:#F4F0E9">18</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;border-radius:12px;background:#fff;border:1px solid #E7E2DA"><span style="font-size:11px;color:#7C766E;font-weight:700">M</span><span style="font-size:15px;font-weight:800">19</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;border-radius:12px;background:#fff;border:1px solid #E7E2DA"><span style="font-size:11px;color:#7C766E;font-weight:700">J</span><span style="font-size:15px;font-weight:800">20</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;border-radius:12px;background:#fff;border:1px solid #E7E2DA"><span style="font-size:11px;color:#7C766E;font-weight:700">V</span><span style="font-size:15px;font-weight:800">21</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;border-radius:12px;background:#F1EDE6"><span style="font-size:11px;color:#A9A29A;font-weight:700">S</span><span style="font-size:15px;font-weight:800;color:#A9A29A">22</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;border-radius:12px;background:#F1EDE6"><span style="font-size:11px;color:#A9A29A;font-weight:700">D</span><span style="font-size:15px;font-weight:800;color:#A9A29A">23</span></div>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;gap:12px">
+                <div style="width:44px;display:flex;flex-direction:column;gap:44px;padding-top:2px;flex-shrink:0">
+                  <span style="font-size:12px;font-weight:700;color:#A9A29A">09:00</span>
+                  <span style="font-size:12px;font-weight:700;color:#A9A29A">11:00</span>
+                  <span style="font-size:12px;font-weight:700;color:#A9A29A">14:00</span>
+                  <span style="font-size:12px;font-weight:700;color:#A9A29A">16:00</span>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+                  <div style="border-radius:14px;background:#E2EDE8;border-left:4px solid #0F5140;padding:10px 12px;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:700;color:#0B3E31">Sophie Lambert · visio</span><span style="font-size:12px;color:#14603F">09:00 – 09:45</span></div>
+                  <div style="border-radius:14px;background:#F1EDE6;border-left:4px solid #A9A29A;padding:10px 12px;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:700;color:#55605B">Créneau libre</span><span style="font-size:12px;color:#7C766E">11:00 – 12:00 · réservable</span></div>
+                  <div style="border-radius:14px;background:#E2EDE8;border-left:4px solid #0F5140;padding:10px 12px;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:700;color:#0B3E31">Camille Dupré · bilan</span><span style="font-size:12px;color:#14603F">14:00 – 14:45</span></div>
+                  <div style="border-radius:14px;background:#FBE6DE;border-left:4px solid #E2603C;padding:10px 12px;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:700;color:#8F3418">Karim Osei · salle Part-Dieu</span><span style="font-size:12px;color:#A93D20">16:30 – 17:30 · déplacement 20 min</span></div>
+                </div>
+              </div>
+              <div style="border-radius:18px;background:#fff;border:1px solid #E7E2DA;padding:14px;display:flex;flex-direction:column;gap:12px">
+                <span style="font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7C766E">Mes disponibilités</span>
+                <div style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;flex-direction:column"><span style="font-size:15px;font-weight:700">Ouvrir les créneaux du soir</span><span style="font-size:12px;color:#7C766E">18 h – 20 h, du lundi au jeudi</span></div><div style="width:52px;height:32px;border-radius:999px;background:#E7E2DA;display:flex;align-items:center;padding:3px"><div style="width:26px;height:26px;border-radius:999px;background:#fff;box-shadow:0 1px 2px rgba(38,30,20,.2)"></div></div></div>
+                <div style="height:1px;background:#F1EDE6"></div>
+                <div style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;flex-direction:column"><span style="font-size:15px;font-weight:700">Réservation automatique</span><span style="font-size:12px;color:#7C766E">Sans validation de ta part</span></div><div style="width:52px;height:32px;border-radius:999px;background:#0F5140;display:flex;align-items:center;justify-content:flex-end;padding:3px"><div style="width:26px;height:26px;border-radius:999px;background:#fff"></div></div></div>
+              </div>
+            </div>
+            <div style="padding:10px 12px 16px;background:#17211E;display:flex">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B4ADA3" stroke-width="1.9" stroke-linecap="round"><path d="M4 20V9M10 20V4M16 20v-7M22 20H2"/></svg><span style="font-size:11px;font-weight:600;color:#B4ADA3">Pilotage</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B4ADA3" stroke-width="1.9" stroke-linecap="round"><circle cx="9" cy="8.5" r="3.4"/><path d="M2.5 20c1.3-3.3 3.6-5 6.5-5s5.2 1.7 6.5 5"/><path d="M16.5 6.2a3.4 3.4 0 0 1 0 6.6M18 15.4c2 .8 3 2.2 3.5 4.6"/></svg><span style="font-size:11px;font-weight:600;color:#B4ADA3">Clients</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;justify-content:center"><div style="width:46px;height:46px;border-radius:999px;background:#E2603C;display:flex;align-items:center;justify-content:center;margin-top:-16px;box-shadow:0 8px 18px -6px rgba(226,96,60,.7)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFF7F3" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div><span style="font-size:11px;font-weight:600;color:#B4ADA3">Créer</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#58C2A2" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span style="font-size:11px;font-weight:700;color:#58C2A2">Agenda</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B4ADA3" stroke-width="1.9" stroke-linecap="round"><rect x="2.5" y="6" width="19" height="13" rx="3"/><path d="M2.5 10.5h19M17 15h2"/></svg><span style="font-size:11px;font-weight:600;color:#B4ADA3">Revenus</span></div>
+            </div>
+          </div>
+        </x-import>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:14px;font-weight:700">13 · Revenus &amp; virements <span style="color:#7C766E;font-weight:500">— iOS</span></span>
+        <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+          <div data-screen-label="13 Revenus" style="height:100%;background:#FBF8F4;display:flex;flex-direction:column;padding-top:58px;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+            <div style="padding:8px 20px 16px;display:flex;align-items:flex-end;justify-content:space-between">
+              <span style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1.1">Revenus</span>
+              <span style="font-size:14px;font-weight:700;display:flex;align-items:center;gap:5px;color:#0F5140">Août 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0F5140" stroke-width="2.2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:16px">
+              <div style="border-radius:22px;background:#17211E;padding:18px;display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#B4ADA3">Net à percevoir</span>
+                  <span style="font-family:'Instrument Serif',serif;font-size:42px;line-height:1;color:#F4F0E9">2 916 €</span>
+                  <span style="font-size:13px;color:#B4ADA3">Virement prévu le 31 août</span>
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:6px;height:52px">
+                  <div style="flex:1;height:42%;border-radius:4px;background:#3A332A"></div>
+                  <div style="flex:1;height:56%;border-radius:4px;background:#3A332A"></div>
+                  <div style="flex:1;height:48%;border-radius:4px;background:#3A332A"></div>
+                  <div style="flex:1;height:70%;border-radius:4px;background:#3A332A"></div>
+                  <div style="flex:1;height:64%;border-radius:4px;background:#3A332A"></div>
+                  <div style="flex:1;height:100%;border-radius:4px;background:#58C2A2"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:#8F8A82;font-weight:600"><span>mars</span><span>avr</span><span>mai</span><span>juin</span><span>juil</span><span>août</span></div>
+              </div>
+              <div style="border-radius:18px;background:#fff;border:1px solid #E7E2DA;padding:16px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#55605B">28 abonnements</span><span style="font-weight:700">3 020 €</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#55605B">4 séances à l'unité</span><span style="font-weight:700">220 €</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#55605B">Commission plateforme · 10 %</span><span style="font-weight:700;color:#C2372A">-324 €</span></div>
+                <div style="height:1px;background:#F1EDE6"></div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:15px;font-weight:700">Total net</span><span style="font-size:20px;font-weight:800">2 916 €</span></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <span style="font-size:17px;font-weight:700">Derniers virements</span>
+                <div style="display:flex;gap:12px;padding:12px;border-radius:16px;background:#fff;border:1px solid #E7E2DA;align-items:center">
+                  <div style="width:38px;height:38px;border-radius:999px;background:#DDEBE3;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14603F" stroke-width="2.4" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+                  <div style="flex:1;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:700">31 juillet</span><span style="font-size:12px;color:#7C766E">Versé · CIC ••8841</span></div>
+                  <span style="font-size:15px;font-weight:800">2 604 €</span>
+                </div>
+                <div style="display:flex;gap:12px;padding:12px;border-radius:16px;background:#fff;border:1px solid #E7E2DA;align-items:center">
+                  <div style="width:38px;height:38px;border-radius:999px;background:#F5EEDC;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7A5A0C" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></div>
+                  <div style="flex:1;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:700">30 juin</span><span style="font-size:12px;color:#7C766E">En cours de traitement</span></div>
+                  <span style="font-size:15px;font-weight:800">2 380 €</span>
+                </div>
+              </div>
+            </div>
+            <div style="padding:12px 20px 12px;display:flex">
+              <div style="flex:1;height:52px;border-radius:999px;border:1.5px solid #17211E;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>Virement immédiat · 1 €</div>
+            </div>
+            <div style="padding:10px 12px 34px;background:#17211E;display:flex">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B4ADA3" stroke-width="1.9" stroke-linecap="round"><path d="M4 20V9M10 20V4M16 20v-7M22 20H2"/></svg><span style="font-size:11px;font-weight:600;color:#B4ADA3">Pilotage</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B4ADA3" stroke-width="1.9" stroke-linecap="round"><circle cx="9" cy="8.5" r="3.4"/><path d="M2.5 20c1.3-3.3 3.6-5 6.5-5s5.2 1.7 6.5 5"/><path d="M16.5 6.2a3.4 3.4 0 0 1 0 6.6M18 15.4c2 .8 3 2.2 3.5 4.6"/></svg><span style="font-size:11px;font-weight:600;color:#B4ADA3">Clients</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;justify-content:center"><div style="width:46px;height:46px;border-radius:999px;background:#E2603C;display:flex;align-items:center;justify-content:center;margin-top:-16px;box-shadow:0 8px 18px -6px rgba(226,96,60,.7)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFF7F3" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div><span style="font-size:11px;font-weight:600;color:#B4ADA3">Créer</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B4ADA3" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span style="font-size:11px;font-weight:600;color:#B4ADA3">Agenda</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#58C2A2" stroke-width="1.9" stroke-linecap="round"><rect x="2.5" y="6" width="19" height="13" rx="3"/><path d="M2.5 10.5h19M17 15h2"/></svg><span style="font-size:11px;font-weight:700;color:#58C2A2">Revenus</span></div>
+            </div>
+          </div>
+        </x-import>
+      </div>
+
+    </div>
+  </div>
+</section>
+</x-dc>
+</body>
+</html>
