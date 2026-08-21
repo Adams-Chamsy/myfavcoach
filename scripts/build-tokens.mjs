@@ -229,10 +229,18 @@ function genererTypesTs(global, themes) {
     );
   }
 
+  // "Theme" doit accepter clair, sombre ET montre : ne pas calquer le type sur les
+  // litteraux exacts de "clair" (ses couleurs different des deux autres), sinon aucun
+  // theme autre que clair n'est assignable au type. On garde la structure (groupes, noms
+  // de tokens) et on elargit chaque valeur en "string".
   parties.push(
     [
       'export type NomTheme = keyof typeof themes;',
-      "export type Theme = (typeof themes)['clair'];",
+      'export type Theme = {',
+      "  [Groupe in keyof (typeof themes)['clair']]: {",
+      "    [Nom in keyof (typeof themes)['clair'][Groupe]]: string;",
+      '  };',
+      '};',
     ].join('\n'),
   );
 

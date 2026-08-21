@@ -29,7 +29,11 @@ export type StyleTexte = (typeof texte)[NomTexte];
 export type StyleOmbre = (typeof ombre)[NomOmbre];
 
 export type NomTheme = keyof typeof themes;
-export type Theme = (typeof themes)['clair'];
+export type Theme = {
+  [Groupe in keyof (typeof themes)['clair']]: {
+    [Nom in keyof (typeof themes)['clair'][Groupe]]: string;
+  };
+};
 
 export type NomCouleurMarque = keyof Theme['marque'];
 export type NomCouleurFond = keyof Theme['fond'];
