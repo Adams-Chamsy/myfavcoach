@@ -136,6 +136,8 @@ export const taille = {
   icone: 24,
   iconeTrait: 1.75,
   iconeTraitActif: 2.2,
+  focusContour: 1.5,
+  focusHalo: 4,
   railCoach: 88,
   railClient: 236,
   safeTopIOS: 58,
@@ -152,6 +154,7 @@ export const mouvement = {
   decalage: 40,
   voile: 200,
   voileOpacite: 0.42,
+  echelleAppui: 0.96,
 } as const;
 
 export const mouvementReduit = {
