@@ -5,7 +5,7 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
-    "tokens": "echo 'tokens : a venir'",
+    "tokens": "node scripts/build-tokens.mjs",
     "lint": "eslint . && prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests",
@@ -29,12 +29,13 @@
   },
   "devDependencies": {
     "@testing-library/react-native": "^14.0.1",
-    "@types/jest": "^30.0.0",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^26.2.0",
     "@types/react": "~19.2.2",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~57.0.1",
     "eslint-config-prettier": "^10.1.8",
-    "jest": "^30.4.2",
+    "jest": "^29.7.0",
     "jest-expo": "~57.0.4",
     "prettier": "^3.9.6",
     "typescript": "~6.0.3"

@@ -16,6 +16,8 @@ module.exports = [
       'android/**',
       'coverage/**',
       'maquettes/**',
+      // artefact ecrit par le serveur Expo tant qu'aucune route reelle n'existe, voir docs/dette.md
+      'app/index.tsx',
     ],
   },
   ...expoConfig,
