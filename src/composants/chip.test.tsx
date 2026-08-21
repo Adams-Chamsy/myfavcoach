@@ -24,7 +24,7 @@ describe('Chip', () => {
       </FournisseurTheme>,
     );
 
-    fireEvent.press(screen.getByText('Certifié'));
+    await fireEvent.press(screen.getByText('Certifié'));
 
     expect(onPress).toHaveBeenCalledTimes(1);
   });
@@ -46,7 +46,7 @@ describe('Chip', () => {
     );
 
     const croix = screen.getByLabelText('Retirer le filtre Nouveau');
-    fireEvent.press(croix);
+    await fireEvent.press(croix);
 
     expect(onRetirer).toHaveBeenCalledTimes(1);
     expect(onPress).not.toHaveBeenCalled();
@@ -74,7 +74,7 @@ describe('Chip', () => {
       </FournisseurTheme>,
     );
 
-    fireEvent.press(screen.getByText('Nouveau'));
+    await fireEvent.press(screen.getByText('Nouveau'));
 
     expect(onPress).toHaveBeenCalledTimes(1);
     expect(onRetirer).not.toHaveBeenCalled();

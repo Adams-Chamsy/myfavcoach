@@ -40,7 +40,7 @@ describe('Onglets', () => {
     const onChangement = jest.fn();
     await rendreOnglets('offres', onChangement);
 
-    fireEvent.press(screen.getByText('Parcours'));
+    await fireEvent.press(screen.getByText('Parcours'));
 
     expect(onChangement).toHaveBeenCalledWith('parcours');
   });

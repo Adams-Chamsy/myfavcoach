@@ -135,8 +135,9 @@ Le dossier ne fournit **aucune photographie**, alors que la direction artistique
 dessus : « la photo du coach porte l'émotion, l'interface reste en retrait ». Tant qu'il n'y a
 pas de photos réelles :
 
-- `EmplacementImage` affiche un repli typographique (initiales sur `marque.secondaire`), jamais
-  un cadre vide ni une image générique.
+- `EmplacementImage` affiche un repli typographique (initiales en `texte.surMarque` sur
+  `marque.primaire`), jamais un cadre vide ni une image générique. `marque.secondaire` a été
+  écarté : trop clair pour un repli visible sur tous les coachs tant qu'aucune photo n'existe.
 - Les ratios sont figés maintenant, pour que les photos futures n'obligent pas à redessiner :
   **portrait 3:4** pour les cartes de coach, **4:3** pour les vignettes de séance, **plein
   cadre 400 pt de haut** pour l'en-tête du profil coach.

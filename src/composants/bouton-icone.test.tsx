@@ -22,7 +22,7 @@ describe('BoutonIcone', () => {
     const onPress = jest.fn();
     await rendreBoutonIcone({ onPress, desactive: true });
 
-    fireEvent.press(screen.getByRole('button'));
+    await fireEvent.press(screen.getByRole('button'));
 
     expect(onPress).not.toHaveBeenCalled();
   });
@@ -31,7 +31,7 @@ describe('BoutonIcone', () => {
     const onPress = jest.fn();
     await rendreBoutonIcone({ onPress });
 
-    fireEvent.press(screen.getByRole('button'));
+    await fireEvent.press(screen.getByRole('button'));
 
     expect(onPress).toHaveBeenCalledTimes(1);
   });

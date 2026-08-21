@@ -41,7 +41,7 @@ describe('Bouton', () => {
     const onPress = jest.fn();
     await rendreBouton({ onPress, desactive: true });
 
-    fireEvent.press(screen.getByRole('button'));
+    await fireEvent.press(screen.getByRole('button'));
 
     expect(onPress).not.toHaveBeenCalled();
   });
@@ -50,7 +50,7 @@ describe('Bouton', () => {
     const onPress = jest.fn();
     await rendreBouton({ onPress });
 
-    fireEvent.press(screen.getByRole('button'));
+    await fireEvent.press(screen.getByRole('button'));
 
     expect(onPress).toHaveBeenCalledTimes(1);
   });
@@ -69,7 +69,7 @@ describe('Bouton', () => {
   it('anime l’appui vers mouvement.echelleAppui quand le mouvement reduit est inactif', async () => {
     await rendreBouton();
 
-    fireEvent(screen.getByRole('button'), 'pressIn');
+    await fireEvent(screen.getByRole('button'), 'pressIn');
 
     expect(withTiming).toHaveBeenCalledWith(mouvement.echelleAppui, expect.anything());
   });
@@ -81,7 +81,7 @@ describe('Bouton', () => {
     // systeme) : on attend le re-rendu avant de simuler l'appui.
     const bouton = await screen.findByRole('button');
 
-    fireEvent(bouton, 'pressIn');
+    await fireEvent(bouton, 'pressIn');
 
     expect(withTiming).not.toHaveBeenCalled();
   });
