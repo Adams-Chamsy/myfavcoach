@@ -17,11 +17,16 @@ jest.mock('react-native-reanimated', () => {
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- doit suivre le jest.mock ci-dessus
 const { withRepeat } = require('react-native-reanimated');
 
+// jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled') + jest.restoreAllMocks() ne restaure
+// pas fiablement l'implementation d'origine (le mock du preset RN est deja un jest.fn(), voir
+// src/composants/progression.test.tsx) : reference sauvegardee/restauree directement.
+const isReduceMotionEnabledOriginal = AccessibilityInfo.isReduceMotionEnabled;
+
 const FORMES: FormeSquelette[] = ['liste', 'carte', 'detail', 'ligne'];
 
 describe('Squelette', () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    AccessibilityInfo.isReduceMotionEnabled = isReduceMotionEnabledOriginal;
     withRepeat.mockClear();
   });
 
@@ -46,7 +51,7 @@ describe('Squelette', () => {
   });
 
   it("fixe l'opacite a 1 (pas de pulsation) une fois le mouvement reduit resolu actif", async () => {
-    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
+    AccessibilityInfo.isReduceMotionEnabled = jest.fn().mockResolvedValue(true);
 
     await render(
       <FournisseurTheme>

@@ -16,6 +16,11 @@ jest.mock('react-native-reanimated', () => {
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- doit suivre le jest.mock ci-dessus
 const { withTiming } = require('react-native-reanimated');
 
+// jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled') + jest.restoreAllMocks() ne restaure
+// pas fiablement l'implementation d'origine (le mock du preset RN est deja un jest.fn(), voir
+// src/composants/progression.test.tsx) : reference sauvegardee/restauree directement.
+const isReduceMotionEnabledOriginal = AccessibilityInfo.isReduceMotionEnabled;
+
 function rendreBouton(proprietes: Partial<React.ComponentProps<typeof Bouton>> = {}) {
   return render(
     <FournisseurTheme>
@@ -28,7 +33,7 @@ const VARIANTES: VarianteBouton[] = ['primaire', 'secondaire', 'discret', 'accen
 
 describe('Bouton', () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    AccessibilityInfo.isReduceMotionEnabled = isReduceMotionEnabledOriginal;
     withTiming.mockClear();
   });
 
@@ -75,7 +80,7 @@ describe('Bouton', () => {
   });
 
   it('n’anime PAS l’appui (withTiming jamais appele) quand le mouvement reduit est actif', async () => {
-    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
+    AccessibilityInfo.isReduceMotionEnabled = jest.fn().mockResolvedValue(true);
     await rendreBouton();
     // Le passage a l'etat "actif" du hook est asynchrone (lecture initiale du reglage
     // systeme) : on attend le re-rendu avant de simuler l'appui.

@@ -7,8 +7,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { useTheme } from '@/theme/fournisseur';
-import { mouvement, weight } from '@/theme/tokens';
+import { useMouvementReduit, useTheme } from '@/theme/fournisseur';
+import { weight } from '@/theme/tokens';
 
 export type OptionOnglet<Valeur extends string> = {
   valeur: Valeur;
@@ -33,15 +33,20 @@ export function Onglets<Valeur extends string>({
   onChangement,
 }: ProprietesOnglets<Valeur>) {
   const theme = useTheme();
+  const { actif: mouvementReduitActif, entree: dureeEntree, courbe } = useMouvementReduit();
   const mesures = useRef<Partial<Record<Valeur, { x: number; largeur: number }>>>({}).current;
   const indicateurX = useSharedValue(0);
   const indicateurLargeur = useSharedValue(0);
 
   function animerIndicateurVers(mesure: { x: number; largeur: number }) {
-    const optionsAnimation = {
-      duration: mouvement.entree,
-      easing: courbeVersEasing(mouvement.courbe),
-    };
+    // Deplacement purement decoratif (le tab selectionne l'est deja via accessibilityState) :
+    // saute directement a la position en mouvement reduit, pas de glissement anime.
+    if (mouvementReduitActif) {
+      indicateurX.value = mesure.x;
+      indicateurLargeur.value = mesure.largeur;
+      return;
+    }
+    const optionsAnimation = { duration: dureeEntree, easing: courbeVersEasing(courbe) };
     indicateurX.value = withTiming(mesure.x, optionsAnimation);
     indicateurLargeur.value = withTiming(mesure.largeur, optionsAnimation);
   }

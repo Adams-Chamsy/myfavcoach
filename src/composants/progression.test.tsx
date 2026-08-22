@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { useState } from 'react';
-import { Pressable, Text } from 'react-native';
+import { AccessibilityInfo, Pressable, Text } from 'react-native';
 
 import { FournisseurTheme } from '@/theme/fournisseur';
 import { mouvement } from '@/theme/tokens';
@@ -16,6 +16,18 @@ jest.mock('react-native-reanimated', () => {
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- doit suivre le jest.mock ci-dessus
 const { withTiming } = require('react-native-reanimated');
 
+// jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled') suivi de jest.restoreAllMocks() ne
+// restaure PAS correctement l'implementation d'origine ici (le mock du preset RN est deja
+// un jest.fn() ; restoreAllMocks() ne revient pas dessus fiablement) : verifie en pratique,
+// un test "mouvement reduit actif" pollue alors tous les tests suivants du fichier. On
+// sauvegarde/restaure la reference directement plutot que de compter sur spyOn/restore.
+const isReduceMotionEnabledOriginal = AccessibilityInfo.isReduceMotionEnabled;
+
+afterEach(() => {
+  AccessibilityInfo.isReduceMotionEnabled = isReduceMotionEnabledOriginal;
+  withTiming.mockClear();
+});
+
 function ProgressionControlee({ valeurInitiale }: { valeurInitiale: number }) {
   const [valeur, setValeur] = useState(valeurInitiale);
   return (
@@ -29,11 +41,6 @@ function ProgressionControlee({ valeurInitiale }: { valeurInitiale: number }) {
 }
 
 describe('Progression — variante barre', () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-    withTiming.mockClear();
-  });
-
   it("n'anime pas au montage", async () => {
     await render(
       <FournisseurTheme>
@@ -59,6 +66,21 @@ describe('Progression — variante barre', () => {
       duration: mouvement.valeur,
       easing: expect.anything(),
     });
+  });
+
+  it("n'anime pas (withTiming jamais appele) quand le mouvement reduit est actif, meme si la valeur change", async () => {
+    AccessibilityInfo.isReduceMotionEnabled = jest.fn().mockResolvedValue(true);
+    await render(
+      <FournisseurTheme>
+        <ProgressionControlee valeurInitiale={20} />
+      </FournisseurTheme>,
+    );
+    // Le passage a l'etat "actif" du hook est asynchrone : on attend le re-rendu.
+    await screen.findByLabelText('Semaine 3');
+
+    await fireEvent.press(screen.getByText('Changer la valeur'));
+
+    expect(withTiming).not.toHaveBeenCalled();
   });
 
   it('expose accessibilityValue avec la valeur courante', async () => {
@@ -95,11 +117,6 @@ function ProgressionSegmentsControlee() {
 }
 
 describe('Progression — variante segments', () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-    withTiming.mockClear();
-  });
-
   it('rend les segments sans erreur, avec le libelle attendu', async () => {
     await render(
       <FournisseurTheme>
@@ -146,5 +163,20 @@ describe('Progression — variante segments', () => {
       duration: mouvement.valeur,
       easing: expect.anything(),
     });
+  });
+
+  it("n'anime aucun segment (withTiming jamais appele) quand le mouvement reduit est actif", async () => {
+    AccessibilityInfo.isReduceMotionEnabled = jest.fn().mockResolvedValue(true);
+    await render(
+      <FournisseurTheme>
+        <ProgressionSegmentsControlee />
+      </FournisseurTheme>,
+    );
+    // Le passage a l'etat "actif" du hook est asynchrone : on attend le re-rendu.
+    await screen.findByLabelText('4 séances sur 5');
+
+    await fireEvent.press(screen.getByText('Valider la séance'));
+
+    expect(withTiming).not.toHaveBeenCalled();
   });
 });

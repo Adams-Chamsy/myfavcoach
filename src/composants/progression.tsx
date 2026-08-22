@@ -7,8 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { useTheme, type ThemeResolu } from '@/theme/fournisseur';
-import { mouvement } from '@/theme/tokens';
+import { useMouvementReduit, useTheme, type ThemeResolu } from '@/theme/fournisseur';
 
 export type EtatSegment = 'atteint' | 'actuel' | 'reste';
 
@@ -70,6 +69,7 @@ function couleurSegment(theme: ThemeResolu, etat: EtatSegment) {
 }
 
 function Segment({ etat, theme }: { etat: EtatSegment; theme: ThemeResolu }) {
+  const { actif: mouvementReduitActif, valeur: dureeValeur, courbe } = useMouvementReduit();
   // Initialise directement a la cible : le montage ne doit jamais animer.
   const remplissage = useSharedValue(fractionCible(etat));
   const monte = useRef(false);
@@ -86,14 +86,20 @@ function Segment({ etat, theme }: { etat: EtatSegment; theme: ThemeResolu }) {
     }
     if (cible !== fractionPrecedente.current) {
       fractionPrecedente.current = cible;
-      remplissage.value = withTiming(cible, {
-        duration: mouvement.valeur,
-        easing: courbeVersEasing(mouvement.courbe),
-      });
+      // La valeur doit rester exacte en mouvement reduit (c'est une information, pas une
+      // decoration) : affectation immediate, sans transition animee, plutot que withTiming.
+      if (mouvementReduitActif) {
+        remplissage.value = cible;
+      } else {
+        remplissage.value = withTiming(cible, {
+          duration: dureeValeur,
+          easing: courbeVersEasing(courbe),
+        });
+      }
     }
     // remplissage est une SharedValue Reanimated, stable entre les rendus : pas necessaire aux deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [etat]);
+  }, [etat, mouvementReduitActif, dureeValeur, courbe]);
 
   const styleRemplissage = useAnimatedStyle(() => ({ width: `${remplissage.value * 100}%` }));
 
@@ -129,6 +135,7 @@ function ProgressionBarre({
   accessibilityLabel: string;
 }) {
   const theme = useTheme();
+  const { actif: mouvementReduitActif, valeur: dureeValeur, courbe } = useMouvementReduit();
   // Initialise directement a la valeur de depart : le montage ne doit jamais animer.
   const largeur = useSharedValue(valeur);
   const monte = useRef(false);
@@ -138,13 +145,18 @@ function ProgressionBarre({
       monte.current = true;
       return;
     }
-    largeur.value = withTiming(valeur, {
-      duration: mouvement.valeur,
-      easing: courbeVersEasing(mouvement.courbe),
-    });
+    // Meme raison que Segment ci-dessus : valeur exacte immediate en mouvement reduit.
+    if (mouvementReduitActif) {
+      largeur.value = valeur;
+    } else {
+      largeur.value = withTiming(valeur, {
+        duration: dureeValeur,
+        easing: courbeVersEasing(courbe),
+      });
+    }
     // largeur est une SharedValue Reanimated, stable entre les rendus : pas necessaire aux deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [valeur]);
+  }, [valeur, mouvementReduitActif, dureeValeur, courbe]);
 
   const styleBarre = useAnimatedStyle(() => ({ width: `${largeur.value}%` }));
 
