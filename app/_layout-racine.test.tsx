@@ -1,3 +1,13 @@
+// Nom volontairement different de "_layout.test.tsx" : expo-router traite tout fichier dont le
+// nom commence par le segment exact "_layout" (avant le premier point) comme une variante de
+// layout, y compris "_layout.test.tsx" (le point suivant "_layout" est lu comme le separateur
+// d'une extension de plateforme, sur le meme mecanisme que "_layout.ios.tsx"). Resultat : deux
+// layouts enregistres pour la meme route, et expo-router plante des le demarrage du serveur de
+// developpement ("The layouts... conflict on the route"). Ni resolver.blockList (metro.config.js)
+// ni le mode production ne protegent de ce cas precis : la construction de l'arbre de routes
+// leve avant meme que blockList n'intervienne. Le tiret dans "_layout-racine" evite ce point,
+// donc ce declenchement, tout en restant range juste a cote de _layout.tsx et reconnu par Jest
+// (".test.tsx"). Voir docs/dette.md.
 import { render } from '@testing-library/react-native';
 import { useFonts } from 'expo-font';
 
