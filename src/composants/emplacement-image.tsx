@@ -1,5 +1,6 @@
 import { Image, Text, View } from 'react-native';
 
+import { initiales } from '@/composants/initiales';
 import { useTheme } from '@/theme/fournisseur';
 import { font } from '@/theme/tokens';
 
@@ -22,15 +23,6 @@ const RATIOS: Record<'portrait3x4' | 'paysage4x3', number> = {
 // Ce n'est pas un ratio mais une hauteur fixe, et design/tokens.json n'a pas de token pour
 // 400 : constante locale documentee plutot qu'un ajout muet. Voir docs/dette.md.
 const HAUTEUR_PLEIN_CADRE = 400;
-
-function initiales(nom: string) {
-  return nom
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((mot) => mot.charAt(0).toUpperCase())
-    .join('');
-}
 
 export function EmplacementImage({ nom, ratio, source }: ProprietesEmplacementImage) {
   const theme = useTheme();
@@ -63,10 +55,11 @@ export function EmplacementImage({ nom, ratio, source }: ProprietesEmplacementIm
       }}
     >
       <Text
-        // Manrope grasse, pas Instrument Serif : cette derniere n'a pas de graisse grasse
-        // embarquee (ni chez Google Fonts). Meme choix qu'Avatar (src/composants/avatar.tsx)
-        // pour un repli d'initiales coherent entre les deux composants ; taille et
-        // interlignage repris de texte.titre1 pour garder les proportions d'origine.
+        // Manrope grasse, jamais Instrument Serif : des initiales de repli sont de
+        // l'information utilitaire, pas de l'editorial — Instrument Serif est reserve aux
+        // titres et aux chiffres cles (docs/design-system.md §3 et §7). Meme traitement dans
+        // Avatar (src/composants/avatar.tsx) ; taille et interlignage repris de texte.titre1
+        // pour garder les proportions d'origine (pas de token dedie a ce repli).
         style={{
           fontFamily: font.uiBold,
           fontSize: theme.texte.titre1.fontSize,

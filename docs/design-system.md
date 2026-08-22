@@ -138,6 +138,12 @@ pas de photos réelles :
 - `EmplacementImage` affiche un repli typographique (initiales en `texte.surMarque` sur
   `marque.primaire`), jamais un cadre vide ni une image générique. `marque.secondaire` a été
   écarté : trop clair pour un repli visible sur tous les coachs tant qu'aucune photo n'existe.
+  Même repli dans `Avatar`, pour la même raison (aucune photo fournie).
+- Ces initiales de repli sont toujours en **Manrope grasse, jamais Instrument Serif** : c'est de
+  l'information utilitaire (un nom réduit à deux lettres), pas de l'éditorial — la règle du §3
+  ci-dessus (« Instrument Serif pour l'éditorial et les chiffres clés ») les exclut justement.
+  Accessoirement, Instrument Serif n'a aucune graisse grasse dans la police embarquée : même
+  sans cette règle, un repli en gras y serait impossible.
 - Les ratios sont figés maintenant, pour que les photos futures n'obligent pas à redessiner :
   **portrait 3:4** pour les cartes de coach, **4:3** pour les vignettes de séance, **plein
   cadre 400 pt de haut** pour l'en-tête du profil coach.

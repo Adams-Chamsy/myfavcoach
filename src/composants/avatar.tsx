@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 
+import { initiales } from '@/composants/initiales';
 import { useTheme } from '@/theme/fournisseur';
 import { font } from '@/theme/tokens';
 
@@ -23,17 +24,6 @@ const TAILLES: Record<
   lg: 'avatarLg',
   xl: 'avatarXl',
 };
-
-// Aucune photo n'est fournie par le dossier de design : l'avatar n'affiche jamais que ce
-// repli en initiales, sur marque.primaire (docs/design-system.md §7).
-function initiales(nom: string) {
-  return nom
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((mot) => mot.charAt(0).toUpperCase())
-    .join('');
-}
 
 export function Avatar({ nom, taille = 'md', pastille }: ProprietesAvatar) {
   const theme = useTheme();
@@ -63,6 +53,10 @@ export function Avatar({ nom, taille = 'md', pastille }: ProprietesAvatar) {
         }}
       >
         <Text
+          // Manrope grasse, jamais Instrument Serif : des initiales de repli sont de
+          // l'information utilitaire, pas de l'editorial — Instrument Serif est reserve aux
+          // titres et aux chiffres cles (docs/design-system.md §3 et §7). Meme traitement dans
+          // EmplacementImage (src/composants/emplacement-image.tsx).
           style={{
             fontFamily: font.uiBold,
             fontSize: tailleTexte,
