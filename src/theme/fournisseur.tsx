@@ -83,25 +83,53 @@ export type DureesMouvement = {
   [Cle in keyof typeof mouvement]: ElargirValeur<(typeof mouvement)[Cle]>;
 } & { actif: boolean };
 
+// Reserve a la galerie de developpement (app/_galerie.tsx) : force la valeur "actif" sans
+// attendre le reglage systeme, pour que son interrupteur "mouvement reduit" ait un effet reel
+// et immediat sur les primitives affichees. Ne jamais lire ce contexte ailleurs : voir le
+// commentaire sur useMouvementReduit ci-dessous.
+const ContexteMouvementReduitForce = createContext<boolean | null>(null);
+
+export type ProprietesFournisseurMouvementReduit = {
+  children: ReactNode;
+  force?: boolean;
+};
+
+export function FournisseurMouvementReduit({
+  children,
+  force,
+}: ProprietesFournisseurMouvementReduit) {
+  return (
+    <ContexteMouvementReduitForce.Provider value={force ?? null}>
+      {children}
+    </ContexteMouvementReduitForce.Provider>
+  );
+}
+
 // Seul point de lecture de AccessibilityInfo.isReduceMotionEnabled du projet : voir
-// docs/design-system.md SS4 ("un seul hook useMouvementReduit() — jamais en double").
+// docs/design-system.md SS4 ("un seul hook useMouvementReduit() — jamais en double"). La
+// valeur forcee par FournisseurMouvementReduit (galerie de developpement uniquement) prend le
+// pas sur le reglage systeme quand elle est presente ; en son absence, seul le reglage systeme
+// compte, comme avant.
 export function useMouvementReduit(): DureesMouvement {
-  const [actif, setActif] = useState(false);
+  const force = useContext(ContexteMouvementReduitForce);
+  const [actifSysteme, setActifSysteme] = useState(false);
 
   useEffect(() => {
     let monte = true;
 
     AccessibilityInfo.isReduceMotionEnabled().then((valeurInitiale) => {
-      if (monte) setActif(valeurInitiale);
+      if (monte) setActifSysteme(valeurInitiale);
     });
 
-    const abonnement = AccessibilityInfo.addEventListener('reduceMotionChanged', setActif);
+    const abonnement = AccessibilityInfo.addEventListener('reduceMotionChanged', setActifSysteme);
 
     return () => {
       monte = false;
       abonnement.remove();
     };
   }, []);
+
+  const actif = force ?? actifSysteme;
 
   return useMemo(
     () => (actif ? { ...mouvement, ...mouvementReduit, actif } : { ...mouvement, actif }),

@@ -18,6 +18,10 @@ export type ProprietesBouton = {
   variante?: VarianteBouton;
   desactive?: boolean;
   icone?: NomIcone;
+  // Reserve a la galerie de developpement (app/_galerie.tsx) : force l'affichage de l'etat
+  // "presse" ou "focus" sans interaction reelle, pour montrer les 4 etats cote a cote. Un
+  // ecran du produit ne fournit jamais cette prop, les etats y viennent toujours de l'appui.
+  previsualiserEtat?: 'presse' | 'focus';
 };
 
 // Bordure propre a la variante secondaire (maquette : 1,5px). Meme valeur numerique que
@@ -104,6 +108,7 @@ export function Bouton({
   variante = 'primaire',
   desactive = false,
   icone,
+  previsualiserEtat,
 }: ProprietesBouton) {
   const theme = useTheme();
   const {
@@ -112,8 +117,10 @@ export function Bouton({
     courbe,
     echelleAppui,
   } = useMouvementReduit();
-  const [estPresse, setEstPresse] = useState(false);
-  const [estFocus, setEstFocus] = useState(false);
+  const [estPresseInteraction, setEstPresse] = useState(false);
+  const [estFocusInteraction, setEstFocus] = useState(false);
+  const estPresse = previsualiserEtat === 'presse' || estPresseInteraction;
+  const estFocus = previsualiserEtat === 'focus' || estFocusInteraction;
   const echelle = useSharedValue(1);
 
   const couleurs = couleursVariante(theme, variante);

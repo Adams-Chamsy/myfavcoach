@@ -19,6 +19,9 @@ export type ProprietesBoutonIcone = {
   desactive?: boolean;
   actif?: boolean;
   couleur?: string;
+  // Reserve a la galerie de developpement (app/_galerie.tsx) : voir ProprietesBouton dans
+  // src/composants/bouton.tsx pour la raison d'etre complete.
+  previsualiserEtat?: 'presse' | 'focus';
 };
 
 function courbeVersEasing(courbe: string) {
@@ -34,6 +37,7 @@ export function BoutonIcone({
   desactive = false,
   actif = false,
   couleur,
+  previsualiserEtat,
 }: ProprietesBoutonIcone) {
   const theme = useTheme();
   const {
@@ -42,8 +46,10 @@ export function BoutonIcone({
     courbe,
     echelleAppui,
   } = useMouvementReduit();
-  const [estPresse, setEstPresse] = useState(false);
-  const [estFocus, setEstFocus] = useState(false);
+  const [estPresseInteraction, setEstPresse] = useState(false);
+  const [estFocusInteraction, setEstFocus] = useState(false);
+  const estPresse = previsualiserEtat === 'presse' || estPresseInteraction;
+  const estFocus = previsualiserEtat === 'focus' || estFocusInteraction;
   const echelle = useSharedValue(1);
 
   const fond = desactive ? undefined : estPresse ? theme.couleur.gris[200] : undefined;

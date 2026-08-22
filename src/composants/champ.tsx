@@ -9,6 +9,7 @@ export type ProprietesChamp = {
   onChangeTexte: (texte: string) => void;
   messageErreur?: string;
   placeholder?: string;
+  desactive?: boolean;
 };
 
 export function Champ({
@@ -17,22 +18,27 @@ export function Champ({
   onChangeTexte,
   messageErreur,
   placeholder,
+  desactive = false,
 }: ProprietesChamp) {
   const theme = useTheme();
   const [estFocus, setEstFocus] = useState(false);
   const enErreur = Boolean(messageErreur);
 
-  const couleurLabel = enErreur
-    ? theme.couleur.etat.erreurEncre
-    : estFocus
-      ? theme.couleur.marque.primaire
-      : theme.couleur.gris[500];
+  const couleurLabel = desactive
+    ? theme.couleur.texte.desactive
+    : enErreur
+      ? theme.couleur.etat.erreurEncre
+      : estFocus
+        ? theme.couleur.marque.primaire
+        : theme.couleur.gris[500];
 
-  const couleurBordure = enErreur
-    ? theme.couleur.etat.erreur
-    : estFocus
-      ? theme.couleur.bordure.focus
-      : theme.couleur.bordure.marquee;
+  const couleurBordure = desactive
+    ? theme.couleur.bordure.discrete
+    : enErreur
+      ? theme.couleur.etat.erreur
+      : estFocus
+        ? theme.couleur.bordure.focus
+        : theme.couleur.bordure.marquee;
 
   // Composition explicite plutot que accessibilityLabelledBy : ce dernier REMPLACE
   // accessibilityLabel des qu'il resout un texte (verifie via le calcul de nom accessible de
@@ -65,17 +71,22 @@ export function Champ({
           onBlur={() => setEstFocus(false)}
           placeholder={placeholder}
           placeholderTextColor={theme.couleur.gris[400]}
+          editable={!desactive}
           accessibilityLabel={nomAccessible}
+          accessibilityState={{ disabled: desactive }}
           style={{
             height: theme.taille.controle,
             borderRadius: theme.rayon.saisie,
             borderWidth: theme.taille.focusContour,
             borderColor: couleurBordure,
-            backgroundColor:
-              estFocus || enErreur ? theme.couleur.fond.surface : theme.couleur.fond.canevas,
+            backgroundColor: desactive
+              ? theme.couleur.fond.creux
+              : estFocus || enErreur
+                ? theme.couleur.fond.surface
+                : theme.couleur.fond.canevas,
             paddingHorizontal: theme.espace[4],
             ...theme.texte.corps,
-            color: theme.couleur.texte.principal,
+            color: desactive ? theme.couleur.texte.desactive : theme.couleur.texte.principal,
           }}
         />
       </View>
