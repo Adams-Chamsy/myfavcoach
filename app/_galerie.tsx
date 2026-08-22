@@ -1026,6 +1026,7 @@ function Interrupteur({
       <Switch
         value={valeur}
         onValueChange={onValueChange}
+        accessibilityLabel={libelle}
         trackColor={{ false: theme.couleur.gris[300], true: theme.couleur.marque.primaireTeinte2 }}
         thumbColor={theme.couleur.fond.surface}
       />

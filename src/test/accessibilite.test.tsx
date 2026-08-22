@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react-native';
+import { fireEvent, render, type RenderResult } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import type { ReactTestRendererJSON } from 'react-test-renderer';
 
@@ -26,7 +26,16 @@ import { contraste, melangerCouleur } from './contraste';
 // couvertes ailleurs dans ce corpus) et les _layout.tsx de (client)/(coach) (Tabs a besoin d'un
 // contexte de navigation reel ; leur seul contenu propre, BarreNavigation, est deja exerce par
 // la section 9 de la galerie avec des props equivalentes).
+//
+// Deux passes, theme clair puis theme sombre (docs/dette.md) : un bug de barre coach releve en
+// galerie (fond ambiant croise avec un contenu fixe, voir barre-navigation.tsx) n'existait que
+// sous themeForce="sombre" et cette suite ne l'a pas vu tant qu'elle ne rendait qu'en clair. Le
+// mode sombre systeme (`useColorScheme`) reste hors perimetre du jalon 1 (docs/perimetre.md §3) :
+// ce n'est pas ce qui est teste ici. `themeForce` est le mecanisme existant qui force une valeur
+// independamment du systeme, deja utilise par la galerie elle-meme pour se previsualiser.
 const SEUIL_CONTRASTE = 4.5;
+type ThemeAVerifier = 'clair' | 'sombre';
+const THEMES_A_VERIFIER: ThemeAVerifier[] = ['clair', 'sombre'];
 
 type Noeud = ReactTestRendererJSON | string | null;
 
@@ -86,17 +95,27 @@ type Contexte = {
   dansZoneDesactivee: boolean;
 };
 
-// Fond racine de l'application (thème clair, seul livré au jalon 1) : jamais posé explicitement
-// par les écrans provisoires eux-mêmes, qui héritent du fond de la fenêtre.
-const FOND_RACINE = themes.clair.fond.canevas;
+// Fond racine de l'application, jamais posé explicitement par les écrans provisoires eux-mêmes,
+// qui héritent du fond de la fenêtre — dépend du thème de la passe en cours (voir
+// THEMES_A_VERIFIER).
+function fondRacine(theme: ThemeAVerifier) {
+  return themes[theme].fond.canevas;
+}
 // Second signal de "texte désactivé", complémentaire à accessibilityState.disabled : un
 // libellé (ex. le <Text> d'étiquette de Champ) peut annoncer un champ désactivé sans être
 // lui-même le noeud interactif qui porte accessibilityState — mais texte.desactive est le seul
 // token du design system réservé à cet usage (design/tokens.json), donc l'utiliser suffit à
 // s'auto-désigner comme du texte désactivé.
-const COULEUR_TEXTE_DESACTIVE = themes.clair.texte.desactive.toLowerCase();
+function couleurTexteDesactive(theme: ThemeAVerifier) {
+  return themes[theme].texte.desactive.toLowerCase();
+}
 
-function analyserArbre(noeud: Noeud, contexte: Contexte, resultats: Resultats) {
+function analyserArbre(
+  noeud: Noeud,
+  contexte: Contexte,
+  resultats: Resultats,
+  couleurTexteDesactivee: string,
+) {
   if (!noeud || typeof noeud === 'string') return;
 
   const style = fusionnerStyle(noeud.props?.style);
@@ -125,7 +144,7 @@ function analyserArbre(noeud: Noeud, contexte: Contexte, resultats: Resultats) {
       ratio: contraste(couleurEffective, contexteEnfant.fond),
       desactive:
         contexteEnfant.dansZoneDesactivee ||
-        couleurEffective.toLowerCase() === COULEUR_TEXTE_DESACTIVE,
+        couleurEffective.toLowerCase() === couleurTexteDesactivee,
     });
   }
 
@@ -166,19 +185,37 @@ function analyserArbre(noeud: Noeud, contexte: Contexte, resultats: Resultats) {
         texteFreresGrandParent: contexte.texteFreresDirects,
       },
       resultats,
+      couleurTexteDesactivee,
     );
   }
 }
 
-async function analyser(element: ReactElement, dejaEnveloppe = false): Promise<Resultats> {
+type OptionsAnalyse = {
+  // La galerie gere son propre FournisseurTheme (bascule "Sombre" en pied de page) : on la
+  // laisse telle quelle et on simule l'interrupteur plutot que d'en injecter un second par
+  // au-dessus, ce qui casserait la vraie logique testee.
+  dejaEnveloppe?: boolean;
+  themeForce: ThemeAVerifier;
+  // Action a jouer une fois le rendu monte, avant l'analyse — ex. basculer l'interrupteur
+  // "Sombre" de la galerie pour la passe sombre.
+  apresRendu?: (rendu: RenderResult) => Promise<void>;
+};
+
+async function analyser(element: ReactElement, options: OptionsAnalyse): Promise<Resultats> {
+  const { dejaEnveloppe = false, themeForce, apresRendu } = options;
   const resultats: Resultats = { contrastes: [], cibles: [], iconesSansLabel: [] };
-  const { toJSON } = await render(
-    dejaEnveloppe ? element : <FournisseurTheme>{element}</FournisseurTheme>,
+  const rendu = await render(
+    dejaEnveloppe ? (
+      element
+    ) : (
+      <FournisseurTheme themeForce={themeForce}>{element}</FournisseurTheme>
+    ),
   );
+  if (apresRendu) await apresRendu(rendu);
   analyserArbre(
-    toJSON(),
+    rendu.toJSON(),
     {
-      fond: FOND_RACINE,
+      fond: fondRacine(themeForce),
       opaciteDepuisFond: 1,
       ancetreAvecLabel: false,
       texteFreresDirects: false,
@@ -186,66 +223,96 @@ async function analyser(element: ReactElement, dejaEnveloppe = false): Promise<R
       dansZoneDesactivee: false,
     },
     resultats,
+    couleurTexteDesactive(themeForce),
   );
   return resultats;
 }
 
+// Bascule l'interrupteur "Sombre" de la galerie (voir accessibilityLabel ajoute dans
+// app/_galerie.tsx, Interrupteur) plutot que d'envelopper Galerie dans un second
+// FournisseurTheme : c'est le mecanisme reellement utilise a l'ecran, celui qui a revele le bug.
+async function basculerGalerieEnSombre(rendu: RenderResult) {
+  await fireEvent(rendu.getByLabelText('Sombre'), 'valueChange', true);
+}
+
+// Un facteur par entree, pas un element deja construit : chaque theme de THEMES_A_VERIFIER rend
+// sa propre instance, jamais la meme entre deux passes.
+type EntreeCorpus = {
+  nom: string;
+  creerElement: () => ReactElement;
+  dejaEnveloppe?: boolean;
+  // Seule la galerie a besoin d'agir apres le montage, et seulement pour la passe sombre.
+  apresRenduParTheme?: Partial<Record<ThemeAVerifier, (rendu: RenderResult) => Promise<void>>>;
+};
+
+const CORPUS: EntreeCorpus[] = [
+  {
+    nom: 'app/_galerie.tsx',
+    creerElement: () => <Galerie key="galerie" />,
+    dejaEnveloppe: true,
+    apresRenduParTheme: { sombre: basculerGalerieEnSombre },
+  },
+  { nom: 'app/(client)/accueil.tsx', creerElement: () => <Accueil key="accueil" /> },
+  { nom: 'app/(client)/explorer.tsx', creerElement: () => <Explorer key="explorer" /> },
+  { nom: 'app/(client)/seance.tsx', creerElement: () => <Seance key="seance" /> },
+  { nom: 'app/(client)/messages.tsx', creerElement: () => <Messages key="messages" /> },
+  { nom: 'app/(client)/moi.tsx', creerElement: () => <Moi key="moi" /> },
+  { nom: 'app/(coach)/pilotage.tsx', creerElement: () => <Pilotage key="pilotage" /> },
+  { nom: 'app/(coach)/clients.tsx', creerElement: () => <Clients key="clients" /> },
+  { nom: 'app/(coach)/agenda.tsx', creerElement: () => <Agenda key="agenda" /> },
+  { nom: 'app/(coach)/revenus.tsx', creerElement: () => <Revenus key="revenus" /> },
+  { nom: 'app/(public)/accueil.tsx', creerElement: () => <AccueilPublic key="accueil-public" /> },
+];
+
 describe('accessibilité automatisée (npm run test:a11y)', () => {
-  it('respecte le contraste, la taille des cibles tactiles et les libellés d’icônes sur toute la galerie et les écrans des coquilles', async () => {
-    const corpus: [string, ReactElement, boolean?][] = [
-      ['app/_galerie.tsx', <Galerie key="galerie" />, true],
-      ['app/(client)/accueil.tsx', <Accueil key="accueil" />],
-      ['app/(client)/explorer.tsx', <Explorer key="explorer" />],
-      ['app/(client)/seance.tsx', <Seance key="seance" />],
-      ['app/(client)/messages.tsx', <Messages key="messages" />],
-      ['app/(client)/moi.tsx', <Moi key="moi" />],
-      ['app/(coach)/pilotage.tsx', <Pilotage key="pilotage" />],
-      ['app/(coach)/clients.tsx', <Clients key="clients" />],
-      ['app/(coach)/agenda.tsx', <Agenda key="agenda" />],
-      ['app/(coach)/revenus.tsx', <Revenus key="revenus" />],
-      ['app/(public)/accueil.tsx', <AccueilPublic key="accueil-public" />],
-    ];
+  it.each(THEMES_A_VERIFIER)(
+    'respecte le contraste, la taille des cibles tactiles et les libellés d’icônes sur toute la galerie et les écrans des coquilles — thème %s',
+    async (themeForce) => {
+      const echecsContraste: string[] = [];
+      const echecsCible: string[] = [];
+      const echecsIcone: string[] = [];
 
-    const echecsContraste: string[] = [];
-    const echecsCible: string[] = [];
-    const echecsIcone: string[] = [];
+      // Rendu sequentiel, un fichier a la fois : les erreurs restent attribuables a une seule
+      // source, et chaque render() partage le meme act() de testing-library sans se chevaucher.
+      for (const { nom, creerElement, dejaEnveloppe, apresRenduParTheme } of CORPUS) {
+        const resultats = await analyser(creerElement(), {
+          dejaEnveloppe,
+          themeForce,
+          apresRendu: apresRenduParTheme?.[themeForce],
+        });
 
-    // Rendu sequentiel, un fichier a la fois : les erreurs restent attribuables a une seule
-    // source, et chaque render() partage le meme act() de testing-library sans se chevaucher.
-    for (const [nom, element, dejaEnveloppe] of corpus) {
-      const resultats = await analyser(element, dejaEnveloppe);
-
-      for (const c of resultats.contrastes) {
-        const ratioAffiche = c.ratio.toFixed(2);
-        console.log(
-          `[test:a11y] ${nom} — "${c.texte}" ${c.couleurTexte} sur ${c.couleurFond} = ` +
-            `${ratioAffiche}:1${c.desactive ? ' (désactivé, hors seuil)' : ''}`,
-        );
-        if (!c.desactive && c.ratio < SEUIL_CONTRASTE) {
-          echecsContraste.push(
-            `${nom} — "${c.texte}" : ${ratioAffiche}:1 (seuil ${SEUIL_CONTRASTE}:1)`,
+        for (const c of resultats.contrastes) {
+          const ratioAffiche = c.ratio.toFixed(2);
+          console.log(
+            `[test:a11y:${themeForce}] ${nom} — "${c.texte}" ${c.couleurTexte} sur ${c.couleurFond} = ` +
+              `${ratioAffiche}:1${c.desactive ? ' (désactivé, hors seuil)' : ''}`,
           );
+          if (!c.desactive && c.ratio < SEUIL_CONTRASTE) {
+            echecsContraste.push(
+              `${nom} — "${c.texte}" : ${ratioAffiche}:1 (seuil ${SEUIL_CONTRASTE}:1)`,
+            );
+          }
+        }
+
+        for (const cible of resultats.cibles) {
+          const insuffisante =
+            (cible.hauteur !== undefined && cible.hauteur < taille.tapMin) ||
+            (cible.largeur !== undefined && cible.largeur < taille.tapMin);
+          if (insuffisante) {
+            echecsCible.push(
+              `${nom} — "${cible.libelle}" : ${cible.hauteur ?? '?'}×${cible.largeur ?? '?'} pt (minimum ${taille.tapMin})`,
+            );
+          }
+        }
+
+        for (const icone of resultats.iconesSansLabel) {
+          echecsIcone.push(`${nom} — icône sans accessibilityLabel (${icone.pere})`);
         }
       }
 
-      for (const cible of resultats.cibles) {
-        const insuffisante =
-          (cible.hauteur !== undefined && cible.hauteur < taille.tapMin) ||
-          (cible.largeur !== undefined && cible.largeur < taille.tapMin);
-        if (insuffisante) {
-          echecsCible.push(
-            `${nom} — "${cible.libelle}" : ${cible.hauteur ?? '?'}×${cible.largeur ?? '?'} pt (minimum ${taille.tapMin})`,
-          );
-        }
-      }
-
-      for (const icone of resultats.iconesSansLabel) {
-        echecsIcone.push(`${nom} — icône sans accessibilityLabel (${icone.pere})`);
-      }
-    }
-
-    expect(echecsContraste).toEqual([]);
-    expect(echecsCible).toEqual([]);
-    expect(echecsIcone).toEqual([]);
-  });
+      expect(echecsContraste).toEqual([]);
+      expect(echecsCible).toEqual([]);
+      expect(echecsIcone).toEqual([]);
+    },
+  );
 });

@@ -47,12 +47,17 @@ function couleursVariante(theme: ThemeResolu, variante: VarianteBouton): Couleur
   const { couleur } = theme;
   switch (variante) {
     case 'primaire':
+      // Pas de textePresse dedie : contrairement a "clair", ou marque.primaireTeinte2 est un ton
+      // tres clair (bonne lisibilite par coincidence), en "sombre" ce meme token est un ton
+      // sombre — les tokens "Teinte" sont une legere teinte DE FOND dans les deux themes, jamais
+      // une couleur de texte stable. texte.surMarque, deja utilise au repos, reste lisible sur
+      // primaireAppui dans les deux themes (5,61:1 en sombre, 14,38:1 en clair) : voir
+      // docs/design-system.md §1, correction 11.
       return {
         fond: couleur.marque.primaire,
         fondPresse: couleur.marque.primaireAppui,
         fondDesactive: couleur.gris[200],
         texte: couleur.texte.surMarque,
-        textePresse: couleur.marque.primaireTeinte2,
         texteDesactive: couleur.gris[400],
       };
     case 'secondaire':

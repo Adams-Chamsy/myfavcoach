@@ -50,17 +50,28 @@ export function BarreNavigation({ variante, elements, paddingBas = 0 }: Propriet
 
   // "La barre encre est une île sombre dans un thème clair, elle utilise les tokens sombre pour
   // son contenu. C'est le seul endroit du jalon 1 où les tokens sombres servent."
-  // (docs/ecrans/L0-02-coquille-coach.md). Lecture directe de themes.sombre, jamais via
-  // useTheme() : le fond, lui, reste ambiant (theme.couleur.fond.inverse), voir plus bas.
+  // (docs/ecrans/L0-02-coquille-coach.md). Île : son fond ET son contenu viennent tous les deux,
+  // sans exception, de themes.sombre — jamais de useTheme(). Un fond "ambiant" (theme.couleur.
+  // fond.inverse) se serait retourné avec le thème actif (inverse de sombre = clair) alors que le
+  // contenu, lui, reste fixe : fond clair sur texte clair en thème sombre, illisible. La barre
+  // client, elle, suit le thème actif de bout en bout — c'est la seule qui doit le faire.
   const couleurInactif = estCoach ? themes.sombre.texte.surSombre : theme.couleur.texte.secondaire;
   const couleurActif = estCoach ? themes.sombre.marque.primaire : theme.couleur.marque.primaire;
+  // Meme principe pour le rond "Créer" (reserve a la barre coach en pratique, voir
+  // ProprietesBarreOngletsRoute) : fond et icone fixes, jamais ambiants.
+  const couleurFondMisEnAvant = estCoach
+    ? themes.sombre.marque.accent
+    : theme.couleur.marque.accent;
+  const couleurIconeMisEnAvant = estCoach
+    ? themes.sombre.marque.accentEncre
+    : theme.couleur.marque.accentEncre;
 
   return (
     <View
       style={{
         flexDirection: 'row',
         alignItems: 'flex-end',
-        backgroundColor: estCoach ? theme.couleur.fond.inverse : theme.couleur.fond.canevas,
+        backgroundColor: estCoach ? themes.sombre.fond.canevas : theme.couleur.fond.canevas,
         borderTopWidth: estCoach ? 0 : 1,
         borderTopColor: theme.couleur.bordure.discrete,
         paddingHorizontal: theme.espace[2],
@@ -98,12 +109,12 @@ export function BarreNavigation({ variante, elements, paddingBas = 0 }: Propriet
                   width: theme.taille.avatarMd,
                   height: theme.taille.avatarMd,
                   borderRadius: theme.rayon.pilule,
-                  backgroundColor: theme.couleur.marque.accent,
+                  backgroundColor: couleurFondMisEnAvant,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Icone nom={element.icone} couleur={theme.couleur.marque.accentEncre} />
+                <Icone nom={element.icone} couleur={couleurIconeMisEnAvant} />
               </View>
               <Text style={{ ...theme.texte.legende, fontFamily: font.uiSemibold, color: couleur }}>
                 {element.libelle}

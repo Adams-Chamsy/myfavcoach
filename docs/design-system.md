@@ -21,6 +21,7 @@ reproduire un défaut mesuré.
 | 8 | Mode sombre incomplet (teintes d'état non redéfinies) | — | Complété ; non livré au jalon 1 |
 | 9 | « 32 icônes » annoncées, 36 nommées | — | **36**, liste §5 |
 | 10 | Liens de navigation des maquettes cassés (`.dc.html` vs `_dc.html`) | — | Corrigés à l'import dans `maquettes/` |
+| 11 | Bouton primaire pressé, thème sombre : `marque.primaireTeinte2` `#26594A` sur `marque.primaireAppui` `#3FA487` | **2,63:1** | Pas de couleur de texte dédiée à l'appui : garde `texte.surMarque` = **5,61:1** (sombre), **14,38:1** (clair) — les tokens « Teinte » sont une teinte de fond dans les deux thèmes, jamais une couleur de texte stable |
 
 Les ratios annoncés dans le dossier de handoff sont **systématiquement optimistes de 0,3 à
 0,8 point**. Ne jamais les reprendre sans recalcul : `npm run test:a11y` recalcule.

@@ -156,8 +156,9 @@ describe('BarreNavigation', () => {
   });
 
   // Critere 3 (docs/ecrans/L0-02-coquille-coach.md) : "tous les couples texte/fond de la barre
-  // atteignent 4,5:1". texte.surSombre a 70 % sur fond.inverse mesure 7,74:1, l'actif plein
-  // 7,58:1 (calcul WCAG manuel, voir docs/dette.md — npm run test:a11y n'existe pas encore).
+  // atteignent 4,5:1". texte.surSombre a 70 % sur themes.sombre.fond.canevas mesure 7,74:1,
+  // l'actif plein 7,58:1 (calcul WCAG manuel ; couvert aussi par npm run test:a11y, qui rend la
+  // galerie sous les deux valeurs de themeForce).
   // "La barre encre est une île sombre... elle utilise les tokens sombre pour son contenu."
   it('utilise les tokens du theme sombre pour le contenu de la barre coach, quel que soit le theme ambiant', async () => {
     await rendreBarre({ variante: 'coach', elements: elementsCoach() });
@@ -169,6 +170,62 @@ describe('BarreNavigation', () => {
     const clients = screen.getByLabelText('Clients, onglet, 2 sur 5');
     expect(clients.props.style.opacity).toBe(0.7);
     expect(screen.getByText('Clients').props.style.color).toBe(themes.sombre.texte.surSombre);
+  });
+
+  // Bug releve en galerie (section 9, theme sombre) : le fond de la barre coach suivait le theme
+  // ambiant (theme.couleur.fond.inverse) alors que son contenu restait fixe (themes.sombre) —
+  // des que le theme ambiant passait en sombre, "inverse" bascule vers un fond clair, donne un
+  // fond clair sous un texte clair, illisible. La barre coach est une ile encre : fond ET
+  // contenu doivent rester identiques sous les deux valeurs de themeForce. La barre client, elle,
+  // doit suivre le theme ambiant de bout en bout — c'est la seule qui doit changer.
+  it('garde la barre coach identique quel que soit themeForce, et fait suivre la barre client au theme ambiant', async () => {
+    const { rerender } = await render(
+      <FournisseurTheme themeForce="clair">
+        <BarreNavigation variante="coach" elements={elementsCoach()} />
+      </FournisseurTheme>,
+    );
+    const fondCoachClair = screen.getByLabelText('Pilotage, onglet, sélectionné, 1 sur 5').parent!
+      .props.style.backgroundColor;
+    const texteCoachClair = screen.getByText('Clients').props.style.color;
+
+    await rerender(
+      <FournisseurTheme themeForce="sombre">
+        <BarreNavigation variante="coach" elements={elementsCoach()} />
+      </FournisseurTheme>,
+    );
+    const fondCoachSombre = screen.getByLabelText('Pilotage, onglet, sélectionné, 1 sur 5').parent!
+      .props.style.backgroundColor;
+    const texteCoachSombre = screen.getByText('Clients').props.style.color;
+
+    expect(fondCoachClair).toBe(themes.sombre.fond.canevas);
+    expect(fondCoachSombre).toBe(themes.sombre.fond.canevas);
+    expect(texteCoachClair).toBe(themes.sombre.texte.surSombre);
+    expect(texteCoachSombre).toBe(themes.sombre.texte.surSombre);
+
+    await rerender(
+      <FournisseurTheme themeForce="clair">
+        <BarreNavigation variante="client" elements={elementsClient(0)} />
+      </FournisseurTheme>,
+    );
+    const fondClientClair = screen.getByLabelText('Accueil, onglet, sélectionné, 1 sur 5').parent!
+      .props.style.backgroundColor;
+    const texteClientClair = screen.getByText('Explorer').props.style.color;
+
+    await rerender(
+      <FournisseurTheme themeForce="sombre">
+        <BarreNavigation variante="client" elements={elementsClient(0)} />
+      </FournisseurTheme>,
+    );
+    const fondClientSombre = screen.getByLabelText('Accueil, onglet, sélectionné, 1 sur 5').parent!
+      .props.style.backgroundColor;
+    const texteClientSombre = screen.getByText('Explorer').props.style.color;
+
+    expect(fondClientClair).toBe(themes.clair.fond.canevas);
+    expect(fondClientSombre).toBe(themes.sombre.fond.canevas);
+    expect(texteClientClair).toBe(themes.clair.texte.secondaire);
+    expect(texteClientSombre).toBe(themes.sombre.texte.secondaire);
+    expect(fondClientClair).not.toBe(fondClientSombre);
+    expect(texteClientClair).not.toBe(texteClientSombre);
   });
 
   // Critere 6 (docs/ecrans/L0-02-coquille-coach.md) : "aucune valeur de couleur écrite en dur
