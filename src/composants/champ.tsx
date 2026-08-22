@@ -24,13 +24,17 @@ export function Champ({
   const [estFocus, setEstFocus] = useState(false);
   const enErreur = Boolean(messageErreur);
 
+  // gris[500] (#7C766E) sur fond.canevas mesure 4,49:1 — sous le seuil de 4,5:1 (npm run
+  // test:a11y, calcul WCAG reel). C'est la meme couleur que la correction §1.2 de
+  // docs/design-system.md ("text.muted #7C766E... reel 4,24:1"), deja resolue ailleurs par
+  // texte.attenue (#6F695F, 5,14:1) : Champ ne l'utilisait pas encore pour son libelle au repos.
   const couleurLabel = desactive
     ? theme.couleur.texte.desactive
     : enErreur
       ? theme.couleur.etat.erreurEncre
       : estFocus
         ? theme.couleur.marque.primaire
-        : theme.couleur.gris[500];
+        : theme.couleur.texte.attenue;
 
   const couleurBordure = desactive
     ? theme.couleur.bordure.discrete

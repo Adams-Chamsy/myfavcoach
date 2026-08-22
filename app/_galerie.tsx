@@ -24,8 +24,9 @@ import { Squelette, type FormeSquelette } from '@/composants/squelette';
 import {
   clientsDemonstration,
   coachsDemonstration,
-  programmeDemonstration,
-  seanceDemonstration,
+  offresDemonstration,
+  programmesDemonstration,
+  seancesDemonstration,
 } from '@/fixtures/demonstration';
 import {
   FournisseurMouvementReduit,
@@ -546,12 +547,13 @@ function SectionCartes() {
   // "Cartes" (docs/ecrans/L0-00-galerie-systeme.md pointe explicitement vers ce bloc).
   const coach = coachsDemonstration.find((c) => c.prenom === 'Nadia')!;
   const nomCoach = `${coach.prenom} ${coach.nom}`;
+  const offre = offresDemonstration.find((o) => o.coach === nomCoach);
   const noteAffichee = coach.note ? coach.note.toFixed(1).replace('.', ',') : null;
   const prixAffiche =
-    coach.prixMensuelCentimes != null ? Math.round(coach.prixMensuelCentimes / 100) : null;
-  const progressionProgramme = Math.round(
-    (programmeDemonstration.moduleActuel / programmeDemonstration.nombreModules) * 100,
-  );
+    offre?.prixMensuelCentimes != null ? Math.round(offre.prixMensuelCentimes / 100) : null;
+  const seance = seancesDemonstration[0];
+  const programme = programmesDemonstration[0];
+  const progressionProgramme = Math.round((programme.moduleActuel / programme.nombreModules) * 100);
 
   return (
     <Section titre="8 · Cartes">
@@ -588,10 +590,10 @@ function SectionCartes() {
               <Badge statut="accent" libelle="Nouveau" />
             )}
           </View>
-          {coach.offreTitre ? (
+          {offre ? (
             <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-              {coach.offreTitre}
-              {coach.offreDureeSemaines ? ` · ${coach.offreDureeSemaines} semaines` : ''}
+              {offre.titre}
+              {offre.offreDureeSemaines ? ` · ${offre.offreDureeSemaines} semaines` : ''}
             </Text>
           ) : null}
           <View
@@ -603,7 +605,7 @@ function SectionCartes() {
             }}
           >
             <Text style={{ ...theme.texte.legende, color: theme.couleur.texte.attenue }}>
-              {coach.nombreAbonnes ? `${coach.nombreAbonnes} abonnés` : ''}
+              {offre?.nombreAbonnes ? `${offre.nombreAbonnes} abonnés` : ''}
             </Text>
             {prixAffiche != null ? (
               <Text
@@ -654,11 +656,11 @@ function SectionCartes() {
           </View>
           <View style={{ flex: 1, gap: theme.espace[1] }}>
             <Text style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal }}>
-              {seanceDemonstration.titre}
+              {seance.titre}
             </Text>
             <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-              {seanceDemonstration.nombreExercices} exercices · {seanceDemonstration.dureeMinutes}{' '}
-              min · avec {seanceDemonstration.coach.split(' ')[0]}
+              {seance.nombreExercices} exercices · {seance.dureeMinutes} min · avec{' '}
+              {seance.coach.split(' ')[0]}
             </Text>
           </View>
         </View>
@@ -688,20 +690,19 @@ function SectionCartes() {
           </View>
           <View style={{ flex: 1, gap: theme.espace[1] }}>
             <Text style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal }}>
-              {programmeDemonstration.titre}
+              {programme.titre}
             </Text>
             <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-              {programmeDemonstration.nombreModules} modules ·{' '}
-              {programmeDemonstration.chargeHebdomadaire}
+              {programme.nombreModules} modules
+              {programme.chargeHebdomadaire ? ` · ${programme.chargeHebdomadaire}` : ''}
             </Text>
             <Text style={{ ...theme.texte.legende, color: theme.couleur.texte.attenue }}>
-              Module {programmeDemonstration.moduleActuel} sur{' '}
-              {programmeDemonstration.nombreModules} · {programmeDemonstration.coach}
+              Module {programme.moduleActuel} sur {programme.nombreModules} · {programme.coach}
             </Text>
             <Progression
               variante="barre"
               valeur={progressionProgramme}
-              accessibilityLabel={`Module ${programmeDemonstration.moduleActuel} sur ${programmeDemonstration.nombreModules}`}
+              accessibilityLabel={`Module ${programme.moduleActuel} sur ${programme.nombreModules}`}
             />
           </View>
         </View>

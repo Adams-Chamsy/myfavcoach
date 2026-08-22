@@ -33,7 +33,9 @@ module.exports = [
   prettierConfig,
   {
     files: ['app/**/*.{ts,tsx}', 'src/**/*.{ts,tsx}'],
-    ignores: ['src/theme/**'],
+    // src/test/contraste.test.ts verifie une fonction de calcul de contraste : elle a besoin de
+    // vraies valeurs hexadecimales en entree, ce n'est pas un ecran ou un composant.
+    ignores: ['src/theme/**', 'src/test/contraste.test.ts'],
     rules: {
       'no-restricted-syntax': [
         'error',
