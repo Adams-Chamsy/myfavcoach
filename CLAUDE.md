@@ -137,7 +137,8 @@ npm run lint          # eslint + prettier, échoue au moindre écart
 npm run typecheck     # tsc --noEmit
 npm test              # jest + @testing-library/react-native
 npm run test:a11y     # vérifications d'accessibilité (contrastes, tailles de tap, libellés)
-npm run verif         # tokens + lint + typecheck + test + test:a11y — la porte d'entrée
+npm run verif:serveur # démarre le vrai serveur Expo, interroge / et /_galerie, l'arrête
+npm run verif         # tokens + lint + typecheck + test + test:a11y + verif:serveur — la porte d'entrée
 npm start             # serveur Expo
 ```
 
