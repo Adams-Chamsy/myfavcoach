@@ -29,7 +29,7 @@ function rendreBouton(proprietes: Partial<React.ComponentProps<typeof Bouton>> =
   );
 }
 
-const VARIANTES: VarianteBouton[] = ['primaire', 'secondaire', 'discret', 'accent'];
+const VARIANTES: VarianteBouton[] = ['primaire', 'secondaire', 'discret', 'accent', 'destructeur'];
 
 describe('Bouton', () => {
   afterEach(() => {

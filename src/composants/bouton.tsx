@@ -10,7 +10,7 @@ import Animated, {
 import { Icone, type NomIcone } from '@/composants/icones';
 import { useMouvementReduit, useTheme, type ThemeResolu } from '@/theme/fournisseur';
 
-export type VarianteBouton = 'primaire' | 'secondaire' | 'discret' | 'accent';
+export type VarianteBouton = 'primaire' | 'secondaire' | 'discret' | 'accent' | 'destructeur';
 
 export type ProprietesBouton = {
   libelle: string;
@@ -76,6 +76,17 @@ function couleursVariante(theme: ThemeResolu, variante: VarianteBouton): Couleur
         fondDesactive: couleur.gris[200],
         texte: couleur.marque.accentEncre,
         textePresse: couleur.marque.accentEncre,
+        texteDesactive: couleur.gris[400],
+      };
+    case 'destructeur':
+      // Pas de token "erreurAppui" dedie : etat.erreurEncre (deja plus fonce, pense pour le
+      // texte sur fond clair) sert ici d'etat presse, seul ton plus sombre disponible.
+      return {
+        fond: couleur.etat.erreur,
+        fondPresse: couleur.etat.erreurEncre,
+        fondDesactive: couleur.gris[200],
+        texte: couleur.texte.surMarque,
+        textePresse: couleur.texte.surMarque,
         texteDesactive: couleur.gris[400],
       };
   }
