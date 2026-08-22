@@ -57,6 +57,7 @@ et jamais les maquettes.
 | Règles de design non exprimables en token | `docs/design-system.md` |
 | Contenu et critères d'acceptation d'un écran | `docs/ecrans/NN-nom.md` |
 | Rendu visuel de référence | `maquettes/*.html` — **lecture seule, jamais modifié** |
+| Jeu de démonstration (`src/fixtures/`) | dérive de `docs/domaine.md` §6 ; le détail visuel se trouve dans `maquettes/` |
 
 `design/tokens.json` est **le seul** fichier de tokens du dépôt. `src/theme/tokens.ts` et
 `src/theme/tokens.css` sont générés par `npm run tokens` et **ne se modifient jamais à la main**.

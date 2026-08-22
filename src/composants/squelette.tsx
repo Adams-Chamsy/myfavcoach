@@ -16,11 +16,12 @@ export type ProprietesSquelette = {
   testID?: string;
 };
 
-// docs/design-system.md §6 : "Pulsation d'opacite 1200 ms". design/tokens.json ne tokenise
-// aucune duree de pulsation (le plus proche, mouvement.valeur, vaut 600 et sert a autre
-// chose) : constante locale documentee plutot qu'un ajout muet. Voir docs/dette.md.
-const DUREE_PULSATION = 1200;
 const OPACITE_BASSE = 0.55;
+
+// Aucun ratio ni token de taille ne couvre le bloc media de la forme "detail" (portrait/hero
+// d'un ecran de detail, distinct du plein cadre de profil coach a 400 pt) : constante locale
+// documentee plutot qu'un ajout muet a design/tokens.json. Voir docs/dette.md.
+const HAUTEUR_MEDIA_DETAIL = 200;
 
 function Bloc({
   largeur,
@@ -60,8 +61,8 @@ function FormeListe({ theme }: { theme: ThemeResolu }) {
             }}
           />
           <View style={{ flex: 1, gap: theme.espace[1] }}>
-            <Bloc largeur="60%" hauteur={14} theme={theme} />
-            <Bloc largeur="40%" hauteur={12} theme={theme} />
+            <Bloc largeur="60%" hauteur={theme.texte.petit.lineHeight} theme={theme} />
+            <Bloc largeur="40%" hauteur={theme.texte.legende.lineHeight} theme={theme} />
           </View>
         </View>
       ))}
@@ -80,8 +81,8 @@ function FormeCarte({ theme }: { theme: ThemeResolu }) {
           backgroundColor: theme.couleur.gris[200],
         }}
       />
-      <Bloc largeur="70%" hauteur={17} theme={theme} />
-      <Bloc largeur="45%" hauteur={14} theme={theme} />
+      <Bloc largeur="70%" hauteur={theme.texte.titre3.lineHeight} theme={theme} />
+      <Bloc largeur="45%" hauteur={theme.texte.petit.lineHeight} theme={theme} />
     </View>
   );
 }
@@ -92,16 +93,16 @@ function FormeDetail({ theme }: { theme: ThemeResolu }) {
       <View
         style={{
           width: '100%',
-          height: 200,
+          height: HAUTEUR_MEDIA_DETAIL,
           borderRadius: theme.rayon.media,
           backgroundColor: theme.couleur.gris[200],
         }}
       />
-      <Bloc largeur="80%" hauteur={22} theme={theme} />
+      <Bloc largeur="80%" hauteur={theme.texte.titre2.lineHeight} theme={theme} />
       <View style={{ gap: theme.espace[1] }}>
-        <Bloc largeur="100%" hauteur={16} theme={theme} />
-        <Bloc largeur="100%" hauteur={16} theme={theme} />
-        <Bloc largeur="65%" hauteur={16} theme={theme} />
+        <Bloc largeur="100%" hauteur={theme.texte.corps.lineHeight} theme={theme} />
+        <Bloc largeur="100%" hauteur={theme.texte.corps.lineHeight} theme={theme} />
+        <Bloc largeur="65%" hauteur={theme.texte.corps.lineHeight} theme={theme} />
       </View>
     </View>
   );
@@ -109,7 +110,7 @@ function FormeDetail({ theme }: { theme: ThemeResolu }) {
 
 export function Squelette({ forme, testID }: ProprietesSquelette) {
   const theme = useTheme();
-  const { actif: mouvementReduitActif } = useMouvementReduit();
+  const { actif: mouvementReduitActif, pulsation } = useMouvementReduit();
   const opacite = useSharedValue(1);
 
   useEffect(() => {
@@ -117,12 +118,8 @@ export function Squelette({ forme, testID }: ProprietesSquelette) {
       opacite.value = 1;
       return;
     }
-    opacite.value = withRepeat(
-      withTiming(OPACITE_BASSE, { duration: DUREE_PULSATION / 2 }),
-      -1,
-      true,
-    );
-  }, [mouvementReduitActif, opacite]);
+    opacite.value = withRepeat(withTiming(OPACITE_BASSE, { duration: pulsation / 2 }), -1, true);
+  }, [mouvementReduitActif, opacite, pulsation]);
 
   const styleAnime = useAnimatedStyle(() => ({ opacity: opacite.value }));
 
@@ -134,7 +131,7 @@ export function Squelette({ forme, testID }: ProprietesSquelette) {
     ) : forme === 'detail' ? (
       <FormeDetail theme={theme} />
     ) : (
-      <Bloc largeur="100%" hauteur={16} theme={theme} />
+      <Bloc largeur="100%" hauteur={theme.texte.corps.lineHeight} theme={theme} />
     );
 
   return (

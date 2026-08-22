@@ -30,11 +30,6 @@ type ProprietesChipFiltreRetirable = {
 export type ProprietesChip =
   ProprietesChipCategorie | ProprietesChipFiltre | ProprietesChipFiltreRetirable;
 
-// docs/design-system.md §6 : "croix 16 dans une cible de 44". Aucun token de taille d'icone
-// ne vaut 16 (seul taille.icone = 24 existe) : constante locale documentee plutot qu'un
-// ajout muet a design/tokens.json. Voir docs/dette.md.
-const TAILLE_CROIX = 16;
-
 function couleursChip(theme: ThemeResolu, proprietes: ProprietesChip) {
   const { couleur } = theme;
   if (proprietes.variante === 'filtre' || proprietes.variante === 'filtreRetirable') {
@@ -94,7 +89,7 @@ export function Chip(proprietes: ProprietesChip) {
             justifyContent: 'center',
           }}
         >
-          <Icone nom="fermer" taille={TAILLE_CROIX} couleur={texte} />
+          <Icone nom="fermer" taille={theme.taille.croixChip} couleur={texte} />
         </Pressable>
       ) : null}
     </View>

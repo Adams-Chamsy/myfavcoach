@@ -139,6 +139,8 @@ export const taille = {
   safeTopIOS: 58,
   safeBottomIOS: 34,
   safeBottomAndroid: 16,
+  croixChip: 16,
+  pleinCadre: 400,
 } as const;
 
 export const mouvement = {
@@ -151,6 +153,7 @@ export const mouvement = {
   voile: 200,
   voileOpacite: 0.42,
   echelleAppui: 0.96,
+  pulsation: 1200,
 } as const;
 
 export const mouvementReduit = {

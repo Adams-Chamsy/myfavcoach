@@ -1,8 +1,9 @@
-// Jeu de donnees de demonstration, fige a partir de docs/domaine.md §6, complete par les
+// Jeu de donnees de demonstration : la source est docs/domaine.md §6, complete par les
 // maquettes ou la fiche renvoie explicitement (maquettes/MyFavCoach-System_dc.html, notamment
 // l'ecran "03 Profil coach" et le bloc "Cartes" ; maquettes/MyFavCoach-Client_dc.html, ecrans
 // "S'abonner a Yannick" et "07 Messagerie" ; noms de famille et messages retrouves, coherents
-// sur plusieurs ecrans, dans MyFavCoach-Parcours_dc.html et MyFavCoach-Coach_dc.html).
+// sur plusieurs ecrans, dans MyFavCoach-Parcours_dc.html et MyFavCoach-Coach_dc.html). Le detail
+// visuel (photos, mise en page) reste dans maquettes/ ; ce fichier n'en reprend que le contenu.
 // Reference unique de contenu d'exemple pour toute l'application (CLAUDE.md §4) : aucun ecran
 // n'invente ses propres noms, prix, notes, avis ou messages — tout vient d'ici.
 //
@@ -13,11 +14,6 @@
 // offres "Programme seul" sont exclues du modele (arbitrage docs/domaine.md §0.9) : la carte
 // "Programme seul" de Yannick (24 €/mois, maquettes/MyFavCoach-System_dc.html, ecran "03 Profil
 // coach") a ete vue et deliberement ecartee, pas manquee.
-//
-// Valeurs volontairement ecartees : maquettes/MyFavCoach-Tablette-Montre_dc.html donne une note
-// 4,7 pour Ophelie et un prix 45 €/mois pour Thomas, mais ce meme bloc introduit un coach "Paul
-// Nguyen" hors de la liste figee des 6 — signe d'un ecran non aligne sur le jeu de demonstration
-// verrouille. Non repris ici.
 
 export type FormatCoaching = 'presentiel' | 'visio';
 
@@ -28,9 +24,10 @@ export type CoachDemonstration = {
   // Absent quand aucune source ne precise ni commune ni format pour ce coach.
   communeBase?: string;
   formats?: FormatCoaching[];
-  // Absents ensemble : en dessous de 5 avis, la regle d'affichage (docs/domaine.md §5.1) est
-  // le badge "Nouveau", jamais une note. Un coach sans les deux n'a simplement pas encore de
-  // note publiee dans la fiche source.
+  // En dessous de 5 avis, la regle d'affichage (docs/domaine.md §5.1) est le badge "Nouveau",
+  // jamais une note : nombreAvis peut donc exister seul (des avis existent, juste trop peu pour
+  // publier une note — cas d'Ophelie Renard, 3 avis). Un coach sans aucun des deux n'a
+  // simplement pas encore d'avis dans la fiche source.
   note?: number;
   nombreAvis?: number;
 };
@@ -49,31 +46,48 @@ export const coachsDemonstration: CoachDemonstration[] = [
     prenom: 'Nadia',
     nom: 'Belkacem',
     discipline: 'cybersécurité',
+    communeBase: 'Paris',
     formats: ['visio'],
     note: 4.9,
+    nombreAvis: 87,
   },
   {
     prenom: 'Inès',
     nom: 'Marchand',
     discipline: 'yoga',
+    communeBase: 'Bordeaux',
+    formats: ['visio', 'presentiel'],
     note: 4.8,
+    nombreAvis: 62,
   },
   {
+    // 3 avis, volontairement sans note : sous le seuil de 5 (docs/domaine.md §5.1), la regle
+    // d'affichage est le badge "Nouveau", jamais une note. Ce coach exerce ce cas dans la
+    // galerie et partout ou une carte coach est rendue.
     prenom: 'Ophélie',
     nom: 'Renard',
     discipline: 'cuisine',
+    communeBase: 'Nantes',
+    formats: ['visio'],
+    nombreAvis: 3,
   },
   {
     prenom: 'Thomas',
     nom: 'Kieffer',
     discipline: 'développement professionnel',
+    communeBase: 'Lille',
+    formats: ['visio'],
+    note: 4.6,
+    nombreAvis: 11,
   },
   {
     prenom: 'Marc',
     nom: 'Ferreira',
     discipline: 'RGPD',
+    communeBase: 'Toulouse',
+    formats: ['visio', 'presentiel'],
     note: 4.7,
-    formats: ['visio'],
+    nombreAvis: 41,
   },
 ];
 
@@ -142,10 +156,19 @@ export const offresDemonstration: OffreDemonstration[] = [
     // reel, pas d'une incoherence introduite ici.
     coach: 'Ophélie Renard',
     titre: 'Batch cooking',
-    prixMensuelCentimes: 1900,
+    prixMensuelCentimes: 3400,
     estMiseEnAvant: false,
   },
-  // Thomas Kieffer : aucune carte d'offre ni aucun prix retrouves dans les maquettes lues.
+  {
+    // Aucune carte d'offre pour Thomas dans les maquettes lues : titre repris de son programme
+    // (maquettes/MyFavCoach-System_dc.html, écran 01, bloc "Reprends là où tu t'es arrêtée" —
+    // voir programmesDemonstration), seule phrase reelle associee a son activite de coaching.
+    // Meme logique que la reprise du titre de programme d'Ophelie, sous une autre forme.
+    coach: 'Thomas Kieffer',
+    titre: 'Négocier son augmentation',
+    prixMensuelCentimes: 4500,
+    estMiseEnAvant: false,
+  },
 ];
 
 // maquettes/MyFavCoach-System_dc.html, écran 01, carte "Ta séance du jour" — reprise à
@@ -229,12 +252,14 @@ export const clientsDemonstration: ClientDemonstration[] = [
     ancienneteAbonnementMois: 3,
     auteureAvisMisEnAvant: true,
   },
-  // Noms de famille et coach retrouvés dans la boîte de réception de Yannick
+  // Prenoms et coach retrouvés dans la boîte de réception de Yannick
   // (maquettes/MyFavCoach-Parcours_dc.html, écran "Boîte de réception coach") — les cinq
-  // personnes qui y écrivent sont donc ses cinq clientes et clients.
+  // personnes qui y écrivent sont donc ses cinq clientes et clients. Noms de famille : Osei vient
+  // de cette même maquette ; Talbot et Nguyen remplacent les noms de famille (Mercier, Dumont)
+  // lus dans cette maquette — corrigés sur instruction explicite, qui l'emporte ici.
   { prenom: 'Karim', nom: 'Osei', abonneAuCoach: 'Yannick Berthaud' },
-  { prenom: 'Bruno', nom: 'Mercier', abonneAuCoach: 'Yannick Berthaud' },
-  { prenom: 'Léa', nom: 'Dumont', abonneAuCoach: 'Yannick Berthaud' },
+  { prenom: 'Bruno', nom: 'Talbot', abonneAuCoach: 'Yannick Berthaud' },
+  { prenom: 'Léa', nom: 'Nguyen', abonneAuCoach: 'Yannick Berthaud' },
 ];
 
 // docs/domaine.md §3.11.
@@ -296,7 +321,7 @@ export const messagesDemonstration: MessageDemonstration[] = [
     quandAffiche: 'lundi',
   },
   {
-    client: 'Bruno Mercier',
+    client: 'Bruno Talbot',
     coach: 'Yannick Berthaud',
     auteur: 'client',
     texte: 'Je change de carte ce week-end, désolé',
@@ -304,5 +329,5 @@ export const messagesDemonstration: MessageDemonstration[] = [
   },
   // Karim Osei a aussi écrit dans cette boîte de réception, mais en message vocal (0:47) : hors
   // périmètre (docs/perimetre.md §3, "Messages vocaux et vidéo"), donc pas repris ici. Léa
-  // Dumont n'y a pas de message, seulement un statut ("Inactive 12 j").
+  // Nguyen n'y a pas de message, seulement un statut ("Inactive 12 j").
 ];

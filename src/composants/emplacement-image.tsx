@@ -19,15 +19,10 @@ const RATIOS: Record<'portrait3x4' | 'paysage4x3', number> = {
   paysage4x3: 4 / 3,
 };
 
-// docs/design-system.md §7 : "plein cadre 400 pt de haut pour l'en-tete du profil coach".
-// Ce n'est pas un ratio mais une hauteur fixe, et design/tokens.json n'a pas de token pour
-// 400 : constante locale documentee plutot qu'un ajout muet. Voir docs/dette.md.
-const HAUTEUR_PLEIN_CADRE = 400;
-
 export function EmplacementImage({ nom, ratio, source }: ProprietesEmplacementImage) {
   const theme = useTheme();
   const styleDimension =
-    ratio === 'pleinCadre' ? { height: HAUTEUR_PLEIN_CADRE } : { aspectRatio: RATIOS[ratio] };
+    ratio === 'pleinCadre' ? { height: theme.taille.pleinCadre } : { aspectRatio: RATIOS[ratio] };
 
   if (source) {
     return (

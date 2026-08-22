@@ -421,11 +421,13 @@ Repris du dossier de design, cohérent d'un écran à l'autre. À figer dans `sr
 lot L0, et à ne jamais modifier ensuite sans mettre à jour toutes les fiches d'écran.
 
 **Clients** : Camille Dupré (abonnée à Yannick, semaine 3, 3/5 faites), Sophie L. (abonnée
-3 mois, auteure de l'avis mis en avant), Karim, Bruno, Léa.
+3 mois, auteure de l'avis mis en avant), Karim Osei, Bruno Talbot, Léa Nguyen.
 **Coachs** : Yannick Berthaud (préparation physique, Lyon et visio, 4,9 · 214 avis, 49 €/mois),
-Nadia Belkacem (cybersécurité, visio, 4,9, 39 €/mois), Inès Marchand (yoga, 4,8, 29 €/mois),
-Ophélie Renard (cuisine), Thomas Kieffer (développement professionnel), Marc Ferreira (RGPD,
-4,7, 54 €/mois).
+Nadia Belkacem (cybersécurité, Paris et visio, 4,9 · 87 avis, 39 €/mois), Inès Marchand (yoga,
+Bordeaux, visio et présentiel, 4,8 · 62 avis, 29 €/mois), Ophélie Renard (cuisine, Nantes, visio,
+3 avis — sous le seuil de 5, donc pas de note affichée, badge « Nouveau » §5.1, 34 €/mois),
+Thomas Kieffer (développement professionnel, Lille, visio, 4,6 · 11 avis, 45 €/mois), Marc
+Ferreira (RGPD, Toulouse, visio et présentiel, 4,7 · 41 avis, 54 €/mois).
 
 Les offres « Programme seul » présentes dans les maquettes sont **retirées des fixtures**
 (arbitrage §0.9).

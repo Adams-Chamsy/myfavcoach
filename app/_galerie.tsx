@@ -819,6 +819,78 @@ function SectionFeuilleEtModale() {
 
 const FORMES_SQUELETTE: FormeSquelette[] = ['liste', 'carte', 'detail', 'ligne'];
 
+// Deuxieme exemple de EtatVide : memes titre/explication (les seuls autorises par
+// maquettes/MyFavCoach-Etats_dc.html, ecran 14), cette fois avec contenuSecondaire rempli et
+// sans actionPrincipale — exerce l'autre configuration du composant plutot que d'inventer un
+// nouveau texte. La liste "Proches de ta recherche" reprend le motif visuel de l'ecran 14
+// (vignette, nom, ligne meta, prix), avec des coachs reels du jeu de demonstration.
+function ProchesDeTaRecherche() {
+  const theme = useTheme();
+  const coachs = ['Nadia', 'Inès']
+    .map((prenom) => coachsDemonstration.find((c) => c.prenom === prenom))
+    .filter((c): c is NonNullable<typeof c> => c != null);
+
+  return (
+    <View style={{ gap: theme.espace[3] }}>
+      <Text
+        style={{
+          ...theme.texte.legende,
+          fontFamily: font.uiBold,
+          letterSpacing: 1,
+          textTransform: 'uppercase',
+          color: theme.couleur.texte.attenue,
+        }}
+      >
+        Proches de ta recherche
+      </Text>
+      {coachs.map((coach) => {
+        const nomCoach = `${coach.prenom} ${coach.nom}`;
+        const offre = offresDemonstration.find((o) => o.coach === nomCoach);
+        const prix =
+          offre?.prixMensuelCentimes != null ? Math.round(offre.prixMensuelCentimes / 100) : null;
+        const meta = [coach.discipline, coach.communeBase].filter(Boolean).join(' · ');
+
+        return (
+          <View
+            key={nomCoach}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: theme.espace[3],
+              padding: theme.espace[3],
+              borderRadius: theme.rayon.feuille,
+              backgroundColor: theme.couleur.fond.surface,
+              borderWidth: 1,
+              borderColor: theme.couleur.fond.creux,
+            }}
+          >
+            <Avatar nom={nomCoach} taille="md" />
+            <View style={{ flex: 1, gap: theme.espace[1] }}>
+              <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.principal }}>
+                {nomCoach}
+              </Text>
+              <Text style={{ ...theme.texte.legende, color: theme.couleur.texte.secondaire }}>
+                {meta}
+              </Text>
+            </View>
+            {prix != null ? (
+              <Text
+                style={{
+                  ...theme.texte.petit,
+                  fontFamily: font.uiBold,
+                  color: theme.couleur.texte.principal,
+                }}
+              >
+                {prix} €
+              </Text>
+            ) : null}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 function SectionEtats() {
   const theme = useTheme();
   const [nombreEchecs, setNombreEchecs] = useState(0);
@@ -844,9 +916,19 @@ function SectionEtats() {
         explication="Essaie d'élargir la zone ou de retirer le filtre « en visio »."
         actionPrincipale={{ libelle: 'Réinitialiser les filtres', onPress: () => {} }}
       />
+      {/* Deuxieme exemple : sans action, avec contenuSecondaire (maquettes/MyFavCoach-Etats_dc.html,
+          ecran 14, bloc "Proches de ta recherche"). */}
+      <EtatVide
+        titre="Aucun coach ne correspond"
+        explication="Essaie d'élargir la zone ou de retirer le filtre « en visio »."
+        contenuSecondaire={<ProchesDeTaRecherche />}
+      />
 
       <SousTitre texte="Chargement" />
       <EtatChargement forme="ligne" nombre={2} />
+      {/* Deuxieme exemple : forme "carte", avec raison — texte repris tel quel de
+          maquettes/MyFavCoach-Etats_dc.html, ecran 15. */}
+      <EtatChargement forme="carte" nombre={1} raison="Préparation…" />
 
       <SousTitre texte="Erreur" />
       <EtatErreur
@@ -861,6 +943,14 @@ function SectionEtats() {
         variante="discret"
         libelle={`Simuler un échec supplémentaire (${nombreEchecs}/3)`}
         onPress={() => setNombreEchecs((n) => Math.min(n + 1, 3))}
+      />
+      {/* Deuxieme exemple : un autre texte de repli autorise, statique. */}
+      <EtatErreur
+        titre={textesRepliErreur.introuvable.titre}
+        explication={textesRepliErreur.introuvable.explication}
+        nombreEchecs={0}
+        onReessayer={() => {}}
+        onNousEcrire={() => {}}
       />
     </Section>
   );
