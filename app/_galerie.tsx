@@ -33,7 +33,7 @@ import {
   useTheme,
   type ThemeResolu,
 } from '@/theme/fournisseur';
-import { weight } from '@/theme/tokens';
+import { font } from '@/theme/tokens';
 import type { StyleOmbre } from '@/theme/types';
 
 // Galerie de developpement (docs/ecrans/L0-00-galerie-systeme.md). Montee uniquement en
@@ -578,7 +578,7 @@ function SectionCartes() {
               <Text
                 style={{
                   ...theme.texte.petit,
-                  fontWeight: weight.bold,
+                  fontFamily: font.uiBold,
                   color: theme.couleur.texte.principal,
                 }}
               >
@@ -609,7 +609,7 @@ function SectionCartes() {
               <Text
                 style={{
                   ...theme.texte.petit,
-                  fontWeight: weight.bold,
+                  fontFamily: font.uiBold,
                   color: theme.couleur.texte.principal,
                 }}
               >
@@ -617,7 +617,7 @@ function SectionCartes() {
                 <Text
                   style={{
                     ...theme.texte.legende,
-                    fontWeight: weight.semibold,
+                    fontFamily: font.uiSemibold,
                     color: theme.couleur.texte.attenue,
                   }}
                 >

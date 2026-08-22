@@ -3,6 +3,11 @@
 export const font = {
   display: 'Instrument Serif',
   ui: 'Manrope',
+  displayRegular: 'InstrumentSerif_400Regular',
+  uiRegular: 'Manrope_400Regular',
+  uiSemibold: 'Manrope_600SemiBold',
+  uiBold: 'Manrope_700Bold',
+  uiBlack: 'Manrope_800ExtraBold',
 } as const;
 
 export const weight = {
@@ -15,59 +20,50 @@ export const weight = {
 
 export const texte = {
   display: {
-    fontFamily: 'Instrument Serif',
-    fontWeight: '400',
+    fontFamily: 'InstrumentSerif_400Regular',
     fontSize: 44,
     lineHeight: 46,
     letterSpacing: -0.44,
   },
   titre1: {
-    fontFamily: 'Instrument Serif',
-    fontWeight: '400',
+    fontFamily: 'InstrumentSerif_400Regular',
     fontSize: 32,
     lineHeight: 36,
   },
   titre2: {
-    fontFamily: 'Manrope',
-    fontWeight: '700',
+    fontFamily: 'Manrope_700Bold',
     fontSize: 22,
     lineHeight: 28,
   },
   titre3: {
-    fontFamily: 'Manrope',
-    fontWeight: '600',
+    fontFamily: 'Manrope_600SemiBold',
     fontSize: 17,
     lineHeight: 24,
   },
   corps: {
-    fontFamily: 'Manrope',
-    fontWeight: '400',
+    fontFamily: 'Manrope_400Regular',
     fontSize: 16,
     lineHeight: 25,
   },
   petit: {
-    fontFamily: 'Manrope',
-    fontWeight: '400',
+    fontFamily: 'Manrope_400Regular',
     fontSize: 14,
     lineHeight: 20,
   },
   label: {
-    fontFamily: 'Manrope',
-    fontWeight: '800',
+    fontFamily: 'Manrope_800ExtraBold',
     fontSize: 12,
     lineHeight: 16,
     letterSpacing: 1.44,
     textTransform: 'uppercase',
   },
   legende: {
-    fontFamily: 'Manrope',
-    fontWeight: '400',
+    fontFamily: 'Manrope_400Regular',
     fontSize: 12,
     lineHeight: 16,
   },
   actionAccent: {
-    fontFamily: 'Manrope',
-    fontWeight: '700',
+    fontFamily: 'Manrope_700Bold',
     fontSize: 16,
     lineHeight: 24,
   },

@@ -1,7 +1,7 @@
 import { Text, View } from 'react-native';
 
 import { useTheme, type ThemeResolu } from '@/theme/fournisseur';
-import { weight } from '@/theme/tokens';
+import { font } from '@/theme/tokens';
 
 export type StatutBadge = 'succes' | 'alerte' | 'erreur' | 'neutre' | 'accent';
 
@@ -42,7 +42,7 @@ export function Badge({ statut, libelle }: ProprietesBadge) {
         backgroundColor: fond,
       }}
     >
-      <Text style={{ ...theme.texte.legende, fontWeight: weight.bold, color: texte }}>
+      <Text style={{ ...theme.texte.legende, fontFamily: font.uiBold, color: texte }}>
         {libelle}
       </Text>
     </View>

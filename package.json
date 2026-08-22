@@ -13,10 +13,15 @@
     "verif": "npm run tokens && npm run lint && npm run typecheck && npm test && npm run test:a11y"
   },
   "dependencies": {
+    "@expo-google-fonts/instrument-serif": "^0.4.1",
+    "@expo-google-fonts/manrope": "^0.4.2",
     "expo": "~57.0.15",
     "expo-constants": "~57.0.13",
+    "expo-font": "~57.0.1",
     "expo-linking": "~57.0.7",
     "expo-router": "~57.0.15",
+    "expo-secure-store": "~57.0.1",
+    "expo-splash-screen": "~57.0.7",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.2",

@@ -2,7 +2,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { Icone } from '@/composants/icones';
 import { useTheme, type ThemeResolu } from '@/theme/fournisseur';
-import { weight } from '@/theme/tokens';
+import { font } from '@/theme/tokens';
 
 type ProprietesChipCategorie = {
   libelle: string;
@@ -62,7 +62,7 @@ export function Chip(proprietes: ProprietesChip) {
         backgroundColor: fond,
       }}
     >
-      <Text style={{ ...theme.texte.legende, fontWeight: weight.bold, color: texte }}>
+      <Text style={{ ...theme.texte.legende, fontFamily: font.uiBold, color: texte }}>
         {libelle}
       </Text>
     </View>

@@ -10,6 +10,12 @@ const mouvementMessage =
   '(src/theme/fournisseur.tsx), le seul point de lecture autorise. Un composant qui lit ' +
   'mouvement directement ignore le reglage systeme de mouvement reduit. Voir docs/design-system.md §4.';
 
+const CLE_SENSIBLE = String.raw`jeton|token|auth|sant[eé]`;
+const asyncStorageMessage =
+  'AsyncStorage interdit pour une cle de jeton, de session ou de donnee de sante : passe par ' +
+  'src/services/trousseau/trousseau.ts (expo-secure-store). Voir CLAUDE.md §10 et ' +
+  'docs/ecrans/L0-04-demarrage.md, critere 6.';
+
 module.exports = [
   {
     ignores: [
@@ -21,8 +27,6 @@ module.exports = [
       'android/**',
       'coverage/**',
       'maquettes/**',
-      // artefact ecrit par le serveur Expo tant qu'aucune route reelle n'existe, voir docs/dette.md
-      'app/index.tsx',
     ],
   },
   ...expoConfig,
@@ -40,6 +44,14 @@ module.exports = [
         {
           selector: `TemplateElement[value.cooked=/${HEX_COLOR}/]`,
           message: hexColorMessage,
+        },
+        {
+          selector: `CallExpression[callee.object.name='AsyncStorage'] Literal[value=/${CLE_SENSIBLE}/i]`,
+          message: asyncStorageMessage,
+        },
+        {
+          selector: `CallExpression[callee.object.name='AsyncStorage'] TemplateElement[value.cooked=/${CLE_SENSIBLE}/i]`,
+          message: asyncStorageMessage,
         },
       ],
     },

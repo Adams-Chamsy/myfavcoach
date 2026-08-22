@@ -1,7 +1,7 @@
 import { Image, Text, View } from 'react-native';
 
 import { useTheme } from '@/theme/fournisseur';
-import { weight } from '@/theme/tokens';
+import { font } from '@/theme/tokens';
 
 export type RatioEmplacementImage = 'portrait3x4' | 'paysage4x3' | 'pleinCadre';
 
@@ -63,9 +63,14 @@ export function EmplacementImage({ nom, ratio, source }: ProprietesEmplacementIm
       }}
     >
       <Text
+        // Manrope grasse, pas Instrument Serif : cette derniere n'a pas de graisse grasse
+        // embarquee (ni chez Google Fonts). Meme choix qu'Avatar (src/composants/avatar.tsx)
+        // pour un repli d'initiales coherent entre les deux composants ; taille et
+        // interlignage repris de texte.titre1 pour garder les proportions d'origine.
         style={{
-          ...theme.texte.titre1,
-          fontWeight: weight.bold,
+          fontFamily: font.uiBold,
+          fontSize: theme.texte.titre1.fontSize,
+          lineHeight: theme.texte.titre1.lineHeight,
           color: theme.couleur.texte.surMarque,
         }}
         accessibilityElementsHidden

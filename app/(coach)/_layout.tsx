@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
 
 import { FeuilleBasse } from '@/composants/feuille-basse';
@@ -30,7 +30,9 @@ export default function LayoutCoach() {
 
   function creer(type: 'programme' | 'seance' | 'offre') {
     setFeuilleOuverte(false);
-    router.push(`/(coach)/creer/${type}`);
+    // `as Href` : voir le commentaire equivalent dans app/index.tsx — route reelle, type de
+    // .expo/types/router.d.ts trop generique hors serveur de developpement.
+    router.push(`/(coach)/creer/${type}` as Href);
   }
 
   return (

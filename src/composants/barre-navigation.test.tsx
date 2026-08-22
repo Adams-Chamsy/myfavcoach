@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactTestRendererJSON } from 'react-test-renderer';
 
 import { FournisseurTheme } from '@/theme/fournisseur';
-import { taille, themes, weight } from '@/theme/tokens';
+import { font, taille, themes } from '@/theme/tokens';
 import {
   BarreNavigation,
   type ElementNavigation,
@@ -109,8 +109,8 @@ describe('BarreNavigation', () => {
     expect(traitActif).toBeTruthy();
     expect(traitsInactifs).toHaveLength(4);
 
-    expect(screen.getByText('Accueil').props.style.fontWeight).toBe(weight.bold);
-    expect(screen.getByText('Explorer').props.style.fontWeight).toBe(weight.semibold);
+    expect(screen.getByText('Accueil').props.style.fontFamily).toBe(font.uiBold);
+    expect(screen.getByText('Explorer').props.style.fontFamily).toBe(font.uiSemibold);
   });
 
   // Critere 4 (docs/ecrans/L0-01-coquille-client.md) : "VoiceOver annonce « Accueil, onglet,

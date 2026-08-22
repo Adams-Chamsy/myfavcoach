@@ -7,10 +7,6 @@ dist/
 web-build/
 expo-env.d.ts
 
-# page de demarrage generee par le serveur Expo tant qu'aucune route reelle
-# n'existe dans app/ (ecran "onboarding" d'expo-router, voir docs/dette.md)
-app/index.tsx
-
 # natif
 .kotlin/
 *.orig.*

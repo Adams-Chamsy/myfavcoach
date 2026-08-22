@@ -8,7 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useMouvementReduit, useTheme } from '@/theme/fournisseur';
-import { weight } from '@/theme/tokens';
+import { font } from '@/theme/tokens';
 
 export type OptionOnglet<Valeur extends string> = {
   valeur: Valeur;
@@ -114,7 +114,7 @@ export function Onglets<Valeur extends string>({
             <Text
               style={{
                 ...theme.texte.petit,
-                fontWeight: estActif ? weight.bold : weight.semibold,
+                fontFamily: estActif ? font.uiBold : font.uiSemibold,
                 color: estActif ? theme.couleur.texte.principal : theme.couleur.texte.secondaire,
               }}
             >

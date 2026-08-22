@@ -2,7 +2,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { Icone, type NomIcone } from '@/composants/icones';
 import { useTheme } from '@/theme/fournisseur';
-import { themes, weight } from '@/theme/tokens';
+import { font, themes } from '@/theme/tokens';
 
 export type ElementNavigation = {
   icone: NomIcone;
@@ -105,7 +105,7 @@ export function BarreNavigation({ variante, elements, paddingBas = 0 }: Propriet
               >
                 <Icone nom={element.icone} couleur={theme.couleur.marque.accentEncre} />
               </View>
-              <Text style={{ ...theme.texte.legende, fontWeight: weight.semibold, color: couleur }}>
+              <Text style={{ ...theme.texte.legende, fontFamily: font.uiSemibold, color: couleur }}>
                 {element.libelle}
               </Text>
             </Pressable>
@@ -147,7 +147,7 @@ export function BarreNavigation({ variante, elements, paddingBas = 0 }: Propriet
             <Text
               style={{
                 ...theme.texte.legende,
-                fontWeight: element.actif ? weight.bold : weight.semibold,
+                fontFamily: element.actif ? font.uiBold : font.uiSemibold,
                 color: couleur,
               }}
             >

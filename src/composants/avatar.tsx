@@ -1,7 +1,7 @@
 import { Text, View } from 'react-native';
 
 import { useTheme } from '@/theme/fournisseur';
-import { weight } from '@/theme/tokens';
+import { font } from '@/theme/tokens';
 
 export type TailleAvatar = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
@@ -64,9 +64,8 @@ export function Avatar({ nom, taille = 'md', pastille }: ProprietesAvatar) {
       >
         <Text
           style={{
-            fontFamily: theme.texte.corps.fontFamily,
+            fontFamily: font.uiBold,
             fontSize: tailleTexte,
-            fontWeight: weight.bold,
             color: theme.couleur.texte.surMarque,
           }}
           accessibilityElementsHidden
