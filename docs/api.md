@@ -4,29 +4,38 @@ Contrat entre l'application et le serveur. Il fait foi des deux côtés : ni le 
 serveur n'invente un champ. Toute évolution passe par une modification de ce fichier **avant**
 le code.
 
-Aucun nom de prestataire n'apparaît ici : ce contrat est le nôtre, les fournisseurs sont derrière.
+Le backend est Supabase (`CLAUDE.md` §2) : authentification via Supabase Auth, données via
+PostgREST protégées par RLS. Ce document décrit la **forme cible** des échanges — vocabulaire,
+pagination, format d'erreur, montants — pas un serveur applicatif maison : chaque section de §4
+à §14 précise en tête ce qui la sert (PostgREST direct, fonction de base Postgres, ou fonction
+distante à écrire). Conventions Supabase (migrations, schéma, sécurité) : `docs/backend.md`.
 
 ---
 
 ## 1. Conventions
 
-**Base** : `https://api.myfavcoach.fr/v1`. Le numéro de version est dans le chemin ; il ne
-change qu'en cas de rupture. Tout le reste est additif.
+**Base** : l'URL du projet Supabase (`EXPO_PUBLIC_SUPABASE_URL`), suffixée `/rest/v1` pour les
+données (PostgREST) et `/auth/v1` pour l'authentification (Supabase Auth). Pas de numéro de
+version dans le chemin : PostgREST n'en expose pas — une rupture de contrat sur une table se
+traite par une nouvelle vue ou une nouvelle fonction, jamais par une modification silencieuse
+d'une existante.
 
 **Format** : JSON UTF-8. Clés en `camelCase`, vocabulaire métier en français
-(`prixMensuelCentimes`, `statutVerification`).
+(`prixMensuelCentimes`, `statutVerification`) — porté par des vues et fonctions qui renomment les
+colonnes `snake_case` du schéma (`docs/backend.md` §4), jamais exposé tel quel côté client.
 
 **En-têtes obligatoires**
 
 | En-tête | Valeur |
 |---|---|
-| `Authorization` | `Bearer <jeton d'accès>` |
-| `X-Profil` | `client` ou `coach` — le profil sous lequel la requête est faite |
+| `Authorization` | `Bearer <jeton d'accès>` — le jeton de session Supabase Auth (`supabase-js`), jamais géré à la main |
 | `Accept-Language` | `fr-FR` |
-| `Idempotency-Key` | UUID, **obligatoire sur tout POST qui déplace de l'argent** |
+| `Idempotency-Key` | UUID, **obligatoire sur tout POST qui déplace de l'argent**. PostgREST seul ne déduplique rien : toute route qui porte cette exigence est nécessairement une fonction (de base ou distante), jamais un `INSERT` direct |
 
-Le serveur **revalide** que le profil demandé appartient au compte et qu'il a le droit sur la
-ressource. Le client n'est jamais l'autorité en matière d'autorisation.
+Le profil actif (`client` ou `coach`) n'est **pas** porté par un en-tête : c'est une colonne du
+compte côté serveur (`profilActif`, `docs/domaine.md` §3.1). Le serveur **revalide** toujours
+que le profil demandé appartient au compte et qu'il a le droit sur la ressource — le client
+n'est jamais l'autorité en matière d'autorisation, RLS en est le mécanisme.
 
 **Argent** : toujours un entier de centimes plus une devise.
 `{"montantCentimes": 4900, "devise": "EUR"}`. Jamais `49.00`.
@@ -72,22 +81,30 @@ livrées prêtes à afficher, avec leur unité. L'application ne recalcule rien.
 
 ## 2. Cycle d'authentification (L1)
 
-| Verbe | Chemin | Rôle |
-|---|---|---|
-| `POST` | `/auth/inscription` | crée un compte. Corps : `email`, `motDePasse`, `dateNaissance`. 422 si < 18 ans (`age_insuffisant`) |
-| `POST` | `/auth/verification-email` | `{ "jeton": "…" }` |
-| `POST` | `/auth/connexion` | → `jetonAcces` (15 min) + `jetonRafraichissement` (30 j, rotatif) |
-| `POST` | `/auth/rafraichir` | rotation ; l'ancien jeton est révoqué |
-| `POST` | `/auth/deconnexion` | révoque le jeton de rafraîchissement |
-| `POST` | `/auth/mot-de-passe/oubli` | réponse 202 constante, qu'il existe ou non |
-| `POST` | `/auth/mot-de-passe/reinitialisation` | |
+**Servi par :** Supabase Auth, via `supabase-js` — aucune route à écrire pour ce qui suit. Le
+tableau donne l'équivalence entre le geste et l'appel `supabase-js`, pas un contrat REST maison.
 
-Les jetons sont stockés dans le trousseau sécurisé de l'appareil (`expo-secure-store`),
-**jamais** dans un stockage ordinaire.
+| Geste | Appel `supabase-js` | Notes |
+|---|---|---|
+| Inscription | `auth.signUp({ email, password, options: { data: { dateNaissance } } })` | `dateNaissance` voyage en métadonnée de l'utilisateur. Le contrôle **≥ 18 ans** (422 `age_insuffisant`, `docs/domaine.md` §3.1) reste **à l'inscription**, comme documenté — le mécanisme exact (déclencheur sur `auth.users`, ou fonction dédiée) est un détail d'implémentation à trancher en L1, pas encore choisi ici |
+| Vérification de l'e-mail | gérée par Supabase (lien envoyé automatiquement) | rien à implémenter côté application au-delà de l'écran qui l'explique |
+| Connexion | `auth.signInWithPassword({ email, password })` | durée des jetons et rotation : réglages du tableau de bord, voir `docs/backend.md` §3 — pas de valeurs à coder en dur |
+| Rafraîchissement | automatique, géré par `supabase-js` | l'application ne l'appelle jamais explicitement en usage normal |
+| Déconnexion | `auth.signOut()` | révoque le jeton de rafraîchissement ; le dernier jeton d'accès émis reste valable jusqu'à son expiration — voir `docs/backend.md` §3, ce n'est pas immédiat |
+| Mot de passe oublié | `auth.resetPasswordForEmail(email)` | réponse constante côté Supabase, qu'un compte existe ou non pour cet e-mail |
+| Réinitialisation | `auth.updateUser({ password })`, après le lien reçu | |
+
+La session (jetons d'accès et de rafraîchissement) est stockée par `supabase-js` via son
+adaptateur de stockage ; côté application, cet adaptateur pointe vers le trousseau sécurisé de
+l'appareil (`expo-secure-store`), **jamais** un stockage ordinaire.
 
 ---
 
 ## 3. Compte et profils (L1)
+
+**Servi par :** PostgREST + politiques RLS, sauf `basculer_profil` et `creer_profil_coach` :
+fonctions de base (la bascule doit revalider l'appartenance du profil, la création de profil
+coach doit ouvrir le parcours de vérification dans la même transaction).
 
 | Verbe | Chemin | Notes |
 |---|---|---|
@@ -95,10 +112,10 @@ Les jetons sont stockés dans le trousseau sécurisé de l'appareil (`expo-secur
 | `PATCH` | `/moi` | courriel, téléphone |
 | `DELETE` | `/moi` | suppression : 202, purge à J+30, corps `{ "motif": "…" }` |
 | `POST` | `/moi/profils/client` | crée le profil client |
-| `POST` | `/moi/profils/coach` | crée le profil coach (ouvre le parcours de vérification) |
+| `POST` | `/moi/profils/coach` | crée le profil coach (ouvre le parcours de vérification) — fonction de base `creer_profil_coach` |
 | `PATCH` | `/moi/profils/client` | |
 | `PATCH` | `/moi/profils/coach` | |
-| `POST` | `/moi/profil-actif` | `{ "profil": "coach" }` — la bascule d'espace |
+| `POST` | `/moi/profil-actif` | `{ "profil": "coach" }` — la bascule d'espace, fonction de base `basculer_profil` |
 | `GET` | `/moi/consentements` | |
 | `PUT` | `/moi/consentements/{type}` | `{ "accorde": true, "version": "2026-08-01" }` |
 
@@ -122,6 +139,10 @@ Les jetons sont stockés dans le trousseau sécurisé de l'appareil (`expo-secur
 
 ## 4. Vérification du coach (L2)
 
+**Servi par :** Storage (pièces, URL signées). Les changements de statut passent par une
+fonction de base — l'examen est humain, hors application, mais l'écriture du résultat reste
+côté serveur.
+
 | Verbe | Chemin |
 |---|---|
 | `POST` | `/coach/verification/dossier` — dépôt initial |
@@ -135,6 +156,10 @@ direct vers un stockage chiffré via URL signée à usage unique, expiration 10 
 ---
 
 ## 5. Offres et profil public (L2)
+
+**Servi par :** PostgREST + politiques. La publication (`POST /coach/offres/{id}/publication`)
+est une fonction de base : elle vérifie coach vérifié et engagement humain non nul avant de
+faire passer le statut à `publiee`.
 
 | Verbe | Chemin | Notes |
 |---|---|---|
@@ -150,6 +175,9 @@ direct vers un stockage chiffré via URL signée à usage unique, expiration 10 
 ---
 
 ## 6. Découverte (L3)
+
+**Servi par :** fonction de base. Le classement (`docs/domaine.md` §5.6, score pondéré à six
+composantes) n'est pas un filtre PostgREST — c'est un calcul, écrit une fois en SQL.
 
 ```
 GET /recherche/coachs
@@ -193,6 +221,9 @@ s'il y a des résultats.
 ---
 
 ## 7. Abonnement et paiement (L4)
+
+**Servi par :** fonction distante à écrire (appels Stripe, réception des webhooks, gestion de
+l'idempotence — rien de tout ça ne s'exprime en PostgREST direct).
 
 Le paiement se fait en trois temps, et l'application ne voit jamais un numéro de carte.
 
@@ -245,6 +276,9 @@ vers l'application.** L'application apprend un changement d'état en interrogean
 
 ## 8. Revenus et versements (L5)
 
+**Servi par :** fonction distante (le versement lui-même passe par Stripe Connect). Les agrégats
+de lecture (`GET /coach/revenus`, `GET /coach/solde`) peuvent être de simples vues.
+
 | Verbe | Chemin |
 |---|---|
 | `GET` | `/coach/revenus?mois=2026-08` |
@@ -275,6 +309,9 @@ Les montants négatifs sont livrés négatifs : l'application n'invente pas de s
 
 ## 9. Contenu et séances (L6)
 
+**Servi par :** PostgREST, sauf publication (`POST /coach/programmes/{id}/publication`) et
+affectation (`POST /coach/programmes/{id}/affectation`) : fonctions de base.
+
 | Verbe | Chemin |
 |---|---|
 | `GET` | `/coach/programmes`, `POST /coach/programmes` |
@@ -293,6 +330,10 @@ Les montants négatifs sont livrés négatifs : l'application n'invente pas de s
 
 ## 10. Suivi (L7)
 
+**Servi par :** vues calculées en lecture (`docs/domaine.md` §5.2, assiduité). L'écriture des
+mesures (`POST /moi/mesures`) passe par PostgREST, avec contrôle du consentement santé
+(`docs/domaine.md` §3.12) porté par la politique RLS de la table.
+
 | Verbe | Chemin |
 |---|---|
 | `GET` | `/moi/suivi` — assiduité, série en cours, 8 semaines |
@@ -309,6 +350,9 @@ règle « aucun statut porté par la seule couleur » tienne d'un bout à l'autr
 
 ## 11. Messagerie (L8)
 
+**Servi par :** PostgREST + politiques. Interrogation périodique côté application (§ ci-dessous),
+pas de canal temps réel à écrire au jalon 1.
+
 | Verbe | Chemin |
 |---|---|
 | `GET` | `/conversations` |
@@ -323,6 +367,10 @@ Texte seul. Pas d'indicateur de saisie, pas de présence.
 ---
 
 ## 12. Agenda (L9)
+
+**Servi par :** PostgREST, sauf la réservation (`POST /reservations`) : fonction de base — la
+concurrence sur le créneau (deux réservations simultanées, erreur `creneau_pris`) doit être
+tranchée atomiquement côté serveur, pas par un simple `INSERT`.
 
 | Verbe | Chemin |
 |---|---|
@@ -339,6 +387,9 @@ pas et ne porte aucun flux.
 
 ## 13. Notifications (L10)
 
+**Servi par :** fonction distante (envoi effectif vers le service de notifications poussées,
+externe à Supabase).
+
 | Verbe | Chemin |
 |---|---|
 | `POST` | `/moi/appareils` — jeton poussé, plateforme |
@@ -352,6 +403,10 @@ Le corps d'une notification poussée ne contient **jamais** de donnée de santé
 ---
 
 ## 14. Conformité (L11)
+
+**Servi par :** PostgREST + politiques pour signalements et blocages. L'export de portabilité
+(`GET /moi/export`) est une fonction distante : elle rassemble des données de plusieurs tables et
+envoie un courriel avec un lien signé, hors de portée d'une requête PostgREST unique.
 
 | Verbe | Chemin |
 |---|---|

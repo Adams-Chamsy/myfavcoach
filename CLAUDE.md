@@ -29,30 +29,25 @@ données de santé. Rien n'est un prototype jetable.
 | Statut plateforme | Intermédiaire : le coach vend, la plateforme encaisse pour son compte |
 | Commission | 10 %, offerte les 90 premiers jours d'activité du coach |
 | Catalogue | **Nature unique** : toute offre inclut un engagement humain. « Programme seul » supprimé |
-| Paiement | Prestataire externe à comptes connectés. **Aucun achat in-app.** Carte + prélèvement SEPA |
+| Paiement | **Stripe Connect, modèle Express.** Mode test au jalon 1, aucune intégration avant L4. **Aucun achat in-app.** Carte + prélèvement SEPA |
 | Stack mobile | React Native + Expo, TypeScript strict, expo-router |
-| Backend | Plateforme assemblée, hébergement **région UE obligatoire** |
+| Backend | **Supabase**, région Paris (`eu-west-3`). Projets dev et prod distincts, plan gratuit en développement puis Pro avant L4 |
 | Identité | Un compte, deux profils optionnels (client, coach). Autorisation par profil |
 | Âge minimum | 18 ans |
 | Langue / devise | fr-FR uniquement, EUR, fuseau Europe/Paris |
 | Périmètre | `docs/perimetre.md` fait foi, écran par écran |
-| Prestataire de paiement | Stripe, comptes connectés. Seule la clé publiable (`pk_...`) vit côté app |
-| Plateforme backend | Supabase. Seules l'URL du projet et la clé anon vivent côté app |
 
-Ces deux choix, longtemps ouverts, sont tranchés : Stripe et Supabase, déclarés dans
-`.env.exemple` (clés vides) / `.env` (local, ignoré par git, jamais commité). Ce qui ne change
-pas pour autant : aucun SDK Stripe ni Supabase ne s'importe en dehors de
-`src/services/*/port.ts` — l'abstraction reste la même, seul le nom qu'elle cachait est
-maintenant public. Seules les clés **publiables** (`EXPO_PUBLIC_*` : clé anon, clé publique
-Stripe) vivent dans l'application ; toute clé secrète (`sk_test_`, `sk_live_`, `service_role`)
-reste côté serveur — jamais dans le dépôt ni dans le paquet mobile, règle imposée par ESLint
-(`eslint.config.js`).
+RLS (Row Level Security) activée automatiquement à la création du projet Supabase, exposition
+automatique des nouvelles tables par l'API désactivée — deux réglages fixés une fois pour
+toutes, irréversibles. Conventions détaillées (nommage des migrations, grants, politiques,
+séparation dev/prod, rejeu complet des migrations) : `docs/backend.md`.
 
-Projet Supabase hébergé à Paris (`eu-west-3`) : satisfait la ligne « Backend » ci-dessus. Deux
-réglages fixés à la création du projet, irréversibles : RLS (Row Level Security) activé
-automatiquement sur chaque table, exposition automatique des nouvelles tables par l'API
-désactivée. Deux projets Supabase distincts existent, un pour le développement et un pour la
-production : une migration ne se teste jamais d'abord sur prod.
+Clés déclarées dans `.env.exemple` (vides) / `.env` (local, ignoré par git, jamais commité).
+Supabase et Stripe restent des **adaptateurs**, jamais importés depuis un écran :
+`src/services/auth/port.ts` et `src/services/donnees/port.ts` sont les seuls points d'entrée
+côté application. Seules les clés **publiables** (`EXPO_PUBLIC_*` : clé anon, clé publique
+Stripe) vivent dans le paquet mobile ; toute clé secrète (`sk_test_`, `sk_live_`,
+`service_role`) reste côté serveur — interdiction imposée par ESLint (`eslint.config.js`).
 
 ---
 
@@ -71,6 +66,7 @@ et jamais les maquettes.
 | Contenu et critères d'acceptation d'un écran | `docs/ecrans/NN-nom.md` |
 | Rendu visuel de référence | `maquettes/*.html` — **lecture seule, jamais modifié** |
 | Jeu de démonstration (`src/fixtures/`) | dérive de `docs/domaine.md` §6 ; le détail visuel se trouve dans `maquettes/` |
+| Conventions Supabase (migrations, politiques RLS, dev/prod) | `docs/backend.md` |
 
 `design/tokens.json` est **le seul** fichier de tokens du dépôt. `src/theme/tokens.ts` et
 `src/theme/tokens.css` sont générés par `npm run tokens` et **ne se modifient jamais à la main**.

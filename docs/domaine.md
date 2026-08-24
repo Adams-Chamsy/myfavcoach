@@ -77,7 +77,10 @@ Conversation ── Message        Signalement    Blocage    Consentement
   chaque montant. Les prix affichés sont TTC.
 - **Dates** : stockées en UTC, ISO 8601. Affichées en Europe/Paris. Une « journée » métier
   commence à 00:00 Europe/Paris.
-- **Identifiants** : UUID v7 générés côté serveur. Jamais d'entier auto-incrémenté exposé.
+- **Identifiants** : UUID v4, portés par `auth.users` (Supabase Auth) pour les comptes, et par
+  défaut Postgres (`gen_random_uuid()`, également v4) pour le reste. Jamais deux générations
+  différentes dans le même schéma : mélanger v4 et v7 sans bénéfice réel coûterait plus en
+  confusion qu'il ne rapporterait en tri chronologique. Jamais d'entier auto-incrémenté exposé.
 - **Suppression** : aucune suppression physique immédiate. `supprimeLe` horodaté, purge réelle
   à 30 jours, sauf obligation comptable (factures : 10 ans).
 - **Historique d'argent** : les entités `Facture`, `Versement` et `LigneCommission` sont
@@ -96,11 +99,18 @@ Conversation ── Message        Signalement    Blocage    Consentement
 | `id` | UUID | |
 | `email` | texte | unique, vérifié |
 | `emailVerifieLe` | date? | |
-| `motDePasseHache` | texte | argon2id |
 | `dateNaissance` | date | **≥ 18 ans**, contrôlé à l'inscription |
 | `telephone` | texte? | requis avant de devenir coach |
 | `profilActif` | `client` \| `coach` | dernier espace utilisé |
 | `creeLe`, `supprimeLe` | date | |
+
+Pas de champ pour le mot de passe : l'identifiant et le secret vivent dans `auth.users`
+(Supabase Auth), hors de ce schéma. Le hachage n'est ni notre colonne ni notre choix — Supabase
+Auth hache en bcrypt, sel aléatoire (documentation Supabase). Argon2id est abandonné pour la
+même raison : ce choix ne nous appartient plus. Ce n'est pas une perte réelle — bcrypt salé reste
+l'une des trois fonctions de hachage de mot de passe reconnues (avec Argon2 et scrypt) — le gain
+qui compte est ailleurs : la vérification des mots de passe déjà divulgués (Have I Been Pwned),
+un réglage à activer, pas un algorithme à choisir (voir `docs/dette.md`).
 
 États : `en_attente_verification` → `actif` → `suspendu` → `supprime`.
 
