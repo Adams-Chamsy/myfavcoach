@@ -36,10 +36,23 @@ données de santé. Rien n'est un prototype jetable.
 | Âge minimum | 18 ans |
 | Langue / devise | fr-FR uniquement, EUR, fuseau Europe/Paris |
 | Périmètre | `docs/perimetre.md` fait foi, écran par écran |
+| Prestataire de paiement | Stripe, comptes connectés. Seule la clé publiable (`pk_...`) vit côté app |
+| Plateforme backend | Supabase. Seules l'URL du projet et la clé anon vivent côté app |
 
-Deux choix restent ouverts et **ne bloquent pas le lot L0** : le nom du prestataire de paiement
-et celui de la plateforme backend. Tant qu'ils ne sont pas tranchés, aucun code ne les nomme :
-tout passe par une interface définie côté application (`src/services/*/port.ts`).
+Ces deux choix, longtemps ouverts, sont tranchés : Stripe et Supabase, déclarés dans
+`.env.exemple` (clés vides) / `.env` (local, ignoré par git, jamais commité). Ce qui ne change
+pas pour autant : aucun SDK Stripe ni Supabase ne s'importe en dehors de
+`src/services/*/port.ts` — l'abstraction reste la même, seul le nom qu'elle cachait est
+maintenant public. Seules les clés **publiables** (`EXPO_PUBLIC_*` : clé anon, clé publique
+Stripe) vivent dans l'application ; toute clé secrète (`sk_test_`, `sk_live_`, `service_role`)
+reste côté serveur — jamais dans le dépôt ni dans le paquet mobile, règle imposée par ESLint
+(`eslint.config.js`).
+
+Projet Supabase hébergé à Paris (`eu-west-3`) : satisfait la ligne « Backend » ci-dessus. Deux
+réglages fixés à la création du projet, irréversibles : RLS (Row Level Security) activé
+automatiquement sur chaque table, exposition automatique des nouvelles tables par l'API
+désactivée. Deux projets Supabase distincts existent, un pour le développement et un pour la
+production : une migration ne se teste jamais d'abord sur prod.
 
 ---
 
