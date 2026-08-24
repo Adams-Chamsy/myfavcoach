@@ -16,6 +16,16 @@ const asyncStorageMessage =
   'src/services/trousseau/trousseau.ts (expo-secure-store). Voir CLAUDE.md §10 et ' +
   'docs/ecrans/L0-04-demarrage.md, critere 6.';
 
+// Cles secretes (jamais publiables) des prestataires : une cle secrete Stripe (sk_test_/
+// sk_live_) ou une cle service_role Supabase donne un acces total, cote serveur. Le paquet
+// mobile n'expose que ce que l'appareil du client peut lire : aucune des deux ne doit jamais
+// s'y trouver, meme en valeur d'exemple. Seules les cles publiables (EXPO_PUBLIC_*, cle anon
+// Supabase, cle publique Stripe pk_...) sont a leur place ici.
+const CLE_SECRETE = String.raw`^(sk_test_|sk_live_|service_role)`;
+const cleSecreteMessage =
+  'Cle secrete interdite dans le paquet mobile (sk_test_/sk_live_/service_role) : ces cles ' +
+  "restent cote serveur, jamais dans l'application. Voir CLAUDE.md §10.";
+
 module.exports = [
   {
     ignores: [
@@ -54,6 +64,14 @@ module.exports = [
         {
           selector: `CallExpression[callee.object.name='AsyncStorage'] TemplateElement[value.cooked=/${CLE_SENSIBLE}/i]`,
           message: asyncStorageMessage,
+        },
+        {
+          selector: `Literal[value=/${CLE_SECRETE}/]`,
+          message: cleSecreteMessage,
+        },
+        {
+          selector: `TemplateElement[value.cooked=/${CLE_SECRETE}/]`,
+          message: cleSecreteMessage,
         },
       ],
     },
