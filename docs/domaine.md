@@ -232,6 +232,10 @@ Le consentement `donneesSante` conditionne l'écriture de `MesureCorporelle` et 
 `ressentiEffort`. **Son retrait ne supprime pas les données** : il bloque l'écriture et déclenche
 une proposition d'effacement.
 
+**Journal d'ajout seul** : un changement de consentement crée toujours une nouvelle ligne
+(`accorde` reflétant le nouvel état), jamais une modification d'une ligne existante — la preuve
+d'un consentement passé doit rester reconstituable (`supabase/migrations/0001_creer_identite.sql`).
+
 ### 3.13 Signalement / Blocage
 
 `Signalement` : `auteur`, `cible` (profil, message, avis, offre), `motif` (liste figée),

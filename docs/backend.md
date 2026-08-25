@@ -91,10 +91,36 @@ temps :
   opération donnée refuse cette opération par défaut (RLS activée à la création, voir
   `CLAUDE.md` §2) — c'est le comportement voulu, jamais une politique « autoriser tout » posée
   pour faire disparaître un blocage.
+- **Toute vue du schéma public est déclarée `WITH (security_invoker = true)`, sans exception.**
+  Sans cette option, une vue s'exécute avec les droits de son propriétaire et contourne les
+  politiques RLS, silencieusement. Vérifié par balayage (`src/test/vues-security-invoker.test.ts`,
+  branché dans `npm run verif`), pas seulement à l'œil : c'est la troisième vue, dans huit mois,
+  qui posera le problème si la règle ne repose que sur la mémoire de qui l'a écrite la première fois.
 
 ---
 
-## 5. Ce qui ne quitte jamais le serveur
+## 5. RLS activée sans politique : ce que chaque opération rend
+
+Une table avec RLS activée et zéro politique ne se comporte pas pareil selon l'opération —
+en particulier, "pas de politique" ne veut pas dire "tout échoue de la même façon" :
+
+| Opération | Sans politique |
+|---|---|
+| `SELECT` | Liste vide, **silencieusement** — jamais une erreur |
+| `INSERT` | **Rejet explicite** (`new row violates row-level security policy`) |
+| `UPDATE` | Zéro ligne affectée, **silencieusement** — jamais une erreur |
+| `DELETE` | Zéro ligne affectée, **silencieusement** — jamais une erreur |
+
+Seul `INSERT` prévient. La lecture et les deux autres écritures échouent en silence : un test
+qui vérifie "cette opération est refusée" doit donc vérifier des résultats différents selon le
+verbe (liste/nombre de lignes affectées à zéro pour `SELECT`/`UPDATE`/`DELETE`, une erreur levée
+pour `INSERT`) — pas la même assertion partout. Vérifié en conditions réelles (Postgres local)
+avant `0001_creer_identite.sql` ; `service_role` contourne RLS entièrement et n'est concerné par
+aucune ligne de ce tableau.
+
+---
+
+## 6. Ce qui ne quitte jamais le serveur
 
 - **La clé `service_role` n'entre jamais dans l'application mobile**, ni en dur, ni via une
   variable d'environnement `EXPO_PUBLIC_*`, ni dans un journal. Elle contourne RLS entièrement :

@@ -40,3 +40,6 @@ yarn-error.*
 
 # couverture de tests
 coverage/
+
+# cache local de la CLI Supabase
+supabase/.temp/

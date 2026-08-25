@@ -93,14 +93,15 @@ describe('secrets interdits côté application', () => {
   // ne peut pas fuir par le dépôt.
   //
   // Chaque exception est nommée une par une : ajouter une clé ici est un choix humain, jamais
-  // un motif générique qui laisserait passer un cinquième fichier sans que personne le décide.
-  // Les cinq ci-dessous nomment "service_role" pour avertir qu'elle est interdite — la doc qui
+  // un motif générique qui laisserait passer un septième fichier sans que personne le décide.
+  // Les six ci-dessous nomment "service_role" pour avertir qu'elle est interdite — la doc qui
   // nomme le danger n'est pas le danger :
-  //   - .env.exemple       : le commentaire qui explique le préfixe EXPO_PUBLIC_
-  //   - CLAUDE.md          : §2, la règle elle-même
-  //   - docs/backend.md    : §5, "ce qui ne quitte jamais le serveur"
-  //   - docs/prompts/L1.md : historique du prompt qui a posé cette règle
-  //   - eslint.config.js   : le motif de la règle ESLint qui interdit la chaîne dans le code
+  //   - .env.exemple                                 : le commentaire qui explique le préfixe EXPO_PUBLIC_
+  //   - CLAUDE.md                                     : §2, la règle elle-même
+  //   - docs/backend.md                               : §6, "ce qui ne quitte jamais le serveur"
+  //   - docs/prompts/L1.md                            : historique du prompt qui a posé cette règle
+  //   - eslint.config.js                              : le motif de la règle ESLint qui interdit la chaîne dans le code
+  //   - supabase/migrations/0001_creer_identite.sql   : commentaires expliquant pourquoi aucun grant n'est posé pour ce rôle
   describe('clé service_role', () => {
     const EXCEPTIONS = new Set([
       '.env.exemple',
@@ -108,6 +109,7 @@ describe('secrets interdits côté application', () => {
       'docs/backend.md',
       'docs/prompts/L1.md',
       'eslint.config.js',
+      'supabase/migrations/0001_creer_identite.sql',
     ]);
     const fichiers = contenuDe(fichiersSuivisParGit().filter((chemin) => !EXCEPTIONS.has(chemin)));
 
