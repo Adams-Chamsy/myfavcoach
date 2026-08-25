@@ -69,6 +69,11 @@ au lot L2.** Ne pas l'esquisser ici.
 
 - **La création du profil coach est atomique** : profil créé et profil actif changé, ou rien.
   Un profil coach créé sans bascule laisserait l'utilisateur devant un espace qu'il ne voit pas.
+  La fonction serveur qui porte cette création (`creer_profil_coach`) doit être `SECURITY
+  DEFINER` : au moment où elle s'exécute, l'appelant est encore en espace client — il n'a pas
+  encore de profil coach vers lequel basculer — et la politique d'insertion de `profils_coach`
+  (`supabase/migrations/0002_politiques.sql`) refuse justement un `INSERT` fait avec les seuls
+  droits d'un compte qui n'est pas encore coach. Vérifié en conditions réelles avant ce lot.
 - Le prénom, le nom et la photo sont **repris du profil client** s'il existe, sans redemander.
   S'il n'existe pas (arrivée par la porte coach de L1-01), l'écran demande d'abord prénom et
   nom, puis les deux champs ci-dessus.

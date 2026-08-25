@@ -96,6 +96,15 @@ temps :
   politiques RLS, silencieusement. Vérifié par balayage (`src/test/vues-security-invoker.test.ts`,
   branché dans `npm run verif`), pas seulement à l'œil : c'est la troisième vue, dans huit mois,
   qui posera le problème si la règle ne repose que sur la mémoire de qui l'a écrite la première fois.
+- **Toute fonction du schéma public appelable directement est suivie d'un
+  `REVOKE EXECUTE ... FROM PUBLIC`, puis d'un `GRANT EXECUTE` explicite aux seuls rôles qui en
+  ont besoin.** Postgres accorde `EXECUTE` à `PUBLIC` à la création d'une fonction — une
+  fonction sans ce `REVOKE` est donc appelable par `anon`, c'est-à-dire par quiconque possède la
+  clé publique de l'application (`.env.exemple`). Exception structurelle, pas de confort : une
+  fonction déclencheur (`RETURNS TRIGGER`) n'a pas besoin de ce `REVOKE`, Postgres refuse déjà
+  de l'exécuter hors d'un déclencheur, quel que soit le rôle appelant. Vérifié par balayage
+  (`src/test/fonctions-execute-revoque.test.ts`, branché dans `npm run verif`), même raison que
+  pour `security_invoker` ci-dessus.
 
 ---
 

@@ -86,7 +86,11 @@ Conversation ── Message        Signalement    Blocage    Consentement
 - **Historique d'argent** : les entités `Facture`, `Versement` et `LigneCommission` sont
   **immuables**. Une correction crée une nouvelle ligne, jamais une modification.
 - **Autorisation** : chaque requête porte le profil actif. Une donnée du profil client est
-  inaccessible depuis le profil coach du même compte, et réciproquement.
+  inaccessible depuis le profil coach du même compte, et réciproquement. La lecture croisée des
+  profils eux-mêmes (`ProfilClient`, `ProfilCoach`) est tolérée parce qu'ils ne portent que de
+  l'identité — qui existe, quel nom, quel statut. Toute table portant du **contenu** (mesures,
+  abonnements, messages, séances, agenda) applique cette règle au sens strict, lecture comprise,
+  et le choix inverse doit être justifié table par table.
 
 ---
 
