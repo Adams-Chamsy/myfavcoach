@@ -15,11 +15,7 @@ describe('Badge', () => {
 
     expect(screen.getByText('À jour')).toBeTruthy();
   });
-
-  // Jamais execute : ce test existe pour son erreur de compilation, verifiee par
-  // `npm run typecheck`, pas par jest.
-  it.skip('sans libelle ne compile pas', () => {
-    // @ts-expect-error libelle est obligatoire dans ProprietesBadge
-    void (<Badge statut="succes" />);
-  });
 });
+
+// Le cas "sans libellé ne compile pas" vit dans badge.compilation.tsx, pas ici : une erreur de
+// compilation ne s'exécute jamais, donc jamais dans Jest — voir ce fichier pour le pourquoi.

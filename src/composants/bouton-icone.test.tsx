@@ -47,11 +47,7 @@ describe('BoutonIcone', () => {
     expect(style.minWidth).toBeGreaterThanOrEqual(taille.tapMin);
     expect(style.minHeight).toBeGreaterThanOrEqual(taille.tapMin);
   });
-
-  // Jamais execute : ce test existe pour son erreur de compilation, verifiee par
-  // `npm run typecheck`, pas par jest.
-  it.skip('sans accessibilityLabel ne compile pas', () => {
-    // @ts-expect-error accessibilityLabel est obligatoire dans ProprietesBoutonIcone
-    void (<BoutonIcone nom="ajouter" onPress={() => {}} />);
-  });
 });
+
+// Le cas "sans accessibilityLabel ne compile pas" vit dans bouton-icone.compilation.tsx, pas
+// ici : une erreur de compilation ne s'exécute jamais, donc jamais dans Jest.
