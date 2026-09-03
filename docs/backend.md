@@ -138,3 +138,31 @@ aucune ligne de ce tableau.
 - Toute logique qui a besoin de cette clé (tâche planifiée, appel à un prestataire externe,
   opération inter-tables qui doit ignorer RLS) s'écrit dans une fonction distante (Supabase Edge
   Function), jamais dans le code de l'application.
+
+---
+
+## 7. Fonctions SECURITY DEFINER : la politique ne protège que le chemin direct
+
+Une fonction `SECURITY DEFINER` s'exécute avec les privilèges de son propriétaire (le rôle de
+migration), pas avec ceux de l'appelant — elle **contourne RLS** pour l'écriture qu'elle
+effectue, exactement comme `service_role` le fait pour toute la base. `basculer_profil` le fait
+déjà pour `comptes.profil_actif` (colonne sans aucun `GRANT UPDATE` pour `authenticated`) ;
+`creer_profil_coach` (lot L2) le fera pour `profils_coach` — au moment de son appel, l'appelant
+est encore en espace client, donc `profils_coach_insert_espace_coach` refuserait l'insertion
+s'il agissait avec ses seuls droits (voir `supabase/migrations/0002_politiques.sql`).
+
+Conséquence trouvée en marchant, pas anticipée (`docs/prompts/L1.md`, cycle rouge/vert de
+P1.5 ; détail dans `docs/dette.md`) : **dès qu'une écriture légitime passe par une fonction
+`SECURITY DEFINER`, la politique RLS de la table correspondante ne ferme plus que les chemins
+DIRECTS** — un `INSERT`/`UPDATE` PostgREST fait avec les seuls droits de l'appelant. Elle ne dit
+plus rien du chemin normal, qui passe par la fonction et la contourne. Les deux mécanismes
+restent nécessaires (la politique ferme la porte de derrière, la fonction ouvre celle de devant
+selon ses propres règles), mais c'est la **fonction** qui porte la règle métier réelle — et
+c'est donc elle qu'il faut tester, pas seulement la politique qu'elle traverse.
+
+**Un test de politique RLS ne prouve jamais le comportement d'une fonction `SECURITY DEFINER`
+qui la contourne.** Chaque fonction `SECURITY DEFINER` a besoin de ses propres tests de refus
+(mauvais appelant, condition métier non remplie...) : ils ne se déduisent pas des tests de
+politique de la table qu'elle écrit. Conséquence concrète pour le lot L2 : `creer_profil_coach`
+devra avoir ses propres tests de refus (par exemple : refus si un profil coach existe déjà pour
+ce compte), indépendants du banc RLS de `profils_client`/`profils_coach`.
