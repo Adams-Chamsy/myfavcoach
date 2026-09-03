@@ -1,3 +1,19 @@
+# npm run test:rls (banc RLS, src/test/rls.banc.ts) n'est PAS une etape de cette CI, alors
+# qu'il fait partie de `npm run verif` en local. Deux raisons, pas un oubli :
+#   - il ecrit (cree ET supprime des comptes reels) dans le projet Supabase de DEVELOPPEMENT,
+#     partage avec l'usage manuel du developpeur ; deux executions simultanees (deux jobs CI,
+#     ou une CI en meme temps qu'un `npm run test:rls` local) se marcheraient dessus sur les
+#     memes comptes.
+#   - il a besoin de la clef secrete d'administration de ce projet (SUPABASE_CLE_ADMIN_TEST),
+#     qui ne vit que dans .env.test.local (local, ignore par git), jamais dans les secrets de
+#     ce depot.
+# Un projet Supabase dedie aux tests reglerait les deux (docs/dette.md, echeance L4). Tant que
+# ce projet n'existe pas, NE RAJOUTE PAS test:rls ici : ce ne serait pas reparer un oubli.
+#
+# Toute AUTRE etape ajoutee a npm run verif (package.json) doit etre ajoutee ici aussi, dans le
+# meme ordre. src/test/verif-ci-synchronisee.test.ts le verifie a chaque `npm test` : il compare
+# la liste des sous-commandes de "verif" a la liste des etapes ci-dessous (test:rls excepte) et
+# echoue si elles divergent — pas seulement un rappel, un test qui casse.
 name: Vérification
 
 on:
@@ -14,4 +30,15 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run verif
+      - name: Tokens
+        run: npm run tokens
+      - name: Lint
+        run: npm run lint
+      - name: Vérification des types
+        run: npm run typecheck
+      - name: Tests
+        run: npm test
+      - name: Accessibilité
+        run: npm run test:a11y
+      - name: Serveur de développement
+        run: npm run verif:serveur

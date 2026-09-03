@@ -93,15 +93,19 @@ describe('secrets interdits côté application', () => {
   // ne peut pas fuir par le dépôt.
   //
   // Chaque exception est nommée une par une : ajouter une clé ici est un choix humain, jamais
-  // un motif générique qui laisserait passer un septième fichier sans que personne le décide.
-  // Les six ci-dessous nomment "service_role" pour avertir qu'elle est interdite — la doc qui
-  // nomme le danger n'est pas le danger :
+  // un motif générique qui laisserait passer un dixième fichier sans que personne le décide.
+  // Les neuf ci-dessous nomment "service_role" pour avertir qu'elle est interdite, ou l'utilisent
+  // légitimement côté outillage de test ou de migration (jamais dans l'application) — la doc
+  // qui nomme le danger n'est pas le danger :
   //   - .env.exemple                                 : le commentaire qui explique le préfixe EXPO_PUBLIC_
   //   - CLAUDE.md                                     : §2, la règle elle-même
   //   - docs/backend.md                               : §6, "ce qui ne quitte jamais le serveur"
   //   - docs/prompts/L1.md                            : historique du prompt qui a posé cette règle
   //   - eslint.config.js                              : le motif de la règle ESLint qui interdit la chaîne dans le code
   //   - supabase/migrations/0001_creer_identite.sql   : commentaires expliquant pourquoi aucun grant n'est posé pour ce rôle
+  //   - supabase/migrations/0003_accorder_service_role.sql : corrige cette hypothèse — les GRANT que ce rôle nécessite réellement sur ce projet, justifiés ligne à ligne
+  //   - supabase/config.toml                          : commentaire généré par `supabase init`, décrivant les rôles de la Data API
+  //   - src/test/rls.banc.ts                          : le nom de variable (SERVICE_ROLE_KEY) apparaît pour préparer le banc ; sa valeur, jamais écrite ici, est lue depuis .env.test.local (ignoré par git) — jamais dans l'application
   describe('clé service_role', () => {
     const EXCEPTIONS = new Set([
       '.env.exemple',
@@ -110,6 +114,9 @@ describe('secrets interdits côté application', () => {
       'docs/prompts/L1.md',
       'eslint.config.js',
       'supabase/migrations/0001_creer_identite.sql',
+      'supabase/migrations/0003_accorder_service_role.sql',
+      'supabase/config.toml',
+      'src/test/rls.banc.ts',
     ]);
     const fichiers = contenuDe(fichiersSuivisParGit().filter((chemin) => !EXCEPTIONS.has(chemin)));
 

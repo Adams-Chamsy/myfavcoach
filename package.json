@@ -10,8 +10,10 @@
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests",
     "test:a11y": "jest src/test/accessibilite.test.tsx --verbose",
+    "test:rls": "jest --config jest.rls.config.js --testTimeout=30000 --verbose",
+    "test:rls:nettoyage": "node scripts/nettoyer-comptes-banc-rls.mjs",
     "verif:serveur": "node scripts/verifier-serveur-dev.mjs",
-    "verif": "npm run tokens && npm run lint && npm run typecheck && npm test && npm run test:a11y && npm run verif:serveur"
+    "verif": "npm run tokens && npm run lint && npm run typecheck && npm test && npm run test:a11y && npm run test:rls && npm run verif:serveur"
   },
   "dependencies": {
     "@expo-google-fonts/instrument-serif": "^0.4.1",
