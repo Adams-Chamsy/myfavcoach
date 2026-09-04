@@ -19,8 +19,15 @@ import Verification from '../../app/(public)/verification';
 import Connexion from '../../app/(public)/connexion';
 import MotDePasseOublie from '../../app/(public)/mot-de-passe-oublie';
 import NouveauMotDePasse from '../../app/(public)/nouveau-mot-de-passe';
+import OnboardingIdentite from '../../app/(onboarding)/1-identite';
+import OnboardingObjectifs from '../../app/(onboarding)/2-objectifs';
+import OnboardingPoids from '../../app/(onboarding)/3-poids';
+import OnboardingCestParti from '../../app/(onboarding)/4-cest-parti';
+import { objectifsOnboarding, rythmesOnboarding } from '@/fixtures/demonstration';
+import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
+import { creerFauxPortDonnees } from '@/services/donnees/faux';
 import { FournisseurTheme } from '@/theme/fournisseur';
 import { taille, themes } from '@/theme/tokens';
 import { contraste, melangerCouleur } from './contraste';
@@ -324,7 +331,82 @@ const CORPUS: EntreeCorpus[] = [
   },
 ];
 
+// Les quatre écrans d'onboarding (P1.11) ont besoin d'une session VÉRIFIÉE ET connectée
+// (useDonnees() en dépend, via useSession()) — contrairement aux écrans publics ci-dessus, qui
+// se rendent sans aucune session. inscrire()/connecter() sont asynchrones (même en mémoire) :
+// préparés une seule fois dans un beforeAll, jamais dans creerElement() lui-même (synchrone,
+// appelé à chaque passe de thème).
+let portAuthOnboarding: ReturnType<typeof creerFauxPortAuth>;
+let portDonneesOnboarding: ReturnType<typeof creerFauxPortDonnees>;
+
+async function preparerSessionOnboarding() {
+  portAuthOnboarding = creerFauxPortAuth();
+  await portAuthOnboarding.inscrire('camille@exemple.fr', 'bon-mot-de-passe', '2000-01-01');
+  portAuthOnboarding.verifierEmailPourTest('camille@exemple.fr');
+  await portAuthOnboarding.connecter('camille@exemple.fr', 'bon-mot-de-passe');
+
+  // Un profil déjà bien rempli : les étapes 2 à 4 ont ainsi un contenu réel à analyser (chips
+  // sélectionnées, récapitulatif rempli), pas seulement leur état vide.
+  portDonneesOnboarding = creerFauxPortDonnees();
+  await portDonneesOnboarding.creerProfilClient('Camille', 'Dupont');
+  await portDonneesOnboarding.enregistrerObjectifsEtRythme(
+    [objectifsOnboarding[0].cle, objectifsOnboarding[1].cle],
+    rythmesOnboarding[1].cle,
+  );
+  await portDonneesOnboarding.enregistrerPointDeDepart({
+    consentementAccorde: true,
+    versionConsentement: '2026-09-04',
+    poidsDepartGrammes: 70500,
+    poidsCibleGrammes: 65000,
+  });
+}
+
+CORPUS.push(
+  {
+    nom: 'app/(onboarding)/1-identite.tsx',
+    creerElement: () => (
+      <FournisseurSession key="onboarding-1" port={creerFauxPortAuth()}>
+        <FournisseurDonnees port={creerFauxPortDonnees()}>
+          <OnboardingIdentite />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(onboarding)/2-objectifs.tsx',
+    creerElement: () => (
+      <FournisseurSession key="onboarding-2" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <OnboardingObjectifs />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(onboarding)/3-poids.tsx',
+    creerElement: () => (
+      <FournisseurSession key="onboarding-3" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <OnboardingPoids />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(onboarding)/4-cest-parti.tsx',
+    creerElement: () => (
+      <FournisseurSession key="onboarding-4" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <OnboardingCestParti />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+);
+
 describe('accessibilité automatisée (npm run test:a11y)', () => {
+  beforeAll(preparerSessionOnboarding);
+
   it.each(THEMES_A_VERIFIER)(
     'respecte le contraste, la taille des cibles tactiles et les libellés d’icônes sur toute la galerie et les écrans des coquilles — thème %s',
     async (themeForce) => {

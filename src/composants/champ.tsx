@@ -8,7 +8,10 @@ import { useTheme } from '@/theme/fournisseur';
 // majuscule automatique ni correction (docs/ecrans/L1-02-creation-compte.md, "Adresse e-mail").
 // "motDePasse" : masque par defaut, bouton oeil dans une cible de 44 pour reveler
 // (docs/ecrans/L1-02-creation-compte.md, "Mot de passe | Champ masque, bouton oeil").
-export type TypeChamp = 'texte' | 'email' | 'motDePasse';
+// "decimal" : clavier numerique avec separateur decimal (docs/ecrans/L1-05-onboarding-client.md,
+// etape 3/4 : "poids... en kilogrammes avec une decimale") — Champ ne filtre ni ne parse la
+// saisie, juste le clavier ; c'est a l'ecran appelant de valider le format.
+export type TypeChamp = 'texte' | 'email' | 'motDePasse' | 'decimal';
 
 export type ProprietesChamp = {
   libelle: string;
@@ -107,7 +110,9 @@ export const Champ = forwardRef<TextInput, ProprietesChamp>(function Champ(
           editable={!desactive}
           accessibilityLabel={nomAccessible}
           accessibilityState={{ disabled: desactive }}
-          keyboardType={type === 'email' ? 'email-address' : 'default'}
+          keyboardType={
+            type === 'email' ? 'email-address' : type === 'decimal' ? 'decimal-pad' : 'default'
+          }
           autoCapitalize={type === 'email' || estMotDePasse ? 'none' : 'sentences'}
           autoCorrect={type === 'email' ? false : true}
           secureTextEntry={estMotDePasse && !motDePasseVisible}

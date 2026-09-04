@@ -62,6 +62,7 @@ describe('app/(public)/_layout.tsx — règle 7 (docs/prompts/L1.md, P1.10)', ()
     portDonnees.definirEtatProfilsPourTest({
       profilActif: 'client',
       clientExiste: true,
+      clientOnboardingEtape: 5,
       coachExiste: false,
     });
 

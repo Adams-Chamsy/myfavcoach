@@ -85,11 +85,12 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       });
     });
 
-    it('renvoie vers (client)/accueil avec une session vérifiée et un profil client réel', async () => {
+    it('renvoie vers (client)/accueil avec une session vérifiée et un profil client réel, onboarding terminé', async () => {
       const session: SessionAuth = { ...sessionNonVerifiee(), emailVerifie: true };
       const profils: EtatProfils = {
         profilActif: 'client',
         clientExiste: true,
+        clientOnboardingEtape: 5,
         coachExiste: false,
       };
       const portDonnees = creerFauxPortDonnees();
@@ -107,7 +108,12 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
     // profil coach).
     it('renvoie vers (coach)/pilotage avec une session vérifiée et un profil coach réel', async () => {
       const session: SessionAuth = { ...sessionNonVerifiee(), emailVerifie: true };
-      const profils: EtatProfils = { profilActif: 'coach', clientExiste: false, coachExiste: true };
+      const profils: EtatProfils = {
+        profilActif: 'coach',
+        clientExiste: false,
+        clientOnboardingEtape: null,
+        coachExiste: true,
+      };
       const portDonnees = creerFauxPortDonnees();
       portDonnees.definirEtatProfilsPourTest(profils);
 
@@ -118,12 +124,12 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       });
     });
 
-    it('renvoie provisoirement vers (client)/accueil avec une session vérifiée mais aucun profil réel', async () => {
+    it("renvoie vers l'étape 1 de l'onboarding avec une session vérifiée mais aucun profil réel", async () => {
       const session: SessionAuth = { ...sessionNonVerifiee(), emailVerifie: true };
       await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)));
 
       await waitFor(() => {
-        expect(screen.getByTestId('redirection').props.children).toBe('/(client)/accueil');
+        expect(screen.getByTestId('redirection').props.children).toBe('/(onboarding)/1-identite');
       });
     });
   });
@@ -138,14 +144,26 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
     const enAttente = new Promise<EtatProfils>((resolve) => {
       resoudreProfils = resolve;
     });
-    const portDonnees: PortDonnees = { lireEtatProfils: jest.fn().mockReturnValue(enAttente) };
+    const portDonnees: PortDonnees = {
+      lireEtatProfils: jest.fn().mockReturnValue(enAttente),
+      lireProfilOnboarding: jest.fn(),
+      creerProfilClient: jest.fn(),
+      enregistrerObjectifsEtRythme: jest.fn(),
+      enregistrerPointDeDepart: jest.fn(),
+      terminerOnboarding: jest.fn(),
+    };
 
     await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);
 
     expect(screen.queryByTestId('redirection')).toBeNull();
 
     await act(async () => {
-      resoudreProfils({ profilActif: 'coach', clientExiste: false, coachExiste: true });
+      resoudreProfils({
+        profilActif: 'coach',
+        clientExiste: false,
+        clientOnboardingEtape: null,
+        coachExiste: true,
+      });
       await enAttente;
     });
 

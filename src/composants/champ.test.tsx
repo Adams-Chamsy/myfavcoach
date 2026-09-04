@@ -55,6 +55,14 @@ describe('Champ', () => {
     expect(champ.props.autoCorrect).toBe(false);
   });
 
+  // docs/ecrans/L1-05-onboarding-client.md, étape 3/4 : "poids... en kilogrammes avec une
+  // décimale".
+  it('type decimal : clavier numérique avec séparateur décimal', async () => {
+    await rendreChamp({ type: 'decimal', libelle: 'Poids actuel' });
+
+    expect(screen.getByLabelText('Poids actuel').props.keyboardType).toBe('decimal-pad');
+  });
+
   // docs/ecrans/L1-02-creation-compte.md : "Mot de passe | Champ masqué, bouton œil dans une
   // cible de 44".
   describe('type motDePasse', () => {

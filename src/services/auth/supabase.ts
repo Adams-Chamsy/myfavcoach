@@ -18,6 +18,14 @@ import type { ErreurAuth, PortAuth, SessionAuth } from './port';
 const LIEN_VERIFICATION_EMAIL = 'myfavcoach://auth/rappel';
 const LIEN_REINITIALISATION_MOT_DE_PASSE = 'myfavcoach://auth/mot-de-passe';
 
+// Version du texte de consentement CGU accepté à l'inscription (docs/domaine.md §3.12 : "un
+// consentement sans version est un consentement inutilisable"). Aucun texte CGU réel n'existe
+// encore (lot L11, docs/dette.md) : cette version date le mécanisme actuel — la phrase
+// implicite d'app/(public)/inscription.tsx ("En créant ton compte, tu acceptes les CGU...") —
+// pas un document juridique rédigé. À faire avancer avec la vraie rédaction en L11, jamais à
+// bumper pour un autre motif.
+const VERSION_CGU_ACCEPTEE = '2026-09-04';
+
 // Rendu STRUCTUREL, pas seulement documenté : deux trous (inscrire, renvoyerVerification)
 // avaient déjà échappé à une relecture avant d'être trouvés à P1.9. Les trois appels du SDK qui
 // envoient un courriel avec un lien passent maintenant OBLIGATOIREMENT par l'une de ces trois
@@ -42,7 +50,16 @@ function envoyerCourrielInscription(
   return supabase.auth.signUp({
     email,
     password: motDePasse,
-    options: { data: { dateNaissance }, emailRedirectTo: LIEN_VERIFICATION_EMAIL },
+    options: {
+      // Clés en snake_case : creer_compte_depuis_auth (0001_creer_identite.sql) les lit dans
+      // raw_user_meta_data avec ces noms exacts. Un objet camelCase ({ dateNaissance }) est
+      // silencieusement stocké tel quel dans les métadonnées JSON — la lecture snake_case du
+      // déclencheur ne le trouve jamais, et l'inscription réelle échouait donc toujours (500
+      // "Database error saving new user", jamais vu en test faute d'un test contre le vrai
+      // serveur). Trouvé en préparant P1.11, cgu_version_acceptee manquant EN PLUS.
+      data: { date_naissance: dateNaissance, cgu_version_acceptee: VERSION_CGU_ACCEPTEE },
+      emailRedirectTo: LIEN_VERIFICATION_EMAIL,
+    },
   });
 }
 

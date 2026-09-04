@@ -331,3 +331,39 @@ export const messagesDemonstration: MessageDemonstration[] = [
   // périmètre (docs/perimetre.md §3, "Messages vocaux et vidéo"), donc pas repris ici. Léa
   // Nguyen n'y a pas de message, seulement un statut ("Inactive 12 j").
 ];
+
+// docs/ecrans/L1-05-onboarding-client.md, étape 2/4 : liste figée dictée mot pour mot par la
+// fiche elle-même (pas une invention à partir des maquettes, cet écran n'en a pas au-delà de
+// l'écran 22 repris au pixel) — huit valeurs, dans cet ordre exact.
+export type ObjectifOnboarding = {
+  cle: string;
+  libelle: string;
+};
+
+export const objectifsOnboarding: ObjectifOnboarding[] = [
+  { cle: 'reprendre-le-sport', libelle: 'Reprendre le sport' },
+  { cle: 'perdre-du-poids', libelle: 'Perdre du poids' },
+  { cle: 'prendre-du-muscle', libelle: 'Prendre du muscle' },
+  { cle: 'mieux-manger', libelle: 'Mieux manger' },
+  { cle: 'gerer-le-stress', libelle: 'Gérer le stress' },
+  { cle: 'progresser-au-travail', libelle: 'Progresser au travail' },
+  { cle: 'apprendre-une-competence', libelle: 'Apprendre une compétence' },
+  { cle: 'autre', libelle: 'Autre' },
+];
+
+// docs/ecrans/L1-05-onboarding-client.md, étape 2/4 : "3 tuiles exclusives (1–2 fois, 3–4 fois,
+// 5 fois et plus par semaine)" — une liste en prose, pas trois chaînes ponctuées comme les huit
+// objectifs ci-dessus. Rendu ici en trois libellés autonomes (utiles seuls au lecteur d'écran) :
+// le tiret devient "à" (typographie orale/écran, pas un tiret cadratin), et "par semaine" est
+// répété sur les trois — la fiche ne l'écrit qu'une fois par économie de prose, pas pour exclure
+// les deux premières tuiles.
+export type RythmeOnboarding = {
+  cle: string;
+  libelle: string;
+};
+
+export const rythmesOnboarding: RythmeOnboarding[] = [
+  { cle: '1-2-fois', libelle: '1 à 2 fois par semaine' },
+  { cle: '3-4-fois', libelle: '3 à 4 fois par semaine' },
+  { cle: '5-fois-et-plus', libelle: '5 fois et plus par semaine' },
+];

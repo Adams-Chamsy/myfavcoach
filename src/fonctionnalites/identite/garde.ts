@@ -9,18 +9,20 @@ import type { EtatProfils } from '@/services/donnees/port';
 // atteinte avec une session valide renvoie vers l'espace actif). Aucun des deux ne code sa
 // propre logique de redirection, tous deux appellent determinerDestination().
 //
-// PROVISOIRE, assumé — pas une approximation risquée : `comptes.profil_actif` est NOT NULL,
-// défaut 'client' (0001_creer_identite.sql), posé à la création du compte, avant tout profil
-// réel. On ne peut donc PAS distinguer aujourd'hui "onboarding jamais commencé" (règle 3) de
-// "onboarding client commencé mais pas terminé" (règle 4) : rien ne fixe encore la valeur
-// terminale d'`onboarding_etape` (P1.11, pas construit), et rien ne crée de profils_client
-// avant que P1.11 existe. Les deux cas sont donc FUSIONNÉS ici en une seule condition — "pas de
-// profil actif réel, quelle qu'en soit la raison" — vers la même destination provisoire.
-// P1.11 les séparera une fois la valeur terminale d'onboarding_etape fixée et les routes
-// (onboarding)/*.tsx construites — voir docs/dette.md.
-//
-// `(client)/accueil` reste la destination provisoire (écran de L0), pas une invention : aucune
-// route `(onboarding)/*.tsx` n'existe encore pour y renvoyer réellement.
+// Valeur terminale d'onboarding_etape (P1.11, docs/ecrans/L1-05-onboarding-client.md) : la
+// ligne profils_client n'existe qu'à partir de l'étape 1 validée (creerProfilClient l'insère
+// avec onboarding_etape=2, jamais 1 — le DEFAULT 1 de 0001_creer_identite.sql n'est donc
+// jamais atteint par un vrai parcours). Chaque étape validée fait passer onboarding_etape à
+// N+1 : 2 = "affiche l'étape 2", 3 = "affiche l'étape 3", 4 = "affiche l'étape 4",
+// 5 = onboarding terminé (terminerOnboarding). "> 4", pas "=== 5" : defensif, au cas où une
+// valeur future dépasserait 5 sans que ce soit une régression.
+const ROUTE_PAR_ETAPE: Record<number, Href> = {
+  1: '/(onboarding)/1-identite' as Href,
+  2: '/(onboarding)/2-objectifs' as Href,
+  3: '/(onboarding)/3-poids' as Href,
+  4: '/(onboarding)/4-cest-parti' as Href,
+};
+
 export function determinerDestination(
   session: SessionAuth | null,
   profils: EtatProfils | null,
@@ -28,30 +30,26 @@ export function determinerDestination(
   if (!session) return '/(public)' as Href;
   if (!session.emailVerifie) return '/(public)/verification' as Href;
 
-  if (profils?.profilActif === 'client' && profils.clientExiste) {
-    return '/(client)/accueil' as Href;
-  }
-  if (profils?.profilActif === 'coach' && profils.coachExiste) {
-    return '/(coach)/pilotage' as Href;
+  if (profils?.profilActif === 'client') {
+    if (!profils.clientExiste) return ROUTE_PAR_ETAPE[1]; // règle 3 : aucun profil du tout
+    const etape = profils.clientOnboardingEtape ?? 1;
+    if (etape > 4) return '/(client)/accueil' as Href; // onboarding terminé → règle 5
+    return ROUTE_PAR_ETAPE[etape] ?? ROUTE_PAR_ETAPE[1]; // règle 4 : étape non terminée
   }
 
-  // Règles 3+4 fusionnées (voir le commentaire ci-dessus), et repli de sécurité si `profils`
-  // est encore null (jamais interrogé, ou lecture en échec — src/fonctionnalites/identite/
-  // fournisseur-donnees.tsx) : jamais grant d'accès à un espace sans preuve positive d'un
-  // profil réel.
-  //
-  // À SÉPARER PAR P1.11 (onboarding client, docs/prompts/L1.md), pas avant : dès que
-  // profils_client.onboarding_etape a une valeur terminale fixée, ce `return` unique devient
-  // deux branches distinctes —
-  //   - profils?.clientExiste === false                → règle 3, aucun profil du tout
-  //     → `/(onboarding)/1-identite` (route qui n'existe qu'à partir de P1.11)
-  //   - profils.clientExiste === true, onboarding non terminé → règle 4
-  //     → l'étape non terminée (ex. `/(onboarding)/2-objectifs`), lue depuis
-  //     `profils.onboardingEtape` — un champ que `EtatProfils` (src/services/donnees/port.ts)
-  //     n'expose PAS encore, et que `portDonneesSupabase.lireEtatProfils()`
-  //     (src/services/donnees/supabase.ts) ne lit pas non plus aujourd'hui (seulement
-  //     `select('id')`, jamais `onboarding_etape`) : les deux sont à étendre au même prompt.
-  // Le repli null ci-dessus (profils jamais interrogé / lecture en échec) reste, lui, la même
-  // destination indéfiniment : ce n'est pas une des deux règles à séparer.
+  if (profils?.profilActif === 'coach' && profils.coachExiste) {
+    return '/(coach)/pilotage' as Href; // règle 6
+  }
+
+  // Repli, deux cas distincts qui restent fusionnés (aucun des deux n'est une des sept
+  // règles à séparer) :
+  // - profils est encore null : jamais interrogé, ou lecture en échec
+  //   (src/fonctionnalites/identite/fournisseur-donnees.tsx) — jamais grant d'accès à un
+  //   espace sans preuve positive d'un profil réel.
+  // - profilActif==='coach' && !coachExiste : espace actif coach sans profil coach réel.
+  //   L1-08 (activation espace coach) n'est pas construit — aucune route n'existe encore pour
+  //   ce cas, et il n'entre dans aucune des sept règles de P1.10 (qui ne couvrent que le côté
+  //   client de cette situation). `(client)/accueil` reste ici la même destination
+  //   provisoire qu'avant P1.11, pas une invention.
   return '/(client)/accueil' as Href;
 }

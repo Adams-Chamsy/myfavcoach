@@ -58,6 +58,44 @@ describe('Chip', () => {
     expect(styleCroix.minHeight).toBeGreaterThanOrEqual(taille.tapMin);
   });
 
+  // docs/ecrans/L1-05-onboarding-client.md, étape 2/4 : "hauteur 44, sélectionnée en
+  // fond.inverse + coche".
+  describe('variante selection', () => {
+    it('appelle onPress au tap et respecte une hauteur minimale de 44', async () => {
+      const onPress = jest.fn();
+      const rendu = await render(
+        <FournisseurTheme>
+          <Chip
+            libelle="Perdre du poids"
+            variante="selection"
+            selectionne={false}
+            onPress={onPress}
+          />
+        </FournisseurTheme>,
+      );
+
+      const chip = screen.getByRole('button', { name: 'Perdre du poids' });
+      await fireEvent.press(chip);
+      expect(onPress).toHaveBeenCalledTimes(1);
+
+      // Cherche minHeight n'importe où dans l'arbre rendu, plutôt que de supposer une forme
+      // précise (View directe vs Pressable) — les deux portent la même contrainte de taille.
+      const arbre = JSON.stringify(rendu.toJSON());
+      expect(arbre).toContain(`"minHeight":${taille.tapMin}`);
+    });
+
+    it('sélectionnée : porte accessibilityState.selected et une icône de coche', async () => {
+      await render(
+        <FournisseurTheme>
+          <Chip libelle="Perdre du poids" variante="selection" selectionne onPress={() => {}} />
+        </FournisseurTheme>,
+      );
+
+      const chip = screen.getByRole('button', { name: 'Perdre du poids' });
+      expect(chip.props.accessibilityState.selected).toBe(true);
+    });
+  });
+
   it('presser le corps du chip retirable appelle onPress, pas onRetirer', async () => {
     const onPress = jest.fn();
     const onRetirer = jest.fn();

@@ -43,6 +43,22 @@ describe('useDonnees', () => {
     consoleErreur.mockRestore();
   });
 
+  // P1.11 : les écrans d'onboarding ont besoin d'écrire (creerProfilClient, etc.), pas
+  // seulement de lire — port doit donc être atteignable, même pendant le chargement de la
+  // lecture initiale (l'injection du port, elle, est synchrone).
+  it('expose le port injecté, y compris pendant le chargement', async () => {
+    const portAuth = creerFauxPortAuth();
+    const portDonnees = creerFauxPortDonnees();
+
+    const { result } = await renderHook(() => useDonnees(), {
+      wrapper: envelopper(portAuth, portDonnees),
+    });
+
+    expect(result.current.port).toBe(portDonnees);
+    await waitFor(() => expect(result.current.chargement).toBe(false));
+    expect(result.current.port).toBe(portDonnees);
+  });
+
   // Aucun appel réseau tant qu'aucune session vérifiée n'existe (même discipline que
   // docs/ecrans/L1-03-verification-email.md) : jamais interrogé, profils reste null.
   it('sans session, ne lit jamais le port : profils reste null, chargement se résout', async () => {
@@ -66,6 +82,7 @@ describe('useDonnees', () => {
     const etatAttendu: EtatProfils = {
       profilActif: 'coach',
       clientExiste: true,
+      clientOnboardingEtape: 5,
       coachExiste: true,
     };
     portDonnees.definirEtatProfilsPourTest(etatAttendu);
@@ -126,6 +143,7 @@ describe('useDonnees', () => {
     lecture.mockResolvedValueOnce({
       profilActif: 'client',
       clientExiste: true,
+      clientOnboardingEtape: 5,
       coachExiste: false,
     });
     lecture.mockImplementationOnce(
@@ -152,7 +170,12 @@ describe('useDonnees', () => {
     expect(result.current.profils).toBeNull();
 
     await act(async () => {
-      resoudreDeuxiemeLecture({ profilActif: 'coach', clientExiste: false, coachExiste: true });
+      resoudreDeuxiemeLecture({
+        profilActif: 'coach',
+        clientExiste: false,
+        clientOnboardingEtape: null,
+        coachExiste: true,
+      });
       await Promise.resolve();
     });
 

@@ -14,8 +14,21 @@ import type { EtatProfils, PortDonnees } from '@/services/donnees/port';
 // tentative). garde.ts n'a pas besoin de les distinguer — dans les deux cas, la seule décision
 // sûre est le repli vers l'onboarding (voir son commentaire) — donc ce fournisseur ne les
 // distingue pas non plus, plutôt que d'exposer une troisième valeur que personne ne lirait.
+// `port` voyage dans le contexte, à côté de `profils` (P1.11) : les quatre écrans
+// d'onboarding (docs/ecrans/L1-05) doivent pouvoir ÉCRIRE (creerProfilClient, etc.), pas
+// seulement lire l'état déjà chargé. Toujours présent (même en chargement) : c'est
+// l'INJECTION du port qui est synchrone (voir ProprietesFournisseurDonnees), seule la LECTURE
+// initiale est asynchrone.
+//
+// Pas de rafraîchir() ici, délibérément : aucun écran de ce lot ne relit `profils` après une
+// écriture dans la MÊME session d'app — chaque étape navigue par un `router.push` direct vers
+// la suivante (jamais via determinerDestination), et la reprise après fermeture/réouverture
+// (critère 2 de L1-05) repart d'un FournisseurDonnees fraîchement monté, qui relit déjà l'état
+// serveur à jour. À ajouter si un futur écran a besoin de voir ses propres écritures reflétées
+// dans `profils` sans redémarrer l'app.
 export type EtatDonnees =
-  { chargement: true; profils: null } | { chargement: false; profils: EtatProfils | null };
+  | { chargement: true; profils: null; port: PortDonnees }
+  | { chargement: false; profils: EtatProfils | null; port: PortDonnees };
 
 const ContexteDonnees = createContext<EtatDonnees | null>(null);
 
@@ -69,10 +82,10 @@ export function FournisseurDonnees({ children, port }: ProprietesFournisseurDonn
 
   const etat: EtatDonnees =
     !session || !session.emailVerifie
-      ? { chargement: false, profils: null }
+      ? { chargement: false, profils: null, port }
       : resultat && resultat.compteId === session.compteId
-        ? { chargement: false, profils: resultat.profils }
-        : { chargement: true, profils: null };
+        ? { chargement: false, profils: resultat.profils, port }
+        : { chargement: true, profils: null, port };
 
   return <ContexteDonnees.Provider value={etat}>{children}</ContexteDonnees.Provider>;
 }

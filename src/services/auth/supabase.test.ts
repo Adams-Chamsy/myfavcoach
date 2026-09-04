@@ -59,7 +59,7 @@ describe('portAuthSupabase', () => {
         email: 'camille@exemple.fr',
         password: 'un-mot-de-passe',
         options: {
-          data: { dateNaissance: '2000-01-01' },
+          data: { date_naissance: '2000-01-01', cgu_version_acceptee: '2026-09-04' },
           emailRedirectTo: 'myfavcoach://auth/rappel',
         },
       });

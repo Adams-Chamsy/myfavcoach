@@ -27,8 +27,21 @@ type ProprietesChipFiltreRetirable = {
   accessibilityLabelRetirer: string;
 };
 
+// docs/ecrans/L1-05-onboarding-client.md, etape 2/4 : "Chips multi-selection, hauteur 44,
+// selectionnee en fond.inverse + coche" — distinct de 'filtre' (marque.primaireTeinte2), qui
+// sert un usage different (filtres de recherche, jamais construits a ce lot).
+type ProprietesChipSelection = {
+  libelle: string;
+  variante: 'selection';
+  selectionne: boolean;
+  onPress: () => void;
+};
+
 export type ProprietesChip =
-  ProprietesChipCategorie | ProprietesChipFiltre | ProprietesChipFiltreRetirable;
+  | ProprietesChipCategorie
+  | ProprietesChipFiltre
+  | ProprietesChipFiltreRetirable
+  | ProprietesChipSelection;
 
 function couleursChip(theme: ThemeResolu, proprietes: ProprietesChip) {
   const { couleur } = theme;
@@ -37,6 +50,11 @@ function couleursChip(theme: ThemeResolu, proprietes: ProprietesChip) {
       ? { fond: couleur.marque.primaireTeinte2, texte: couleur.marque.primaireSurvol }
       : { fond: couleur.fond.creux, texte: couleur.texte.secondaire };
   }
+  if (proprietes.variante === 'selection') {
+    return proprietes.selectionne
+      ? { fond: couleur.fond.inverse, texte: couleur.texte.surMarque }
+      : { fond: couleur.fond.surface, texte: couleur.texte.principal };
+  }
   return { fond: couleur.marque.primaireTeinte, texte: couleur.marque.primaireSurvol };
 }
 
@@ -44,6 +62,7 @@ export function Chip(proprietes: ProprietesChip) {
   const theme = useTheme();
   const { libelle } = proprietes;
   const { fond, texte } = couleursChip(theme, proprietes);
+  const estSelection = proprietes.variante === 'selection';
 
   const etiquette = (
     <View
@@ -55,16 +74,39 @@ export function Chip(proprietes: ProprietesChip) {
         paddingHorizontal: theme.espace[3],
         borderRadius: theme.rayon.badge,
         backgroundColor: fond,
+        borderWidth: estSelection && !proprietes.selectionne ? 1 : 0,
+        borderColor: theme.couleur.bordure.marquee,
+        minHeight: estSelection ? theme.taille.tapMin : undefined,
+        justifyContent: 'center',
       }}
     >
+      {estSelection && proprietes.selectionne ? (
+        <Icone nom="valide" taille={theme.taille.croixChip} couleur={texte} />
+      ) : null}
       <Text style={{ ...theme.texte.legende, fontFamily: font.uiBold, color: texte }}>
         {libelle}
       </Text>
     </View>
   );
 
-  if (proprietes.variante !== 'filtre' && proprietes.variante !== 'filtreRetirable') {
+  if (
+    proprietes.variante !== 'filtre' &&
+    proprietes.variante !== 'filtreRetirable' &&
+    proprietes.variante !== 'selection'
+  ) {
     return etiquette;
+  }
+
+  if (proprietes.variante === 'selection') {
+    return (
+      <Pressable
+        onPress={proprietes.onPress}
+        accessibilityRole="button"
+        accessibilityState={{ selected: proprietes.selectionne }}
+      >
+        {etiquette}
+      </Pressable>
+    );
   }
 
   return (

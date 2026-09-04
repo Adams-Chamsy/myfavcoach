@@ -737,3 +737,89 @@ describe('profil_actif_courant() (docs/backend.md §7, src/services/donnees/)', 
     expect(statut).toBeGreaterThanOrEqual(400);
   });
 });
+
+// docs/ecrans/L1-05-onboarding-client.md, étape 3/4, critère 4 : "un test contre la base
+// réelle prouve qu'écrire une mesure sans consentement enregistré est refusé côté serveur,
+// indépendamment de l'écran." Auto-suffisant, jamais dépendant de l'ordre des tests
+// précédents : C n'a jamais accordé aucun consentement dans ce fichier avant ce describe.
+describe('poids du profil client protégé par consentement (0004_proteger_donnees_sante.sql)', () => {
+  beforeAll(async () => {
+    // Reflète le vrai parcours (docs/ecrans/L1-05, étape 1 crée la ligne sans poids ; étape 3
+    // l'écrit plus tard) : jamais un profil déjà muni de poids créé d'un coup, qui masquerait
+    // le chemin UPDATE que ce déclencheur protège réellement.
+    const { statut } = await appelRest('/rest/v1/profils_client', {
+      methode: 'POST',
+      session: C,
+      corps: { compte_id: C.compteId, prenom: 'Camille-C' },
+    });
+    if (statut !== 201) throw new Error(`Préparation du profil client de C échouée : ${statut}`);
+  });
+
+  it('C écrit son poids de départ sans consentement donneesSante : refusé', async () => {
+    const { statut, corps } = await appelRest(
+      `/rest/v1/profils_client?compte_id=eq.${C.compteId}`,
+      {
+        methode: 'PATCH',
+        session: C,
+        corps: { poids_depart_grammes: 70000 },
+      },
+    );
+    expect(statut).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(corps)).not.toMatch(/70000/); // jamais dans une trace d'erreur
+  });
+
+  it('C accorde le consentement donneesSante, puis écrit son poids de départ : accepté', async () => {
+    await appelRest('/rest/v1/consentements', {
+      methode: 'POST',
+      session: C,
+      corps: {
+        compte_id: C.compteId,
+        type: 'donneesSante',
+        accorde: true,
+        version: '2026-08-01',
+        origine: 'banc',
+      },
+    });
+
+    const { statut } = await appelRest(`/rest/v1/profils_client?compte_id=eq.${C.compteId}`, {
+      methode: 'PATCH',
+      session: C,
+      corps: { poids_depart_grammes: 70000 },
+    });
+    expect(statut).toBe(200);
+  });
+
+  // docs/domaine.md §3.12 : "Son retrait ne supprime pas les données : il bloque l'écriture" —
+  // pas "bloque toute écriture future sur la ligne entière" (voir le commentaire de la
+  // migration). Un champ SANS RAPPORT (prénom) doit rester modifiable même consentement retiré,
+  // poids déjà enregistré compris.
+  it('consentement retiré ensuite : le poids déjà enregistré ne bloque pas un champ sans rapport (prénom)', async () => {
+    await appelRest('/rest/v1/consentements', {
+      methode: 'POST',
+      session: C,
+      corps: {
+        compte_id: C.compteId,
+        type: 'donneesSante',
+        accorde: false,
+        version: '2026-08-01',
+        origine: 'banc',
+      },
+    });
+
+    const { statut } = await appelRest(`/rest/v1/profils_client?compte_id=eq.${C.compteId}`, {
+      methode: 'PATCH',
+      session: C,
+      corps: { prenom: 'Camille-modifie' },
+    });
+    expect(statut).toBe(200);
+  });
+
+  it('consentement retiré : réécrire le poids reste refusé', async () => {
+    const { statut } = await appelRest(`/rest/v1/profils_client?compte_id=eq.${C.compteId}`, {
+      methode: 'PATCH',
+      session: C,
+      corps: { poids_cible_grammes: 65000 },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+  });
+});
