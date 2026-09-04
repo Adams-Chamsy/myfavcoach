@@ -298,17 +298,39 @@ describe('profils_client', () => {
   // seul le cas illégitime (ci-dessous) était couvert. Supprimer la politique ne faisait alors
   // ROUGIR aucun test — le cas légitime (le propriétaire modifie son propre profil) prouve que
   // la politique autorise bien l'accès qu'elle doit autoriser, pas seulement qu'elle refuse.
-  it('A modifie son propre profil client : accepté', async () => {
+  // nom, objectifs et onboarding_etape ajoutés ici (P1.11) : trois des quatre champs que
+  // src/services/donnees/supabase.ts écrit sans qu'aucun scénario du banc n'ait jamais exercé
+  // leur nom exact contre le vrai serveur — trouvé en répondant à la question posée après le
+  // bug date_naissance/dateNaissance (voir la nouvelle entrée de docs/dette.md et la ligne 5 du
+  // tableau des faux verts de docs/prompts/L1.md). rythme_hebdo l'était déjà ; le rassemblement
+  // ici, dans le même PATCH, prouve les quatre noms de colonnes d'un coup.
+  it('A modifie son propre profil client : accepté (rythme_hebdo, nom, objectifs, onboarding_etape)', async () => {
     const { statut, corps } = await appelRest(
       `/rest/v1/profils_client?compte_id=eq.${A.compteId}`,
       {
         methode: 'PATCH',
         session: A,
-        corps: { rythme_hebdo: '3 fois par semaine' },
+        corps: {
+          rythme_hebdo: '3 fois par semaine',
+          nom: 'Dupont',
+          objectifs: ['perdre-du-poids', 'mieux-manger'],
+          onboarding_etape: 3,
+        },
       },
     );
     expect(statut).toBe(200);
-    expect((corps as { rythme_hebdo: string }[])[0].rythme_hebdo).toBe('3 fois par semaine');
+    const ligne = (
+      corps as {
+        rythme_hebdo: string;
+        nom: string;
+        objectifs: string[];
+        onboarding_etape: number;
+      }[]
+    )[0];
+    expect(ligne.rythme_hebdo).toBe('3 fois par semaine');
+    expect(ligne.nom).toBe('Dupont');
+    expect(ligne.objectifs).toEqual(['perdre-du-poids', 'mieux-manger']);
+    expect(ligne.onboarding_etape).toBe(3);
   });
 
   it('A modifie le profil client de B : refusé', async () => {
