@@ -165,6 +165,25 @@ npm start             # serveur Expo
 `npm run verif` doit passer avant chaque commit. **Si tu ne peux pas la faire passer, ne
 commite pas : explique ce qui bloque.**
 
+**Angle mort structurel, trouvé à P1.8 : aucune combinaison de `npm test` et `verif:serveur`
+ne prouve qu'un composant natif tiers rend réellement quelque chose sur web.** `npm test` (et
+`test:a11y`, qui rend les écrans par-dessus le même Jest) résout systématiquement les fichiers
+`.ios.js` de chaque module — y compris les dépendances tierces — quel que soit ce que le code de
+l'application fait de `Platform.OS` à l'exécution : la résolution de fichier par plateforme se
+joue au niveau du *module*, une fois, avant que le composant ne s'exécute, alors qu'un `if
+(Platform.OS === 'web')` dans un écran est un choix à l'exécution — les deux mécanismes ne se
+recoupent jamais sous Jest, qui n'a pas de configuration « web » distincte. `verif:serveur`, de
+son côté, fait tourner un vrai `expo start --web` mais ne vérifie que le statut HTTP et
+l'absence d'un marqueur d'erreur de build : un composant qui rend silencieusement `null` (le cas
+d'un module tiers sans fichier `.web.js`, ex. `@react-native-community/datetimepicker`, comme
+`expo-secure-store` avant lui) produit une page 200 tout à fait valide. Résultat : ni l'un ni
+l'autre n'aurait vu un sélecteur de date absent de l'écran sur web — trouvé à l'œil, sur une
+vraie page, pas par un test qui a viré rouge. Ce n'est pas un oubli d'un lot précis, c'est une
+limite durable de cette combinaison d'outils sur cette machine (sans simulateur iOS/Android
+disponible) : à chaque nouvelle dépendance native tierce touchée, vérifier son support web
+(présence d'un fichier `.web.js`/`.web.ts` dans son code source) reste une vérification
+manuelle, jamais automatique.
+
 ---
 
 ## 7. Méthode de travail attendue

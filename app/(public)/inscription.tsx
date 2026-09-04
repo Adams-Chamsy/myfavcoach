@@ -52,6 +52,62 @@ function messageErreurGlobale(erreur: ErreurAuth): string {
   return 'On a un souci de notre côté. Ce n’est pas toi.';
 }
 
+type ProprietesDeclencheurDate = {
+  dateNaissance: Date | null;
+  enErreur: boolean;
+  desactive: boolean;
+  onPress: () => void;
+};
+
+// Partagé entre la variante Android (ouvre un dialogue) et iOS (déplie un sélecteur en ligne) :
+// même apparence, seul le geste d'ouverture diffère. N'affiche JAMAIS une date tant que
+// dateNaissance est null — voir le commentaire de dateNaissance dans Inscription ci-dessous.
+function DeclencheurDate({
+  dateNaissance,
+  enErreur,
+  desactive,
+  onPress,
+}: ProprietesDeclencheurDate) {
+  const theme = useTheme();
+  const texte = dateNaissance
+    ? formaterDateAffichage(dateNaissance)
+    : 'Choisir ta date de naissance';
+
+  return (
+    <Pressable
+      testID="ouvrir-selecteur-date-naissance"
+      onPress={onPress}
+      disabled={desactive}
+      accessibilityRole="button"
+      accessibilityLabel={
+        dateNaissance ? `Date de naissance, ${texte}` : `Date de naissance, ${texte.toLowerCase()}`
+      }
+      style={{
+        minHeight: theme.taille.controle,
+        justifyContent: 'center',
+        borderRadius: theme.rayon.saisie,
+        borderWidth: theme.taille.focusContour,
+        borderColor: enErreur ? theme.couleur.etat.erreur : theme.couleur.bordure.marquee,
+        paddingHorizontal: theme.espace[4],
+        backgroundColor: theme.couleur.fond.canevas,
+      }}
+    >
+      <Text
+        style={{
+          ...theme.texte.corps,
+          // texte.attenue, jamais gris[400] (le ton du placeholder natif de Champ) : ce
+          // texte est un VRAI nœud <Text>, contrairement à un placeholder de TextInput —
+          // npm run test:a11y l'a mesuré à 2,38:1, sous le seuil (docs/design-system.md §1,
+          // même famille de correction que #2).
+          color: dateNaissance ? theme.couleur.texte.principal : theme.couleur.texte.attenue,
+        }}
+      >
+        {texte}
+      </Text>
+    </Pressable>
+  );
+}
+
 export default function Inscription() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -61,8 +117,18 @@ export default function Inscription() {
 
   const [email, setEmail] = useState(params.email ?? '');
   const [motDePasse, setMotDePasse] = useState('');
-  const [dateNaissance, setDateNaissance] = useState<Date>(dateNaissanceParDefaut);
+  // null : aucune date CHOISIE — jamais pré-rempli avec la date d'ouverture du sélecteur.
+  // Trouvé en usage réel (pas en test) : une valeur plausible déjà là se laisse valider sans
+  // qu'on l'ait jamais regardée, alors que c'est justement le champ qui porte la règle des 18
+  // ans. Voir docs/ecrans/L1-02-creation-compte.md, tableau des champs, corrigé au même lot.
+  const [dateNaissance, setDateNaissance] = useState<Date | null>(null);
+  // Position d'ouverture du sélecteur seulement (année en cours moins 25 ans) — jamais une
+  // valeur choisie. Figée une seule fois (pas de setter utilisé) : "aujourd'hui" ne doit pas
+  // glisser d'un jour si la saisie traverse minuit.
+  const [datePointOuverture] = useState(dateNaissanceParDefaut);
   const [afficherPickerAndroid, setAfficherPickerAndroid] = useState(false);
+  const [afficherPickerIOS, setAfficherPickerIOS] = useState(false);
+  const [valeurIOSEnCours, setValeurIOSEnCours] = useState(datePointOuverture);
 
   const [erreurEmail, setErreurEmail] = useState<string | undefined>();
   const [erreurMotDePasse, setErreurMotDePasse] = useState<string | undefined>();
@@ -73,8 +139,9 @@ export default function Inscription() {
 
   // "Bouton actif dès que les trois champs sont remplis, jamais avant" (États) : remplis, pas
   // nécessairement valides — un champ rempli mais invalide affiche son erreur à l'appui, voir
-  // surCreerCompte.
-  const formulaireRempli = email.trim() !== '' && motDePasse !== '';
+  // surCreerCompte. Pour la date, "rempli" veut dire CHOISIE par un geste explicite
+  // (dateNaissance !== null) — jamais seulement "une valeur par défaut existe quelque part".
+  const formulaireRempli = email.trim() !== '' && motDePasse !== '' && dateNaissance !== null;
 
   function validerEmail(valeur: string): boolean {
     if (!FORMAT_EMAIL.test(valeur.trim())) {
@@ -109,15 +176,38 @@ export default function Inscription() {
     return true;
   }
 
-  function surChangementDate(_evenement: DateTimePickerChangeEvent, date: Date) {
-    if (Platform.OS === 'android') setAfficherPickerAndroid(false);
+  // Android : le dialogue natif a ses propres boutons OK/Annuler — onValueChange ne se
+  // déclenche QUE sur OK, c'est déjà un geste de confirmation explicite.
+  function surOuvrirSelecteurAndroid() {
+    setAfficherPickerAndroid(true);
+  }
+
+  function surChoixAndroid(_evenement: DateTimePickerChangeEvent, date: Date) {
+    setAfficherPickerAndroid(false);
     setDateNaissance(date);
     validerDate(date);
   }
 
-  // Android seulement : boîte de dialogue fermée sans choix ("dismissed"), voir surChangementDate.
-  function surFermetureSansChoix() {
+  function surFermetureSansChoixAndroid() {
     setAfficherPickerAndroid(false);
+  }
+
+  // iOS : le style "spinner" n'a AUCUN geste de confirmation propre (contrairement au
+  // dialogue Android) — il faut donc un état intermédiaire (valeurIOSEnCours) qui ne devient
+  // dateNaissance qu'au bouton "Valider la date", jamais au premier défilement.
+  function surOuvrirSelecteurIOS() {
+    setValeurIOSEnCours(dateNaissance ?? datePointOuverture);
+    setAfficherPickerIOS(true);
+  }
+
+  function surDeplacementIOS(_evenement: DateTimePickerChangeEvent, date: Date) {
+    setValeurIOSEnCours(date);
+  }
+
+  function surValiderIOS() {
+    setDateNaissance(valeurIOSEnCours);
+    validerDate(valeurIOSEnCours);
+    setAfficherPickerIOS(false);
   }
 
   async function surCreerCompte() {
@@ -130,6 +220,10 @@ export default function Inscription() {
     // app/(public)/verification.tsx).
     const emailValide = validerEmail(email);
     const motDePasseValide = validerMotDePasse(motDePasse);
+    // Inatteignable par un appui réel (formulaireRempli désactive le bouton tant que
+    // dateNaissance est null) : garde de défense en profondeur, pas un message utilisateur —
+    // le tableau des messages de la fiche n'en prévoit aucun pour ce cas.
+    if (dateNaissance === null) return;
     const dateValide = validerDate(dateNaissance);
     if (!emailValide || !motDePasseValide || !dateValide) return;
 
@@ -244,53 +338,64 @@ export default function Inscription() {
             Date de naissance
           </Text>
 
-          {Platform.OS === 'android' ? (
+          {Platform.OS === 'web' ? (
+            // @react-native-community/datetimepicker n'a aucune implémentation web
+            // (node_modules/.../src/datetimepicker.js, le repli sans suffixe de plateforme
+            // que Metro utilise faute de .web.js, rend null et se contente d'un
+            // console.warn) — même trou que expo-secure-store, voir docs/backend.md pour
+            // l'angle mort structurel que ça révèle sur nos vérifications. Un repli
+            // SILENCIEUX serait pire qu'un champ manquant : la règle des 18 ans ne pourrait
+            // jamais être confirmée sans que rien ne le dise. Le web n'étant de toute façon
+            // jamais une cible du produit (CLAUDE.md §1), ce message dit honnêtement que
+            // l'inscription ne peut pas aboutir ici plutôt que de laisser un bouton qui ne
+            // s'active jamais sans explication.
+            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+              Le sélecteur de date n’est pas disponible depuis un navigateur. Utilise l’application
+              mobile pour créer ton compte.
+            </Text>
+          ) : Platform.OS === 'android' ? (
             <>
-              <Pressable
-                testID="ouvrir-selecteur-date-naissance"
-                onPress={() => setAfficherPickerAndroid(true)}
-                disabled={chargement}
-                accessibilityRole="button"
-                accessibilityLabel={`Date de naissance, ${formaterDateAffichage(dateNaissance)}`}
-                style={{
-                  minHeight: theme.taille.controle,
-                  justifyContent: 'center',
-                  borderRadius: theme.rayon.saisie,
-                  borderWidth: theme.taille.focusContour,
-                  borderColor: erreurDate
-                    ? theme.couleur.etat.erreur
-                    : theme.couleur.bordure.marquee,
-                  paddingHorizontal: theme.espace[4],
-                  backgroundColor: theme.couleur.fond.canevas,
-                }}
-              >
-                <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}>
-                  {formaterDateAffichage(dateNaissance)}
-                </Text>
-              </Pressable>
+              <DeclencheurDate
+                dateNaissance={dateNaissance}
+                enErreur={Boolean(erreurDate)}
+                desactive={chargement}
+                onPress={surOuvrirSelecteurAndroid}
+              />
               {afficherPickerAndroid ? (
                 <DateTimePicker
                   testID="selecteur-date-naissance"
-                  value={dateNaissance}
+                  value={dateNaissance ?? datePointOuverture}
                   mode="date"
                   display="default"
                   maximumDate={new Date()}
-                  onValueChange={surChangementDate}
-                  onDismiss={surFermetureSansChoix}
+                  onValueChange={surChoixAndroid}
+                  onDismiss={surFermetureSansChoixAndroid}
                 />
               ) : null}
             </>
           ) : (
-            <DateTimePicker
-              testID="selecteur-date-naissance"
-              value={dateNaissance}
-              mode="date"
-              display="spinner"
-              maximumDate={new Date()}
-              onValueChange={surChangementDate}
-              accessibilityLabel="Date de naissance"
-              style={{ alignSelf: 'flex-start' }}
-            />
+            <>
+              <DeclencheurDate
+                dateNaissance={dateNaissance}
+                enErreur={Boolean(erreurDate)}
+                desactive={chargement}
+                onPress={surOuvrirSelecteurIOS}
+              />
+              {afficherPickerIOS ? (
+                <View style={{ gap: theme.espace[2] }}>
+                  <DateTimePicker
+                    testID="selecteur-date-naissance"
+                    value={valeurIOSEnCours}
+                    mode="date"
+                    display="spinner"
+                    maximumDate={new Date()}
+                    onValueChange={surDeplacementIOS}
+                    accessibilityLabel="Date de naissance"
+                  />
+                  <Bouton variante="secondaire" libelle="Valider la date" onPress={surValiderIOS} />
+                </View>
+              ) : null}
+            </>
           )}
 
           {erreurDate ? (

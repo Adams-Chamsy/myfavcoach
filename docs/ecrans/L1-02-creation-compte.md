@@ -26,7 +26,7 @@ Trois champs, dans cet ordre :
 |---|---|---|
 | Adresse e-mail | `Champ`, clavier e-mail, sans majuscule automatique, sans correction | Format vérifié à la sortie du champ, jamais pendant la frappe |
 | Mot de passe | `Champ` masqué, bouton œil dans une cible de 44 | **10 caractères minimum, 72 maximum**, aucune règle de composition |
-| Date de naissance | Sélecteur de date natif, jamais trois champs texte | Défaut ouvert sur l'année en cours moins 25 ans |
+| Date de naissance | Sélecteur de date natif, jamais trois champs texte | Le sélecteur s'OUVRE sur l'année en cours moins 25 ans — c'est un point de départ pour naviguer, jamais une valeur pré-saisie. Le champ reste vide (aucune date affichée, un texte invite à choisir) tant que la personne n'a pas confirmé un choix par un geste explicite ; le bouton de pied de page en tient compte comme d'un champ vide |
 
 Sous le mot de passe : un indicateur de longueur atteinte, textuel (« 10 caractères minimum
 · 7 sur 10 »), jamais une jauge colorée seule.
@@ -43,7 +43,7 @@ Pied fixe : bouton primaire « Créer mon compte ».
 
 | État | Comportement |
 |---|---|
-| Normal | Bouton actif dès que les trois champs sont remplis, jamais avant |
+| Normal | Bouton actif dès que les trois champs sont remplis, jamais avant — pour la date, « rempli » veut dire confirmée par un geste explicite, jamais seulement une valeur par défaut présente en mémoire |
 | Chargement | Bouton en attente, champs en lecture seule, retour toujours possible |
 | Erreur de champ | Message **sous le champ concerné**, en `etat.erreurEncre`, le focus y retourne |
 | Erreur globale | `EtatErreur` en bandeau au-dessus du titre, la saisie est conservée |

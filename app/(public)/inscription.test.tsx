@@ -35,6 +35,24 @@ function rendreInscription(port: FauxPortAuth) {
   );
 }
 
+// Joue le geste de confirmation réel d'une date, quelle que soit la plateforme de la passe en
+// cours : ouvre le déclencheur, déplace le sélecteur natif (host node, prop "valueChange" —
+// voir le commentaire de choisirDateNaissance ci-dessous pour pourquoi), puis appuie sur
+// "Valider la date" SEULEMENT sur iOS (le style "spinner" n'a pas de bouton de confirmation
+// natif, contrairement au dialogue Android dont "valueChange" ne se déclenche que sur OK).
+async function choisirDateNaissance(date: Date) {
+  await fireEvent.press(screen.getByTestId('ouvrir-selecteur-date-naissance'));
+  const selecteur = screen.getByTestId('selecteur-date-naissance');
+  // fireEvent(instance, 'valueChange', event, date) : le nœud hôte du sélecteur n'expose que
+  // son propre "onChange" interne (traduit depuis le natif), mais la résolution d'événement de
+  // react-native-testing-library remonte jusqu'au composant JS englobant pour trouver la prop
+  // "onValueChange" qu'on lui a réellement passée — vérifié en instrumentant l'arbre rendu.
+  await fireEvent(selecteur, 'valueChange', {}, date);
+  if (Platform.OS !== 'android') {
+    await fireEvent.press(screen.getByText('Valider la date'));
+  }
+}
+
 describe('Inscription (docs/ecrans/L1-02-creation-compte.md)', () => {
   const osOriginal = Platform.OS;
 
@@ -52,10 +70,10 @@ describe('Inscription (docs/ecrans/L1-02-creation-compte.md)', () => {
   // d'un compte de moins de 18 ans est refusée par le déclencheur") pour la base. Ce fichier ne
   // les reproduit pas.
 
-  // Critère 6 : "Le bouton reste inactif tant qu'un des trois champs est vide, et l'inactivité
-  // est visible autrement que par la couleur" — accessibilityState.disabled, pas seulement une
-  // teinte.
-  it('le bouton "Créer mon compte" est desactive tant que les champs ne sont pas tous remplis', async () => {
+  // Critère 6, et le défaut trouvé après coup (docs/dette.md, dateNaissance) : le bouton ne
+  // doit JAMAIS s'activer sur la seule foi d'une valeur par défaut jamais choisie. Remplir les
+  // deux AUTRES champs ne suffit pas : la date doit être CONFIRMÉE par un geste explicite.
+  it("reste desactive avec l'e-mail et le mot de passe remplis mais la date jamais confirmee", async () => {
     await rendreInscription(creerFauxPortAuth());
 
     const bouton = screen.getByText('Créer mon compte');
@@ -63,6 +81,18 @@ describe('Inscription (docs/ecrans/L1-02-creation-compte.md)', () => {
 
     await fireEvent.changeText(screen.getByLabelText('Adresse e-mail'), 'camille@exemple.fr');
     await fireEvent.changeText(screen.getByLabelText('Mot de passe'), 'mot-de-passe-long');
+
+    expect(screen.getByText('Créer mon compte').parent?.props.accessibilityState.disabled).toBe(
+      true,
+    );
+  });
+
+  it("s'active une fois les trois champs remplis, la date de naissance comprise", async () => {
+    await rendreInscription(creerFauxPortAuth());
+
+    await fireEvent.changeText(screen.getByLabelText('Adresse e-mail'), 'camille@exemple.fr');
+    await fireEvent.changeText(screen.getByLabelText('Mot de passe'), 'mot-de-passe-long');
+    await choisirDateNaissance(new Date(2000, 0, 1));
 
     expect(screen.getByText('Créer mon compte').parent?.props.accessibilityState.disabled).toBe(
       false,
@@ -78,6 +108,7 @@ describe('Inscription (docs/ecrans/L1-02-creation-compte.md)', () => {
 
     await fireEvent.changeText(screen.getByLabelText('Adresse e-mail'), 'camille@exemple.fr');
     await fireEvent.changeText(screen.getByLabelText('Mot de passe'), 'x'.repeat(73));
+    await choisirDateNaissance(new Date(2000, 0, 1));
     await fireEvent.press(screen.getByText('Créer mon compte'));
 
     expect(screen.getByText('72 caractères au maximum.')).toBeTruthy();
@@ -89,6 +120,7 @@ describe('Inscription (docs/ecrans/L1-02-creation-compte.md)', () => {
 
     await fireEvent.changeText(screen.getByLabelText('Adresse e-mail'), 'camille@exemple.fr');
     await fireEvent.changeText(screen.getByLabelText('Mot de passe'), 'court1');
+    await choisirDateNaissance(new Date(2000, 0, 1));
     await fireEvent.press(screen.getByText('Créer mon compte'));
 
     expect(screen.getByText('Il faut au moins 10 caractères.')).toBeTruthy();
@@ -125,6 +157,7 @@ describe('Inscription (docs/ecrans/L1-02-creation-compte.md)', () => {
     await rendreInscription(port);
     await fireEvent.changeText(screen.getByLabelText('Adresse e-mail'), 'camille@exemple.fr');
     await fireEvent.changeText(screen.getByLabelText('Mot de passe'), 'un-autre-mot-de-passe');
+    await choisirDateNaissance(new Date(2000, 0, 1));
     await fireEvent.press(screen.getByText('Créer mon compte'));
 
     expect(mockPousser).toHaveBeenCalledWith('/(public)/verification?email=camille%40exemple.fr');
@@ -134,6 +167,7 @@ describe('Inscription (docs/ecrans/L1-02-creation-compte.md)', () => {
     await rendreInscription(creerFauxPortAuth());
     await fireEvent.changeText(screen.getByLabelText('Adresse e-mail'), 'camille@exemple.fr');
     await fireEvent.changeText(screen.getByLabelText('Mot de passe'), 'un-autre-mot-de-passe');
+    await choisirDateNaissance(new Date(2000, 0, 1));
     await fireEvent.press(screen.getByText('Créer mon compte'));
 
     expect(mockPousser).toHaveBeenCalledWith('/(public)/verification?email=camille%40exemple.fr');
@@ -155,6 +189,7 @@ describe('Inscription (docs/ecrans/L1-02-creation-compte.md)', () => {
     const motDePasseSecret = 'un-secret-jamais-journalise';
     await fireEvent.changeText(screen.getByLabelText('Adresse e-mail'), 'camille@exemple.fr');
     await fireEvent.changeText(screen.getByLabelText('Mot de passe'), motDePasseSecret);
+    await choisirDateNaissance(new Date(2000, 0, 1));
     await fireEvent.press(screen.getByText('Créer mon compte'));
 
     expect(screen.getByText('Pas de connexion. Ta saisie est gardée, réessaie.')).toBeTruthy();
@@ -167,34 +202,74 @@ describe('Inscription (docs/ecrans/L1-02-creation-compte.md)', () => {
     }
   });
 
-  it('sur Android, un appui sur le champ date ouvre le sélecteur natif', async () => {
+  // N'affiche JAMAIS une date "déjà là" — corollaire du défaut trouvé sur le champ qui porte
+  // la règle des 18 ans (docs/dette.md).
+  it("n'affiche aucune date au premier rendu, un texte invite explicitement à en choisir une", async () => {
+    await rendreInscription(creerFauxPortAuth());
+
+    expect(screen.getByText('Choisir ta date de naissance')).toBeTruthy();
+    expect(screen.getByLabelText('Date de naissance, choisir ta date de naissance')).toBeTruthy();
+    // Le sélecteur natif lui-même n'est monté qu'à l'ouverture, jamais avant.
+    expect(screen.queryByTestId('selecteur-date-naissance')).toBeNull();
+  });
+
+  it('sur Android, un appui sur le champ date ouvre le dialogue natif, qui confirme directement au choix', async () => {
     Platform.OS = 'android';
     await rendreInscription(creerFauxPortAuth());
 
     expect(screen.queryByTestId('selecteur-date-naissance')).toBeNull();
     await fireEvent.press(screen.getByTestId('ouvrir-selecteur-date-naissance'));
-    expect(screen.getByTestId('selecteur-date-naissance')).toBeTruthy();
+    const selecteur = screen.getByTestId('selecteur-date-naissance');
+
+    await fireEvent(selecteur, 'valueChange', {}, new Date(2000, 0, 1));
+
+    // Android n'a pas de bouton "Valider la date" : le dialogue natif a déjà ses propres
+    // boutons OK/Annuler, "valueChange" EST la confirmation.
+    expect(screen.queryByText('Valider la date')).toBeNull();
+    expect(screen.getByText('1 janvier 2000')).toBeTruthy();
+    expect(screen.queryByTestId('selecteur-date-naissance')).toBeNull(); // dialogue refermé
   });
 
-  it('sur iOS, le sélecteur de date natif est affiché directement', async () => {
+  // Le vrai défaut trouvé après coup : le style "spinner" iOS n'a aucun geste de confirmation
+  // propre — le premier déplacement, seul, ne doit RIEN confirmer.
+  it('sur iOS, déplacer le sélecteur seul ne confirme rien : il faut appuyer sur Valider', async () => {
     Platform.OS = 'ios';
     await rendreInscription(creerFauxPortAuth());
 
-    expect(screen.getByTestId('selecteur-date-naissance')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('ouvrir-selecteur-date-naissance'));
+    const selecteur = screen.getByTestId('selecteur-date-naissance');
+    await fireEvent(selecteur, 'valueChange', {}, new Date(2000, 0, 1));
+
+    // Toujours affiché comme non choisi : le déplacement seul n'a rien confirmé.
+    expect(screen.getByText('Choisir ta date de naissance')).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Valider la date'));
+
+    expect(screen.getByText('1 janvier 2000')).toBeTruthy();
+    expect(screen.queryByTestId('selecteur-date-naissance')).toBeNull(); // sélecteur replié
   });
 
-  // Défaut ouvert sur l'année en cours moins 25 ans (docs/ecrans/L1-02, tableau) : donc déjà
-  // majeur par défaut, sans qu'aucune interaction avec le sélecteur ne soit nécessaire.
-  it('propose une date de naissance par défaut déjà majeure', async () => {
-    Platform.OS = 'ios';
+  // La trouvaille de cette session : @react-native-community/datetimepicker n'a aucune
+  // implémentation web (voir docs/backend.md) — un repli SILENCIEUX y laisserait le bouton
+  // inactif sans explication. Le repli doit être visible, jamais transparent.
+  it("sur web, affiche un message explicite plutôt qu'un sélecteur absent en silence", async () => {
+    Platform.OS = 'web';
     await rendreInscription(creerFauxPortAuth());
 
-    // Le nœud hôte du sélecteur (composant natif) reçoit "date" en millisecondes, pas "value"
-    // en objet Date — c'est le composant JS englobant (@react-native-community/datetimepicker)
-    // qui fait la conversion, jamais exposée telle quelle sous Jest.
-    const picker = screen.getByTestId('selecteur-date-naissance');
-    const valeur = new Date(picker.props.date as number);
-    const aujourdHui = new Date();
-    expect(aujourdHui.getFullYear() - valeur.getFullYear()).toBe(25);
+    expect(
+      screen.getByText(
+        'Le sélecteur de date n’est pas disponible depuis un navigateur. Utilise l’application mobile pour créer ton compte.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByTestId('ouvrir-selecteur-date-naissance')).toBeNull();
+    expect(screen.queryByTestId('selecteur-date-naissance')).toBeNull();
+
+    // Remplir les deux autres champs ne suffit pas non plus ici : sur web, l'inscription ne
+    // peut structurellement pas aboutir, le bouton doit rester honnêtement inactif.
+    await fireEvent.changeText(screen.getByLabelText('Adresse e-mail'), 'camille@exemple.fr');
+    await fireEvent.changeText(screen.getByLabelText('Mot de passe'), 'mot-de-passe-long');
+    expect(screen.getByText('Créer mon compte').parent?.props.accessibilityState.disabled).toBe(
+      true,
+    );
   });
 });
