@@ -12,6 +12,9 @@ type CompteFaux = {
   motDePasse: string;
   dateNaissance: string;
   emailVerifie: boolean;
+  // Réutilise compteId comme "code" du lien de vérification : suffisant pour ce faux (unique
+  // par compte), jamais une hypothèse sur la vraie forme du code Supabase (voir supabase.ts).
+  lienExpire: boolean;
 };
 
 // N'analyse JAMAIS la date de naissance via `new Date(dateNaissance)` : une chaîne "AAAA-MM-JJ"
@@ -45,6 +48,11 @@ function erreur(code: ErreurAuth['code'], message: string): { succes: false; err
 // de placer un compte dans cet état, sans passer par un vrai courriel.
 export type FauxPortAuth = PortAuth & {
   verifierEmailPourTest(email: string): void;
+  // Simule le lien reçu par courriel (docs/ecrans/L1-03-verification-email.md) : un test appelle
+  // etablirSessionDepuisLien(port.lienVerificationPourTest(email)) pour jouer le clic.
+  lienVerificationPourTest(email: string): string;
+  // Simule un lien périmé ou déjà utilisé (critère 3 de la fiche), sans horloge à avancer.
+  expirerLienPourTest(email: string): void;
 };
 
 // Faux en mémoire : respecte le même contrat que src/services/auth/supabase.ts, y compris ses
@@ -91,6 +99,7 @@ export function creerFauxPortAuth(): FauxPortAuth {
           motDePasse,
           dateNaissance,
           emailVerifie: false,
+          lienExpire: false,
         });
       }
       return { succes: true };
@@ -177,12 +186,45 @@ export function creerFauxPortAuth(): FauxPortAuth {
       };
     },
 
+    async etablirSessionDepuisLien(url) {
+      const code = new URL(url).searchParams.get('code');
+      const compte = code ? [...comptes.values()].find((c) => c.compteId === code) : undefined;
+
+      if (!compte) {
+        return erreur('serveur', 'On a un souci de notre côté. Ce n’est pas toi.');
+      }
+      if (compte.lienExpire) {
+        return erreur('lien_expire', 'Ce lien a expiré.');
+      }
+
+      compte.emailVerifie = true;
+      compteConnecte = compte;
+      notifier();
+      return { succes: true };
+    },
+
     verifierEmailPourTest(email) {
       const compte = comptes.get(email);
       if (!compte) {
         throw new Error(`verifierEmailPourTest : aucun compte pour "${email}".`);
       }
       compte.emailVerifie = true;
+    },
+
+    lienVerificationPourTest(email) {
+      const compte = comptes.get(email);
+      if (!compte) {
+        throw new Error(`lienVerificationPourTest : aucun compte pour "${email}".`);
+      }
+      return `myfavcoach://auth/rappel?code=${compte.compteId}`;
+    },
+
+    expirerLienPourTest(email) {
+      const compte = comptes.get(email);
+      if (!compte) {
+        throw new Error(`expirerLienPourTest : aucun compte pour "${email}".`);
+      }
+      compte.lienExpire = true;
     },
   } satisfies FauxPortAuth;
 }

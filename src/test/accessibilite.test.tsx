@@ -14,6 +14,10 @@ import Clients from '../../app/(coach)/clients';
 import Agenda from '../../app/(coach)/agenda';
 import Revenus from '../../app/(coach)/revenus';
 import Bienvenue from '../../app/(public)/index';
+import Inscription from '../../app/(public)/inscription';
+import Verification from '../../app/(public)/verification';
+import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
+import { creerFauxPortAuth } from '@/services/auth/faux';
 import { FournisseurTheme } from '@/theme/fournisseur';
 import { taille, themes } from '@/theme/tokens';
 import { contraste, melangerCouleur } from './contraste';
@@ -275,6 +279,22 @@ const CORPUS: EntreeCorpus[] = [
   { nom: 'app/(coach)/agenda.tsx', creerElement: () => <Agenda key="agenda" /> },
   { nom: 'app/(coach)/revenus.tsx', creerElement: () => <Revenus key="revenus" /> },
   { nom: 'app/(public)/index.tsx', creerElement: () => <Bienvenue key="bienvenue" /> },
+  {
+    nom: 'app/(public)/inscription.tsx',
+    creerElement: () => (
+      <FournisseurSession key="inscription" port={creerFauxPortAuth()}>
+        <Inscription />
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(public)/verification.tsx',
+    creerElement: () => (
+      <FournisseurSession key="verification" port={creerFauxPortAuth()}>
+        <Verification />
+      </FournisseurSession>
+    ),
+  },
 ];
 
 describe('accessibilité automatisée (npm run test:a11y)', () => {

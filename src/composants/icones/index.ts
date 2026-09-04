@@ -36,11 +36,14 @@ import { HorsLigne } from './hors-ligne';
 import { Reessayer } from './reessayer';
 import { Reglages } from './reglages';
 import { Plus } from './plus';
+import { Oeil } from './oeil';
+import { OeilBarre } from './oeil-barre';
 import type { ProprietesIcone } from './icone-base';
 
-// Les 36 pictogrammes de docs/design-system.md §5, dans l'ordre de la fiche. Cinq d'entre
-// eux (vocal, visio, raccrocher, hors-ligne, et l'usage montre de duree) servent des
-// fonctionnalites du jalon 2 : ils sont extraits quand meme, voir la fiche.
+// Les 36 pictogrammes de docs/design-system.md §5, dans l'ordre de la fiche, PLUS deux ajouts
+// hors dossier de design (oeil, oeil-barre — L1-02, aucune maquette de reference). Cinq des 36
+// (vocal, visio, raccrocher, hors-ligne, et l'usage montre de duree) servent des fonctionnalites
+// du jalon 2 : ils sont extraits quand meme, voir la fiche.
 export type NomIcone =
   | 'accueil'
   | 'recherche'
@@ -77,7 +80,9 @@ export type NomIcone =
   | 'hors-ligne'
   | 'reessayer'
   | 'reglages'
-  | 'plus';
+  | 'plus'
+  | 'oeil'
+  | 'oeil-barre';
 
 export const icones: Record<NomIcone, ComponentType<ProprietesIcone>> = {
   accueil: Accueil,
@@ -116,6 +121,8 @@ export const icones: Record<NomIcone, ComponentType<ProprietesIcone>> = {
   reessayer: Reessayer,
   reglages: Reglages,
   plus: Plus,
+  oeil: Oeil,
+  'oeil-barre': OeilBarre,
 };
 
 export { Icone } from './icone';

@@ -35,6 +35,11 @@ yarn-error.*
 .env.local
 .env*.local
 
+# secrets du banc RLS (src/test/rls.banc.ts) : nom délibérément hors de la convention .env*
+# réservée par Expo — voir le commentaire de scripts/verifier-serveur-dev.mjs et docs/dette.md,
+# collision trouvée à P1.8 (.env.test.local faisait planter `expo start --web`).
+.secrets-rls.local
+
 # TypeScript
 *.tsbuildinfo
 

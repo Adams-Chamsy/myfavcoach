@@ -172,4 +172,44 @@ describe('creerFauxPortAuth', () => {
     expect((notifications[0] as { email: string }).email).toBe('camille@exemple.fr');
     expect(notifications[1]).toBeNull();
   });
+
+  // docs/ecrans/L1-03-verification-email.md : le lien profond confirme ET établit la session.
+  it('etablirSessionDepuisLien confirme l’adresse et établit la session', async () => {
+    const port = creerFauxPortAuth();
+    await port.inscrire('camille@exemple.fr', 'bon-mot-de-passe', MAJEUR);
+    const lien = port.lienVerificationPourTest('camille@exemple.fr');
+
+    const resultat = await port.etablirSessionDepuisLien(lien);
+
+    expect(resultat).toEqual({ succes: true });
+    const session = await port.sessionCourante();
+    expect(session?.email).toBe('camille@exemple.fr');
+    expect(session?.emailVerifie).toBe(true);
+  });
+
+  it('etablirSessionDepuisLien : un lien périmé rend l’erreur dédiée, sans établir de session', async () => {
+    const port = creerFauxPortAuth();
+    await port.inscrire('camille@exemple.fr', 'bon-mot-de-passe', MAJEUR);
+    const lien = port.lienVerificationPourTest('camille@exemple.fr');
+    port.expirerLienPourTest('camille@exemple.fr');
+
+    const resultat = await port.etablirSessionDepuisLien(lien);
+
+    expect(resultat).toEqual({
+      succes: false,
+      erreur: { code: 'lien_expire', message: 'Ce lien a expiré.' },
+    });
+    expect(await port.sessionCourante()).toBeNull();
+  });
+
+  it('etablirSessionDepuisLien : un code inconnu rend une erreur générique', async () => {
+    const port = creerFauxPortAuth();
+
+    const resultat = await port.etablirSessionDepuisLien('myfavcoach://auth/rappel?code=inconnu');
+
+    expect(resultat).toEqual({
+      succes: false,
+      erreur: { code: 'serveur', message: 'On a un souci de notre côté. Ce n’est pas toi.' },
+    });
+  });
 });

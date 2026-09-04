@@ -18,6 +18,7 @@ jest.mock('@/services/supabase/client', () => ({
       updateUser: jest.fn(),
       getSession: jest.fn(),
       onAuthStateChange: jest.fn(),
+      exchangeCodeForSession: jest.fn(),
     },
   },
 }));
@@ -221,5 +222,44 @@ describe('portAuthSupabase', () => {
 
     arreter();
     expect(desabonner).toHaveBeenCalledTimes(1);
+  });
+
+  describe('etablirSessionDepuisLien', () => {
+    it('succès : extrait le code et échange contre une session', async () => {
+      auth.exchangeCodeForSession.mockResolvedValue({ data: {}, error: null });
+
+      const resultat = await portAuthSupabase.etablirSessionDepuisLien(
+        'myfavcoach://auth/rappel?code=un-code-reel',
+      );
+
+      expect(resultat).toEqual({ succes: true });
+      expect(auth.exchangeCodeForSession).toHaveBeenCalledWith('un-code-reel');
+    });
+
+    it('lien sans code : erreur générique, aucun appel réseau', async () => {
+      const resultat = await portAuthSupabase.etablirSessionDepuisLien('myfavcoach://auth/rappel');
+
+      expect(resultat).toEqual({
+        succes: false,
+        erreur: { code: 'serveur', message: 'On a un souci de notre côté. Ce n’est pas toi.' },
+      });
+      expect(auth.exchangeCodeForSession).not.toHaveBeenCalled();
+    });
+
+    it('lien expiré ou déjà utilisé : traduit en lien_expire', async () => {
+      auth.exchangeCodeForSession.mockResolvedValue({
+        data: {},
+        error: new AuthApiError('Token has expired or is invalid', 403, 'otp_expired'),
+      });
+
+      const resultat = await portAuthSupabase.etablirSessionDepuisLien(
+        'myfavcoach://auth/rappel?code=perime',
+      );
+
+      expect(resultat).toEqual({
+        succes: false,
+        erreur: { code: 'lien_expire', message: 'Ce lien a expiré.' },
+      });
+    });
   });
 });

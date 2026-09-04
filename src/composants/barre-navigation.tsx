@@ -65,6 +65,11 @@ export function BarreNavigation({ variante, elements, paddingBas = 0 }: Propriet
   const couleurIconeMisEnAvant = estCoach
     ? themes.sombre.marque.accentEncre
     : theme.couleur.marque.accentEncre;
+  // Même principe pour la pastille de non-lus : fixe sur la barre coach, jamais ambiante.
+  // Trouvée non branchée (CLAUDE.md, section design, "île thématique fixe") : aucun écran
+  // n'utilise encore pastilleNonLus sur la barre coach, donc aucun test n'avait mis ce trou en
+  // évidence avant l'audit qui a suivi le même bug sur docs/ecrans/L1-01-bienvenue.md.
+  const couleurPastille = estCoach ? themes.sombre.marque.accent : theme.couleur.marque.accent;
 
   return (
     <View
@@ -150,7 +155,7 @@ export function BarreNavigation({ variante, elements, paddingBas = 0 }: Propriet
                     width: theme.espace[2],
                     height: theme.espace[2],
                     borderRadius: theme.rayon.pilule,
-                    backgroundColor: theme.couleur.marque.accent,
+                    backgroundColor: couleurPastille,
                   }}
                 />
               ) : null}

@@ -5,7 +5,7 @@
 #     ou une CI en meme temps qu'un `npm run test:rls` local) se marcheraient dessus sur les
 #     memes comptes.
 #   - il a besoin de la clef secrete d'administration de ce projet (SUPABASE_CLE_ADMIN_TEST),
-#     qui ne vit que dans .env.test.local (local, ignore par git), jamais dans les secrets de
+#     qui ne vit que dans .secrets-rls.local (local, ignore par git), jamais dans les secrets de
 #     ce depot.
 # Un projet Supabase dedie aux tests reglerait les deux (docs/dette.md, echeance L4). Tant que
 # ce projet n'existe pas, NE RAJOUTE PAS test:rls ici : ce ne serait pas reparer un oubli.

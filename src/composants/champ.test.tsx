@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { FournisseurTheme } from '@/theme/fournisseur';
 import { Champ } from './champ';
@@ -40,5 +40,45 @@ describe('Champ', () => {
     expect(screen.getByLabelText('Objectif')).toBeTruthy();
     // Sans erreur, le nom accessible ne doit surtout pas contenir "erreur :".
     expect(screen.queryByLabelText(/erreur :/)).toBeNull();
+  });
+
+  // docs/ecrans/L1-02-creation-compte.md : "Adresse e-mail | clavier e-mail, sans majuscule
+  // automatique, sans correction".
+  it('type email : clavier dédié, sans majuscule automatique ni correction', async () => {
+    await rendreChamp({ type: 'email', libelle: 'Adresse e-mail' });
+
+    const champ = screen.getByLabelText('Adresse e-mail');
+    expect(champ.props.keyboardType).toBe('email-address');
+    expect(champ.props.autoCapitalize).toBe('none');
+    expect(champ.props.autoCorrect).toBe(false);
+  });
+
+  // docs/ecrans/L1-02-creation-compte.md : "Mot de passe | Champ masqué, bouton œil dans une
+  // cible de 44".
+  describe('type motDePasse', () => {
+    it('masque la saisie par défaut, et la révèle au bouton œil', async () => {
+      await rendreChamp({ type: 'motDePasse', libelle: 'Mot de passe' });
+
+      expect(screen.getByLabelText('Mot de passe').props.secureTextEntry).toBe(true);
+
+      await fireEvent.press(screen.getByLabelText('Afficher le mot de passe'));
+
+      expect(screen.getByLabelText('Mot de passe').props.secureTextEntry).toBe(false);
+      expect(screen.getByLabelText('Masquer le mot de passe')).toBeTruthy();
+    });
+
+    it('le bouton œil a une cible ≥ 44 pt', async () => {
+      await rendreChamp({ type: 'motDePasse', libelle: 'Mot de passe' });
+
+      const bouton = screen.getByLabelText('Afficher le mot de passe');
+      expect(bouton.props.style.minHeight ?? bouton.props.style.height).toBeGreaterThanOrEqual(44);
+    });
+  });
+
+  it('type texte (défaut) : aucun bouton œil, aucun clavier spécial', async () => {
+    await rendreChamp();
+
+    expect(screen.queryByLabelText('Afficher le mot de passe')).toBeNull();
+    expect(screen.getByLabelText('Objectif').props.secureTextEntry).toBeFalsy();
   });
 });

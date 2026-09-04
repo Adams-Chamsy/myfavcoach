@@ -1,28 +1,44 @@
 import { useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 
+import { BoutonIcone } from '@/composants/bouton-icone';
 import { useTheme } from '@/theme/fournisseur';
+
+// "texte" : par defaut, aucun comportement particulier. "email" : clavier e-mail, sans
+// majuscule automatique ni correction (docs/ecrans/L1-02-creation-compte.md, "Adresse e-mail").
+// "motDePasse" : masque par defaut, bouton oeil dans une cible de 44 pour reveler
+// (docs/ecrans/L1-02-creation-compte.md, "Mot de passe | Champ masque, bouton oeil").
+export type TypeChamp = 'texte' | 'email' | 'motDePasse';
 
 export type ProprietesChamp = {
   libelle: string;
   valeur: string;
   onChangeTexte: (texte: string) => void;
+  // Sortie du champ (docs/ecrans/L1-02-creation-compte.md : "Format vérifié à la sortie du
+  // champ, jamais pendant la frappe") — un écran y déclenche sa propre validation, Champ ne
+  // valide rien lui-même.
+  onBlur?: () => void;
   messageErreur?: string;
   placeholder?: string;
   desactive?: boolean;
+  type?: TypeChamp;
 };
 
 export function Champ({
   libelle,
   valeur,
   onChangeTexte,
+  onBlur,
   messageErreur,
   placeholder,
   desactive = false,
+  type = 'texte',
 }: ProprietesChamp) {
   const theme = useTheme();
   const [estFocus, setEstFocus] = useState(false);
+  const [motDePasseVisible, setMotDePasseVisible] = useState(false);
   const enErreur = Boolean(messageErreur);
+  const estMotDePasse = type === 'motDePasse';
 
   // gris[500] (#7C766E) sur fond.canevas mesure 4,49:1 — sous le seuil de 4,5:1 (npm run
   // test:a11y, calcul WCAG reel). C'est la meme couleur que la correction §1.2 de
@@ -72,12 +88,19 @@ export function Champ({
           value={valeur}
           onChangeText={onChangeTexte}
           onFocus={() => setEstFocus(true)}
-          onBlur={() => setEstFocus(false)}
+          onBlur={() => {
+            setEstFocus(false);
+            onBlur?.();
+          }}
           placeholder={placeholder}
           placeholderTextColor={theme.couleur.gris[400]}
           editable={!desactive}
           accessibilityLabel={nomAccessible}
           accessibilityState={{ disabled: desactive }}
+          keyboardType={type === 'email' ? 'email-address' : 'default'}
+          autoCapitalize={type === 'email' || estMotDePasse ? 'none' : 'sentences'}
+          autoCorrect={type === 'email' ? false : true}
+          secureTextEntry={estMotDePasse && !motDePasseVisible}
           style={{
             height: theme.taille.controle,
             borderRadius: theme.rayon.saisie,
@@ -89,10 +112,31 @@ export function Champ({
                 ? theme.couleur.fond.surface
                 : theme.couleur.fond.canevas,
             paddingHorizontal: theme.espace[4],
+            paddingRight: estMotDePasse ? theme.taille.tapMin : theme.espace[4],
             ...theme.texte.corps,
             color: desactive ? theme.couleur.texte.desactive : theme.couleur.texte.principal,
           }}
         />
+        {estMotDePasse ? (
+          <View
+            style={{
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              bottom: 0,
+              justifyContent: 'center',
+            }}
+          >
+            <BoutonIcone
+              nom={motDePasseVisible ? 'oeil-barre' : 'oeil'}
+              accessibilityLabel={
+                motDePasseVisible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'
+              }
+              onPress={() => setMotDePasseVisible((v) => !v)}
+              desactive={desactive}
+            />
+          </View>
+        ) : null}
       </View>
 
       {/* Message d'erreur sous le champ, jamais en surimpression : espace reserve dans le

@@ -43,6 +43,10 @@ function traduireErreur(erreurBrute: unknown): ErreurAuth {
     if (auth.code === 'over_request_rate_limit' || auth.code === 'over_email_send_rate_limit') {
       return { code: 'limite_debit', message: 'Trop d’essais. Réessaie dans quelques minutes.' };
     }
+    // docs/ecrans/L1-03-verification-email.md : "un lien expiré ou déjà utilisé".
+    if (auth.code === 'otp_expired') {
+      return { code: 'lien_expire', message: 'Ce lien a expiré.' };
+    }
     // Zone NON VÉRIFIÉE — voir le commentaire de fonction ci-dessus.
     if (auth.code === 'unexpected_failure' && /majeur/i.test(auth.message)) {
       return { code: 'age_insuffisant', message: 'My fav Coach est réservé aux majeurs.' };
@@ -114,5 +118,25 @@ export const portAuthSupabase: PortAuth = {
       ecouteur(session ? versSessionAuth(session) : null);
     });
     return () => subscription.unsubscribe();
+  },
+
+  // Zone NON VÉRIFIÉE sur un vrai appareil (docs/ecrans/L1-03-verification-email.md, critère 2 :
+  // "deux essais manuels sur appareil" — la fiche elle-même prévoit qu'aucun autre moyen ne
+  // prouve ceci). @supabase/supabase-js v2 utilise le flux PKCE par défaut (aucun `flowType`
+  // n'est fixé dans src/services/supabase/client.ts) : le lien de confirmation devrait donc
+  // porter `?code=...`, échangé ici contre une session. Si le projet utilise en réalité le flux
+  // implicite (jetons dans le FRAGMENT `#access_token=...&refresh_token=...`), ce code échouera
+  // silencieusement — voir docs/dette.md.
+  async etablirSessionDepuisLien(url) {
+    const code = new URL(url).searchParams.get('code');
+    if (!code) {
+      return {
+        succes: false,
+        erreur: { code: 'serveur', message: 'On a un souci de notre côté. Ce n’est pas toi.' },
+      };
+    }
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) return { succes: false, erreur: traduireErreur(error) };
+    return { succes: true };
   },
 } satisfies PortAuth;

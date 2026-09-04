@@ -228,6 +228,45 @@ describe('BarreNavigation', () => {
     expect(texteClientClair).not.toBe(texteClientSombre);
   });
 
+  // Trou trouvé en auditant la barre coach après le même bug sur docs/ecrans/L1-01-bienvenue.md
+  // (CLAUDE.md, section design) : la pastille de non-lus n'était pas branchée sur estCoach,
+  // contrairement à toutes les autres couleurs de cette île. Jamais rouge avant ce test — aucun
+  // écran ne met pastilleNonLus sur la barre coach — donc jamais mis en évidence.
+  it('garde la couleur de la pastille de non-lus fixe sur la barre coach quel que soit themeForce', async () => {
+    const elements = elementsCoach();
+    elements[1] = { ...elements[1], pastilleNonLus: 2 };
+
+    function couleurPastille(arbre: Noeud): string | undefined {
+      // width 8 (theme.espace[2]) distingue la pastille du rond "Créer" (theme.taille.avatarMd),
+      // qui partage le même borderRadius (theme.rayon.pilule, 999) dans cet arbre.
+      const pastille = trouver(
+        arbre,
+        (noeud) =>
+          noeud.type === 'View' &&
+          noeud.props?.style?.borderRadius === 999 &&
+          noeud.props?.style?.width === 8,
+      );
+      return pastille?.props?.style?.backgroundColor;
+    }
+
+    const { toJSON, rerender } = await render(
+      <FournisseurTheme themeForce="clair">
+        <BarreNavigation variante="coach" elements={elements} />
+      </FournisseurTheme>,
+    );
+    const pastilleClair = couleurPastille(toJSON());
+
+    await rerender(
+      <FournisseurTheme themeForce="sombre">
+        <BarreNavigation variante="coach" elements={elements} />
+      </FournisseurTheme>,
+    );
+    const pastilleSombre = couleurPastille(toJSON());
+
+    expect(pastilleClair).toBe(themes.sombre.marque.accent);
+    expect(pastilleSombre).toBe(themes.sombre.marque.accent);
+  });
+
   // Critere 6 (docs/ecrans/L0-02-coquille-coach.md) : "aucune valeur de couleur écrite en dur
   // dans le fichier de la barre" — verifie par lecture directe du fichier source, en plus de la
   // regle eslint no-hex-color-literal deja active sur src/.

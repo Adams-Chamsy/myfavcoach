@@ -40,7 +40,7 @@ function lireFichierEnv(chemin) {
 }
 
 function chargerConfiguration() {
-  const variables = lireFichierEnv(path.join(racine, '.env.test.local'));
+  const variables = lireFichierEnv(path.join(racine, '.secrets-rls.local'));
   const apiUrl = variables.SUPABASE_URL_TEST;
   const cleAdmin = variables.SUPABASE_CLE_ADMIN_TEST;
 
@@ -49,8 +49,8 @@ function chargerConfiguration() {
   if (!cleAdmin) manquantes.push('SUPABASE_CLE_ADMIN_TEST');
   if (manquantes.length > 0) {
     console.error(
-      `Variable(s) manquante(s) dans .env.test.local : ${manquantes.join(', ')}. ` +
-        'Voir .env.test.local.exemple.',
+      `Variable(s) manquante(s) dans .secrets-rls.local : ${manquantes.join(', ')}. ` +
+        'Voir .secrets-rls.local.exemple.',
     );
     process.exit(1);
   }

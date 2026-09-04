@@ -86,6 +86,7 @@ describe('useSession', () => {
       changerEmail: jest.fn(),
       sessionCourante: jest.fn().mockResolvedValue(null satisfies SessionAuth | null),
       surChangementDeSession: jest.fn().mockReturnValue(desabonner),
+      etablirSessionDepuisLien: jest.fn(),
     };
 
     const { result, unmount } = await renderHook(() => useSession(), {
@@ -96,5 +97,27 @@ describe('useSession', () => {
     await unmount();
 
     expect(desabonner).toHaveBeenCalledTimes(1);
+  });
+
+  // Sans ce repli, un sessionCourante() qui rejette bloquerait indéfiniment le démarrage à
+  // froid (app/index.tsx) sur l'écran d'attente : chargement doit se résoudre quand même.
+  it('un sessionCourante() qui rejette résout quand même chargement, avec session null', async () => {
+    const portControle: PortAuth = {
+      inscrire: jest.fn(),
+      connecter: jest.fn(),
+      deconnecter: jest.fn(),
+      renvoyerVerification: jest.fn(),
+      demanderReinitialisation: jest.fn(),
+      changerMotDePasse: jest.fn(),
+      changerEmail: jest.fn(),
+      sessionCourante: jest.fn().mockRejectedValue(new Error('lecture impossible')),
+      surChangementDeSession: jest.fn().mockReturnValue(() => {}),
+      etablirSessionDepuisLien: jest.fn(),
+    };
+
+    const { result } = await renderHook(() => useSession(), { wrapper: envelopper(portControle) });
+
+    await waitFor(() => expect(result.current.chargement).toBe(false));
+    expect(result.current.session).toBeNull();
   });
 });

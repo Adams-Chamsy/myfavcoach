@@ -46,7 +46,7 @@ const DOMAINE_EMAIL = 'banc-rls.test';
 // réels : pointé par erreur sur un mauvais projet (et un jour sur la production), il
 // détruirait des données réelles. Une variable d'environnement mal copiée suffit — c'est
 // exactement ce que cette constante empêche, en refusant de continuer plutôt que de faire
-// confiance à ce que .env.test.local contient.
+// confiance à ce que .secrets-rls.local contient.
 const REFERENCE_PROJET_AUTORISEE = 'imzdtntaqbtymoacsxua';
 
 let API_URL: string;
@@ -78,27 +78,27 @@ function lireFichierEnv(chemin: string): Record<string, string> {
   return valeurs;
 }
 
-// Lit les identifiants réseau (.env pour la clé anonyme, déjà publique ; .env.test.local pour
+// Lit les identifiants réseau (.env pour la clé anonyme, déjà publique ; .secrets-rls.local pour
 // l'URL et la clé secrète d'administration du banc), vérifie qu'aucun ne manque, puis applique
 // la garde de sécurité sur la référence de projet AVANT tout appel réseau.
 function chargerConfigurationBanc(): { apiUrl: string; anonKey: string; cleAdmin: string } {
   const variablesPubliques = lireFichierEnv(join(RACINE_DEPOT, '.env'));
-  const variablesTest = lireFichierEnv(join(RACINE_DEPOT, '.env.test.local'));
+  const variablesTest = lireFichierEnv(join(RACINE_DEPOT, '.secrets-rls.local'));
 
   const anonKey = variablesPubliques.EXPO_PUBLIC_SUPABASE_ANON_KEY;
   const apiUrl = variablesTest.SUPABASE_URL_TEST;
   const cleAdmin = variablesTest.SUPABASE_CLE_ADMIN_TEST;
 
   const manquantes: string[] = [];
-  if (!apiUrl) manquantes.push('SUPABASE_URL_TEST (.env.test.local)');
-  if (!cleAdmin) manquantes.push('SUPABASE_CLE_ADMIN_TEST (.env.test.local)');
+  if (!apiUrl) manquantes.push('SUPABASE_URL_TEST (.secrets-rls.local)');
+  if (!cleAdmin) manquantes.push('SUPABASE_CLE_ADMIN_TEST (.secrets-rls.local)');
   if (!anonKey) manquantes.push('EXPO_PUBLIC_SUPABASE_ANON_KEY (.env)');
   if (manquantes.length > 0) {
     throw new Error(
       [
         `Variable(s) manquante(s) pour npm run test:rls : ${manquantes.join(', ')}.`,
         '',
-        'Copie .env.test.local.exemple en .env.test.local et remplis-le (le fichier explique',
+        'Copie .secrets-rls.local.exemple en .secrets-rls.local et remplis-le (le fichier explique',
         'où trouver chaque valeur). Puis relance `npm run test:rls`.',
       ].join('\n'),
     );
@@ -114,7 +114,7 @@ function chargerConfigurationBanc(): { apiUrl: string; anonKey: string; cleAdmin
         `Référence trouvée : "${referenceTrouvee}".`,
         '',
         'Ce banc CRÉE et SUPPRIME des comptes réels : corrige SUPABASE_URL_TEST dans',
-        '.env.test.local avant de relancer. Ne contourne jamais cette garde.',
+        '.secrets-rls.local avant de relancer. Ne contourne jamais cette garde.',
       ].join('\n'),
     );
   }

@@ -132,6 +132,17 @@ maquettes/              référence visuelle, lecture seule
   du pictogramme.
 - Toute icône seule porte un `accessibilityLabel` en français.
 - Aucun statut n'est porté par la seule couleur : un libellé texte l'accompagne toujours.
+- **Une surface qui fixe son propre thème lit les valeurs du thème CHOISI explicitement**
+  (`themes.clair.*`, `themes.sombre.*` — `src/theme/tokens.ts`), **jamais par le contexte**
+  (`useTheme().couleur`) : un token inversible (`fond.inverse`, par exemple) lu via le contexte
+  s'inverse avec le thème ambiant, ce qui produit du texte invisible sur son propre fond dès que
+  cette surface est rendue sous un thème ambiant différent de celui prévu (`themeForce="sombre"`
+  de la galerie, `npm run test:a11y`, un futur vrai thème sombre). `theme.espace`/`rayon`/
+  `taille`/`texte` restent lus via `useTheme()` sans risque : ces groupes sont globaux,
+  identiques dans les deux thèmes. Trouvé deux fois, dans les deux seules îles du jalon 1 :
+  `src/composants/barre-navigation.tsx` (fond de la barre coach, lot L0) et
+  `app/(public)/index.tsx` (fond de l'écran de bienvenue, lot L1) — la seconde fois malgré la
+  leçon déjà écrite en commentaire dans la première.
 
 **TypeScript.** `strict: true`. Pas de type de retour implicite sur les fonctions exportées.
 Les états d'une machine sont des unions littérales, jamais des chaînes libres.

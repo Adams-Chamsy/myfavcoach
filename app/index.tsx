@@ -1,9 +1,10 @@
+import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Redirect, type Href } from 'expo-router';
 import { Text, View } from 'react-native';
 
 import { EtatErreur } from '@/composants/etats/etat-erreur';
-import { lireSession } from '@/services/trousseau/trousseau';
+import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
+import { determinerDestination } from '@/fonctionnalites/identite/garde';
 import { useTheme } from '@/theme/fournisseur';
 import { font } from '@/theme/tokens';
 
@@ -19,18 +20,23 @@ const TAILLE_LOGO = 64;
 
 type Phase = 'lecture' | 'attente' | 'erreur';
 
-// Route de redirection (docs/ecrans/L0-04-demarrage.md, sequence 6) : ecran de developpement,
-// route reelle en L1.
+// Route de redirection (docs/ecrans/L0-04-demarrage.md, sequence 6). La session vient du
+// fournisseur (useSession, src/fonctionnalites/identite/fournisseur-session.tsx), qui restaure
+// depuis le stockage chiffré du client Supabase — c'est le comportement normal du client, pas
+// un contournement. AUCUNE deuxieme memoire locale (src/services/trousseau/, lot L0, supprime
+// en preparant P1.8) : une session fraichement etablie ailleurs (inscription, lien profond)
+// n'a qu'une seule source, jamais deux qui pourraient diverger.
 export default function Index() {
   const theme = useTheme();
+  const { chargement, session } = useSession();
   const [phase, setPhase] = useState<Phase>('lecture');
-  const [destination, setDestination] = useState<Href | null>(null);
   const [nombreEchecs, setNombreEchecs] = useState(0);
   const [cleTentative, setCleTentative] = useState(0);
 
   useEffect(() => {
-    let monte = true;
+    if (!chargement) return;
 
+    let monte = true;
     const minuteurAttente = setTimeout(() => {
       if (monte) setPhase('attente');
     }, DELAI_ATTENTE_MS);
@@ -41,44 +47,21 @@ export default function Index() {
       }
     }, DELAI_ERREUR_MS);
 
-    // Aucun appel reseau au demarrage (docs/ecrans/L0-04-demarrage.md, regle) : la redirection
-    // se decide entierement sur le contenu local du trousseau securise ; la validation du
-    // jeton se fera au premier appel reel, en L1.
-    lireSession()
-      .then(({ jeton, profilActif }) => {
-        if (!monte) return;
-        clearTimeout(minuteurAttente);
-        clearTimeout(minuteurErreur);
-        // `as Href` : .expo/types/router.d.ts, genere hors serveur de developpement (via
-        // `expo export`), ne produit qu'un type de route generique sans les chemins absolus
-        // litteraux — ces trois routes existent bel et bien (verifie par le rendu de
-        // `expo export -p web`, docs/ecrans/L0-01/L0-02/L0-04). Le vrai serveur `expo start`
-        // regenere un fichier plus precis qui rendrait ce cast inutile.
-        setDestination(
-          (!jeton
-            ? '/(public)'
-            : profilActif === 'coach'
-              ? '/(coach)/pilotage'
-              : '/(client)/accueil') as Href,
-        );
-      })
-      .catch(() => {
-        if (!monte) return;
-        clearTimeout(minuteurAttente);
-        clearTimeout(minuteurErreur);
-        setPhase('erreur');
-        setNombreEchecs((n) => n + 1);
-      });
-
     return () => {
       monte = false;
       clearTimeout(minuteurAttente);
       clearTimeout(minuteurErreur);
     };
-  }, [cleTentative]);
+    // cleTentative : rejoue les minuteurs sur "Reessayer", sans quoi une premiere lecture lente
+    // laisserait la phase bloquee sur "erreur" indefiniment.
+  }, [chargement, cleTentative]);
 
-  if (destination) {
-    return <Redirect href={destination} />;
+  // JAMAIS de redirection par defaut vers l'espace public tant que chargement est vrai : sinon
+  // un eclair d'ecran public precede l'espace reel d'un utilisateur qui a une session valide.
+  // Trouve en preparant P1.8 avec le trousseau (l'ancienne memoire de session, qui ne savait
+  // jamais qu'une session Supabase venait d'etre etablie).
+  if (!chargement) {
+    return <Redirect href={determinerDestination(session)} />;
   }
 
   if (phase === 'erreur') {

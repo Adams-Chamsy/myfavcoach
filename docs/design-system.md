@@ -103,6 +103,12 @@ Cinq icônes appartiennent à des fonctionnalités hors jalon 1 (`vocal`, `visio
 `hors-ligne`, plus l'usage montre de `duree`). Les extraire quand même — c'est gratuit et ça
 évite un aller-retour.
 
+**Ajouts hors dossier de design.** `oeil` et `oeil-barre` (afficher/masquer un mot de passe,
+`docs/ecrans/L1-02-creation-compte.md`) ne viennent pas de `maquettes/MyFavCoach-Handoff_dc.html` :
+cet écran n'a aucune référence visuelle. Ajoutés au système d'icônes (pas en tracé isolé dans
+l'écran) parce que le contrôle se répète — `docs/prompts/L1.md` P1.9 réutilise explicitement les
+composants de L1-02 pour la connexion. 38 pictogrammes au total à partir de ce lot.
+
 ---
 
 ## 6. Primitives à construire au lot L0

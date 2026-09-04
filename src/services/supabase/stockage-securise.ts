@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 // Forme exacte attendue par `auth.storage` du client Supabase (src/services/supabase/client.ts) :
@@ -61,12 +62,17 @@ async function lireCompte(cle: string): Promise<number> {
   return Number.isFinite(nombre) && nombre > 0 ? nombre : 0;
 }
 
-// Non atomique : une interruption exactement pendant l'écriture des morceaux (avant que le
-// nouveau compte ne soit posé) laisserait un mélange de morceaux neufs et anciens. Accepté ici
-// parce qu'une session ainsi corrompue échoue simplement à l'authentification et force une
-// reconnexion — jamais un accès avec de mauvaises données. Voir getItem : un morceau manquant
-// rend `null` plutôt qu'une valeur tronquée.
-export const stockageSecurise: AdaptateurStockage = {
+// expo-secure-store n'a aucune implémentation web (node_modules/expo-secure-store/src/
+// ExpoSecureStore.web.ts exporte un objet vide) : le module natif appelé par getItemAsync sous
+// ce package n'existe tout simplement pas sur cette plateforme, et lève au lieu de renvoyer une
+// erreur "indisponible" propre. Sans repli, l'application entière plante à l'ouverture sur web —
+// découvert par npm run verif:serveur (docs/dette.md), qui fait tourner un vrai serveur
+// `expo start --web` en boîte noire pour prouver l'absence de bug de démarrage. Le web n'est de
+// toute façon jamais une cible du produit (CLAUDE.md §1 : iOS + Android uniquement) : une
+// session qui ne survit pas au rechargement de page y est un comportement honnête, pas un
+// contournement — jamais AsyncStorage/localStorage en repli, qui redonnerait une VRAIE
+// persistance à une plateforme jamais conçue pour porter un jeton de session.
+const stockageSecuriseNatif: AdaptateurStockage = {
   async getItem(cle) {
     const compte = await lireCompte(cle);
     if (compte === 0) return null;
@@ -105,3 +111,14 @@ export const stockageSecurise: AdaptateurStockage = {
     await SecureStore.deleteItemAsync(cleCompte(cle));
   },
 };
+
+const stockageSecuriseWeb: AdaptateurStockage = {
+  async getItem() {
+    return null;
+  },
+  async setItem() {},
+  async removeItem() {},
+};
+
+export const stockageSecurise: AdaptateurStockage =
+  Platform.OS === 'web' ? stockageSecuriseWeb : stockageSecuriseNatif;

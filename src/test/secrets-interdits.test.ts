@@ -105,7 +105,7 @@ describe('secrets interdits côté application', () => {
   //   - supabase/migrations/0001_creer_identite.sql   : commentaires expliquant pourquoi aucun grant n'est posé pour ce rôle
   //   - supabase/migrations/0003_accorder_service_role.sql : corrige cette hypothèse — les GRANT que ce rôle nécessite réellement sur ce projet, justifiés ligne à ligne
   //   - supabase/config.toml                          : commentaire généré par `supabase init`, décrivant les rôles de la Data API
-  //   - src/test/rls.banc.ts                          : le nom de variable (SERVICE_ROLE_KEY) apparaît pour préparer le banc ; sa valeur, jamais écrite ici, est lue depuis .env.test.local (ignoré par git) — jamais dans l'application
+  //   - src/test/rls.banc.ts                          : le nom de variable (SERVICE_ROLE_KEY) apparaît pour préparer le banc ; sa valeur, jamais écrite ici, est lue depuis .secrets-rls.local (ignoré par git) — jamais dans l'application
   describe('clé service_role', () => {
     const EXCEPTIONS = new Set([
       '.env.exemple',

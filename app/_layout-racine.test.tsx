@@ -18,6 +18,18 @@ jest.mock('expo-splash-screen', () => ({
   preventAutoHideAsync: jest.fn(() => Promise.resolve()),
   hideAsync: jest.fn(() => Promise.resolve()),
 }));
+jest.mock('expo-linking', () => ({ getInitialURL: jest.fn().mockResolvedValue(null) }));
+// Jamais le vrai adaptateur ici : src/services/supabase/client.ts exige de vraies variables
+// d'environnement (EXPO_PUBLIC_SUPABASE_URL...) à l'évaluation du module, absentes sous Jest
+// (jamais chargées depuis .env, voir src/services/supabase/client.test.ts). Ce test vérifie le
+// squelette de LayoutRacine (polices, écran natif), pas le port réel — sessionCourante() ne
+// doit d'ailleurs jamais être appelée pour de vrai dans un test.
+jest.mock('@/services/auth/supabase', () => ({
+  portAuthSupabase: {
+    sessionCourante: jest.fn().mockResolvedValue(null),
+    surChangementDeSession: jest.fn().mockReturnValue(() => {}),
+  },
+}));
 
 const useFontsMock = useFonts as jest.MockedFunction<typeof useFonts>;
 

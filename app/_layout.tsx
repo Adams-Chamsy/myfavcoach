@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
+import * as Linking from 'expo-linking';
 import * as SplashScreen from 'expo-splash-screen';
 import { InstrumentSerif_400Regular } from '@expo-google-fonts/instrument-serif';
 import {
@@ -11,7 +12,26 @@ import {
 } from '@expo-google-fonts/manrope';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
+import { portAuthSupabase } from '@/services/auth/supabase';
 import { FournisseurTheme } from '@/theme/fournisseur';
+
+// Lien profond de vérification (docs/ecrans/L1-03-verification-email.md, myfavcoach://auth/
+// rappel), au démarrage à froid SEULEMENT — l'URL qui a lancé cette instance de l'application.
+// Traité ici, pas dans l'écran de vérification, parce que ce dernier n'est pas forcément monté
+// à froid (myfavcoach://auth/rappel n'est la route d'aucun écran réel, expo-router ne peut pas
+// y naviguer). L'écran de vérification écoute séparément les liens reçus PENDANT qu'il est
+// monté (addEventListener('url', ...), jamais getInitialURL ici ET là : le même lien serait
+// échangé deux fois, la seconde toujours refusée comme "déjà utilisé".
+function traiterLienDemarrageAFroid(url: string | null) {
+  if (!url || !url.includes('auth/rappel')) return;
+  portAuthSupabase.etablirSessionDepuisLien(url).catch(() => {
+    // Échec déjà traduit en ResultatAuth par le port — jamais un rejet en usage normal. Ce
+    // catch n'est qu'un filet pour une URL malformée (ex. new URL() qui lève) ; _layout.tsx n'a
+    // aucune interface pour afficher une erreur : l'utilisateur reste sur l'espace public,
+    // recommence depuis "Renvoyer l'e-mail" si besoin.
+  });
+}
 
 // Garde l'ecran de lancement natif visible tant que les polices n'ont pas fini de charger, avec
 // succes ou en echec : jamais d'ecran blanc au moment ou elles arrivent
@@ -54,6 +74,14 @@ export default function LayoutRacine() {
     SplashScreen.hideAsync();
   }, [policesChargees, erreurPolices]);
 
+  // Lien profond traité APRÈS le chargement des polices et du thème, jamais avant
+  // (docs/ecrans/L1-03-verification-email.md, "Retour dans l'application") : même garde que
+  // l'effet ci-dessus (polices chargées OU en échec), un seul appel par lancement.
+  useEffect(() => {
+    if (!policesChargees && !erreurPolices) return;
+    Linking.getInitialURL().then(traiterLienDemarrageAFroid);
+  }, [policesChargees, erreurPolices]);
+
   // Aucun rendu JS tant que les polices ne sont pas resolues (chargees ou en echec) : l'ecran
   // natif de lancement reste seul visible, pas de flash sans police puis avec.
   if (!policesChargees && !erreurPolices) {
@@ -63,7 +91,9 @@ export default function LayoutRacine() {
   return (
     <SafeAreaProvider>
       <FournisseurTheme>
-        <Stack screenOptions={{ headerShown: false }} />
+        <FournisseurSession port={portAuthSupabase}>
+          <Stack screenOptions={{ headerShown: false }} />
+        </FournisseurSession>
       </FournisseurTheme>
     </SafeAreaProvider>
   );
