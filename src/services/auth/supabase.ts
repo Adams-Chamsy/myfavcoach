@@ -18,6 +18,50 @@ import type { ErreurAuth, PortAuth, SessionAuth } from './port';
 const LIEN_VERIFICATION_EMAIL = 'myfavcoach://auth/rappel';
 const LIEN_REINITIALISATION_MOT_DE_PASSE = 'myfavcoach://auth/mot-de-passe';
 
+// Rendu STRUCTUREL, pas seulement documenté : deux trous (inscrire, renvoyerVerification)
+// avaient déjà échappé à une relecture avant d'être trouvés à P1.9. Les trois appels du SDK qui
+// envoient un courriel avec un lien passent maintenant OBLIGATOIREMENT par l'une de ces trois
+// fonctions — le lien profond est câblé DANS la fonction, jamais un paramètre qu'un appelant
+// pourrait omettre. src/test/redirection-courriels-obligatoire.test.ts vérifie qu'aucun appel
+// direct à signUp/resend/resetPasswordForEmail ne subsiste ailleurs dans ce fichier : la
+// garantie est mécanique, pas une consigne à se rappeler au prochain appel.
+//
+// Quatrième cas trouvé en balayant à P1.9, PAS corrigé ici : updateUser({ email }) (voir
+// changerEmail plus bas) envoie lui aussi un courriel avec un lien ("By default, email updates
+// sends a confirmation link to both the user's current and new email" —
+// node_modules/@supabase/auth-js/dist/main/GoTrueClient.d.ts), donc a besoin du même
+// `emailRedirectTo`. Aucune route de destination n'existe encore pour confirmer un changement
+// d'adresse (aucun écran, aucune entrée dans additional_redirect_urls) : inventer une valeur
+// ici serait pointer vers un lien mort. Voir docs/dette.md — à câbler avec le vrai écran, pas
+// avant.
+function envoyerCourrielInscription(
+  email: string,
+  motDePasse: string,
+  dateNaissance: string,
+): ReturnType<typeof supabase.auth.signUp> {
+  return supabase.auth.signUp({
+    email,
+    password: motDePasse,
+    options: { data: { dateNaissance }, emailRedirectTo: LIEN_VERIFICATION_EMAIL },
+  });
+}
+
+function renvoyerCourrielVerification(email: string): ReturnType<typeof supabase.auth.resend> {
+  return supabase.auth.resend({
+    type: 'signup',
+    email,
+    options: { emailRedirectTo: LIEN_VERIFICATION_EMAIL },
+  });
+}
+
+function envoyerCourrielReinitialisation(
+  email: string,
+): ReturnType<typeof supabase.auth.resetPasswordForEmail> {
+  return supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: LIEN_REINITIALISATION_MOT_DE_PASSE,
+  });
+}
+
 function versSessionAuth(session: SessionSupabaseJs): SessionAuth {
   return {
     compteId: session.user.id,
@@ -68,11 +112,7 @@ function traduireErreur(erreurBrute: unknown): ErreurAuth {
 
 export const portAuthSupabase: PortAuth = {
   async inscrire(email, motDePasse, dateNaissance) {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password: motDePasse,
-      options: { data: { dateNaissance }, emailRedirectTo: LIEN_VERIFICATION_EMAIL },
-    });
+    const { error } = await envoyerCourrielInscription(email, motDePasse, dateNaissance);
     if (error) return { succes: false, erreur: traduireErreur(error) };
     return { succes: true };
   },
@@ -93,19 +133,13 @@ export const portAuthSupabase: PortAuth = {
   },
 
   async renvoyerVerification(email) {
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email,
-      options: { emailRedirectTo: LIEN_VERIFICATION_EMAIL },
-    });
+    const { error } = await renvoyerCourrielVerification(email);
     if (error) return { succes: false, erreur: traduireErreur(error) };
     return { succes: true };
   },
 
   async demanderReinitialisation(email) {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: LIEN_REINITIALISATION_MOT_DE_PASSE,
-    });
+    const { error } = await envoyerCourrielReinitialisation(email);
     if (error) return { succes: false, erreur: traduireErreur(error) };
     return { succes: true };
   },
@@ -123,6 +157,11 @@ export const portAuthSupabase: PortAuth = {
     return { succes: true };
   },
 
+  // NON CÂBLÉ : envoie un courriel avec un lien de confirmation (voir le commentaire sur
+  // envoyerCourrielInscription plus haut) sans `emailRedirectTo` — retombe donc sur `site_url`,
+  // pas sur l'application. Aucune route de destination n'existe encore (aucun écran de
+  // changement d'adresse au jalon 1) : rien à câbler tant qu'elle n'existe pas. Voir
+  // docs/dette.md. Cette méthode n'est appelée par aucun écran à ce jour.
   async changerEmail(nouvelEmail) {
     const { error } = await supabase.auth.updateUser({ email: nouvelEmail });
     if (error) return { succes: false, erreur: traduireErreur(error) };

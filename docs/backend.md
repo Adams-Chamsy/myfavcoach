@@ -65,6 +65,12 @@ nouveau jeton d'accès possible), mais le dernier jeton d'accès émis continue 
 jusqu'à sa propre expiration. Avec 3 600 s, la fenêtre d'incident est **d'une heure, pas de
 zéro**.
 
+Source unique de ce mécanisme : `docs/ecrans/L1-04-connexion.md` ("Nouveau mot de passe") et
+`docs/ecrans/L1-09-mes-informations.md` ("Adresse e-mail et mot de passe") y renvoient plutôt que
+de le redécrire — vérifié en direct contre la base réelle à P1.9 (`src/test/rls.banc.ts`), après
+qu'une première rédaction des deux fiches ait promis à tort une coupure immédiate. Si la valeur
+de `jwt_expiry` change un jour, ce paragraphe est le seul à corriger.
+
 Le jeton de rafraîchissement, lui, **n'expire pas de lui-même** chez Supabase (contrairement à un
 « 30 jours » qui aurait été une invention maison). Deux réglages permettent de le borner dans le
 temps :

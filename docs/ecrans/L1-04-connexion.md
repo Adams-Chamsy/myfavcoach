@@ -46,15 +46,15 @@ Atteint par lien profond `myfavcoach://auth/mot-de-passe`. Un champ (10 caractè
 bouton. Après succès : **toutes les autres sessions du compte sont révoquées**, et l'utilisateur
 arrive dans son espace, connecté.
 
-« Révoquées » — vérifié contre la base réelle (P1.9), pas supposé : un jeton d'accès déjà émis
-est un JWT auto-vérifié, jamais recontrôlé en base à chaque requête. Une session ouverte
-ailleurs ne peut **plus jamais se reconnecter** dès cet instant (son jeton de rafraîchissement
-est invalidé immédiatement), mais son jeton d'accès EN COURS reste valable jusqu'à sa propre
-expiration — `jwt_expiry` de `supabase/config.toml`, 3600 s (1 h) au moment où ceci est écrit.
-Ce n'est pas « ne peut plus rien lire à l'instant » : c'est « ne peut plus jamais obtenir un
-nouveau jeton », avec un résidu de lecture possible sur l'ancien jeton pendant au plus une
-heure. La distinction compte : ne jamais promettre à l'écran ou à l'utilisateur une coupure
-immédiate que le mécanisme ne fournit pas.
+« Révoquées » — vérifié contre la base réelle (P1.9), pas supposé, et conforme à
+`docs/backend.md` §3 (source unique du mécanisme de session, à ne pas redécrire ailleurs) : un
+jeton d'accès déjà émis est un JWT auto-vérifié, jamais recontrôlé en base à chaque requête. Une
+session ouverte ailleurs ne peut **plus jamais se reconnecter** dès cet instant (son jeton de
+rafraîchissement est invalidé immédiatement), mais son jeton d'accès EN COURS reste valable
+jusqu'à sa propre expiration — 1 h au moment où ceci est écrit. Ce n'est pas « ne peut plus rien
+lire à l'instant » : c'est « ne peut plus jamais obtenir un nouveau jeton », avec un résidu de
+lecture possible sur l'ancien jeton pendant au plus une heure. La distinction compte : ne jamais
+promettre à l'écran ou à l'utilisateur une coupure immédiate que le mécanisme ne fournit pas.
 
 ---
 

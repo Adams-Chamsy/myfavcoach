@@ -42,7 +42,18 @@ L'écran affiche l'état d'attente, avec les deux adresses et le renvoi possible
 
 **Changement de mot de passe** : mot de passe actuel, nouveau (10 à 72 caractères, mêmes bornes
 et mêmes messages qu'en L1-02 — la borne haute vient de bcrypt, pas de nous). Après
-succès, **toutes les autres sessions sont fermées** et un message le dit.
+succès, **toutes les autres sessions du compte sont révoquées**, et un message le dit.
+
+« Révoquées » — même formulation que docs/ecrans/L1-04-connexion.md, "Nouveau mot de passe",
+vérifiée contre la base réelle (P1.9), pas supposée, et conforme à `docs/backend.md` §3 (source
+unique du mécanisme de session, à ne pas redécrire ailleurs) : un jeton d'accès déjà émis est un
+JWT auto-vérifié, jamais recontrôlé en base à chaque requête. Une session ouverte ailleurs ne
+peut **plus jamais se reconnecter** dès cet instant (son jeton de rafraîchissement est invalidé
+immédiatement), mais son jeton d'accès EN COURS reste valable jusqu'à sa propre expiration — 1 h
+au moment où ceci est écrit. Ce n'est pas « ne peut plus rien lire à l'instant » : c'est « ne
+peut plus jamais obtenir un nouveau jeton », avec un résidu de lecture possible sur l'ancien
+jeton pendant au plus une heure. Le message affiché à l'écran doit refléter cette distinction,
+pas promettre une coupure immédiate.
 
 ---
 
@@ -95,8 +106,14 @@ L11 : **ils ne figurent pas ici**, pas même désactivés.
 3. La date de naissance n'est pas modifiable : aucun champ éditable dans l'arbre rendu.
 4. Un changement d'adresse ne prend effet qu'après les deux confirmations — testé contre la
    base réelle.
-5. Après changement de mot de passe, une session ouverte ailleurs ne lit plus rien — testé
-   contre la base réelle.
+5. Après changement de mot de passe, une session ouverte ailleurs ne peut plus jamais obtenir un
+   nouveau jeton d'accès (son jeton de rafraîchissement est immédiatement invalidé) — testé
+   contre la base réelle, pas par un simulacre. Son jeton d'accès déjà émis, lui, reste valable
+   jusqu'à sa propre expiration (résidu de lecture possible, borné dans le temps — voir « Adresse
+   e-mail et mot de passe » ci-dessus) : ce résidu n'est PAS ce que ce critère prouve, seule
+   l'impossibilité de rafraîchir l'est. Même critère que docs/ecrans/L1-04-connexion.md,
+   critère 4 — un seul mécanisme, déjà prouvé par `src/test/rls.banc.ts` à P1.9 ; ce critère-ci
+   ne demande pas un second scénario redondant, seulement que l'écran affiche le bon message.
 6. Consentement retiré : un test contre la base réelle prouve que l'écriture d'une mesure est
    refusée par le serveur.
 7. La version du texte de consentement est enregistrée et affichée ; un consentement sans
