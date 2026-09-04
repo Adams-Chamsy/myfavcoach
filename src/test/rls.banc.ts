@@ -632,3 +632,82 @@ describe('consentements_courants (vue) — testée comme une table', () => {
     expect(corps).toEqual([]);
   });
 });
+
+// Compte dédié à ce scénario, jamais A/B/C : un changement de mot de passe qui leur serait
+// appliqué contaminerait tout ce qui les réutilise dans les describe ci-dessus. Prouve la VRAIE
+// garantie de docs/ecrans/L1-04-connexion.md, "Nouveau mot de passe" (fiche corrigée à P1.9
+// après vérification empirique — voir le commentaire complet là-bas) : le jeton de
+// RAFRAÎCHISSEMENT d'une session ouverte ailleurs est invalidé immédiatement ; son jeton
+// D'ACCÈS déjà émis, lui, reste valable jusqu'à sa propre expiration (`jwt_expiry`,
+// supabase/config.toml). Jamais "ne peut plus rien lire à l'instant" — ni promis par la fiche
+// corrigée, ni testé comme tel ici.
+describe('changement de mot de passe : sessions ouvertes ailleurs (docs/ecrans/L1-04-connexion.md)', () => {
+  it("révoque immédiatement le rafraîchissement d'une autre session, sans invalider son jeton d'accès déjà émis", async () => {
+    const email = `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-d@${DOMAINE_EMAIL}`;
+    const sessionAppareil1 = await creerCompteReel(email, {
+      date_naissance: '1990-01-01',
+      cgu_version_acceptee: '2026-08-01',
+    });
+
+    try {
+      // Deuxième connexion, même compte, mot de passe encore valide à cet instant : simule un
+      // deuxième appareil déjà connecté ailleurs.
+      const connexion2 = await fetch(`${API_URL}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: { apikey: ANON_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: MOT_DE_PASSE }),
+      });
+      if (!connexion2.ok) {
+        throw new Error(
+          `Deuxième connexion refusée : ${connexion2.status} ${await connexion2.text()}`,
+        );
+      }
+      const sessionAppareil2 = (await connexion2.json()) as {
+        access_token: string;
+        refresh_token: string;
+      };
+
+      // Changement de mot de passe DEPUIS l'appareil 1 — même endpoint que
+      // portAuthSupabase.changerMotDePasse (src/services/auth/supabase.ts).
+      const changement = await fetch(`${API_URL}/auth/v1/user`, {
+        method: 'PUT',
+        headers: {
+          apikey: ANON_KEY,
+          Authorization: `Bearer ${sessionAppareil1.jwt}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password: `${MOT_DE_PASSE}-nouveau` }),
+      });
+      expect(changement.status).toBe(200);
+
+      // Puis la révocation des autres sessions, comme le fait changerMotDePasse en pratique.
+      const revocation = await fetch(`${API_URL}/auth/v1/logout?scope=others`, {
+        method: 'POST',
+        headers: { apikey: ANON_KEY, Authorization: `Bearer ${sessionAppareil1.jwt}` },
+      });
+      expect(revocation.status).toBe(204);
+
+      // La vraie garantie : l'appareil 2 ne peut plus JAMAIS obtenir un nouveau jeton.
+      const rafraichissementAppareil2 = await fetch(
+        `${API_URL}/auth/v1/token?grant_type=refresh_token`,
+        {
+          method: 'POST',
+          headers: { apikey: ANON_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: sessionAppareil2.refresh_token }),
+        },
+      );
+      expect(rafraichissementAppareil2.status).toBe(400);
+
+      // Ce que ce n'est PAS : son jeton d'accès déjà émis reste valable — résidu borné par
+      // jwt_expiry, jamais une lecture bloquée à l'instant. Un échec ici signalerait que
+      // Supabase a changé de comportement, pas un bug de l'application — voir le commentaire
+      // de ce describe.
+      const lectureResiduelle = await appelRest('/rest/v1/comptes?select=id', {
+        session: { compteId: sessionAppareil1.compteId, jwt: sessionAppareil2.access_token },
+      });
+      expect(lectureResiduelle.statut).toBe(200);
+    } finally {
+      await supprimerCompteReel(sessionAppareil1.compteId);
+    }
+  });
+});

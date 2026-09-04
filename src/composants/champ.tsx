@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 
 import { BoutonIcone } from '@/composants/bouton-icone';
@@ -24,16 +24,25 @@ export type ProprietesChamp = {
   type?: TypeChamp;
 };
 
-export function Champ({
-  libelle,
-  valeur,
-  onChangeTexte,
-  onBlur,
-  messageErreur,
-  placeholder,
-  desactive = false,
-  type = 'texte',
-}: ProprietesChamp) {
+// Ref transmise (React.forwardRef) : docs/ecrans/L1-04-connexion.md, États, "Échec
+// d'identifiants... le focus va au mot de passe" — un écran a besoin d'un moyen impératif de
+// rendre le focus clavier à un champ précis après une erreur globale (pas liée à UN champ,
+// donc portée par l'écran, jamais par Champ lui-même). Distinct de l'annonce lecteur d'écran
+// (critère 6, "sans voler le focus") : ce ref ne déplace QUE le focus clavier/visuel, jamais le
+// curseur d'accessibilité — c'est announceForAccessibility qui porte l'annonce, ailleurs.
+export const Champ = forwardRef<TextInput, ProprietesChamp>(function Champ(
+  {
+    libelle,
+    valeur,
+    onChangeTexte,
+    onBlur,
+    messageErreur,
+    placeholder,
+    desactive = false,
+    type = 'texte',
+  },
+  ref,
+) {
   const theme = useTheme();
   const [estFocus, setEstFocus] = useState(false);
   const [motDePasseVisible, setMotDePasseVisible] = useState(false);
@@ -85,6 +94,7 @@ export function Champ({
         }
       >
         <TextInput
+          ref={ref}
           value={valeur}
           onChangeText={onChangeTexte}
           onFocus={() => setEstFocus(true)}
@@ -150,4 +160,4 @@ export function Champ({
       ) : null}
     </View>
   );
-}
+});

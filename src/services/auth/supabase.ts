@@ -8,6 +8,16 @@ import {
 import { supabase } from '@/services/supabase/client';
 import type { ErreurAuth, PortAuth, SessionAuth } from './port';
 
+// Liens profonds déclarés dans supabase/config.toml (additional_redirect_urls) : une entrée
+// dans cette liste AUTORISE la cible, elle ne la CHOISIT pas — sans `emailRedirectTo`/
+// `redirectTo` explicite sur l'appel qui envoie le courriel, GoTrue retombe sur `site_url`
+// (`http://127.0.0.1:3000`), jamais sur le lien profond. Trouvé à P1.9 en écrivant
+// demanderReinitialisation : inscrire() et renvoyerVerification() avaient le même trou depuis
+// P1.8, jamais remarqué faute d'avoir lu un vrai courriel de test (voir docs/dette.md, la zone
+// déjà marquée NON VÉRIFIÉE sur `etablirSessionDepuisLien`).
+const LIEN_VERIFICATION_EMAIL = 'myfavcoach://auth/rappel';
+const LIEN_REINITIALISATION_MOT_DE_PASSE = 'myfavcoach://auth/mot-de-passe';
+
 function versSessionAuth(session: SessionSupabaseJs): SessionAuth {
   return {
     compteId: session.user.id,
@@ -61,7 +71,7 @@ export const portAuthSupabase: PortAuth = {
     const { error } = await supabase.auth.signUp({
       email,
       password: motDePasse,
-      options: { data: { dateNaissance } },
+      options: { data: { dateNaissance }, emailRedirectTo: LIEN_VERIFICATION_EMAIL },
     });
     if (error) return { succes: false, erreur: traduireErreur(error) };
     return { succes: true };
@@ -83,13 +93,19 @@ export const portAuthSupabase: PortAuth = {
   },
 
   async renvoyerVerification(email) {
-    const { error } = await supabase.auth.resend({ type: 'signup', email });
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: LIEN_VERIFICATION_EMAIL },
+    });
     if (error) return { succes: false, erreur: traduireErreur(error) };
     return { succes: true };
   },
 
   async demanderReinitialisation(email) {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: LIEN_REINITIALISATION_MOT_DE_PASSE,
+    });
     if (error) return { succes: false, erreur: traduireErreur(error) };
     return { succes: true };
   },
@@ -97,6 +113,13 @@ export const portAuthSupabase: PortAuth = {
   async changerMotDePasse(nouveauMotDePasse) {
     const { error } = await supabase.auth.updateUser({ password: nouveauMotDePasse });
     if (error) return { succes: false, erreur: traduireErreur(error) };
+    // docs/ecrans/L1-04-connexion.md : "toutes les autres sessions du compte sont fermées."
+    // scope 'others' ne ferme JAMAIS la session courante (aucun évènement SIGNED_OUT émis pour
+    // elle, d'après la documentation d'auth-js) — seule celle-ci doit survivre, l'utilisateur
+    // venant justement de s'authentifier via le lien de récupération pour arriver ici.
+    // Best-effort : le mot de passe est déjà changé avec succès à ce stade, un échec de
+    // révocation des autres sessions ne doit pas transformer ce succès en échec.
+    await supabase.auth.signOut({ scope: 'others' }).catch(() => {});
     return { succes: true };
   },
 

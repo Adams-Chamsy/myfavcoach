@@ -43,8 +43,18 @@ différente, aucun délai différent.
 ## Nouveau mot de passe
 
 Atteint par lien profond `myfavcoach://auth/mot-de-passe`. Un champ (10 caractères minimum), un
-bouton. Après succès : **toutes les autres sessions du compte sont fermées**, et l'utilisateur
+bouton. Après succès : **toutes les autres sessions du compte sont révoquées**, et l'utilisateur
 arrive dans son espace, connecté.
+
+« Révoquées » — vérifié contre la base réelle (P1.9), pas supposé : un jeton d'accès déjà émis
+est un JWT auto-vérifié, jamais recontrôlé en base à chaque requête. Une session ouverte
+ailleurs ne peut **plus jamais se reconnecter** dès cet instant (son jeton de rafraîchissement
+est invalidé immédiatement), mais son jeton d'accès EN COURS reste valable jusqu'à sa propre
+expiration — `jwt_expiry` de `supabase/config.toml`, 3600 s (1 h) au moment où ceci est écrit.
+Ce n'est pas « ne peut plus rien lire à l'instant » : c'est « ne peut plus jamais obtenir un
+nouveau jeton », avec un résidu de lecture possible sur l'ancien jeton pendant au plus une
+heure. La distinction compte : ne jamais promettre à l'écran ou à l'utilisateur une coupure
+immédiate que le mécanisme ne fournit pas.
 
 ---
 
@@ -81,8 +91,12 @@ arrive dans son espace, connecté.
 2. Le parcours « oublié » affiche le même écran de confirmation pour une adresse existante et
    pour une adresse inventée — même test comparatif.
 3. Un compte non vérifié qui se connecte arrive sur L1-03.
-4. Après changement de mot de passe, une session ouverte ailleurs ne peut plus lire de donnée —
-   vérifié contre la base réelle, pas par un simulacre.
+4. Après changement de mot de passe, une session ouverte ailleurs ne peut plus jamais obtenir un
+   nouveau jeton d'accès (son jeton de rafraîchissement est immédiatement invalidé) — vérifié
+   contre la base réelle, pas par un simulacre. Son jeton d'accès déjà émis, lui, reste valable
+   jusqu'à sa propre expiration (résidu de lecture possible, borné dans le temps — voir « Nouveau
+   mot de passe » ci-dessus) : ce résidu n'est PAS ce que ce critère prouve, seule l'impossibilité
+   de rafraîchir l'est.
 5. Les trois écrans partagent les mêmes composants de champ et de pied : un test vérifie
    qu'aucun style de champ n'est redéfini localement.
 6. Le lecteur d'écran annonce le message d'échec à son apparition sans voler le focus.

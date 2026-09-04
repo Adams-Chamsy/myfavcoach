@@ -58,16 +58,23 @@ export type PortAuth = {
   deconnecter(): Promise<void>;
   renvoyerVerification(email: string): Promise<ResultatAuth>;
   demanderReinitialisation(email: string): Promise<ResultatAuth>;
+  // Ferme aussi TOUTES LES AUTRES sessions du compte (docs/ecrans/L1-04-connexion.md, "Nouveau
+  // mot de passe" : "toutes les autres sessions du compte sont fermées") — jamais celle-ci,
+  // qui vient justement d'authentifier l'appel. Prouvé contre la base réelle par
+  // src/test/rls.banc.ts, pas par un simulacre (critère 4 de la fiche).
   changerMotDePasse(nouveauMotDePasse: string): Promise<ResultatAuth>;
   changerEmail(nouvelEmail: string): Promise<ResultatAuth>;
   sessionCourante(): Promise<SessionAuth | null>;
   // Renvoie la fonction de désabonnement (convention des effets React : `useEffect(() =>
   // port.surChangementDeSession(cb), [])`).
   surChangementDeSession(ecouteur: (session: SessionAuth | null) => void): () => void;
-  // Lien profond du courriel de vérification (docs/ecrans/L1-03-verification-email.md,
-  // myfavcoach://auth/rappel). Le succès établit la session ET confirme l'adresse — l'appelant
-  // n'a rien d'autre à faire : surChangementDeSession() est notifié comme pour connecter().
-  // N'importe jamais l'URL brute au-delà de ce port : c'est le seul endroit qui sait comment un
-  // lien Supabase se lit.
+  // Lien profond, générique aux DEUX liens que l'application reçoit par courriel — vérification
+  // (docs/ecrans/L1-03-verification-email.md, myfavcoach://auth/rappel) ET réinitialisation de
+  // mot de passe (docs/ecrans/L1-04-connexion.md, myfavcoach://auth/mot-de-passe) : les deux
+  // échangent un `code` PKCE de la même façon côté Supabase, aucune raison de dupliquer cette
+  // méthode. Le succès établit la session (et confirme l'adresse, pour le premier cas) —
+  // l'appelant n'a rien d'autre à faire : surChangementDeSession() est notifié comme pour
+  // connecter(). N'importe jamais l'URL brute au-delà de ce port : c'est le seul endroit qui
+  // sait comment un lien Supabase se lit.
   etablirSessionDepuisLien(url: string): Promise<ResultatAuth>;
 };

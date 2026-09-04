@@ -53,10 +53,15 @@ describe('portAuthSupabase', () => {
       );
 
       expect(resultat).toEqual({ succes: true });
+      // emailRedirectTo : sans lui, GoTrue retombe sur site_url plutôt que sur le lien profond
+      // de vérification — trouvé à P1.9, voir le commentaire en tête de ./supabase.ts.
       expect(auth.signUp).toHaveBeenCalledWith({
         email: 'camille@exemple.fr',
         password: 'un-mot-de-passe',
-        options: { data: { dateNaissance: '2000-01-01' } },
+        options: {
+          data: { dateNaissance: '2000-01-01' },
+          emailRedirectTo: 'myfavcoach://auth/rappel',
+        },
       });
     });
 
@@ -222,6 +227,71 @@ describe('portAuthSupabase', () => {
 
     arreter();
     expect(desabonner).toHaveBeenCalledTimes(1);
+  });
+
+  describe('renvoyerVerification', () => {
+    it('appelle resend avec le lien profond de vérification', async () => {
+      auth.resend.mockResolvedValue({ data: {}, error: null });
+
+      const resultat = await portAuthSupabase.renvoyerVerification('camille@exemple.fr');
+
+      expect(resultat).toEqual({ succes: true });
+      expect(auth.resend).toHaveBeenCalledWith({
+        type: 'signup',
+        email: 'camille@exemple.fr',
+        options: { emailRedirectTo: 'myfavcoach://auth/rappel' },
+      });
+    });
+  });
+
+  describe('demanderReinitialisation', () => {
+    it('appelle resetPasswordForEmail avec le lien profond de réinitialisation', async () => {
+      auth.resetPasswordForEmail.mockResolvedValue({ data: {}, error: null });
+
+      const resultat = await portAuthSupabase.demanderReinitialisation('camille@exemple.fr');
+
+      expect(resultat).toEqual({ succes: true });
+      expect(auth.resetPasswordForEmail).toHaveBeenCalledWith('camille@exemple.fr', {
+        redirectTo: 'myfavcoach://auth/mot-de-passe',
+      });
+    });
+  });
+
+  describe('changerMotDePasse', () => {
+    // docs/ecrans/L1-04-connexion.md : "toutes les autres sessions du compte sont fermées."
+    it('change le mot de passe puis ferme les autres sessions, jamais la sienne', async () => {
+      auth.updateUser.mockResolvedValue({ data: {}, error: null });
+      auth.signOut.mockResolvedValue({ error: null });
+
+      const resultat = await portAuthSupabase.changerMotDePasse('un-nouveau-mot-de-passe');
+
+      expect(resultat).toEqual({ succes: true });
+      expect(auth.updateUser).toHaveBeenCalledWith({ password: 'un-nouveau-mot-de-passe' });
+      expect(auth.signOut).toHaveBeenCalledWith({ scope: 'others' });
+    });
+
+    it("n'appelle jamais signOut si le changement de mot de passe échoue", async () => {
+      auth.updateUser.mockResolvedValue({
+        data: {},
+        error: new AuthApiError('Password should be at least 6 characters', 422, 'weak_password'),
+      });
+
+      const resultat = await portAuthSupabase.changerMotDePasse('trop-court');
+
+      expect(resultat.succes).toBe(false);
+      expect(auth.signOut).not.toHaveBeenCalled();
+    });
+
+    // Best-effort (voir le commentaire de ./supabase.ts) : le mot de passe est déjà changé,
+    // un échec de révocation des autres sessions ne doit pas transformer le succès en échec.
+    it('reste un succès même si la révocation des autres sessions échoue', async () => {
+      auth.updateUser.mockResolvedValue({ data: {}, error: null });
+      auth.signOut.mockRejectedValue(new Error('panne réseau'));
+
+      const resultat = await portAuthSupabase.changerMotDePasse('un-nouveau-mot-de-passe');
+
+      expect(resultat).toEqual({ succes: true });
+    });
   });
 
   describe('etablirSessionDepuisLien', () => {

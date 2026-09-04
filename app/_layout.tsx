@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
+import type { Href } from 'expo-router';
 import { useFonts } from 'expo-font';
 import * as Linking from 'expo-linking';
 import * as SplashScreen from 'expo-splash-screen';
@@ -16,21 +17,36 @@ import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-sessi
 import { portAuthSupabase } from '@/services/auth/supabase';
 import { FournisseurTheme } from '@/theme/fournisseur';
 
-// Lien profond de vérification (docs/ecrans/L1-03-verification-email.md, myfavcoach://auth/
-// rappel), au démarrage à froid SEULEMENT — l'URL qui a lancé cette instance de l'application.
-// Traité ici, pas dans l'écran de vérification, parce que ce dernier n'est pas forcément monté
-// à froid (myfavcoach://auth/rappel n'est la route d'aucun écran réel, expo-router ne peut pas
-// y naviguer). L'écran de vérification écoute séparément les liens reçus PENDANT qu'il est
-// monté (addEventListener('url', ...), jamais getInitialURL ici ET là : le même lien serait
+// Deux liens profonds reçus par courriel, au démarrage à froid SEULEMENT — l'URL qui a lancé
+// cette instance de l'application. Traité ici, pas dans les écrans concernés, parce qu'aucun
+// des deux n'est forcément monté à froid (ni myfavcoach://auth/rappel ni
+// myfavcoach://auth/mot-de-passe ne sont la route d'un écran réel, expo-router ne peut pas y
+// naviguer). Les écrans concernés écoutent séparément les liens reçus PENDANT qu'ils sont
+// montés (addEventListener('url', ...), jamais getInitialURL ici ET là : le même lien serait
 // échangé deux fois, la seconde toujours refusée comme "déjà utilisé".
 function traiterLienDemarrageAFroid(url: string | null) {
-  if (!url || !url.includes('auth/rappel')) return;
-  portAuthSupabase.etablirSessionDepuisLien(url).catch(() => {
-    // Échec déjà traduit en ResultatAuth par le port — jamais un rejet en usage normal. Ce
-    // catch n'est qu'un filet pour une URL malformée (ex. new URL() qui lève) ; _layout.tsx n'a
-    // aucune interface pour afficher une erreur : l'utilisateur reste sur l'espace public,
-    // recommence depuis "Renvoyer l'e-mail" si besoin.
-  });
+  if (!url) return;
+
+  if (url.includes('auth/rappel')) {
+    portAuthSupabase.etablirSessionDepuisLien(url).catch(() => {
+      // Échec déjà traduit en ResultatAuth par le port — jamais un rejet en usage normal. Ce
+      // catch n'est qu'un filet pour une URL malformée (ex. new URL() qui lève) ; _layout.tsx
+      // n'a aucune interface pour afficher une erreur : l'utilisateur reste sur l'espace
+      // public, recommence depuis "Renvoyer l'e-mail" si besoin.
+    });
+    return;
+  }
+
+  if (url.includes('auth/mot-de-passe')) {
+    // Différent du cas ci-dessus : ÉCHANGER LE CODE ICI SERAIT UNE ERREUR. Une session de
+    // récupération fraîchement établie n'est pas distinguable d'une session normale pour
+    // garde.ts (même SessionAuth, même emailVerifie=true) — la laisser au routage générique de
+    // app/index.tsx enverrait directement dans l'espace du profil actif, sautant le changement
+    // de mot de passe. On navigue donc directement vers l'écran dédié, qui échange le code
+    // lui-même à son montage : Linking.getInitialURL() est idempotent (relire l'URL ne
+    // consomme rien), seul etablirSessionDepuisLien(url) consomme le code — jamais appelé ici.
+    router.replace('/(public)/nouveau-mot-de-passe' as Href);
+  }
 }
 
 // Garde l'ecran de lancement natif visible tant que les polices n'ont pas fini de charger, avec

@@ -161,9 +161,17 @@ site_url = "http://127.0.0.1:3000"
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 # myfavcoach://auth/rappel : lien profond du courriel de vérification (docs/ecrans/
-# L1-03-verification-email.md). Une redirection non déclarée ici retombe silencieusement sur
-# l'adresse par défaut du service, sans erreur visible — la panne la plus fréquente du parcours.
-additional_redirect_urls = ["https://127.0.0.1:3000", "myfavcoach://auth/rappel"]
+# L1-03-verification-email.md). myfavcoach://auth/mot-de-passe : lien profond du courriel de
+# réinitialisation (docs/ecrans/L1-04-connexion.md). Une redirection non déclarée ici retombe
+# silencieusement sur l'adresse par défaut du service, sans erreur visible — la panne la plus
+# fréquente de ces deux parcours. Déclarer l'URL ici ne suffit PAS à elle seule : l'appel qui
+# envoie le courriel doit aussi la demander explicitement (emailRedirectTo/redirectTo, voir
+# src/services/auth/supabase.ts) — sinon GoTrue retombe sur site_url malgré cette liste.
+additional_redirect_urls = [
+  "https://127.0.0.1:3000",
+  "myfavcoach://auth/rappel",
+  "myfavcoach://auth/mot-de-passe",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.

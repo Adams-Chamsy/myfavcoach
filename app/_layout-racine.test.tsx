@@ -8,9 +8,12 @@
 // leve avant meme que blockList n'intervienne. Le tiret dans "_layout-racine" evite ce point,
 // donc ce declenchement, tout en restant range juste a cote de _layout.tsx et reconnu par Jest
 // (".test.tsx"). Voir docs/dette.md.
-import { render } from '@testing-library/react-native';
+import { act, render } from '@testing-library/react-native';
 import { useFonts } from 'expo-font';
+import * as Linking from 'expo-linking';
+import { router } from 'expo-router';
 
+import { portAuthSupabase } from '@/services/auth/supabase';
 import LayoutRacine from './_layout';
 
 jest.mock('expo-font', () => ({ useFonts: jest.fn() }));
@@ -28,10 +31,12 @@ jest.mock('@/services/auth/supabase', () => ({
   portAuthSupabase: {
     sessionCourante: jest.fn().mockResolvedValue(null),
     surChangementDeSession: jest.fn().mockReturnValue(() => {}),
+    etablirSessionDepuisLien: jest.fn().mockResolvedValue({ succes: true }),
   },
 }));
 
 const useFontsMock = useFonts as jest.MockedFunction<typeof useFonts>;
+const getInitialURLMock = Linking.getInitialURL as jest.Mock;
 
 describe('LayoutRacine (docs/ecrans/L0-04-demarrage.md)', () => {
   afterEach(() => {
@@ -68,5 +73,38 @@ describe('LayoutRacine (docs/ecrans/L0-04-demarrage.md)', () => {
     const { toJSON } = await render(<LayoutRacine />);
 
     expect(toJSON()).toBeNull();
+  });
+
+  describe('lien profond au démarrage à froid (docs/ecrans/L1-04-connexion.md)', () => {
+    it('sur myfavcoach://auth/rappel, échange le code lui-même (comportement L1-03 inchangé)', async () => {
+      useFontsMock.mockReturnValue([true, null]);
+      getInitialURLMock.mockResolvedValue('myfavcoach://auth/rappel?code=abc');
+
+      await act(async () => {
+        await render(<LayoutRacine />);
+      });
+
+      expect(portAuthSupabase.etablirSessionDepuisLien).toHaveBeenCalledWith(
+        'myfavcoach://auth/rappel?code=abc',
+      );
+    });
+
+    // Différent du cas ci-dessus, exprès : échanger le code ICI enverrait une session de
+    // récupération toute fraîche droit vers garde.ts, qui la confondrait avec une session
+    // normale et sauterait l'écran de changement de mot de passe.
+    it("sur myfavcoach://auth/mot-de-passe, navigue directement vers l'écran dédié SANS échanger le code", async () => {
+      useFontsMock.mockReturnValue([true, null]);
+      getInitialURLMock.mockResolvedValue('myfavcoach://auth/mot-de-passe?code=abc');
+      const remplacer = jest.spyOn(router, 'replace').mockImplementation(() => {});
+
+      await act(async () => {
+        await render(<LayoutRacine />);
+      });
+
+      expect(remplacer).toHaveBeenCalledWith('/(public)/nouveau-mot-de-passe');
+      expect(portAuthSupabase.etablirSessionDepuisLien).not.toHaveBeenCalled();
+
+      remplacer.mockRestore();
+    });
   });
 });

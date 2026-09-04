@@ -16,6 +16,9 @@ import Revenus from '../../app/(coach)/revenus';
 import Bienvenue from '../../app/(public)/index';
 import Inscription from '../../app/(public)/inscription';
 import Verification from '../../app/(public)/verification';
+import Connexion from '../../app/(public)/connexion';
+import MotDePasseOublie from '../../app/(public)/mot-de-passe-oublie';
+import NouveauMotDePasse from '../../app/(public)/nouveau-mot-de-passe';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
 import { FournisseurTheme } from '@/theme/fournisseur';
@@ -292,6 +295,30 @@ const CORPUS: EntreeCorpus[] = [
     creerElement: () => (
       <FournisseurSession key="verification" port={creerFauxPortAuth()}>
         <Verification />
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(public)/connexion.tsx',
+    creerElement: () => (
+      <FournisseurSession key="connexion" port={creerFauxPortAuth()}>
+        <Connexion />
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(public)/mot-de-passe-oublie.tsx',
+    creerElement: () => (
+      <FournisseurSession key="mot-de-passe-oublie" port={creerFauxPortAuth()}>
+        <MotDePasseOublie />
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(public)/nouveau-mot-de-passe.tsx',
+    creerElement: () => (
+      <FournisseurSession key="nouveau-mot-de-passe" port={creerFauxPortAuth()}>
+        <NouveauMotDePasse />
       </FournisseurSession>
     ),
   },

@@ -1,4 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { createRef } from 'react';
+import type { TextInput } from 'react-native';
 
 import { FournisseurTheme } from '@/theme/fournisseur';
 import { Champ } from './champ';
@@ -80,5 +82,19 @@ describe('Champ', () => {
 
     expect(screen.queryByLabelText('Afficher le mot de passe')).toBeNull();
     expect(screen.getByLabelText('Objectif').props.secureTextEntry).toBeFalsy();
+  });
+
+  // docs/ecrans/L1-04-connexion.md, États : "le focus va au mot de passe" — un écran doit
+  // pouvoir rendre le focus clavier à ce champ précis après une erreur globale.
+  it('transmet une ref jusqu’au TextInput sous-jacent, utilisable pour rendre le focus', async () => {
+    const ref = createRef<TextInput>();
+    await render(
+      <FournisseurTheme>
+        <Champ ref={ref} libelle="Mot de passe" valeur="" onChangeTexte={() => {}} />
+      </FournisseurTheme>,
+    );
+
+    expect(ref.current).not.toBeNull();
+    expect(typeof ref.current?.focus).toBe('function');
   });
 });
