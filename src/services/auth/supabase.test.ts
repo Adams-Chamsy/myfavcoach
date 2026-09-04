@@ -189,10 +189,13 @@ describe('portAuthSupabase', () => {
     });
   });
 
-  it('deconnecter appelle signOut', async () => {
+  // scope 'local', jamais le défaut ('global') : un bouton "Se déconnecter" ordinaire ne doit
+  // fermer QUE cet appareil, pas révoquer toutes les autres sessions (P1.10, trouvé en
+  // balayant les appels d'authentification).
+  it("deconnecter appelle signOut avec scope 'local', jamais le défaut 'global'", async () => {
     auth.signOut.mockResolvedValue({ error: null });
     await portAuthSupabase.deconnecter();
-    expect(auth.signOut).toHaveBeenCalledTimes(1);
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
   });
 
   it('sessionCourante rend null sans session', async () => {

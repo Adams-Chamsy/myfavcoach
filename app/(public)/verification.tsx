@@ -5,7 +5,6 @@ import { AccessibilityInfo, AppState, Text, View } from 'react-native';
 
 import { Bouton } from '@/composants/bouton';
 import { Icone } from '@/composants/icones';
-import { determinerDestination } from '@/fonctionnalites/identite/garde';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import type { ErreurAuth } from '@/services/auth/port';
 import { useTheme } from '@/theme/fournisseur';
@@ -64,16 +63,18 @@ export default function Verification() {
     return () => clearInterval(identifiant);
   }, [secondesRestantes]);
 
-  // Transition automatique vers la destination réelle dès que la session (déjà réactive via
-  // FournisseurSession) devient vérifiée — que ce soit ce lien profond qui vient de l'établir
-  // (ci-dessous) ou app/_layout.tsx au démarrage à froid : un seul endroit décide de la
-  // destination (garde.ts), jamais cet écran.
+  // Transition automatique dès que la session (déjà réactive via FournisseurSession) devient
+  // vérifiée — que ce soit ce lien profond qui vient de l'établir (ci-dessous) ou
+  // app/_layout.tsx au démarrage à froid. Jamais determinerDestination(session) directement
+  // ici (depuis P1.10) : la vraie destination dépend aussi des profils serveur, qu'un seul
+  // endroit sait attendre correctement — "/" (app/index.tsx). Un seul endroit CALCULE la
+  // destination (garde.ts), un seul endroit l'ATTEND (app/index.tsx) ; cet écran ne fait ni
+  // l'un ni l'autre.
   useEffect(() => {
     if (session && session.emailVerifie) {
-      router.replace(determinerDestination(session));
+      router.replace('/');
     }
-    // router et determinerDestination sont stables ; seule une session nouvellement vérifiée
-    // doit redéclencher l'effet.
+    // router stable ; seule une session nouvellement vérifiée doit redéclencher l'effet.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
@@ -115,7 +116,7 @@ export default function Verification() {
 
       port.sessionCourante().then((sessionTrouvee) => {
         if (sessionTrouvee && sessionTrouvee.emailVerifie) {
-          router.replace(determinerDestination(sessionTrouvee));
+          router.replace('/');
         }
       });
     });

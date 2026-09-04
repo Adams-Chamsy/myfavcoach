@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
 import { Champ } from '@/composants/champ';
-import { determinerDestination } from '@/fonctionnalites/identite/garde';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { useTheme } from '@/theme/fournisseur';
 
@@ -46,7 +45,12 @@ export default function Connexion() {
     setChargement(false);
 
     if (resultat.type === 'connecte') {
-      router.replace(determinerDestination(resultat.session));
+      // Jamais determinerDestination(resultat.session) directement ici : depuis P1.10, la
+      // destination dépend AUSSI des profils serveur (src/services/donnees/), pas seulement de
+      // la session — les lire prendrait un aller-retour réseau que cet écran n'a pas à gérer
+      // lui-même. "/" (app/index.tsx) attend déjà les deux fournisseurs avant de trancher :
+      // un seul endroit qui calcule la vraie destination, jamais dupliqué ici.
+      router.replace('/');
       return;
     }
 

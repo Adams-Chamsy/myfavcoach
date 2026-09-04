@@ -13,8 +13,10 @@ import {
 } from '@expo-google-fonts/manrope';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { portAuthSupabase } from '@/services/auth/supabase';
+import { portDonneesSupabase } from '@/services/donnees/supabase';
 import { FournisseurTheme } from '@/theme/fournisseur';
 
 // Deux liens profonds reçus par courriel, au démarrage à froid SEULEMENT — l'URL qui a lancé
@@ -108,7 +110,9 @@ export default function LayoutRacine() {
     <SafeAreaProvider>
       <FournisseurTheme>
         <FournisseurSession port={portAuthSupabase}>
-          <Stack screenOptions={{ headerShown: false }} />
+          <FournisseurDonnees port={portDonneesSupabase}>
+            <Stack screenOptions={{ headerShown: false }} />
+          </FournisseurDonnees>
         </FournisseurSession>
       </FournisseurTheme>
     </SafeAreaProvider>

@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
 import { Champ } from '@/composants/champ';
-import { determinerDestination } from '@/fonctionnalites/identite/garde';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import type { ErreurAuth } from '@/services/auth/port';
 import { useTheme } from '@/theme/fournisseur';
@@ -33,7 +32,7 @@ export default function NouveauMotDePasse() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { port, session } = useSession();
+  const { port } = useSession();
 
   const [etat, setEtat] = useState<EtatEcran>({ type: 'attente' });
   const [motDePasse, setMotDePasse] = useState('');
@@ -98,11 +97,11 @@ export default function NouveauMotDePasse() {
       return;
     }
 
-    // La session établie par le lien (à l'arrivée sur cet écran) reste la même : changer le
-    // mot de passe ne change ni le compte ni son état de vérification. garde.ts décide de la
-    // destination, jamais cet écran (docs/ecrans/L1-04, "l'utilisateur arrive dans son espace,
-    // connecté").
-    if (session) router.replace(determinerDestination(session));
+    // Jamais determinerDestination(session) directement ici (même raison que
+    // app/(public)/connexion.tsx, depuis P1.10) : la destination dépend aussi des profils
+    // serveur. "/" (app/index.tsx) attend session ET profils avant de trancher — c'est là que
+    // "l'utilisateur arrive dans son espace, connecté" se décide (docs/ecrans/L1-04), jamais ici.
+    router.replace('/');
   }
 
   return (

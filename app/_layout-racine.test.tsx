@@ -34,6 +34,15 @@ jest.mock('@/services/auth/supabase', () => ({
     etablirSessionDepuisLien: jest.fn().mockResolvedValue({ succes: true }),
   },
 }));
+// Même raison que ci-dessus, pour src/services/donnees/ (P1.10) : portDonneesSupabase importe
+// aussi src/services/supabase/client.ts. lireEtatProfils() ne doit jamais être appelée pour de
+// vrai ici — sans session (sessionCourante mocké à null ci-dessus), FournisseurDonnees ne
+// l'appelle de toute façon jamais.
+jest.mock('@/services/donnees/supabase', () => ({
+  portDonneesSupabase: {
+    lireEtatProfils: jest.fn(),
+  },
+}));
 
 const useFontsMock = useFonts as jest.MockedFunction<typeof useFonts>;
 const getInitialURLMock = Linking.getInitialURL as jest.Mock;

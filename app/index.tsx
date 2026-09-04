@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { EtatErreur } from '@/composants/etats/etat-erreur';
+import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { determinerDestination } from '@/fonctionnalites/identite/garde';
 import { useTheme } from '@/theme/fournisseur';
@@ -28,7 +29,13 @@ type Phase = 'lecture' | 'attente' | 'erreur';
 // n'a qu'une seule source, jamais deux qui pourraient diverger.
 export default function Index() {
   const theme = useTheme();
-  const { chargement, session } = useSession();
+  const { chargement: chargementSession, session } = useSession();
+  const { chargement: chargementDonnees, profils } = useDonnees();
+  // P1.10 : le profil actif vient du serveur (src/services/donnees/), pas seulement la session
+  // — determinerDestination attend les DEUX avant de trancher. FournisseurDonnees ne lit
+  // jamais le port tant qu'aucune session vérifiée n'existe, donc chargementDonnees se résout
+  // vite (false) dans tous les cas où il n'y a rien à attendre.
+  const chargement = chargementSession || chargementDonnees;
   const [phase, setPhase] = useState<Phase>('lecture');
   const [nombreEchecs, setNombreEchecs] = useState(0);
   const [cleTentative, setCleTentative] = useState(0);
@@ -61,7 +68,7 @@ export default function Index() {
   // Trouve en preparant P1.8 avec le trousseau (l'ancienne memoire de session, qui ne savait
   // jamais qu'une session Supabase venait d'etre etablie).
   if (!chargement) {
-    return <Redirect href={determinerDestination(session)} />;
+    return <Redirect href={determinerDestination(session, profils)} />;
   }
 
   if (phase === 'erreur') {

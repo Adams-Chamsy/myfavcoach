@@ -79,7 +79,7 @@ describe('Connexion (docs/ecrans/L1-04-connexion.md)', () => {
     expect(screen.queryByText('Adresse ou mot de passe incorrect.')).toBeNull();
   });
 
-  it('une connexion réussie mène à la destination décidée par garde.ts', async () => {
+  it('une connexion réussie renvoie vers "/", qui calcule seul la vraie destination', async () => {
     const port = creerFauxPortAuth();
     await port.inscrire('camille@exemple.fr', 'le-bon-mot-de-passe', '2000-01-01');
     port.verifierEmailPourTest('camille@exemple.fr');
@@ -87,8 +87,10 @@ describe('Connexion (docs/ecrans/L1-04-connexion.md)', () => {
     await rendreConnexion(port);
     await tenterConnexion('camille@exemple.fr', 'le-bon-mot-de-passe');
 
-    // garde.ts (P1.8) : session vérifiée → provisoirement (client)/accueil.
-    expect(mockRemplacer).toHaveBeenCalledWith('/(client)/accueil');
+    // Depuis P1.10 : jamais determinerDestination(session) ici (la vraie destination dépend
+    // aussi des profils serveur) — "/" (app/index.tsx) attend les deux fournisseurs, testé
+    // exhaustivement par app/index.test.tsx et src/test/routage/redirections.test.ts.
+    expect(mockRemplacer).toHaveBeenCalledWith('/');
   });
 
   // docs/ecrans/L1-04, États : "Après trois échecs consécutifs... ajoute... Tu peux

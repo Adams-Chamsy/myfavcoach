@@ -1,29 +1,43 @@
 import type { Href } from 'expo-router';
 
 import type { SessionAuth } from '@/services/auth/port';
+import type { EtatProfils } from '@/services/donnees/port';
 
 // Seul endroit du dépôt qui décide où une session mène (docs/prompts/L1.md, P1.10 : "la
-// redirection est décidée à un seul endroit"). Créé en avance par P1.8 (écran de vérification,
-// L1-03) parce que ce dernier a déjà besoin d'une décision de redirection après le lien
-// profond — jamais codée dans l'écran lui-même, ce serait une deuxième source de décision.
+// redirection est décidée à un seul endroit"). Deux appelants, une seule fonction : app/index.tsx
+// (démarrage à froid, racine "/") et app/(public)/_layout.tsx (règle 7 — une route de (public)
+// atteinte avec une session valide renvoie vers l'espace actif). Aucun des deux ne code sa
+// propre logique de redirection, tous deux appellent determinerDestination().
 //
-// Aujourd'hui, seules les règles calculables à partir de SessionAuth (jetons, e-mail vérifié)
-// sont connues : trois des sept règles de P1.10 (docs/prompts/L1.md). Les quatre autres
-// (existence des profils, profil actif, retour depuis (public)) exigent le compte et les
-// profils du serveur (docs/api.md §3, GET /moi) — un port qui n'existe pas encore
-// (src/services/donnees/, lot ultérieur). P1.10 réécrira ce module en entier avec ces données ;
-// jusque-là, cette fonction ne prétend décider que ce qu'elle peut vraiment observer.
-export function determinerDestination(session: SessionAuth | null): Href {
+// PROVISOIRE, assumé — pas une approximation risquée : `comptes.profil_actif` est NOT NULL,
+// défaut 'client' (0001_creer_identite.sql), posé à la création du compte, avant tout profil
+// réel. On ne peut donc PAS distinguer aujourd'hui "onboarding jamais commencé" (règle 3) de
+// "onboarding client commencé mais pas terminé" (règle 4) : rien ne fixe encore la valeur
+// terminale d'`onboarding_etape` (P1.11, pas construit), et rien ne crée de profils_client
+// avant que P1.11 existe. Les deux cas sont donc FUSIONNÉS ici en une seule condition — "pas de
+// profil actif réel, quelle qu'en soit la raison" — vers la même destination provisoire.
+// P1.11 les séparera une fois la valeur terminale d'onboarding_etape fixée et les routes
+// (onboarding)/*.tsx construites — voir docs/dette.md.
+//
+// `(client)/accueil` reste la destination provisoire (écran de L0), pas une invention : aucune
+// route `(onboarding)/*.tsx` n'existe encore pour y renvoyer réellement.
+export function determinerDestination(
+  session: SessionAuth | null,
+  profils: EtatProfils | null,
+): Href {
   if (!session) return '/(public)' as Href;
   if (!session.emailVerifie) return '/(public)/verification' as Href;
 
-  // Aucun profil connu : src/services/donnees/ (le port qui donnerait profils/profilActif)
-  // n'existe pas encore, donc TOUT compte vérifié est traité comme "onboarding non terminé" —
-  // c'est vrai aujourd'hui (rien ne crée encore de profil avant l'onboarding), pas une
-  // approximation risquée pour l'instant. Destination PROVISOIRE : (client)/accueil est l'écran
-  // provisoire du lot L0, pas une invention — en attendant la vraie étape d'onboarding.
-  // À LEVER PAR P1.11 (onboarding client, docs/prompts/L1.md), pas P1.10 : P1.10 restructure
-  // cette décision autour des vraies données de profil, mais les routes (onboarding)/*.tsx
-  // elles-mêmes n'existent qu'à partir de P1.11 — voir docs/dette.md.
+  if (profils?.profilActif === 'client' && profils.clientExiste) {
+    return '/(client)/accueil' as Href;
+  }
+  if (profils?.profilActif === 'coach' && profils.coachExiste) {
+    return '/(coach)/pilotage' as Href;
+  }
+
+  // Règles 3+4 fusionnées (voir le commentaire ci-dessus), et repli de sécurité si `profils`
+  // est encore null (jamais interrogé, ou lecture en échec — src/fonctionnalites/identite/
+  // fournisseur-donnees.tsx) : jamais grant d'accès à un espace sans preuve positive d'un
+  // profil réel.
   return '/(client)/accueil' as Href;
 }

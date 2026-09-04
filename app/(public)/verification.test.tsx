@@ -112,7 +112,10 @@ describe('Verification (docs/ecrans/L1-03-verification-email.md)', () => {
       await Promise.resolve();
     });
 
-    expect(mockRemplacer).toHaveBeenCalledWith('/(client)/accueil');
+    // Depuis P1.10 : jamais determinerDestination(session) ici (la vraie destination dépend
+    // aussi des profils serveur) — "/" (app/index.tsx) attend les deux fournisseurs, testé
+    // exhaustivement par app/index.test.tsx et src/test/routage/redirections.test.ts.
+    expect(mockRemplacer).toHaveBeenCalledWith('/');
   });
 
   it('« Ce n’est pas la bonne adresse » revient en arrière, jamais vers un autre écran', async () => {

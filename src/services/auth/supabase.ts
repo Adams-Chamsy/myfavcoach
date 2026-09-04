@@ -128,8 +128,18 @@ export const portAuthSupabase: PortAuth = {
     return { type: 'connecte', session: versSessionAuth(data.session) };
   },
 
+  // scope 'local' — jamais le défaut ('global') : un bouton "Se déconnecter" ordinaire ne doit
+  // fermer QUE cet appareil, pas révoquer toutes les autres sessions de la personne (c'est
+  // exactement ce que fait 'global', prouvé à P1.9 avec scope 'others' — le même mécanisme).
+  // Trouvé en balayant les appels d'authentification à P1.10.
+  //
+  // "Réussit même hors ligne" (docs/prompts/L1.md, P1.10) : vérifié en direct, pas supposé — un
+  // appel réseau simulé en échec pendant signOut() ne fait PAS remonter d'exception (signOut()
+  // rend toujours { error }, ne rejette jamais) ET la session locale est bien effacée malgré
+  // l'échec distant (testé avec un vrai compte, /auth/v1/logout intercepté pour échouer). Rien
+  // à ajouter ici pour ça : le SDK le fait déjà, correctement, une fois le scope corrigé.
   async deconnecter() {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
   },
 
   async renvoyerVerification(email) {

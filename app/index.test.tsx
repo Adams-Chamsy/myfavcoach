@@ -1,7 +1,10 @@
 import { act, render, screen, waitFor } from '@testing-library/react-native';
 
+import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import type { PortAuth, SessionAuth } from '@/services/auth/port';
+import { creerFauxPortDonnees } from '@/services/donnees/faux';
+import type { EtatProfils, PortDonnees } from '@/services/donnees/port';
 import { FournisseurTheme } from '@/theme/fournisseur';
 import Index from './index';
 
@@ -37,11 +40,13 @@ function creerPortControle(
   };
 }
 
-async function rendreIndex(port: PortAuth) {
+async function rendreIndex(port: PortAuth, portDonnees: PortDonnees = creerFauxPortDonnees()) {
   return render(
     <FournisseurTheme>
       <FournisseurSession port={port}>
-        <Index />
+        <FournisseurDonnees port={portDonnees}>
+          <Index />
+        </FournisseurDonnees>
       </FournisseurSession>
     </FournisseurTheme>,
   );
@@ -60,7 +65,9 @@ function sessionNonVerifiee(): SessionAuth {
 describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
   // Critere 2 (adapte a P1.8) : la redirection vient de useSession(), restaurée depuis le
   // stockage chiffré du client Supabase — plus du trousseau (supprimé, src/services/auth/
-  // port.ts). Trois cas connus de determinerDestination (src/fonctionnalites/identite/garde.ts).
+  // port.ts). Les règles de determinerDestination elles-mêmes sont testées exhaustivement par
+  // src/test/routage/redirections.test.ts ; ce describe-ci vérifie seulement que cet écran les
+  // relaie correctement, avec des exemples représentatifs, pas tous les cas.
   describe('redirection selon la session restaurée', () => {
     it("renvoie vers l'espace public sans session", async () => {
       await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(null)));
@@ -78,13 +85,72 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       });
     });
 
-    it('renvoie provisoirement vers (client)/accueil avec une session vérifiée', async () => {
+    it('renvoie vers (client)/accueil avec une session vérifiée et un profil client réel', async () => {
+      const session: SessionAuth = { ...sessionNonVerifiee(), emailVerifie: true };
+      const profils: EtatProfils = {
+        profilActif: 'client',
+        clientExiste: true,
+        coachExiste: false,
+      };
+      const portDonnees = creerFauxPortDonnees();
+      portDonnees.definirEtatProfilsPourTest(profils);
+
+      await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('redirection').props.children).toBe('/(client)/accueil');
+      });
+    });
+
+    // P1.10 : le profil actif vient du serveur (src/services/donnees/), pas seulement de la
+    // session — cette destination n'existait pas avant P1.10 (garde.ts ne connaissait aucun
+    // profil coach).
+    it('renvoie vers (coach)/pilotage avec une session vérifiée et un profil coach réel', async () => {
+      const session: SessionAuth = { ...sessionNonVerifiee(), emailVerifie: true };
+      const profils: EtatProfils = { profilActif: 'coach', clientExiste: false, coachExiste: true };
+      const portDonnees = creerFauxPortDonnees();
+      portDonnees.definirEtatProfilsPourTest(profils);
+
+      await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('redirection').props.children).toBe('/(coach)/pilotage');
+      });
+    });
+
+    it('renvoie provisoirement vers (client)/accueil avec une session vérifiée mais aucun profil réel', async () => {
       const session: SessionAuth = { ...sessionNonVerifiee(), emailVerifie: true };
       await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)));
 
       await waitFor(() => {
         expect(screen.getByTestId('redirection').props.children).toBe('/(client)/accueil');
       });
+    });
+  });
+
+  // P1.10 : la destination dépend maintenant de DEUX fournisseurs, pas seulement de la
+  // session — sans cette garde, un utilisateur avec un profil coach verrait un éclair de
+  // "(client)/accueil" (le repli par défaut) avant la vraie destination une fois les profils
+  // arrivés, exactement le bug que la garde équivalente sur useSession() évitait déjà.
+  it('ne redirige nulle part tant que les profils (useDonnees) n’ont pas répondu, même si la session a déjà répondu', async () => {
+    const session: SessionAuth = { ...sessionNonVerifiee(), emailVerifie: true };
+    let resoudreProfils!: (etat: EtatProfils) => void;
+    const enAttente = new Promise<EtatProfils>((resolve) => {
+      resoudreProfils = resolve;
+    });
+    const portDonnees: PortDonnees = { lireEtatProfils: jest.fn().mockReturnValue(enAttente) };
+
+    await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);
+
+    expect(screen.queryByTestId('redirection')).toBeNull();
+
+    await act(async () => {
+      resoudreProfils({ profilActif: 'coach', clientExiste: false, coachExiste: true });
+      await enAttente;
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('redirection').props.children).toBe('/(coach)/pilotage');
     });
   });
 

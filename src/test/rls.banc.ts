@@ -711,3 +711,29 @@ describe('changement de mot de passe : sessions ouvertes ailleurs (docs/ecrans/L
     }
   });
 });
+
+// profil_actif_courant() (0002_politiques.sql) est le mécanisme réel derrière
+// src/services/donnees/supabase.ts, ajouté à P1.10 — jamais exercé directement par un
+// scénario avant ce describe, seulement indirectement via basculer_profil ci-dessus. Une
+// fonction SECURITY DEFINER a besoin de ses propres preuves (docs/backend.md §7), pas
+// seulement de celles de basculer_profil qui l'entoure.
+describe('profil_actif_courant() (docs/backend.md §7, src/services/donnees/)', () => {
+  it("rend le profil actif du compte appelant, jamais celui d'un autre", async () => {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/profil_actif_courant', {
+      methode: 'POST',
+      session: A,
+      corps: {},
+    });
+    expect(statut).toBe(200);
+    expect(corps).toBe('client'); // A ne bascule jamais dans ce fichier.
+  });
+
+  it('anon ne peut pas l’appeler (revoke from public, 0002_politiques.sql)', async () => {
+    const { statut } = await appelRest('/rest/v1/rpc/profil_actif_courant', {
+      methode: 'POST',
+      session: 'anon',
+      corps: {},
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+  });
+});

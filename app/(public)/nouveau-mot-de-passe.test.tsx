@@ -133,8 +133,11 @@ describe('NouveauMotDePasse (docs/ecrans/L1-04-connexion.md)', () => {
     expect(espionChangement).not.toHaveBeenCalled();
   });
 
-  // docs/ecrans/L1-04 : "l'utilisateur arrive dans son espace, connecté."
-  it('un changement réussi mène à la destination décidée par garde.ts', async () => {
+  // docs/ecrans/L1-04 : "l'utilisateur arrive dans son espace, connecté." Depuis P1.10, jamais
+  // determinerDestination(session) directement ici — "/" (app/index.tsx) attend session ET
+  // profils avant de trancher, testé exhaustivement ailleurs (app/index.test.tsx,
+  // src/test/routage/redirections.test.ts).
+  it('un changement réussi renvoie vers "/", qui calcule seul la vraie destination', async () => {
     const port = creerFauxPortAuth();
     await port.inscrire('camille@exemple.fr', 'un-mot-de-passe', '2000-01-01');
     const lien = port.lienVerificationPourTest('camille@exemple.fr');
@@ -150,7 +153,7 @@ describe('NouveauMotDePasse (docs/ecrans/L1-04-connexion.md)', () => {
     );
     await fireEvent.press(screen.getByText('Valider'));
 
-    expect(mockRemplacer).toHaveBeenCalledWith('/(client)/accueil');
+    expect(mockRemplacer).toHaveBeenCalledWith('/');
   });
 
   it('le bouton Valider reste désactivé tant que le champ est vide', async () => {
