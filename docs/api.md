@@ -90,13 +90,17 @@ tableau donne l'équivalence entre le geste et l'appel `supabase-js`, pas un con
 | Vérification de l'e-mail | gérée par Supabase (lien envoyé automatiquement) | rien à implémenter côté application au-delà de l'écran qui l'explique |
 | Connexion | `auth.signInWithPassword({ email, password })` | durée des jetons et rotation : réglages du tableau de bord, voir `docs/backend.md` §3 — pas de valeurs à coder en dur |
 | Rafraîchissement | automatique, géré par `supabase-js` | l'application ne l'appelle jamais explicitement en usage normal |
-| Déconnexion | `auth.signOut()` | révoque le jeton de rafraîchissement ; le dernier jeton d'accès émis reste valable jusqu'à son expiration — voir `docs/backend.md` §3, ce n'est pas immédiat |
+| Déconnexion | `auth.signOut({ scope: 'local' })` | **jamais** le défaut (`'global'`), qui révoquerait toutes les sessions de la personne sur tous ses appareils — révoque seulement le jeton de rafraîchissement de CET appareil ; le dernier jeton d'accès émis reste valable jusqu'à son expiration — voir `docs/backend.md` §3, ce n'est pas immédiat |
 | Mot de passe oublié | `auth.resetPasswordForEmail(email)` | réponse constante côté Supabase, qu'un compte existe ou non pour cet e-mail |
 | Réinitialisation | `auth.updateUser({ password })`, après le lien reçu | |
 
 La session (jetons d'accès et de rafraîchissement) est stockée par `supabase-js` via son
-adaptateur de stockage ; côté application, cet adaptateur pointe vers le trousseau sécurisé de
-l'appareil (`expo-secure-store`), **jamais** un stockage ordinaire.
+adaptateur de stockage ; côté application, cet adaptateur
+(`src/services/supabase/stockage-securise.ts`) écrit dans le stockage chiffré natif de
+l'appareil (`expo-secure-store`), **jamais** un stockage ordinaire. C'est la SEULE mémoire de
+session du dépôt (CLAUDE.md §2) — `src/services/trousseau/`, une deuxième mémoire née au lot
+L0, a été supprimée en préparant P1.8, précisément pour qu'aucune autre ne puisse diverger de
+celle-ci.
 
 ---
 

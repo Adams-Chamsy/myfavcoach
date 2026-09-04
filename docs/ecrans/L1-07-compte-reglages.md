@@ -75,9 +75,15 @@ est une promesse que personne n'a demandée et que le produit devra tenir.
 
 - L'écran existe **dans les deux espaces**, avec la même route relative `moi`. Le contenu de
   l'en-tête change de profil, la liste ne change pas.
-- La déconnexion efface la session du trousseau sécurisé, vide tout état en mémoire, et renvoie
-  sur L1-01. Elle réussit **même hors ligne** : une déconnexion qui échoue parce que le réseau
-  manque est un défaut de sécurité, pas une gêne.
+- La déconnexion appelle `port.deconnecter()` (`src/services/auth/port.ts`) — jamais un
+  "trousseau" : ce mécanisme (une seconde mémoire de session locale, née au lot L0) a été
+  supprimé en préparant P1.8, remplacé par le stockage chiffré du client Supabase lui-même,
+  seule mémoire de session du dépôt (`src/services/supabase/stockage-securise.ts`, voir
+  `docs/api.md` §2). `port.deconnecter()` vide cette mémoire ET l'état en mémoire vive, et
+  renvoie sur L1-01. Elle réussit **même hors ligne** : une déconnexion qui échoue parce que le
+  réseau manque est un défaut de sécurité, pas une gêne — déjà garanti par le port
+  (`{ scope: 'local' }`, vérifié contre un vrai compte à P1.10, voir `docs/dette.md`), cet écran
+  n'a rien de plus à faire pour ça que d'appeler `port.deconnecter()` normalement.
 - Aucun identifiant technique visible : ni identifiant de compte, ni jeton, ni identifiant de
   projet.
 - Le nom affiché vient du profil actif, jamais d'un cache local.

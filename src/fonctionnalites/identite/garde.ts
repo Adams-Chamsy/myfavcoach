@@ -39,5 +39,19 @@ export function determinerDestination(
   // est encore null (jamais interrogé, ou lecture en échec — src/fonctionnalites/identite/
   // fournisseur-donnees.tsx) : jamais grant d'accès à un espace sans preuve positive d'un
   // profil réel.
+  //
+  // À SÉPARER PAR P1.11 (onboarding client, docs/prompts/L1.md), pas avant : dès que
+  // profils_client.onboarding_etape a une valeur terminale fixée, ce `return` unique devient
+  // deux branches distinctes —
+  //   - profils?.clientExiste === false                → règle 3, aucun profil du tout
+  //     → `/(onboarding)/1-identite` (route qui n'existe qu'à partir de P1.11)
+  //   - profils.clientExiste === true, onboarding non terminé → règle 4
+  //     → l'étape non terminée (ex. `/(onboarding)/2-objectifs`), lue depuis
+  //     `profils.onboardingEtape` — un champ que `EtatProfils` (src/services/donnees/port.ts)
+  //     n'expose PAS encore, et que `portDonneesSupabase.lireEtatProfils()`
+  //     (src/services/donnees/supabase.ts) ne lit pas non plus aujourd'hui (seulement
+  //     `select('id')`, jamais `onboarding_etape`) : les deux sont à étendre au même prompt.
+  // Le repli null ci-dessus (profils jamais interrogé / lecture en échec) reste, lui, la même
+  // destination indéfiniment : ce n'est pas une des deux règles à séparer.
   return '/(client)/accueil' as Href;
 }
