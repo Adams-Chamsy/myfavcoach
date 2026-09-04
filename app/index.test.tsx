@@ -41,7 +41,7 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       await rendreIndex();
 
       await waitFor(() => {
-        expect(screen.getByTestId('redirection').props.children).toBe('/(public)/accueil');
+        expect(screen.getByTestId('redirection').props.children).toBe('/(public)');
       });
     });
 

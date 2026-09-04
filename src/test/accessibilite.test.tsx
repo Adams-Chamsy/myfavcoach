@@ -1,5 +1,6 @@
 import { fireEvent, render, type RenderResult } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
+import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 import type { ReactTestRendererJSON } from 'react-test-renderer';
 
 import Galerie from '../../app/_galerie';
@@ -12,7 +13,7 @@ import Pilotage from '../../app/(coach)/pilotage';
 import Clients from '../../app/(coach)/clients';
 import Agenda from '../../app/(coach)/agenda';
 import Revenus from '../../app/(coach)/revenus';
-import AccueilPublic from '../../app/(public)/accueil';
+import Bienvenue from '../../app/(public)/index';
 import { FournisseurTheme } from '@/theme/fournisseur';
 import { taille, themes } from '@/theme/tokens';
 import { contraste, melangerCouleur } from './contraste';
@@ -201,15 +202,27 @@ type OptionsAnalyse = {
   apresRendu?: (rendu: RenderResult) => Promise<void>;
 };
 
+// react-native-safe-area-context n'a pas de mesure native sous Jest (aucun onLayout ne se
+// déclenche) : sans métriques initiales, tout composant qui appelle useSafeAreaInsets()
+// (docs/ecrans/L1-01-bienvenue.md) plante avec "No safe area value available" plutôt que de
+// rendre 0 partout. Valeurs représentatives d'un iPhone à encoche — jamais mesurées à l'écran
+// par ce corpus, seulement suffisantes pour que le rendu ne plante pas.
+const METRIQUES_ZONES_SURES: Metrics = {
+  insets: { top: 59, right: 0, bottom: 34, left: 0 },
+  frame: { x: 0, y: 0, width: 393, height: 852 },
+};
+
 async function analyser(element: ReactElement, options: OptionsAnalyse): Promise<Resultats> {
   const { dejaEnveloppe = false, themeForce, apresRendu } = options;
   const resultats: Resultats = { contrastes: [], cibles: [], iconesSansLabel: [] };
   const rendu = await render(
-    dejaEnveloppe ? (
-      element
-    ) : (
-      <FournisseurTheme themeForce={themeForce}>{element}</FournisseurTheme>
-    ),
+    <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
+      {dejaEnveloppe ? (
+        element
+      ) : (
+        <FournisseurTheme themeForce={themeForce}>{element}</FournisseurTheme>
+      )}
+    </SafeAreaProvider>,
   );
   if (apresRendu) await apresRendu(rendu);
   analyserArbre(
@@ -261,7 +274,7 @@ const CORPUS: EntreeCorpus[] = [
   { nom: 'app/(coach)/clients.tsx', creerElement: () => <Clients key="clients" /> },
   { nom: 'app/(coach)/agenda.tsx', creerElement: () => <Agenda key="agenda" /> },
   { nom: 'app/(coach)/revenus.tsx', creerElement: () => <Revenus key="revenus" /> },
-  { nom: 'app/(public)/accueil.tsx', creerElement: () => <AccueilPublic key="accueil-public" /> },
+  { nom: 'app/(public)/index.tsx', creerElement: () => <Bienvenue key="bienvenue" /> },
 ];
 
 describe('accessibilité automatisée (npm run test:a11y)', () => {

@@ -73,4 +73,17 @@ describe('EmplacementImage', () => {
     expect(portrait.props.style.aspectRatio).toBeCloseTo(3 / 4);
     expect(portrait.props.style.height).toBeUndefined();
   });
+
+  // docs/ecrans/L1-01-bienvenue.md : le fond plein écran a besoin de remplir l'espace flex
+  // disponible, pas une hauteur fixe — sans changer le comportement par défaut ci-dessus.
+  it('pleinCadre avec remplir bascule sur flex:1 au lieu de la hauteur fixe', async () => {
+    await render(
+      <FournisseurTheme>
+        <EmplacementImage nom="Accueil" ratio="pleinCadre" remplir />
+      </FournisseurTheme>,
+    );
+    const rempli = screen.getByLabelText('Accueil');
+    expect(rempli.props.style.flex).toBe(1);
+    expect(rempli.props.style.height).toBeUndefined();
+  });
 });

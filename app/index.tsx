@@ -56,7 +56,7 @@ export default function Index() {
         // regenere un fichier plus precis qui rendrait ce cast inutile.
         setDestination(
           (!jeton
-            ? '/(public)/accueil'
+            ? '/(public)'
             : profilActif === 'coach'
               ? '/(coach)/pilotage'
               : '/(client)/accueil') as Href,

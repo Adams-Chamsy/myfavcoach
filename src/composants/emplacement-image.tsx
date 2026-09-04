@@ -12,6 +12,12 @@ export type ProprietesEmplacementImage = {
   // Aucune photo n'existe dans le dossier de design a ce jour : cette prop reste optionnelle
   // pour le jour ou une source arrive, mais aucun ecran ne la fournit encore.
   source?: string;
+  // "pleinCadre" fixe par defaut la hauteur du futur en-tete de profil coach (taille.pleinCadre,
+  // 400 pt, docs/design-system.md §7). Un fond plein ecran (docs/ecrans/L1-01-bienvenue.md) a
+  // besoin d'occuper tout l'espace flex disponible, pas une hauteur fixe : "remplir" bascule sur
+  // flex:1 sans toucher au sens de taille.pleinCadre pour l'usage d'origine. Ignore en dehors du
+  // ratio "pleinCadre".
+  remplir?: boolean;
 };
 
 const RATIOS: Record<'portrait3x4' | 'paysage4x3', number> = {
@@ -19,10 +25,19 @@ const RATIOS: Record<'portrait3x4' | 'paysage4x3', number> = {
   paysage4x3: 4 / 3,
 };
 
-export function EmplacementImage({ nom, ratio, source }: ProprietesEmplacementImage) {
+export function EmplacementImage({
+  nom,
+  ratio,
+  source,
+  remplir = false,
+}: ProprietesEmplacementImage) {
   const theme = useTheme();
   const styleDimension =
-    ratio === 'pleinCadre' ? { height: theme.taille.pleinCadre } : { aspectRatio: RATIOS[ratio] };
+    ratio === 'pleinCadre'
+      ? remplir
+        ? { flex: 1 }
+        : { height: theme.taille.pleinCadre }
+      : { aspectRatio: RATIOS[ratio] };
 
   if (source) {
     return (
