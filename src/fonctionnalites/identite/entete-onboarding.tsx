@@ -42,6 +42,16 @@ export function EnteteOnboarding({
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
+  // docs/ecrans/L1-05, "Élément commun" : jamais affiché quand il n'y a rien derrière l'écran
+  // courant — l'entrée dans l'onboarding REMPLACE la route (app/index.tsx, determinerDestination),
+  // jamais ne l'empile, donc "rien derrière" peut arriver à n'importe quelle étape selon la
+  // reprise (onboarding_etape déjà avancé), pas seulement à l'étape 1. Un bouton visible mais
+  // inerte serait une promesse trompeuse — router.canGoBack() décide à l'exécution, jamais une
+  // règle fixe par numéro d'étape. Trouvé après coup (P1.11) : affiché sans condition, il
+  // plantait ("GO_BACK non géré") dès qu'on le pressait sur l'écran d'entrée d'une session —
+  // voir src/test/routage/profondeur-pile-entree-onboarding.test.tsx.
+  const peutRevenir = router.canGoBack();
+
   return (
     <View
       style={{
@@ -53,12 +63,14 @@ export function EnteteOnboarding({
         paddingBottom: theme.espace[3],
       }}
     >
-      <BoutonIcone
-        nom="retour"
-        accessibilityLabel="Retour"
-        onPress={() => router.back()}
-        desactive={desactive}
-      />
+      {peutRevenir ? (
+        <BoutonIcone
+          nom="retour"
+          accessibilityLabel="Retour"
+          onPress={() => router.back()}
+          desactive={desactive}
+        />
+      ) : null}
 
       <View style={{ flex: 1 }}>
         <Progression

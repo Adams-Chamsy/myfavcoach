@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -25,6 +25,21 @@ export default function OnboardingObjectifs() {
   const [rythme, setRythme] = useState<string | null>(null);
   const [chargement, setChargement] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
+
+  // Reprise via le bouton retour depuis l'étape 3 (P1.11) : relit ce qui a déjà été choisi
+  // plutôt que de reproposer une sélection vide, sinon "retour" ferait perdre un choix pourtant
+  // déjà enregistré côté serveur.
+  useEffect(() => {
+    let monte = true;
+    port.lireProfilOnboarding().then((profil) => {
+      if (!monte) return;
+      if (profil.objectifs.length > 0) setObjectifs(profil.objectifs);
+      if (profil.rythme) setRythme(profil.rythme);
+    });
+    return () => {
+      monte = false;
+    };
+  }, [port]);
 
   function basculerObjectif(cle: string) {
     setObjectifs((actuels) =>

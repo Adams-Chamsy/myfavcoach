@@ -13,7 +13,7 @@ const mockRetour = jest.fn();
 const mockPousser = jest.fn();
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ back: mockRetour, push: mockPousser }),
+  useRouter: () => ({ back: mockRetour, push: mockPousser, canGoBack: () => true }),
 }));
 
 const METRIQUES_ZONES_SURES: Metrics = {
@@ -111,6 +111,19 @@ describe('OnboardingObjectifs (docs/ecrans/L1-05-onboarding-client.md, étape 2/
 
     await waitFor(() => expect(mockPousser).toHaveBeenCalledWith('/(onboarding)/3-poids'));
     expect(await port.lireProfilOnboarding()).toMatchObject({ objectifs: [], rythme: null });
+  });
+
+  // Reprise via le bouton retour depuis l'étape 3 (P1.11) : relit un choix déjà enregistré.
+  it('pré-remplit objectifs et rythme déjà enregistrés (retour depuis l’étape 3)', async () => {
+    const port = creerFauxPortDonnees();
+    await port.creerProfilClient('Camille', '');
+    await port.enregistrerObjectifsEtRythme(
+      [objectifsOnboarding[0].cle, objectifsOnboarding[2].cle],
+      rythmesOnboarding[2].cle,
+    );
+    await rendreEcran(port);
+
+    await waitFor(() => expect(screen.getByText('Continuer · 2 objectifs')).toBeTruthy());
   });
 
   it('un échec du serveur affiche une erreur et ne navigue pas', async () => {

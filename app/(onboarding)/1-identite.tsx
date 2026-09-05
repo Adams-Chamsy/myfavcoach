@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -29,6 +29,23 @@ export default function OnboardingIdentite() {
   const [nom, setNom] = useState('');
   const [chargement, setChargement] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
+
+  // Reprise via le bouton retour (P1.11) : un profil peut déjà exister (créé au premier
+  // passage) — relire ce qui a déjà été saisi plutôt que de repartir à vide, sinon "retour"
+  // ferait perdre une donnée pourtant déjà enregistrée côté serveur. lireProfilOnboarding()
+  // rend des valeurs vides sans erreur si rien n'existe encore (première visite) : rien à
+  // distinguer ici entre les deux cas.
+  useEffect(() => {
+    let monte = true;
+    port.lireProfilOnboarding().then((profil) => {
+      if (!monte) return;
+      if (profil.prenom) setPrenom(profil.prenom);
+      if (profil.nom) setNom(profil.nom);
+    });
+    return () => {
+      monte = false;
+    };
+  }, [port]);
 
   const prenomValide =
     prenom.trim().length >= LONGUEUR_PRENOM_MIN && prenom.trim().length <= LONGUEUR_PRENOM_MAX;

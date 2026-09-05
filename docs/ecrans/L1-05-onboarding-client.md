@@ -29,6 +29,20 @@ L'onboarding crée le **profil client**. Il ne crée pas de profil coach : c'est
 En-tête : bouton retour 24, fil de 4 segments de 4 pt (`marque.primaire` faits,
 `bordure.discrete` à venir), et le lien « Passer » en `texte.attenue` à droite.
 
+**Le bouton retour ramène à l'étape précédente, saisie déjà enregistrée conservée** (chaque
+étape écrit côté serveur dès qu'on avance — « conservée » veut dire relue depuis le serveur au
+remontage de l'étape précédente, jamais redemandée à vide). **Il n'apparaît PAS quand il n'y a
+rien derrière l'écran courant** — jamais visible mais inerte, ce qui serait une promesse
+trompeuse. « Rien derrière » ne veut pas dire seulement « étape 1 » : l'entrée dans
+l'onboarding se fait par une redirection qui REMPLACE la route courante (`app/index.tsx`,
+`determinerDestination`), pas en l'empilant — une reprise après fermeture de l'application peut
+donc atterrir directement à l'étape 2, 3 ou 4 (`onboarding_etape` déjà avancé) sans que rien
+n'ait été empilé avant. Chaque étape doit donc décider elle-même, à l'exécution
+(`router.canGoBack()`), si le bouton a un sens — jamais une règle fixe par numéro d'étape.
+Trouvé après coup (P1.11) : la fiche ne le disait pas, et l'écran affichait le bouton sans
+condition, qui plantait (« GO_BACK non géré ») dès qu'on le pressait sur l'écran d'entrée d'une
+session.
+
 **« Passer » n'apparaît pas à l'étape 1** : le prénom est la seule donnée obligatoire de tout
 l'onboarding, parce que le produit tutoie (« Salut Camille ») et qu'il n'a rien à dire sans lui.
 
@@ -148,4 +162,9 @@ rempli un formulaire.
 9. À 200 %, les chips passent sur plusieurs lignes sans troncature et les tuiles de rythme
    s'empilent.
 10. Les quatre étapes sont dans la galerie, **exercées en clair et en sombre**.
-11. `npm run verif` passe.
+11. Le bouton retour n'apparaît jamais sur l'écran d'entrée d'une session (celui atteint par
+    `determinerDestination`, quelle que soit l'étape) ; il apparaît et ramène à l'étape
+    précédente, saisie déjà enregistrée relue, sur toute étape atteinte en avançant depuis
+    celle-là — prouvé par un test de profondeur de pile réelle (expo-router), pas seulement par
+    la destination d'arrivée.
+12. `npm run verif` passe.

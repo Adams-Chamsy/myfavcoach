@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -28,6 +28,11 @@ function versGrammes(texte: string): number | undefined {
   return Math.round(nombre * 1000);
 }
 
+// Sens inverse de versGrammes, pour le pré-remplissage au retour depuis l'étape 4.
+function versSaisie(grammes: number): string {
+  return (grammes / 1000).toFixed(1).replace('.', ',');
+}
+
 // docs/ecrans/L1-05-onboarding-client.md, étape 3/4. CLAUDE.md §10 : donnée de santé
 // (catégorie 9 RGPD) — jamais journalisée, jamais dans une URL (aucun de ces deux champs ne
 // quitte cet écran autrement que par le corps de la requête du port), jamais mise en cache au-
@@ -43,6 +48,25 @@ export default function OnboardingPoids() {
   const [poidsVise, setPoidsVise] = useState('');
   const [chargement, setChargement] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
+
+  // Reprise via le bouton retour depuis l'étape 4 (P1.11) : relit un poids déjà enregistré
+  // plutôt que de reproposer des champs vides et un interrupteur décoché. La présence d'un
+  // poids implique le consentement (le déclencheur de 0004_proteger_donnees_sante.sql
+  // l'exigeait déjà à l'écriture) — pas de champ dédié à relire pour ça.
+  useEffect(() => {
+    let monte = true;
+    port.lireProfilOnboarding().then((profil) => {
+      if (!monte) return;
+      if (profil.poidsDepartGrammes != null || profil.poidsCibleGrammes != null) {
+        setConsentementAccorde(true);
+      }
+      if (profil.poidsDepartGrammes != null) setPoidsActuel(versSaisie(profil.poidsDepartGrammes));
+      if (profil.poidsCibleGrammes != null) setPoidsVise(versSaisie(profil.poidsCibleGrammes));
+    });
+    return () => {
+      monte = false;
+    };
+  }, [port]);
 
   async function enregistrerEtAvancer(
     donnees: Parameters<typeof port.enregistrerPointDeDepart>[0],

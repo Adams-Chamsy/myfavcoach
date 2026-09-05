@@ -5,9 +5,10 @@ import { FournisseurTheme } from '@/theme/fournisseur';
 import { EnteteOnboarding } from './entete-onboarding';
 
 const mockRetour = jest.fn();
+const mockCanGoBack = jest.fn(() => true);
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ back: mockRetour }),
+  useRouter: () => ({ back: mockRetour, canGoBack: mockCanGoBack }),
 }));
 
 const METRIQUES_ZONES_SURES: Metrics = {
@@ -28,6 +29,7 @@ function rendreEntete(proprietes: Partial<React.ComponentProps<typeof EnteteOnbo
 describe('EnteteOnboarding (docs/ecrans/L1-05-onboarding-client.md, "Élément commun")', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCanGoBack.mockReturnValue(true);
   });
 
   it('le bouton retour appelle router.back()', async () => {
@@ -36,6 +38,18 @@ describe('EnteteOnboarding (docs/ecrans/L1-05-onboarding-client.md, "Élément c
     await fireEvent.press(screen.getByLabelText('Retour'));
 
     expect(mockRetour).toHaveBeenCalledTimes(1);
+  });
+
+  // Critère 11 : "Le bouton retour n'apparaît jamais sur l'écran d'entrée d'une session [...]" —
+  // trouvé après coup (P1.11), voir src/test/routage/profondeur-pile-entree-onboarding.test.tsx
+  // pour la preuve contre la vraie pile de navigation ; ceci prouve seulement la décision de
+  // rendu de ce composant, pas la pile elle-même.
+  it("n'apparaît pas quand router.canGoBack() est faux, quelle que soit l'étape", async () => {
+    mockCanGoBack.mockReturnValue(false);
+
+    await rendreEntete({ etape: 3 });
+
+    expect(screen.queryByLabelText('Retour')).toBeNull();
   });
 
   // Critère 8 : "Le fil d'étapes est annoncé au lecteur d'écran comme « étape 2 sur 4 »".

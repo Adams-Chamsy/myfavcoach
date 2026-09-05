@@ -14,7 +14,12 @@ const mockPousser = jest.fn();
 const mockRemplacer = jest.fn();
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ back: mockRetour, push: mockPousser, replace: mockRemplacer }),
+  useRouter: () => ({
+    back: mockRetour,
+    push: mockPousser,
+    replace: mockRemplacer,
+    canGoBack: () => true,
+  }),
 }));
 
 const METRIQUES_ZONES_SURES: Metrics = {

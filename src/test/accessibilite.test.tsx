@@ -32,6 +32,22 @@ import { FournisseurTheme } from '@/theme/fournisseur';
 import { taille, themes } from '@/theme/tokens';
 import { contraste, melangerCouleur } from './contraste';
 
+// EnteteOnboarding (P1.11) appelle router.canGoBack() PENDANT le rendu (pas seulement dans un
+// gestionnaire) pour décider si le bouton retour s'affiche — le seul appel de router.* de ce
+// corpus qui s'exécute synchronement au montage, plutôt que dans un onPress jamais déclenché
+// ici. La vraie implémentation lève ("Cannot read properties of undefined (reading 'isReady')")
+// hors d'un vrai conteneur de navigation, qu'aucun écran de ce corpus n'a — pas seulement les
+// quatre d'onboarding. push/back/replace restent réels (jamais appelés pendant un rendu
+// statique par aucun écran ici) : seul canGoBack est réécrit, à false — honnête hors navigation
+// réelle, rien à quoi revenir.
+jest.mock('expo-router', () => {
+  const reel = jest.requireActual('expo-router');
+  return {
+    ...reel,
+    useRouter: () => ({ ...reel.useRouter(), canGoBack: () => false }),
+  };
+});
+
 // npm run test:a11y (docs/prompts/L0.md, P0.14). Parcourt un corpus de rendu couvrant
 // src/composants/ (la galerie, app/_galerie.tsx, en exerce a peu pres 100 %) et app/ (les
 // ecrans provisoires des trois coquilles). Volontairement hors corpus : app/_layout.tsx et

@@ -333,6 +333,47 @@ describe('profils_client', () => {
     expect(ligne.onboarding_etape).toBe(3);
   });
 
+  // Trouvé en P1.11 en corrigeant creerProfilClient (le bouton retour peut ramener à l'étape 1
+  // une fois le profil déjà créé — un second INSERT y échouerait sur la contrainte d'unicité) :
+  // un upsert (POST + Prefer: resolution=merge-duplicates, l'équivalent REST de .upsert())
+  // semblait la solution évidente, mais échoue — compte_id n'a AUCUN grant UPDATE
+  // (0001_creer_identite.sql : "un profil ne change jamais de propriétaire"), et le plan
+  // d'exécution d'un upsert le réécrit dans sa branche UPDATE même à valeur inchangée. D'où le
+  // choix réel : UPDATE (colonnes accordées) d'abord, INSERT seulement si 0 ligne touchée.
+  it('A upserte son propre profil client (POST + merge-duplicates) : refusé — compte_id sans grant UPDATE', async () => {
+    const reponse = await fetch(`${API_URL}/rest/v1/profils_client`, {
+      method: 'POST',
+      headers: {
+        apikey: ANON_KEY,
+        Authorization: `Bearer ${A.jwt}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=representation',
+      },
+      body: JSON.stringify({ compte_id: A.compteId, prenom: 'Camille-upsert' }),
+    });
+    expect(reponse.status).toBe(403);
+    const corps = await reponse.json();
+    expect(JSON.stringify(corps)).toContain('permission denied');
+  });
+
+  // Trouvé en P1.11 : src/services/donnees/supabase.ts envoyait un PATCH SANS ce filtre —
+  // jamais vu ici (le banc filtre toujours), jamais vu par le test mocké de l'adaptateur (qui
+  // ne vérifie que ce que le mock a reçu, pas ce que Postgres en ferait). Documente la vraie
+  // raison, permanente : Supabase précharge `safeupdate` sur le rôle authenticator
+  // (session_preload_libraries, confirmé via pg_roles.rolconfig), qui refuse tout UPDATE/DELETE
+  // sans clause WHERE — avant même que RLS s'évalue. Un PATCH sans filtre échoue donc ICI aussi
+  // maintenant, indépendamment du code applicatif : ce scénario reste vrai tant que
+  // `safeupdate` reste chargé, que src/services/donnees/supabase.ts filtre ou non.
+  it('A modifie son profil client SANS filtre compte_id dans l’URL : refusé par safeupdate, pas par RLS', async () => {
+    const { statut, corps } = await appelRest('/rest/v1/profils_client', {
+      methode: 'PATCH',
+      session: A,
+      corps: { rythme_hebdo: '5 fois et plus par semaine' },
+    });
+    expect(statut).toBe(400);
+    expect(JSON.stringify(corps)).toContain('UPDATE requires a WHERE clause');
+  });
+
   it('A modifie le profil client de B : refusé', async () => {
     const { corps } = await appelRest(`/rest/v1/profils_client?compte_id=eq.${B.compteId}`, {
       methode: 'PATCH',

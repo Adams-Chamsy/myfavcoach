@@ -12,7 +12,7 @@ const mockRetour = jest.fn();
 const mockPousser = jest.fn();
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ back: mockRetour, push: mockPousser }),
+  useRouter: () => ({ back: mockRetour, push: mockPousser, canGoBack: () => true }),
 }));
 
 const METRIQUES_ZONES_SURES: Metrics = {
@@ -129,6 +129,28 @@ describe('OnboardingPoids (docs/ecrans/L1-05-onboarding-client.md, étape 3/4)',
 
     await waitFor(() => expect(mockPousser).toHaveBeenCalledWith('/(onboarding)/4-cest-parti'));
     expect(await port.lireProfilOnboarding()).toMatchObject({ poidsDepartGrammes: null });
+  });
+
+  // Reprise via le bouton retour depuis l'étape 4 (P1.11) : relit un poids déjà enregistré, et
+  // recoche l'interrupteur (sa présence implique le consentement déjà accordé).
+  it('pré-remplit le poids déjà enregistré et recoche le consentement (retour depuis l’étape 4)', async () => {
+    const port = creerFauxPortDonnees();
+    await port.creerProfilClient('Camille', '');
+    await port.enregistrerPointDeDepart({
+      consentementAccorde: true,
+      versionConsentement: '2026-09-04',
+      poidsDepartGrammes: 82300,
+      poidsCibleGrammes: 78000,
+    });
+    await rendreEcran(port);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('Poids actuel (kg)').props.value).toBe('82,3'),
+    );
+    expect(screen.getByLabelText('Poids visé (kg)').props.value).toBe('78,0');
+    expect(
+      screen.getByLabelText("J'accepte l'enregistrement de mes données de santé").props.value,
+    ).toBe(true);
   });
 
   it('un échec du serveur affiche une erreur et ne navigue pas', async () => {

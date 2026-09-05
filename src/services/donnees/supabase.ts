@@ -16,18 +16,22 @@ const PROFIL_ONBOARDING_VIDE: ProfilOnboarding = {
   poidsCibleGrammes: null,
 };
 
-// Toutes les écritures de ce fichier visent UNIQUEMENT la ligne profils_client du compte
-// appelant. profils_client_update_espace_client (0002_politiques.sql) restreint déjà chaque
-// UPDATE à `compte_id = auth.uid()` : un appel sans filtre explicite ne touche donc jamais
-// qu'au plus une ligne, la bonne — même choix que lireEtatProfils plus bas (déjà en place
-// depuis P1.10), jamais un `.eq('compte_id', ...)` redondant qui obligerait à connaître son
-// propre identifiant pour rien.
+// Toute écriture UPDATE de ce fichier doit porter un `.eq('compte_id', ...)` EXPLICITE — RLS
+// scoperait la ligne correctement même sans lui (profils_client_update_espace_client,
+// 0002_politiques.sql, restreint déjà chaque UPDATE à `compte_id = auth.uid()`), mais Supabase
+// précharge `safeupdate` sur le rôle authenticator (confirmé en direct sur le projet :
+// pg_roles.rolconfig → session_preload_libraries=supautils, safeupdate), qui refuse TOUT
+// UPDATE/DELETE sans clause WHERE, avant même que RLS s'évalue — erreur Postgres 21000, "UPDATE
+// requires a WHERE clause". Trouvé en P1.11, en repérant que l'écran plantait alors que
+// src/test/rls.banc.ts (qui filtre toujours ses PATCH) passait au vert : les deux ne
+// prouvaient pas la même forme de requête. `lireEtatProfils`/`lireProfilOnboarding`
+// (SELECT, jamais concernés par safeupdate) n'ont pas besoin de ce filtre.
 //
-// creerProfilClient est la SEULE exception : profils_client_insert_espace_client EXIGE que la
-// ligne insérée porte déjà `compte_id = auth.uid()` (une politique INSERT ne peut pas deviner
-// une valeur absente de la requête) — d'où le seul appel de ce fichier à
-// supabase.auth.getSession() (lecture locale, jamais un aller-retour réseau contrairement à
-// getUser()).
+// compteIdCourant() lit la session locale (jamais un aller-retour réseau, contrairement à
+// getUser()) — appelé par CHAQUE méthode d'écriture de ce fichier, y compris creerProfilClient
+// (INSERT), où profils_client_insert_espace_client EXIGE que la ligne insérée porte déjà
+// `compte_id = auth.uid()` (une politique INSERT ne peut pas deviner une valeur absente de la
+// requête).
 async function compteIdCourant(): Promise<string> {
   const { data, error } = await supabase.auth.getSession();
   if (error) throw error;
@@ -109,10 +113,27 @@ export const portDonneesSupabase: PortDonnees = {
 
   async creerProfilClient(prenom, nom) {
     const compteId = await compteIdCourant();
+    const nomNormalise = nom === '' ? null : nom;
+
+    // UPDATE d'abord, jamais un upsert : compte_id n'a AUCUN grant UPDATE (0001_creer_identite.sql,
+    // "un profil ne change jamais de propriétaire") — vérifié en direct, un upsert real échoue
+    // avec "permission denied for table profils_client" dès qu'il touche compte_id, même à
+    // valeur inchangée (le plan d'exécution d'un upsert le réécrit dans les deux branches).
+    // 0 ligne affectée = pas encore de profil (première fois) → INSERT. Nécessaire depuis que
+    // le bouton retour peut ramener à l'étape 1 après qu'un profil existe déjà (P1.11) : un
+    // second INSERT y échouerait sur la contrainte d'unicité de compte_id.
+    const miseAJour = await supabase
+      .from('profils_client')
+      .update({ prenom, nom: nomNormalise, onboarding_etape: 2 })
+      .eq('compte_id', compteId)
+      .select('id');
+    if (miseAJour.error) return echec(miseAJour.error);
+    if ((miseAJour.data?.length ?? 0) > 0) return { succes: true };
+
     const { error } = await supabase.from('profils_client').insert({
       compte_id: compteId,
       prenom,
-      nom: nom === '' ? null : nom,
+      nom: nomNormalise,
       onboarding_etape: 2,
     });
     if (error) return echec(error);
@@ -120,9 +141,11 @@ export const portDonneesSupabase: PortDonnees = {
   },
 
   async enregistrerObjectifsEtRythme(objectifs, rythme) {
+    const compteId = await compteIdCourant();
     const { error } = await supabase
       .from('profils_client')
-      .update({ objectifs, rythme_hebdo: rythme, onboarding_etape: 3 });
+      .update({ objectifs, rythme_hebdo: rythme, onboarding_etape: 3 })
+      .eq('compte_id', compteId);
     if (error) return echec(error);
     return { succes: true };
   },
@@ -133,11 +156,12 @@ export const portDonneesSupabase: PortDonnees = {
     poidsDepartGrammes,
     poidsCibleGrammes,
   }) {
+    const compteId = await compteIdCourant();
+
     if (consentementAccorde) {
       // Le consentement DOIT être écrit avant le poids : le déclencheur de
       // 0004_proteger_donnees_sante.sql refuse toute écriture de poids sans une ligne
       // consentements_courants(type='donneesSante', accorde=true) déjà présente.
-      const compteId = await compteIdCourant();
       const { error: erreurConsentement } = await supabase.from('consentements').insert({
         compte_id: compteId,
         type: 'donneesSante',
@@ -148,21 +172,28 @@ export const portDonneesSupabase: PortDonnees = {
       if (erreurConsentement) return echec(erreurConsentement);
     }
 
-    const { error } = await supabase.from('profils_client').update({
-      onboarding_etape: 4,
-      ...(consentementAccorde && poidsDepartGrammes !== undefined
-        ? { poids_depart_grammes: poidsDepartGrammes }
-        : {}),
-      ...(consentementAccorde && poidsCibleGrammes !== undefined
-        ? { poids_cible_grammes: poidsCibleGrammes }
-        : {}),
-    });
+    const { error } = await supabase
+      .from('profils_client')
+      .update({
+        onboarding_etape: 4,
+        ...(consentementAccorde && poidsDepartGrammes !== undefined
+          ? { poids_depart_grammes: poidsDepartGrammes }
+          : {}),
+        ...(consentementAccorde && poidsCibleGrammes !== undefined
+          ? { poids_cible_grammes: poidsCibleGrammes }
+          : {}),
+      })
+      .eq('compte_id', compteId);
     if (error) return echec(error);
     return { succes: true };
   },
 
   async terminerOnboarding() {
-    const { error } = await supabase.from('profils_client').update({ onboarding_etape: 5 });
+    const compteId = await compteIdCourant();
+    const { error } = await supabase
+      .from('profils_client')
+      .update({ onboarding_etape: 5 })
+      .eq('compte_id', compteId);
     if (error) return echec(error);
     return { succes: true };
   },

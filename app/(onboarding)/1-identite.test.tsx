@@ -12,7 +12,7 @@ const mockRetour = jest.fn();
 const mockPousser = jest.fn();
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ back: mockRetour, push: mockPousser }),
+  useRouter: () => ({ back: mockRetour, push: mockPousser, canGoBack: () => true }),
 }));
 
 const METRIQUES_ZONES_SURES: Metrics = {
@@ -102,5 +102,16 @@ describe('OnboardingIdentite (docs/ecrans/L1-05-onboarding-client.md, étape 1/4
     await fireEvent.press(screen.getByLabelText('Retour'));
 
     expect(mockRetour).toHaveBeenCalledTimes(1);
+  });
+
+  // Reprise via le bouton retour (P1.11) : un profil peut déjà exister, la saisie déjà
+  // enregistrée doit réapparaître, pas des champs vides.
+  it('pré-remplit prénom et nom depuis un profil déjà créé (retour depuis l’étape 2)', async () => {
+    const port = creerFauxPortDonnees();
+    await port.creerProfilClient('Camille', 'Dupont');
+    await rendreEcran(port);
+
+    await waitFor(() => expect(screen.getByLabelText('Prénom').props.value).toBe('Camille'));
+    expect(screen.getByLabelText('Nom').props.value).toBe('Dupont');
   });
 });
