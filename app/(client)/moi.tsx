@@ -16,12 +16,11 @@ import { themes } from '@/theme/tokens';
 // les deux espaces, per L1-07) — P1.13 construit les deux écrans "pour de bon". Rien ici ne le
 // remplace par anticipation.
 //
-// Comportement du bloc encre lui-même : suit docs/ecrans/L1-06-bascule-espace.md, "Ouverture"
-// ("le bloc encre de l'écran compte" est listé comme un point d'ENTRÉE VERS LA FEUILLE, au même
-// titre que l'avatar) — presser le bloc OUVRE FeuilleBascule, il ne bascule jamais lui-même. La
-// fiche L1-07 (§Contenu) décrit ce même bloc avec un libellé d'action qui pourrait aussi se lire
-// comme une bascule directe ; P1.13, en construisant l'écran réel, devra trancher explicitement
-// laquelle des deux lectures est la bonne plutôt que d'hériter de ce choix sans le remarquer.
+// Comportement du bloc encre lui-même : docs/ecrans/L1-06-bascule-espace.md et
+// docs/ecrans/L1-07-compte-reglages.md (§Contenu, tranché après une ambiguïté entre les deux
+// fiches) sont d'accord — presser le bloc OUVRE FeuilleBascule, au même titre que l'avatar,
+// jamais une bascule directe ni une navigation directe vers L1-08. Titre et sous-titre du bloc
+// ne sont qu'un aperçu du contenu de la feuille.
 //
 // Île sombre FIXE (CLAUDE.md §5) : fond ET texte viennent de themes.sombre, jamais de
 // useTheme() — fond.inverse s'inverserait sous un thème ambiant sombre (theme forcé de la

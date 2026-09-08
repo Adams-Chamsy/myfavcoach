@@ -29,10 +29,16 @@ libellé `texte.corps`, chevron `suivant`.
 | Confidentialité | L1-09, section consentement | L1 |
 
 **Bloc encre** `fond.inverse`, rayon `carte` : titre `texte.titre3` en `texte.surSombre`,
-sous-titre, et action.
+sous-titre, et action. Presser le bloc **ouvre la feuille de bascule (L1-06)** — au même titre
+que l'avatar, jamais une bascule directe ni un aiguillage direct vers L1-08. Deux raisons : la
+bascule est un changement d'espace, elle mérite le même geste depuis les deux entrées ; et
+quand le profil coach n'existe pas, la feuille est le seul endroit qui montre les deux espaces
+côte à côte — un bloc qui sauterait tout droit vers « Devenir coach » ne le montrerait jamais.
+Le titre et le sous-titre du bloc sont un aperçu du contenu de la feuille, pas une action
+propre :
 
-- Profil coach existant → « Passer en espace coach » · « Tes clients et tes revenus »
-- Profil coach absent → « Devenir coach » · « Publie tes offres, fixe tes prix » → L1-08
+- Profil coach existant → aperçu « Passer en espace coach » · « Tes clients et tes revenus »
+- Profil coach absent → aperçu « Devenir coach » · « Publie tes offres, fixe tes prix »
 
 **Déconnexion** : ligne seule, libellé centré en `etat.erreur`, `texte.titre3`. Confirmation par
 `Modale` : « Se déconnecter ? · Il faudra te reconnecter avec ton mot de passe. » Actions
@@ -94,7 +100,9 @@ est une promesse que personne n'a demandée et que le produit devra tenir.
 
 1. L'écran s'ouvre dans les deux espaces et affiche le bon profil.
 2. Les trois lignes de réglages ouvrent réellement leur destination — aucune ligne inerte.
-3. Le bloc encre affiche « Devenir coach » sans profil coach, « Passer en espace coach » avec.
+3. Le bloc encre affiche « Devenir coach » sans profil coach, « Passer en espace coach » avec ;
+   le presser dans les deux cas ouvre la feuille de bascule (L1-06), jamais une bascule
+   directe ni une navigation directe vers L1-08.
 4. La déconnexion demande confirmation, puis ramène sur L1-01 ; une nouvelle ouverture de
    l'application n'y retrouve aucune session.
 5. **Déconnexion en mode avion** : elle aboutit quand même, et aucune donnée du compte ne reste
