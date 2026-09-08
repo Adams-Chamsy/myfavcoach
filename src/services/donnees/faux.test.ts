@@ -11,6 +11,8 @@ describe('creerFauxPortDonnees', () => {
       clientExiste: false,
       clientOnboardingEtape: null,
       coachExiste: false,
+      identiteActive: { prenom: '', nom: null },
+      attentesCoach: 0,
     });
   });
 
@@ -22,6 +24,8 @@ describe('creerFauxPortDonnees', () => {
       clientExiste: true,
       clientOnboardingEtape: 3,
       coachExiste: true,
+      identiteActive: { prenom: 'Camille', nom: 'Dupré' },
+      attentesCoach: 0,
     });
 
     expect(await port.lireEtatProfils()).toEqual({
@@ -29,7 +33,26 @@ describe('creerFauxPortDonnees', () => {
       clientExiste: true,
       clientOnboardingEtape: 3,
       coachExiste: true,
+      identiteActive: { prenom: 'Camille', nom: 'Dupré' },
+      attentesCoach: 0,
     });
+  });
+
+  it('basculerProfil change profilActif, et se relit', async () => {
+    const port = creerFauxPortDonnees();
+    port.definirEtatProfilsPourTest({
+      profilActif: 'client',
+      clientExiste: true,
+      clientOnboardingEtape: 5,
+      coachExiste: true,
+      identiteActive: { prenom: 'Camille', nom: 'Dupré' },
+      attentesCoach: 0,
+    });
+
+    const resultat = await port.basculerProfil('coach');
+
+    expect(resultat).toEqual({ succes: true });
+    expect((await port.lireEtatProfils()).profilActif).toBe('coach');
   });
 
   it('lireProfilOnboarding rend des valeurs par défaut avant toute écriture', async () => {

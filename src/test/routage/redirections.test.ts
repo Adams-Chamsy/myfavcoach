@@ -1,4 +1,5 @@
 import type { SessionAuth } from '@/services/auth/port';
+import { etatProfilsParDefaut } from '@/services/donnees/faux';
 import type { EtatProfils } from '@/services/donnees/port';
 import { determinerDestination } from '@/fonctionnalites/identite/garde';
 
@@ -30,12 +31,12 @@ describe('determinerDestination (docs/prompts/L1.md, P1.10 + P1.11)', () => {
 
   // Règle 3.
   it('session vérifiée, aucun profil client du tout : mène à l’étape 1 de l’onboarding', () => {
-    const profils: EtatProfils = {
+    const profils: EtatProfils = etatProfilsParDefaut({
       profilActif: 'client',
       clientExiste: false,
       clientOnboardingEtape: null,
       coachExiste: false,
-    };
+    });
     expect(determinerDestination(sessionVerifiee(), profils)).toBe('/(onboarding)/1-identite');
   });
 
@@ -51,35 +52,35 @@ describe('determinerDestination (docs/prompts/L1.md, P1.10 + P1.11)', () => {
       [3, '/(onboarding)/3-poids'],
       [4, '/(onboarding)/4-cest-parti'],
     ])('onboarding_etape=%d mène à %s', (etape, route) => {
-      const profils: EtatProfils = {
+      const profils: EtatProfils = etatProfilsParDefaut({
         profilActif: 'client',
         clientExiste: true,
         clientOnboardingEtape: etape,
         coachExiste: false,
-      };
+      });
       expect(determinerDestination(sessionVerifiee(), profils)).toBe(route);
     });
   });
 
   // Règle 5.
   it('profil actif client ET onboarding terminé (étape > 4) : mène à l’espace client', () => {
-    const profils: EtatProfils = {
+    const profils: EtatProfils = etatProfilsParDefaut({
       profilActif: 'client',
       clientExiste: true,
       clientOnboardingEtape: 5,
       coachExiste: false,
-    };
+    });
     expect(determinerDestination(sessionVerifiee(), profils)).toBe('/(client)/accueil');
   });
 
   // Règle 6.
   it('profil actif coach ET le profil coach existe réellement : mène à l’espace coach', () => {
-    const profils: EtatProfils = {
+    const profils: EtatProfils = etatProfilsParDefaut({
       profilActif: 'coach',
       clientExiste: false,
       clientOnboardingEtape: null,
       coachExiste: true,
-    };
+    });
     expect(determinerDestination(sessionVerifiee(), profils)).toBe('/(coach)/pilotage');
   });
 
@@ -89,12 +90,12 @@ describe('determinerDestination (docs/prompts/L1.md, P1.10 + P1.11)', () => {
   // coach sans preuve positive. Pas une des sept règles (aucune ne couvre ce cas côté coach) —
   // L1-08 (activation espace coach) n'est pas construit, voir garde.ts.
   it('profil actif coach SANS que le profil coach existe : ne fait pas confiance, replie sur la destination provisoire', () => {
-    const profils: EtatProfils = {
+    const profils: EtatProfils = etatProfilsParDefaut({
       profilActif: 'coach',
       clientExiste: false,
       clientOnboardingEtape: null,
       coachExiste: false,
-    };
+    });
     expect(determinerDestination(sessionVerifiee(), profils)).toBe('/(client)/accueil');
   });
 

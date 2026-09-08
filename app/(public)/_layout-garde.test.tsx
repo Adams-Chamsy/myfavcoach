@@ -6,7 +6,11 @@ import { render, screen } from '@testing-library/react-native';
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth, type FauxPortAuth } from '@/services/auth/faux';
-import { creerFauxPortDonnees, type FauxPortDonnees } from '@/services/donnees/faux';
+import {
+  creerFauxPortDonnees,
+  etatProfilsParDefaut,
+  type FauxPortDonnees,
+} from '@/services/donnees/faux';
 import LayoutPublic from './_layout';
 
 const mockRemplacer = jest.fn();
@@ -59,12 +63,14 @@ describe('app/(public)/_layout.tsx — règle 7 (docs/prompts/L1.md, P1.10)', ()
     portAuth.verifierEmailPourTest('camille@exemple.fr');
     await portAuth.connecter('camille@exemple.fr', 'bon-mot-de-passe');
     const portDonnees = creerFauxPortDonnees();
-    portDonnees.definirEtatProfilsPourTest({
-      profilActif: 'client',
-      clientExiste: true,
-      clientOnboardingEtape: 5,
-      coachExiste: false,
-    });
+    portDonnees.definirEtatProfilsPourTest(
+      etatProfilsParDefaut({
+        profilActif: 'client',
+        clientExiste: true,
+        clientOnboardingEtape: 5,
+        coachExiste: false,
+      }),
+    );
 
     await rendre(portAuth, portDonnees);
 

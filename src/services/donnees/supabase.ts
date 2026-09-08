@@ -61,24 +61,40 @@ export const portDonneesSupabase: PortDonnees = {
     // ("Seule source du profil actif... jamais un en-tête falsifiable"). Les deux lectures
     // d'existence s'appuient sur les politiques RLS déjà prouvées par P1.5
     // (profils_client_select_proprietaire, profils_coach_select_proprietaire) : chacune ne peut
-    // renvoyer QUE la ligne de l'appelant, ou aucune.
+    // renvoyer QUE la ligne de l'appelant, ou aucune. prenom/nom ajoutés (L1-06) pour
+    // identiteActive ci-dessous — aucun appel réseau supplémentaire, les deux lignes étaient
+    // déjà lues.
     const [{ data: profilActif, error: erreurProfilActif }, client, coach] = await Promise.all([
       supabase.rpc('profil_actif_courant'),
-      supabase.from('profils_client').select('id, onboarding_etape').limit(1),
-      supabase.from('profils_coach').select('id').limit(1),
+      supabase.from('profils_client').select('id, prenom, nom, onboarding_etape').limit(1),
+      supabase.from('profils_coach').select('id, prenom, nom').limit(1),
     ]);
 
     if (erreurProfilActif) throw erreurProfilActif;
     if (client.error) throw client.error;
     if (coach.error) throw coach.error;
 
-    const ligneClient = client.data?.[0] as { id: string; onboarding_etape: number } | undefined;
+    const ligneClient = client.data?.[0] as
+      { id: string; prenom: string; nom: string | null; onboarding_etape: number } | undefined;
+    const ligneCoach = coach.data?.[0] as
+      { id: string; prenom: string; nom: string | null } | undefined;
+
+    // Prénom/nom du profil ACTIF, jamais figé sur le client : profils_coach porte ses propres
+    // colonnes prenom/nom (0001_creer_identite.sql), indépendantes de profils_client. Repli sur
+    // des chaînes vides si la ligne attendue manque (ne devrait pas arriver : basculer_profil
+    // vérifie déjà l'existence avant de changer profilActif) plutôt qu'une exception qui
+    // bloquerait tout l'écran pour un champ d'affichage secondaire.
+    const ligneIdentite = profilActif === 'coach' ? ligneCoach : ligneClient;
 
     return {
       profilActif: profilActif as ProfilActif,
       clientExiste: ligneClient != null,
       clientOnboardingEtape: ligneClient?.onboarding_etape ?? null,
-      coachExiste: (coach.data?.length ?? 0) > 0,
+      coachExiste: ligneCoach != null,
+      identiteActive: { prenom: ligneIdentite?.prenom ?? '', nom: ligneIdentite?.nom ?? null },
+      // Toujours 0 à ce lot, jamais calculé : voir le commentaire de EtatProfils (port.ts) et
+      // docs/dette.md.
+      attentesCoach: 0,
     } satisfies EtatProfils;
   },
 
@@ -194,6 +210,18 @@ export const portDonneesSupabase: PortDonnees = {
       .from('profils_client')
       .update({ onboarding_etape: 5 })
       .eq('compte_id', compteId);
+    if (error) return echec(error);
+    return { succes: true };
+  },
+
+  // basculer_profil (0002_politiques.sql) revalide elle-même que le profil demandé existe pour
+  // ce compte avant d'écrire comptes.profil_actif — cette méthode ne fait que l'appeler et
+  // traduire l'échec, jamais de vérification côté application (le port ne décide jamais un
+  // droit). Message générique, comme echec() ci-dessus : le message brut de la fonction (utile
+  // en développement) n'a aucune raison de fuiter jusqu'à l'écran, qui ne peut de toute façon
+  // proposer cette bascule que pour un profil déjà connu comme existant.
+  async basculerProfil(profil) {
+    const { error } = await supabase.rpc('basculer_profil', { profil });
     if (error) return echec(error);
     return { succes: true };
   },

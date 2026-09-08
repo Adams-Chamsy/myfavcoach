@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, Switch, Text, View } from 'react-native';
 
 import { Avatar, type TailleAvatar } from '@/composants/avatar';
@@ -28,6 +28,11 @@ import {
   programmesDemonstration,
   seancesDemonstration,
 } from '@/fixtures/demonstration';
+import { FeuilleBascule } from '@/fonctionnalites/identite/feuille-bascule';
+import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
+import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
+import { creerFauxPortAuth } from '@/services/auth/faux';
+import { creerFauxPortDonnees } from '@/services/donnees/faux';
 import {
   FournisseurMouvementReduit,
   FournisseurTheme,
@@ -93,6 +98,7 @@ function Corps({
       <SectionFeuilleEtModale />
       <SectionEtats />
       <SectionIcones />
+      <SectionFeuilleBascule />
       <PiedGalerie
         themeClair={themeClair}
         onChangeThemeClair={onChangeThemeClair}
@@ -976,6 +982,100 @@ function SectionIcones() {
           </View>
         ))}
       </View>
+    </Section>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// 13 · Feuille de bascule d'espace (docs/ecrans/L1-06-bascule-espace.md)
+// ---------------------------------------------------------------------------------------------
+
+// FeuilleBascule a besoin d'une session ÉTABLIE (useSession()) — inscrire()/connecter() du faux
+// port restent asynchrones même en mémoire, préparés une fois via useEffect, jamais pendant le
+// rendu lui-même (même discipline que preparerSessionOnboarding,
+// src/test/accessibilite.test.tsx). Les deux variantes ci-dessous partagent cette même session :
+// seul definirEtatProfilsPourTest (synchrone) diffère entre elles.
+function useSessionDeDemonstration() {
+  const [portAuth] = useState(() => creerFauxPortAuth());
+  const [pret, setPret] = useState(false);
+
+  useEffect(() => {
+    let monte = true;
+    portAuth
+      .inscrire('camille@exemple.fr', 'bon-mot-de-passe', '2000-01-01')
+      .then(() => {
+        portAuth.verifierEmailPourTest('camille@exemple.fr');
+        return portAuth.connecter('camille@exemple.fr', 'bon-mot-de-passe');
+      })
+      .then(() => {
+        if (monte) setPret(true);
+      });
+    return () => {
+      monte = false;
+    };
+  }, [portAuth]);
+
+  return { portAuth, pret };
+}
+
+// Deux Modal natifs simultanément ouverts (une par variante) : sans conséquence pour
+// npm run test:a11y (qui inspecte l'arbre rendu, jamais l'empilement visuel), mais dans la
+// galerie réelle la variante "Sans profil coach" recouvre l'autre au montage — glisser ou
+// toucher son voile la referme et révèle celle du dessous, "Rouvrir" la ramène. Comportement
+// voulu pour que les deux variantes soient exercées sans interaction, pas un défaut.
+function DemonstrationFeuilleBascule({
+  titre,
+  coachExiste,
+  portAuth,
+}: {
+  titre: string;
+  coachExiste: boolean;
+  portAuth: ReturnType<typeof creerFauxPortAuth>;
+}) {
+  const theme = useTheme();
+  const [portDonnees] = useState(() => {
+    const port = creerFauxPortDonnees();
+    port.definirEtatProfilsPourTest({
+      profilActif: 'client',
+      clientExiste: true,
+      clientOnboardingEtape: 5,
+      coachExiste,
+      identiteActive: { prenom: 'Camille', nom: 'Dupré' },
+      attentesCoach: 0,
+    });
+    return port;
+  });
+  const [ouverte, setOuverte] = useState(true);
+
+  return (
+    <View style={{ gap: theme.espace[2] }}>
+      <SousTitre texte={titre} />
+      <FournisseurSession port={portAuth}>
+        <FournisseurDonnees port={portDonnees}>
+          <FeuilleBascule ouverte={ouverte} onFermer={() => setOuverte(false)}>
+            <Bouton variante="secondaire" libelle="Rouvrir" onPress={() => setOuverte(true)} />
+          </FeuilleBascule>
+        </FournisseurDonnees>
+      </FournisseurSession>
+    </View>
+  );
+}
+
+function SectionFeuilleBascule() {
+  const { portAuth, pret } = useSessionDeDemonstration();
+
+  // Le temps que inscrire()/connecter() se résolvent (une poignée de microtâches, jamais un
+  // vrai réseau) : rien à montrer avant, plutôt qu'un FeuilleBascule sans session valide.
+  if (!pret) return null;
+
+  return (
+    <Section titre="13 · Feuille de bascule d'espace">
+      <DemonstrationFeuilleBascule titre="Avec profil coach" coachExiste portAuth={portAuth} />
+      <DemonstrationFeuilleBascule
+        titre="Sans profil coach"
+        coachExiste={false}
+        portAuth={portAuth}
+      />
     </Section>
   );
 }

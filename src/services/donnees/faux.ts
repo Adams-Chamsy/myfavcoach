@@ -17,12 +17,21 @@ export type FauxPortDonnees = PortDonnees & {
 // docs/api.md §3 : un compte neuf a toujours profilActif = 'client' (colonne NOT NULL, défaut
 // 'client', posée à la création — voir 0001_creer_identite.sql), même sans aucun profil. C'est
 // donc l'état par défaut le plus honnête de ce faux, pas 'coach' ni une valeur inventée.
-function etatParDefaut(): EtatProfils {
+//
+// Exportée (pas seulement interne à creerFauxPortDonnees) : plusieurs fichiers de test
+// construisaient EtatProfils à la main, littéral par littéral — l'ajout d'identiteActive et
+// attentesCoach (L1-06) en a cassé huit d'un coup. `surcharges` permet à chacun de ne préciser
+// que les champs qui l'intéressent, comme port.definirEtatProfilsPourTest le fait déjà en
+// interne : le prochain champ ajouté à EtatProfils ne cassera plus qu'ici.
+export function etatProfilsParDefaut(surcharges: Partial<EtatProfils> = {}): EtatProfils {
   return {
     profilActif: 'client',
     clientExiste: false,
     clientOnboardingEtape: null,
     coachExiste: false,
+    identiteActive: { prenom: '', nom: null },
+    attentesCoach: 0,
+    ...surcharges,
   };
 }
 
@@ -40,7 +49,7 @@ function profilOnboardingVide(): ProfilOnboarding {
 // Faux en mémoire : créé par test, jeté par test (CLAUDE.md — règle de L0 : aucune dépendance à
 // une restauration globale entre tests).
 export function creerFauxPortDonnees(): FauxPortDonnees {
-  let etat: EtatProfils = etatParDefaut();
+  let etat: EtatProfils = etatProfilsParDefaut();
   let profilOnboarding: ProfilOnboarding = profilOnboardingVide();
   let prochaineEcritureEchoue: string | null = null;
 
@@ -106,6 +115,15 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
 
     async terminerOnboarding() {
       return ecrire({ ...etat, clientOnboardingEtape: 5 }, profilOnboarding);
+    },
+
+    // Pas de règle métier reproduite ici (contrairement au vrai basculer_profil, qui refuse un
+    // profil inexistant) : comme les écritures d'onboarding ci-dessus, ce faux ne simule que
+    // l'échec générique, via echouerProchaineEcriturePourTest — suffisant pour les tests
+    // d'écran de docs/ecrans/L1-06-bascule-espace.md, qui n'exposent cette action que pour un
+    // profil déjà connu comme existant (voir le commentaire de PortDonnees.basculerProfil).
+    async basculerProfil(profil) {
+      return ecrire({ ...etat, profilActif: profil }, profilOnboarding);
     },
   } satisfies FauxPortDonnees;
 }

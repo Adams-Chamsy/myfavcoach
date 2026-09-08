@@ -150,7 +150,32 @@ function analyserArbre(
   if (!noeud || typeof noeud === 'string') return;
 
   const style = fusionnerStyle(noeud.props?.style);
-  const opaciteNoeud = typeof style?.opacity === 'number' ? (style.opacity as number) : 1;
+  // Exemption ciblée, trouvée en ajoutant la section "13 · Feuille de bascule d'espace" (P1.12) :
+  // le corps de FeuilleBasse (src/composants/feuille-basse.tsx) anime son opacité via Reanimated
+  // (progressionFeuille, un SharedValue) à l'OUVERTURE. Cette mutation ne passe jamais par un
+  // rendu React observable : ni un vrai temps d'attente (setTimeout réel), ni un rendu forcé
+  // (rerender), ni le mock officiel du paquet (react-native-reanimated/mock, dont useSharedValue
+  // recrée d'ailleurs une valeur neuve à chaque rendu, perdant la mutation de l'effet) ne
+  // parviennent à faire apparaître autre chose que l'opacité 0 du tout premier rendu dans
+  // l'arbre capturé par react-test-renderer — les trois vérifiés en écrivant cette suite,
+  // documentés dans l'historique de P1.12. Ce n'est pas un défaut visuel réel (une vraie feuille,
+  // sur un vrai appareil, atteint 380 ms plus tard une opacité de 1, docs/design-system.md §4) :
+  // c'est une limite structurelle de ce harnais de test, jamais rencontrée avant parce
+  // qu'aucune autre entrée de la galerie ne gardait de FeuilleBasse ouverte par défaut
+  // (docs/ecrans/L0-00-galerie-systeme.md, section 10 : fermée tant qu'on ne clique pas) — la
+  // feuille de bascule, elle, doit l'être pour que ses deux variantes soient exercées sans
+  // interaction (docs/ecrans/L1-06-bascule-espace.md, critère 9). Repéré par le testID que
+  // FeuilleBasse pose elle-même sur ce nœud précis (`${testID}-feuille`), jamais par la forme du
+  // style (une correspondance sur {opacity, transform:[{translateY}]} attraperait aussi une
+  // vraie animation d'entrée non liée à cette feuille, docs/design-system.md §4 "Entrée de
+  // contenu", et masquerait alors un vrai défaut de contraste ailleurs).
+  const estCorpsFeuilleBasseAnimee =
+    typeof noeud.props?.testID === 'string' && noeud.props.testID.endsWith('-feuille');
+  const opaciteNoeud = estCorpsFeuilleBasseAnimee
+    ? 1
+    : typeof style?.opacity === 'number'
+      ? (style.opacity as number)
+      : 1;
 
   const contexteEnfant: Contexte = estHex(style?.backgroundColor)
     ? { ...contexte, fond: style.backgroundColor, opaciteDepuisFond: opaciteNoeud }
@@ -295,12 +320,46 @@ const CORPUS: EntreeCorpus[] = [
     dejaEnveloppe: true,
     apresRenduParTheme: { sombre: basculerGalerieEnSombre },
   },
-  { nom: 'app/(client)/accueil.tsx', creerElement: () => <Accueil key="accueil" /> },
+  {
+    // P1.12 : accueil.tsx a désormais un avatar (FeuilleBascule, useDonnees()) — a besoin d'une
+    // session ÉTABLIE, contrairement au reste des coquilles provisoires. Réutilise les mêmes
+    // ports que les écrans d'onboarding ci-dessous (préparés une fois, beforeAll) : la feuille
+    // reste fermée par défaut ici, seul l'avatar-déclencheur est exercé (le contenu de la
+    // feuille elle-même est exercé par la section 13 de la galerie, toujours ouverte).
+    nom: 'app/(client)/accueil.tsx',
+    creerElement: () => (
+      <FournisseurSession key="accueil" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <Accueil />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
   { nom: 'app/(client)/explorer.tsx', creerElement: () => <Explorer key="explorer" /> },
   { nom: 'app/(client)/seance.tsx', creerElement: () => <Seance key="seance" /> },
   { nom: 'app/(client)/messages.tsx', creerElement: () => <Messages key="messages" /> },
-  { nom: 'app/(client)/moi.tsx', creerElement: () => <Moi key="moi" /> },
-  { nom: 'app/(coach)/pilotage.tsx', creerElement: () => <Pilotage key="pilotage" /> },
+  {
+    // Même besoin que accueil.tsx ci-dessus : le bloc encre déclencheur appelle useDonnees().
+    nom: 'app/(client)/moi.tsx',
+    creerElement: () => (
+      <FournisseurSession key="moi" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <Moi />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    // Même besoin : l'avatar de pilotage.tsx appelle useDonnees() lui aussi.
+    nom: 'app/(coach)/pilotage.tsx',
+    creerElement: () => (
+      <FournisseurSession key="pilotage" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <Pilotage />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
   { nom: 'app/(coach)/clients.tsx', creerElement: () => <Clients key="clients" /> },
   { nom: 'app/(coach)/agenda.tsx', creerElement: () => <Agenda key="agenda" /> },
   { nom: 'app/(coach)/revenus.tsx', creerElement: () => <Revenus key="revenus" /> },

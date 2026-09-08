@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 
 import { creerFauxPortAuth } from '@/services/auth/faux';
 import type { PortAuth } from '@/services/auth/port';
-import { creerFauxPortDonnees } from '@/services/donnees/faux';
+import { creerFauxPortDonnees, etatProfilsParDefaut } from '@/services/donnees/faux';
 import type { EtatProfils, PortDonnees } from '@/services/donnees/port';
 import { FournisseurDonnees, useDonnees } from './fournisseur-donnees';
 import { FournisseurSession } from './fournisseur-session';
@@ -79,12 +79,12 @@ describe('useDonnees', () => {
     const portAuth = creerFauxPortAuth();
     await compteConnecteEtVerifie(portAuth);
     const portDonnees = creerFauxPortDonnees();
-    const etatAttendu: EtatProfils = {
+    const etatAttendu: EtatProfils = etatProfilsParDefaut({
       profilActif: 'coach',
       clientExiste: true,
       clientOnboardingEtape: 5,
       coachExiste: true,
-    };
+    });
     portDonnees.definirEtatProfilsPourTest(etatAttendu);
 
     const { result } = await renderHook(() => useDonnees(), {
@@ -140,12 +140,14 @@ describe('useDonnees', () => {
     const portDonnees = creerFauxPortDonnees();
     let resoudreDeuxiemeLecture: (etat: EtatProfils) => void = () => {};
     const lecture = jest.spyOn(portDonnees, 'lireEtatProfils');
-    lecture.mockResolvedValueOnce({
-      profilActif: 'client',
-      clientExiste: true,
-      clientOnboardingEtape: 5,
-      coachExiste: false,
-    });
+    lecture.mockResolvedValueOnce(
+      etatProfilsParDefaut({
+        profilActif: 'client',
+        clientExiste: true,
+        clientOnboardingEtape: 5,
+        coachExiste: false,
+      }),
+    );
     lecture.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
@@ -170,12 +172,14 @@ describe('useDonnees', () => {
     expect(result.current.profils).toBeNull();
 
     await act(async () => {
-      resoudreDeuxiemeLecture({
-        profilActif: 'coach',
-        clientExiste: false,
-        clientOnboardingEtape: null,
-        coachExiste: true,
-      });
+      resoudreDeuxiemeLecture(
+        etatProfilsParDefaut({
+          profilActif: 'coach',
+          clientExiste: false,
+          clientOnboardingEtape: null,
+          coachExiste: true,
+        }),
+      );
       await Promise.resolve();
     });
 

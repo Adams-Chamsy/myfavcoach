@@ -19,11 +19,20 @@ export type ProfilActif = 'client' | 'coach';
 // null quand clientExiste est false : aucune étape n'a de sens sans profil. > 4 signifie
 // onboarding terminé (docs/ecrans/L1-05 n'a que quatre étapes) — voir
 // src/fonctionnalites/identite/garde.ts pour la valeur exacte et son usage.
+//
+// identiteActive et attentesCoach : ajoutés pour L1-06 (feuille de bascule), pas construits
+// d'avance. identiteActive porte prénom/nom du profil ACTIF (profils_client ou profils_coach
+// selon profilActif) — jamais photoUrl : Avatar (src/composants/avatar.tsx) n'affiche que des
+// initiales, aucun code de ce dépôt ne sait encore rendre une vraie photo (Storage = L2).
+// attentesCoach vaut toujours 0 à ce lot (docs/ecrans/L1-06-bascule-espace.md : "il n'y a ni
+// message ni demande") — voir docs/dette.md pour le lot qui le calculera réellement (L8).
 export type EtatProfils = {
   profilActif: ProfilActif;
   clientExiste: boolean;
   clientOnboardingEtape: number | null;
   coachExiste: boolean;
+  identiteActive: { prenom: string; nom: string | null };
+  attentesCoach: number;
 };
 
 export type ResultatEcriture = { succes: true } | { succes: false; erreur: string };
@@ -79,4 +88,12 @@ export type PortDonnees = {
 
   // Étape 4/4 : marque l'onboarding terminé (onboarding_etape à 5 — voir garde.ts).
   terminerOnboarding(): Promise<ResultatEcriture>;
+
+  // docs/ecrans/L1-06-bascule-espace.md : appelle la fonction de base basculer_profil(profil)
+  // (0002_politiques.sql, SECURITY DEFINER — comptes.profil_actif n'a aucun GRANT UPDATE pour
+  // authenticated). Vérifie elle-même que le profil demandé existe pour ce compte ; refuse
+  // sinon. L'application n'écrit JAMAIS profil_actif directement — cette méthode est le seul
+  // chemin, et son résultat ne sert qu'à savoir si la bascule a eu lieu, jamais à décider un
+  // droit (le champ profilActif rechargé ensuite ne sert que le routage et la palette).
+  basculerProfil(profil: ProfilActif): Promise<ResultatEcriture>;
 };

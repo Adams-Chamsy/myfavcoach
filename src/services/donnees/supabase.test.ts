@@ -50,11 +50,13 @@ describe('portDonneesSupabase', () => {
   });
 
   describe('lireEtatProfils', () => {
-    it('compose profilActif, les deux existences et onboarding_etape en un seul EtatProfils', async () => {
+    it('compose profilActif, les deux existences, onboarding_etape et identiteActive en un seul EtatProfils', async () => {
       supabaseMock.rpc.mockResolvedValue({ data: 'client', error: null });
       supabaseMock.from.mockImplementation((table: string) => {
         if (table === 'profils_client')
-          return tableLecture([{ id: 'p-client', onboarding_etape: 2 }]);
+          return tableLecture([
+            { id: 'p-client', prenom: 'Camille', nom: 'Dupré', onboarding_etape: 2 },
+          ]);
         if (table === 'profils_coach') return tableLecture([]);
         throw new Error(`table inattendue dans ce test : ${table}`);
       });
@@ -66,11 +68,30 @@ describe('portDonneesSupabase', () => {
         clientExiste: true,
         clientOnboardingEtape: 2,
         coachExiste: false,
+        identiteActive: { prenom: 'Camille', nom: 'Dupré' },
+        attentesCoach: 0,
       });
       expect(supabaseMock.rpc).toHaveBeenCalledWith('profil_actif_courant');
     });
 
-    it('un compte sans aucun profil rend clientExiste/coachExiste à false et clientOnboardingEtape à null', async () => {
+    it('profilActif coach : identiteActive vient de profils_coach, pas de profils_client', async () => {
+      supabaseMock.rpc.mockResolvedValue({ data: 'coach', error: null });
+      supabaseMock.from.mockImplementation((table: string) => {
+        if (table === 'profils_client')
+          return tableLecture([
+            { id: 'p-client', prenom: 'Camille', nom: 'Dupré', onboarding_etape: 5 },
+          ]);
+        if (table === 'profils_coach')
+          return tableLecture([{ id: 'p-coach', prenom: 'Camille', nom: 'Coach' }]);
+        throw new Error(`table inattendue dans ce test : ${table}`);
+      });
+
+      const resultat = await portDonneesSupabase.lireEtatProfils();
+
+      expect(resultat.identiteActive).toEqual({ prenom: 'Camille', nom: 'Coach' });
+    });
+
+    it('un compte sans aucun profil rend clientExiste/coachExiste à false, clientOnboardingEtape à null, identiteActive vide', async () => {
       supabaseMock.rpc.mockResolvedValue({ data: 'client', error: null });
       supabaseMock.from.mockImplementation(() => tableLecture([]));
 
@@ -81,6 +102,8 @@ describe('portDonneesSupabase', () => {
         clientExiste: false,
         clientOnboardingEtape: null,
         coachExiste: false,
+        identiteActive: { prenom: '', nom: null },
+        attentesCoach: 0,
       });
     });
 
@@ -336,6 +359,35 @@ describe('portDonneesSupabase', () => {
       expect(resultat).toEqual({ succes: true });
       expect(table.update).toHaveBeenCalledWith({ onboarding_etape: 5 });
       expect(table.eq).toHaveBeenCalledWith('compte_id', 'compte-a');
+    });
+  });
+
+  describe('basculerProfil', () => {
+    it('appelle la fonction de base basculer_profil avec le profil demandé', async () => {
+      supabaseMock.rpc.mockResolvedValue({ data: 'coach', error: null });
+
+      const resultat = await portDonneesSupabase.basculerProfil('coach');
+
+      expect(resultat).toEqual({ succes: true });
+      expect(supabaseMock.rpc).toHaveBeenCalledWith('basculer_profil', { profil: 'coach' });
+    });
+
+    // docs/prompts/L1.md, P1.12 : le message brut du serveur (ex. "Aucun profil coach pour ce
+    // compte") ne fuite jamais jusqu'à l'écran — même discipline que echec() pour les écritures
+    // d'onboarding. L'écran ne propose de toute façon cette action que pour un profil déjà
+    // connu comme existant (voir le commentaire de PortDonnees.basculerProfil, port.ts).
+    it('un échec du serveur rend ResultatEcriture en échec, jamais le message brut', async () => {
+      supabaseMock.rpc.mockResolvedValue({
+        data: null,
+        error: new Error('Aucun profil coach pour ce compte : bascule refusée.'),
+      });
+
+      const resultat = await portDonneesSupabase.basculerProfil('coach');
+
+      expect(resultat).toEqual({
+        succes: false,
+        erreur: 'On a un souci de notre côté. Réessaie dans un instant.',
+      });
     });
   });
 });

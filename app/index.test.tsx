@@ -3,7 +3,7 @@ import { act, render, screen, waitFor } from '@testing-library/react-native';
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import type { PortAuth, SessionAuth } from '@/services/auth/port';
-import { creerFauxPortDonnees } from '@/services/donnees/faux';
+import { creerFauxPortDonnees, etatProfilsParDefaut } from '@/services/donnees/faux';
 import type { EtatProfils, PortDonnees } from '@/services/donnees/port';
 import { FournisseurTheme } from '@/theme/fournisseur';
 import Index from './index';
@@ -87,12 +87,12 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
 
     it('renvoie vers (client)/accueil avec une session vérifiée et un profil client réel, onboarding terminé', async () => {
       const session: SessionAuth = { ...sessionNonVerifiee(), emailVerifie: true };
-      const profils: EtatProfils = {
+      const profils: EtatProfils = etatProfilsParDefaut({
         profilActif: 'client',
         clientExiste: true,
         clientOnboardingEtape: 5,
         coachExiste: false,
-      };
+      });
       const portDonnees = creerFauxPortDonnees();
       portDonnees.definirEtatProfilsPourTest(profils);
 
@@ -108,12 +108,12 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
     // profil coach).
     it('renvoie vers (coach)/pilotage avec une session vérifiée et un profil coach réel', async () => {
       const session: SessionAuth = { ...sessionNonVerifiee(), emailVerifie: true };
-      const profils: EtatProfils = {
+      const profils: EtatProfils = etatProfilsParDefaut({
         profilActif: 'coach',
         clientExiste: false,
         clientOnboardingEtape: null,
         coachExiste: true,
-      };
+      });
       const portDonnees = creerFauxPortDonnees();
       portDonnees.definirEtatProfilsPourTest(profils);
 
@@ -151,6 +151,7 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       enregistrerObjectifsEtRythme: jest.fn(),
       enregistrerPointDeDepart: jest.fn(),
       terminerOnboarding: jest.fn(),
+      basculerProfil: jest.fn(),
     };
 
     await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);
@@ -158,12 +159,14 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
     expect(screen.queryByTestId('redirection')).toBeNull();
 
     await act(async () => {
-      resoudreProfils({
-        profilActif: 'coach',
-        clientExiste: false,
-        clientOnboardingEtape: null,
-        coachExiste: true,
-      });
+      resoudreProfils(
+        etatProfilsParDefaut({
+          profilActif: 'coach',
+          clientExiste: false,
+          clientOnboardingEtape: null,
+          coachExiste: true,
+        }),
+      );
       await enAttente;
     });
 
