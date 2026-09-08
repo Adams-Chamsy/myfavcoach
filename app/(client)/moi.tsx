@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EcranProvisoire } from '@/composants/ecran-provisoire';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
@@ -28,6 +29,9 @@ import { themes } from '@/theme/tokens';
 // fond, exactement le bug déjà trouvé deux fois (barre-navigation.tsx, app/(public)/index.tsx).
 export default function Moi() {
   const theme = useTheme();
+  // Onglet sous <Tabs headerShown:false> : rien au-dessus ne réserve la barre d'état. Comme
+  // accueil.tsx et pilotage.tsx, l'écran pousse lui-même son premier contenu sous l'encoche.
+  const insets = useSafeAreaInsets();
   const { profils } = useDonnees();
   const [feuilleOuverte, setFeuilleOuverte] = useState(false);
 
@@ -36,7 +40,13 @@ export default function Moi() {
   return (
     <FeuilleBascule ouverte={feuilleOuverte} onFermer={() => setFeuilleOuverte(false)}>
       <View style={{ flex: 1 }}>
-        <View style={{ padding: theme.espace.gouttiere }}>
+        <View
+          style={{
+            paddingTop: insets.top + theme.espace[2],
+            paddingHorizontal: theme.espace.gouttiere,
+            paddingBottom: theme.espace.gouttiere,
+          }}
+        >
           <Pressable
             onPress={() => setFeuilleOuverte(true)}
             accessibilityRole="button"

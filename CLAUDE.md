@@ -237,6 +237,20 @@ restent la bonne pente pour ça, plus rapides et plus stables). Trois pièges tr
 
 Pas de test de capture d'écran (snapshot) : ils passent tout seuls et ne prouvent rien.
 
+**Zones sûres — angle mort structurel, trouvé à P1.12, de la même famille que le rendu web (§6).**
+`react-test-renderer` (donc `npm test`, `test:a11y`, tout test d'écran) ne fait aucune mise en
+page : pas de flexbox résolu, pas de coordonnées. Un écran qui applique `useSafeAreaInsets()` et
+un écran qui l'ignore rendent le même arbre à un nombre près dans un objet de style — le bloc
+encre de `app/(client)/moi.tsx` s'affichait sous la barre d'état sans qu'aucun test ne bronche.
+`METRIQUES_ZONES_SURES` (`src/test/accessibilite.test.tsx` : haut 59, bas 34) n'existe que pour
+que `useSafeAreaInsets()` ne lève pas ; sa valeur n'est comparée à la position de rien. Seule
+parade en place : `verifierOffsetHautZoneSure` + la liste `ECRANS_CHROME_HAUT` du même fichier
+vérifient que le premier contenu des écrans qui posent leur propre chrome haut (`accueil`,
+`pilotage`, `moi`) est retraité d'au moins l'inset haut. **Tout écran qui gagne un chrome haut
+doit être ajouté à cette liste.** Ce contrôle n'attrape pas la géométrie réelle (troncature,
+inset bas, barre gestuelle Android), qui reste une vérification manuelle sur appareil (voir
+`docs/dette.md`).
+
 ---
 
 ## 9. Commits

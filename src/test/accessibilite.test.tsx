@@ -93,6 +93,62 @@ function contientTexte(noeud: Noeud): boolean {
   return collecterTexte(noeud).trim().length > 0;
 }
 
+// Écrans qui posent leur propre chrome en haut (barre d'avatar, bloc encre) sous une navigation
+// « headerShown: false » : rien au-dessus d'eux ne réserve la zone sûre, donc chacun doit
+// pousser son premier contenu vers le bas d'au moins l'inset haut, via useSafeAreaInsets().
+// moi.tsx ne le faisait pas (P1.12) — « Devenir coach » passait sous l'heure et l'encoche, sans
+// qu'aucun test ne le voie. P1.13 réécrit les deux écrans « moi » : cette liste les y tient.
+// Portée assumée : ce contrôle ne prouve PAS la géométrie réelle (débordement, inset bas, barre
+// Android à 3 boutons) — voir docs/dette.md, il reste un angle mort manuel sur appareil.
+const ECRANS_CHROME_HAUT = new Set([
+  'app/(client)/accueil.tsx',
+  'app/(coach)/pilotage.tsx',
+  'app/(client)/moi.tsx',
+]);
+
+type OffsetHaut = { ancre: boolean; offset: number };
+
+// Descend en ordre de rendu jusqu'au premier nœud qui, soit centre / pousse son contenu hors du
+// bord haut (rien à vérifier, `ancre: false`), soit fixe un retrait vertical
+// (paddingTop / padding / marginTop / margin), soit EST déjà du contenu visible (texte, cible
+// tactile, icône) — dans ce dernier cas le contenu touche le bord haut, offset 0.
+// react-test-renderer ne fait aucune mise en page : la valeur numérique du style est la seule
+// mesure possible ici, jamais une position réelle à l'écran.
+function verifierOffsetHautZoneSure(noeud: Noeud): OffsetHaut | null {
+  if (!noeud || typeof noeud === 'string') return null;
+
+  const style = fusionnerStyle(noeud.props?.style);
+
+  const centreOuPousse =
+    (style?.flex === 1 || style?.flexGrow === 1) &&
+    (style?.justifyContent === 'center' ||
+      style?.justifyContent === 'flex-end' ||
+      style?.justifyContent === 'space-around' ||
+      style?.justifyContent === 'space-evenly');
+  if (centreOuPousse) return { ancre: false, offset: 0 };
+
+  const retrait = [style?.paddingTop, style?.padding, style?.marginTop, style?.margin].find(
+    (valeur): valeur is number => typeof valeur === 'number',
+  );
+  if (retrait !== undefined) return { ancre: true, offset: retrait };
+
+  const role = noeud.props?.accessibilityRole;
+  if (
+    (noeud.type === 'Text' && contientTexte(noeud)) ||
+    role === 'button' ||
+    role === 'tab' ||
+    noeud.type === 'RNSVGSvgView'
+  ) {
+    return { ancre: true, offset: 0 };
+  }
+
+  for (const enfant of noeud.children ?? []) {
+    const trouve = verifierOffsetHautZoneSure(enfant);
+    if (trouve) return trouve;
+  }
+  return null;
+}
+
 type ConstatContraste = {
   texte: string;
   couleurTexte: string;
@@ -107,6 +163,8 @@ type Resultats = {
   contrastes: ConstatContraste[];
   cibles: ConstatCible[];
   iconesSansLabel: ConstatIcone[];
+  // Renseigné seulement pour les écrans de ECRANS_CHROME_HAUT ; null ailleurs.
+  offsetHautZoneSure: OffsetHaut | null;
 };
 
 type Contexte = {
@@ -269,7 +327,12 @@ const METRIQUES_ZONES_SURES: Metrics = {
 
 async function analyser(element: ReactElement, options: OptionsAnalyse): Promise<Resultats> {
   const { dejaEnveloppe = false, themeForce, apresRendu } = options;
-  const resultats: Resultats = { contrastes: [], cibles: [], iconesSansLabel: [] };
+  const resultats: Resultats = {
+    contrastes: [],
+    cibles: [],
+    iconesSansLabel: [],
+    offsetHautZoneSure: null,
+  };
   const rendu = await render(
     <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
       {dejaEnveloppe ? (
@@ -280,8 +343,10 @@ async function analyser(element: ReactElement, options: OptionsAnalyse): Promise
     </SafeAreaProvider>,
   );
   if (apresRendu) await apresRendu(rendu);
+  const arbre = rendu.toJSON();
+  resultats.offsetHautZoneSure = verifierOffsetHautZoneSure(arbre);
   analyserArbre(
-    rendu.toJSON(),
+    arbre,
     {
       fond: fondRacine(themeForce),
       opaciteDepuisFond: 1,
@@ -488,6 +553,7 @@ describe('accessibilité automatisée (npm run test:a11y)', () => {
       const echecsContraste: string[] = [];
       const echecsCible: string[] = [];
       const echecsIcone: string[] = [];
+      const echecsZoneSure: string[] = [];
 
       // Rendu sequentiel, un fichier a la fois : les erreurs restent attribuables a une seule
       // source, et chaque render() partage le meme act() de testing-library sans se chevaucher.
@@ -525,11 +591,22 @@ describe('accessibilité automatisée (npm run test:a11y)', () => {
         for (const icone of resultats.iconesSansLabel) {
           echecsIcone.push(`${nom} — icône sans accessibilityLabel (${icone.pere})`);
         }
+
+        if (ECRANS_CHROME_HAUT.has(nom)) {
+          const z = resultats.offsetHautZoneSure;
+          if (z && z.ancre && z.offset < METRIQUES_ZONES_SURES.insets.top) {
+            echecsZoneSure.push(
+              `${nom} — contenu du haut à ${z.offset} pt, sous l'inset haut de ` +
+                `${METRIQUES_ZONES_SURES.insets.top} pt : la zone sûre du haut n'est pas appliquée`,
+            );
+          }
+        }
       }
 
       expect(echecsContraste).toEqual([]);
       expect(echecsCible).toEqual([]);
       expect(echecsIcone).toEqual([]);
+      expect(echecsZoneSure).toEqual([]);
     },
   );
 });
