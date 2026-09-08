@@ -9,6 +9,7 @@ import Explorer from '../../app/(client)/explorer';
 import Seance from '../../app/(client)/seance';
 import Messages from '../../app/(client)/messages';
 import Moi from '../../app/(client)/moi';
+import MoiCoach from '../../app/(coach)/moi';
 import Pilotage from '../../app/(coach)/pilotage';
 import Clients from '../../app/(coach)/clients';
 import Agenda from '../../app/(coach)/agenda';
@@ -97,13 +98,15 @@ function contientTexte(noeud: Noeud): boolean {
 // « headerShown: false » : rien au-dessus d'eux ne réserve la zone sûre, donc chacun doit
 // pousser son premier contenu vers le bas d'au moins l'inset haut, via useSafeAreaInsets().
 // moi.tsx ne le faisait pas (P1.12) — « Devenir coach » passait sous l'heure et l'encoche, sans
-// qu'aucun test ne le voie. P1.13 réécrit les deux écrans « moi » : cette liste les y tient.
+// qu'aucun test ne le voie. P1.13a a réécrit les deux écrans « moi » (même EcranCompte partagé,
+// src/fonctionnalites/compte/) : cette liste les y tient, côté client ET côté coach.
 // Portée assumée : ce contrôle ne prouve PAS la géométrie réelle (débordement, inset bas, barre
 // Android à 3 boutons) — voir docs/dette.md, il reste un angle mort manuel sur appareil.
 const ECRANS_CHROME_HAUT = new Set([
   'app/(client)/accueil.tsx',
   'app/(coach)/pilotage.tsx',
   'app/(client)/moi.tsx',
+  'app/(coach)/moi.tsx',
 ]);
 
 type OffsetHaut = { ancre: boolean; offset: number };
@@ -404,12 +407,23 @@ const CORPUS: EntreeCorpus[] = [
   { nom: 'app/(client)/seance.tsx', creerElement: () => <Seance key="seance" /> },
   { nom: 'app/(client)/messages.tsx', creerElement: () => <Messages key="messages" /> },
   {
-    // Même besoin que accueil.tsx ci-dessus : le bloc encre déclencheur appelle useDonnees().
+    // Même besoin que accueil.tsx ci-dessus : EcranCompte appelle useDonnees() et useSession().
     nom: 'app/(client)/moi.tsx',
     creerElement: () => (
       <FournisseurSession key="moi" port={portAuthOnboarding}>
         <FournisseurDonnees port={portDonneesOnboarding}>
           <Moi />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    // Même écran partagé que (client)/moi, réexporté côté coach (L1-07 : même route relative).
+    nom: 'app/(coach)/moi.tsx',
+    creerElement: () => (
+      <FournisseurSession key="moi-coach" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <MoiCoach />
         </FournisseurDonnees>
       </FournisseurSession>
     ),

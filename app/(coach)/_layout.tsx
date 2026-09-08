@@ -81,6 +81,9 @@ export default function LayoutCoach() {
             personnalise ci-dessus ignore de toute facon les routes absentes de ONGLETS
             (BarreOngletsRoute, src/fonctionnalites/navigation/barre-onglets.tsx). */}
         <Tabs.Screen name="creer" options={{ href: null }} />
+        {/* moi : ecran 24 « Mon compte », meme route relative que (client)/moi (L1-07). Pas un
+            onglet coach — atteint par l'avatar et la feuille de bascule, href:null comme creer. */}
+        <Tabs.Screen name="moi" options={{ href: null }} />
       </Tabs>
     </FeuilleBasse>
   );
