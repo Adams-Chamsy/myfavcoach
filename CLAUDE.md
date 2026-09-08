@@ -213,6 +213,28 @@ Priorité, dans l'ordre :
 3. **Rendu des composants** — chaque primitive du design system, dans ses quatre états.
 4. **Parcours** — un test de bout en bout par parcours critique, à partir du lot L3.
 
+**Propriétés de pile de navigation — `expo-router/testing-library` (`renderRouter`), jamais un
+test d'écran isolé.** Un test d'écran monte un composant seul, `expo-router` entièrement mocké :
+il prouve qu'un écran affiche et appelle les bonnes choses, jamais ce qu'il y a **derrière** lui
+dans la pile. Deux familles de bugs n'existent que là, invisibles à toute autre suite : un
+bouton retour qui plante (« GO_BACK non géré ») parce que l'écran qui y mène a été atteint par
+un `replace` (`<Redirect>`) plutôt qu'un `push`, et un retour arrière matériel qui ramène dans
+un espace pourtant quitté faute d'avoir réinitialisé la bonne branche de la pile (L1-06, critère
+5). Utilise `renderRouter` **seulement** pour ce genre de propriété — jamais pour remplacer un
+test d'écran, jamais pour vérifier qu'un écran affiche le bon contenu (les tests d'écran isolés
+restent la bonne pente pour ça, plus rapides et plus stables). Trois pièges trouvés en l'utilisant
+à P1.11, à connaître avant d'en écrire un nouveau :
+- `renderRouter()` force des minuteurs Jest factices sans jamais les retirer lui-même — sans un
+  `afterEach(() => jest.useRealTimers())` explicite dans CHAQUE fichier qui l'utilise, ils fuient
+  vers les fichiers de test suivants exécutés dans le même worker.
+- Plusieurs `renderRouter()` dans le même fichier de test se sont montrés instables l'un après
+  l'autre (chaque test seul dans son fichier passe de façon fiable, ensemble non, cause non
+  résolue) : un test par fichier est le compromis retenu, pas un oubli de factorisation.
+- `router.canGoBack()` (et tout appel impératif de `router.*` fait PENDANT le rendu, pas dans un
+  gestionnaire) lève hors d'un vrai conteneur de navigation — tout autre test qui rend un écran
+  utilisant ce genre d'appel (ex. `src/test/accessibilite.test.tsx`) doit mocker `useRouter()`
+  pour cette méthode précise, jamais le reste du module.
+
 Pas de test de capture d'écran (snapshot) : ils passent tout seuls et ne prouvent rien.
 
 ---
