@@ -402,12 +402,14 @@ describe('profils_client', () => {
 });
 
 describe('profils_coach', () => {
-  // Le profil coach de B : creer_profil_coach (fonction SECURITY DEFINER, docs/ecrans/
-  // L1-08-activation-espace-coach.md) n'existe pas encore — c'est un lot L2. service_role
-  // contourne RLS pour ce SEUL geste de préparation du banc, jamais dans une assertion de
-  // politique elle-même (chaque assertion ci-dessous appelle en tant que A, B ou C, jamais en
-  // tant que service_role, sauf pour relire un état de contrôle indépendant de ce qui est
-  // testé). Nécessite le GRANT de supabase/migrations/0003_accorder_service_role.sql.
+  // Le profil coach de B, créé par INSERT service_role — PAS par creer_profil_coach (0005) :
+  // cette fonction passerait aussi comptes.profil_actif à 'coach', or plusieurs tests de ce
+  // describe supposent B en espace CLIENT au départ (« B, en espace client, … »). L'INSERT
+  // admin pose le profil sans toucher au profil actif. service_role contourne RLS pour ce SEUL
+  // geste de préparation, jamais dans une assertion de politique (chaque assertion ci-dessous
+  // appelle en tant que A, B ou C, sauf relecture d'un état de contrôle indépendant). Nécessite
+  // le GRANT de supabase/migrations/0003_accorder_service_role.sql. Le test réel de
+  // creer_profil_coach vit dans son propre describe, plus bas.
   beforeAll(async () => {
     const profilCoachB = await appelRest('/rest/v1/profils_coach', {
       methode: 'POST',
@@ -955,5 +957,159 @@ describe('poids du profil client protégé par consentement (0004_proteger_donne
       { session: 'admin' },
     );
     expect((corps as { poids_depart_grammes: number | null }[])[0].poids_depart_grammes).toBeNull();
+  });
+});
+
+// docs/ecrans/L1-08-activation-espace-coach.md : creer_profil_coach (0005_creer_profil_coach.sql,
+// SECURITY DEFINER) insère le profil coach ET passe comptes.profil_actif à 'coach' dans une
+// seule transaction. Comptes dédiés (D, E, G), jamais A/B/C : cette fonction change leur état.
+describe('creer_profil_coach (0005_creer_profil_coach.sql)', () => {
+  async function appelerRpcCreerCoach(
+    session: Session,
+    corps: Record<string, unknown>,
+  ): Promise<{ statut: number; corps: unknown }> {
+    return appelRest('/rest/v1/rpc/creer_profil_coach', { methode: 'POST', session, corps });
+  }
+
+  it('crée le profil coach et passe le profil actif à coach, atomiquement', async () => {
+    const email = `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-coach-d@${DOMAINE_EMAIL}`;
+    const D = await creerCompteReel(email, {
+      date_naissance: '1990-01-01',
+      cgu_version_acceptee: '2026-08-01',
+    });
+
+    try {
+      const { statut } = await appelerRpcCreerCoach(D, {
+        discipline: 'yoga',
+        telephone: '0612345678',
+        prenom: 'Dora',
+        nom: 'Test',
+      });
+      expect(statut).toBeLessThan(400);
+
+      const { corps: profils } = await appelRest(
+        `/rest/v1/profils_coach?compte_id=eq.${D.compteId}&select=discipline,statut_verification`,
+        { session: 'admin' },
+      );
+      expect(profils).toHaveLength(1);
+      expect((profils as { discipline: string; statut_verification: string }[])[0]).toMatchObject({
+        discipline: 'yoga',
+        statut_verification: 'absente',
+      });
+
+      const { corps: compte } = await appelRest(
+        `/rest/v1/comptes?id=eq.${D.compteId}&select=profil_actif,telephone`,
+        { session: 'admin' },
+      );
+      expect((compte as { profil_actif: string; telephone: string }[])[0]).toMatchObject({
+        profil_actif: 'coach',
+        telephone: '0612345678',
+      });
+
+      // Deuxième appel : refusé par la contrainte d'unicité de profils_coach.compte_id (0001),
+      // pas seulement par l'écran. La transaction échoue en entier — toujours une seule ligne.
+      const secondAppel = await appelerRpcCreerCoach(D, {
+        discipline: 'cuisine',
+        telephone: '0611111111',
+        prenom: 'Dora',
+        nom: 'Test',
+      });
+      expect(secondAppel.statut).toBeGreaterThanOrEqual(400);
+
+      const { corps: profilsApres } = await appelRest(
+        `/rest/v1/profils_coach?compte_id=eq.${D.compteId}&select=discipline`,
+        { session: 'admin' },
+      );
+      expect(profilsApres).toHaveLength(1);
+      expect((profilsApres as { discipline: string }[])[0].discipline).toBe('yoga');
+    } finally {
+      await supprimerCompteReel(D.compteId);
+    }
+  });
+
+  it('une erreur en cours de création ne laisse aucun profil coach partiel ni ne change le profil actif', async () => {
+    const email = `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-coach-e@${DOMAINE_EMAIL}`;
+    const E = await creerCompteReel(email, {
+      date_naissance: '1990-01-01',
+      cgu_version_acceptee: '2026-08-01',
+    });
+
+    try {
+      // nom NULL : profils_coach.nom est NOT NULL (0001) → l'INSERT échoue, donc toute la
+      // fonction. L'UPDATE de comptes.profil_actif qui suit ne s'exécute jamais.
+      const { statut } = await appelerRpcCreerCoach(E, {
+        discipline: 'yoga',
+        telephone: '0612345678',
+        prenom: 'Eli',
+        nom: null,
+      });
+      expect(statut).toBeGreaterThanOrEqual(400);
+
+      const { corps: profils } = await appelRest(
+        `/rest/v1/profils_coach?compte_id=eq.${E.compteId}`,
+        { session: 'admin' },
+      );
+      expect(profils).toEqual([]);
+
+      const { corps: compte } = await appelRest(
+        `/rest/v1/comptes?id=eq.${E.compteId}&select=profil_actif`,
+        { session: 'admin' },
+      );
+      expect((compte as { profil_actif: string }[])[0].profil_actif).toBe('client');
+    } finally {
+      await supprimerCompteReel(E.compteId);
+    }
+  });
+
+  it('un compte ne peut créer un profil coach que pour lui-même', async () => {
+    const emailG = `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-coach-g@${DOMAINE_EMAIL}`;
+    const emailH = `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-coach-h@${DOMAINE_EMAIL}`;
+    const G = await creerCompteReel(emailG, {
+      date_naissance: '1990-01-01',
+      cgu_version_acceptee: '2026-08-01',
+    });
+    const H = await creerCompteReel(emailH, {
+      date_naissance: '1990-01-01',
+      cgu_version_acceptee: '2026-08-01',
+    });
+
+    try {
+      // La fonction n'a AUCUN paramètre de compte (signature (discipline, telephone, prenom,
+      // nom)) : glisser un compte_id supplémentaire ne correspond à aucune fonction — PostgREST
+      // refuse la requête (404/400 selon la version), la tentative n'aboutit nulle part.
+      const tentativeAvecCompteId = await appelerRpcCreerCoach(G, {
+        discipline: 'yoga',
+        telephone: '0612345678',
+        prenom: 'Gaby',
+        nom: 'Test',
+        compte_id: H.compteId,
+      });
+      expect(tentativeAvecCompteId.statut).toBeGreaterThanOrEqual(400);
+
+      // Appel correct par G : crée le profil coach de G (auth.uid()), jamais celui de H.
+      const { statut } = await appelerRpcCreerCoach(G, {
+        discipline: 'yoga',
+        telephone: '0612345678',
+        prenom: 'Gaby',
+        nom: 'Test',
+      });
+      expect(statut).toBeLessThan(400);
+
+      const { corps: coachH } = await appelRest(
+        `/rest/v1/profils_coach?compte_id=eq.${H.compteId}`,
+        { session: 'admin' },
+      );
+      expect(coachH).toEqual([]);
+
+      const { corps: coachG } = await appelRest(
+        `/rest/v1/profils_coach?compte_id=eq.${G.compteId}&select=compte_id`,
+        { session: 'admin' },
+      );
+      expect(coachG).toHaveLength(1);
+      expect((coachG as { compte_id: string }[])[0].compte_id).toBe(G.compteId);
+    } finally {
+      await supprimerCompteReel(G.compteId);
+      await supprimerCompteReel(H.compteId);
+    }
   });
 });

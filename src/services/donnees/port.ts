@@ -113,6 +113,19 @@ export type PortDonnees = {
   // Étape 4/4 : marque l'onboarding terminé (onboarding_etape à 5 — voir garde.ts).
   terminerOnboarding(): Promise<ResultatEcriture>;
 
+  // docs/ecrans/L1-08-activation-espace-coach.md : appelle la fonction de base
+  // creer_profil_coach (0005, SECURITY DEFINER). Création ATOMIQUE — profil coach inséré ET
+  // profil actif passé à 'coach', ou rien. prenom/nom sont fournis par l'appelant : repris du
+  // profil client s'il existe, sinon saisis à l'écran. Après succès, l'appelant doit
+  // rafraîchir l'état (FournisseurDonnees.rafraichir) : le profil coach n'existait pas au
+  // dernier lireEtatProfils.
+  creerProfilCoach(donnees: {
+    discipline: string;
+    telephone: string;
+    prenom: string;
+    nom: string;
+  }): Promise<ResultatEcriture>;
+
   // docs/ecrans/L1-06-bascule-espace.md : appelle la fonction de base basculer_profil(profil)
   // (0002_politiques.sql, SECURITY DEFINER — comptes.profil_actif n'a aucun GRANT UPDATE pour
   // authenticated). Vérifie elle-même que le profil demandé existe pour ce compte ; refuse

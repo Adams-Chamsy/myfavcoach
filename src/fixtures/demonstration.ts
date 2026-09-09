@@ -367,3 +367,29 @@ export const rythmesOnboarding: RythmeOnboarding[] = [
   { cle: '3-4-fois', libelle: '3 à 4 fois par semaine' },
   { cle: '5-fois-et-plus', libelle: '5 fois et plus par semaine' },
 ];
+
+// docs/ecrans/L1-08-activation-espace-coach.md : discipline unique, liste figée, aucune saisie
+// libre, aucun « autre ». Le classement et la recherche du lot L3 (docs/domaine.md §5.6,
+// discipline pèse 40 dans la correspondance textuelle) en dépendent.
+//
+// `cle` = la valeur STOCKÉE dans profils_coach.discipline : exactement les six chaînes déjà
+// présentes dans coachsDemonstration ci-dessus (figées, CLAUDE.md §4 — casse d'origine
+// comprise, « RGPD » en capitales), plus « nutrition », seul domaine nommé par CLAUDE.md §1
+// sans coach de démo. `libelle` = ce qu'un humain lit dans la liste : majuscule en tête, et de
+// quoi distinguer « cuisine » de « nutrition », qui côte à côte se confondraient (un coach qui
+// hésite choisit mal, et le classement L3 s'en ressent). La contrainte des fixtures porte sur
+// la donnée, jamais sur l'affichage.
+export type DisciplineCoach = {
+  cle: string;
+  libelle: string;
+};
+
+export const disciplinesCoach: DisciplineCoach[] = [
+  { cle: 'préparation physique', libelle: 'Préparation physique' },
+  { cle: 'yoga', libelle: 'Yoga' },
+  { cle: 'nutrition', libelle: 'Nutrition et diététique' },
+  { cle: 'cuisine', libelle: 'Cuisine et alimentation du quotidien' },
+  { cle: 'cybersécurité', libelle: 'Cybersécurité' },
+  { cle: 'RGPD', libelle: 'RGPD et protection des données' },
+  { cle: 'développement professionnel', libelle: 'Développement professionnel' },
+];

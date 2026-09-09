@@ -154,6 +154,7 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       enregistrerPointDeDepart: jest.fn(),
       terminerOnboarding: jest.fn(),
       basculerProfil: jest.fn(),
+      creerProfilCoach: jest.fn(),
       lireInformations: jest.fn(),
       enregistrerInformations: jest.fn(),
       lireConsentementSante: jest.fn(),

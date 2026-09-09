@@ -55,9 +55,15 @@ describe('FeuilleBascule (docs/ecrans/L1-06-bascule-espace.md)', () => {
 
   // Critère 1 (les deux sens). Le critère 5 (l'arbre de l'espace quitté réinitialisé) a besoin
   // d'un vrai routeur (renderRouter) et vit dans bascule-client-vers-coach.test.tsx /
-  // bascule-coach-vers-client.test.tsx — ici, useRouter() est mocké : ce test prouve seulement
-  // que la bascule DEMANDE le bon href, pas ce qui se passe ensuite dans la pile.
-  it('depuis l’espace client, la bascule vers coach demande /(coach)/pilotage', async () => {
+  // bascule-coach-vers-client.test.tsx — ici, useRouter() est mocké : ce test prouve le bon
+  // href ET, la feuille restant montée, la FRAÎCHEUR de `profils.profilActif` après bascule.
+  //
+  // Trouvé sur simulateur : sans rafraichir() dans basculerVers, la coche restait sur l'espace
+  // quitté et l'utilisateur ne pouvait plus revenir (la ligne « déjà active » est inerte). Les
+  // deux tests renderRouter ne l'ont jamais vu : ils remplacent tout l'écran par une doublure
+  // et n'observent que la pile, jamais la feuille rouverte ni `profils.profilActif`. La coche
+  // active passe par l'accessibilityLabel (« Espace coach, espace actif »), donc observable.
+  it('depuis l’espace client → coach : demande /(coach)/pilotage ET la coche passe sur coach', async () => {
     const portDonnees = creerFauxPortDonnees();
     portDonnees.definirEtatProfilsPourTest(
       etatProfilsParDefaut({ profilActif: 'client', coachExiste: true }),
@@ -66,12 +72,14 @@ describe('FeuilleBascule (docs/ecrans/L1-06-bascule-espace.md)', () => {
     await rendreFeuille(portDonnees);
     await waitFor(() => expect(screen.getByLabelText('Espace coach')).toBeTruthy());
 
-    fireEvent.press(screen.getByLabelText('Espace coach'));
+    await fireEvent.press(screen.getByLabelText('Espace coach'));
 
     await waitFor(() => expect(mockRemplacer).toHaveBeenCalledWith('/(coach)/pilotage'));
+    await waitFor(() => expect(screen.getByLabelText('Espace coach, espace actif')).toBeTruthy());
+    expect(screen.queryByLabelText('Espace client, espace actif')).toBeNull();
   });
 
-  it('depuis l’espace coach, la bascule vers client demande /(client)/accueil', async () => {
+  it('depuis l’espace coach → client : demande /(client)/accueil ET la coche passe sur client', async () => {
     const portDonnees = creerFauxPortDonnees();
     portDonnees.definirEtatProfilsPourTest(
       etatProfilsParDefaut({ profilActif: 'coach', coachExiste: true }),
@@ -80,9 +88,11 @@ describe('FeuilleBascule (docs/ecrans/L1-06-bascule-espace.md)', () => {
     await rendreFeuille(portDonnees);
     await waitFor(() => expect(screen.getByLabelText('Espace client')).toBeTruthy());
 
-    fireEvent.press(screen.getByLabelText('Espace client'));
+    await fireEvent.press(screen.getByLabelText('Espace client'));
 
     await waitFor(() => expect(mockRemplacer).toHaveBeenCalledWith('/(client)/accueil'));
+    await waitFor(() => expect(screen.getByLabelText('Espace client, espace actif')).toBeTruthy());
+    expect(screen.queryByLabelText('Espace coach, espace actif')).toBeNull();
   });
 
   // Critère 2.

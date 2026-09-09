@@ -33,7 +33,7 @@ export function FeuilleBascule({ ouverte, onFermer, children }: ProprietesFeuill
   const theme = useTheme();
   const router = useRouter();
   const { session } = useSession();
-  const { profils, port } = useDonnees();
+  const { profils, port, rafraichir } = useDonnees();
 
   const [enCours, setEnCours] = useState<ProfilActif | null>(null);
   const [derniereTentative, setDerniereTentative] = useState<ProfilActif | null>(null);
@@ -78,6 +78,13 @@ export function FeuilleBascule({ ouverte, onFermer, children }: ProprietesFeuill
       setNombreEchecs((n) => n + 1);
       return;
     }
+
+    // basculer_profil a changé comptes.profil_actif CÔTÉ SERVEUR : sans ce rafraîchissement,
+    // `profils.profilActif` en mémoire reste sur l'ancien espace, et la prochaine ouverture de
+    // la feuille affiche la coche sur la mauvaise ligne — l'utilisateur ne peut alors plus
+    // revenir (la ligne « déjà active » est inerte, `basculerVers` s'arrête sur le garde en
+    // tête). Même défaut de fraîcheur que celui traité pour creer_profil_coach à P1.14.
+    await rafraichir();
 
     onFermer();
     AccessibilityInfo.announceForAccessibility(

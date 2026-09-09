@@ -168,6 +168,22 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
       return ecrire({ ...etat, profilActif: profil }, profilOnboarding);
     },
 
+    async creerProfilCoach({ prenom, nom }) {
+      if (prochaineEcritureEchoue !== null) {
+        const erreur = prochaineEcritureEchoue;
+        prochaineEcritureEchoue = null;
+        return { succes: false, erreur };
+      }
+      // Atomique côté vrai serveur (0005) : ici, en mémoire, une seule affectation.
+      etat = {
+        ...etat,
+        coachExiste: true,
+        profilActif: 'coach',
+        identiteActive: { prenom, nom },
+      };
+      return { succes: true };
+    },
+
     async lireInformations() {
       return informations;
     },

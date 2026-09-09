@@ -227,6 +227,22 @@ export const portDonneesSupabase: PortDonnees = {
     return { succes: true };
   },
 
+  // creer_profil_coach (0005_creer_profil_coach.sql) : SECURITY DEFINER, agit sur auth.uid(),
+  // insère profils_coach ET passe comptes.profil_actif à 'coach' dans la même transaction.
+  // Message générique comme echec() ci-dessus — l'écran n'a qu'un « Erreur » à afficher
+  // (fiche L1-08, États). Une contrainte violée (2ᵉ profil coach) comme une panne remontent
+  // pareil ici, l'écran ne les distingue pas.
+  async creerProfilCoach({ discipline, telephone, prenom, nom }) {
+    const { error } = await supabase.rpc('creer_profil_coach', {
+      discipline,
+      telephone,
+      prenom,
+      nom,
+    });
+    if (error) return echec(error);
+    return { succes: true };
+  },
+
   async lireInformations() {
     // date_naissance : SELECT accordé sur comptes, RLS comptes_select_soi limite déjà à la
     // ligne de l'appelant. Lecture seule côté écran ET côté serveur (colonne hors GRANT

@@ -47,17 +47,20 @@ function creerRacineFaux(
 }
 
 // Rejoue exactement la séquence de FeuilleBascule.basculerVers('coach') après acceptation
-// serveur : port.basculerProfil PUIS router.replace, jamais l'inverse (docs/ecrans/
-// L1-06-bascule-espace.md, Règles : "la valeur locale ne sert qu'à choisir la branche de
-// navigation", jamais écrite avant confirmation).
+// serveur : port.basculerProfil PUIS rafraichir() PUIS router.replace, jamais dans un autre
+// ordre (docs/ecrans/L1-06-bascule-espace.md, Règles : "la valeur locale ne sert qu'à choisir
+// la branche de navigation", jamais écrite avant confirmation). rafraichir() n'affecte pas la
+// pile testée ici, mais l'omettre ferait diverger cette doublure du vrai code — c'est cette
+// divergence qui avait rendu le défaut de fraîcheur de `profils.profilActif` invisible.
 function AccueilBasculeVersCoach() {
-  const { port } = useDonnees();
+  const { port, rafraichir } = useDonnees();
   const routeur = useRouter();
   useEffect(() => {
-    port.basculerProfil('coach').then(() => {
-      routeur.replace('/(coach)/pilotage');
-    });
-  }, [port, routeur]);
+    port
+      .basculerProfil('coach')
+      .then(() => rafraichir())
+      .then(() => routeur.replace('/(coach)/pilotage'));
+  }, [port, rafraichir, routeur]);
   return null;
 }
 

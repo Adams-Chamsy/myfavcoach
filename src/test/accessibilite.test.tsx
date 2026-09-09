@@ -23,6 +23,7 @@ import NouveauMotDePasse from '../../app/(public)/nouveau-mot-de-passe';
 import Confidentialite from '../../app/(compte)/confidentialite';
 import Identifiants from '../../app/(compte)/identifiants';
 import Informations from '../../app/(compte)/informations';
+import DevenirCoach from '../../app/(onboarding)/devenir-coach';
 import OnboardingIdentite from '../../app/(onboarding)/1-identite';
 import OnboardingObjectifs from '../../app/(onboarding)/2-objectifs';
 import OnboardingPoids from '../../app/(onboarding)/3-poids';
@@ -484,6 +485,19 @@ const CORPUS: EntreeCorpus[] = [
       <FournisseurSession key="confidentialite" port={portAuthOnboarding}>
         <FournisseurDonnees port={portDonneesOnboarding}>
           <Confidentialite />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    // Écran L1-08 « Activation de l'espace coach » : EnteteOnboarding + chips de discipline +
+    // champ téléphone. Le faux partagé a un profil client (Camille Dupont) → prénom/nom repris,
+    // pas de champ pour eux.
+    nom: 'app/(onboarding)/devenir-coach.tsx',
+    creerElement: () => (
+      <FournisseurSession key="devenir-coach" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <DevenirCoach />
         </FournisseurDonnees>
       </FournisseurSession>
     ),

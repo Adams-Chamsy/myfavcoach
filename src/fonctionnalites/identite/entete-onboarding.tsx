@@ -9,14 +9,18 @@ import { font } from '@/theme/tokens';
 
 const NOMBRE_ETAPES = 4;
 
-// En-tête partagé des quatre écrans d'onboarding (docs/ecrans/L1-05-onboarding-client.md,
-// "Élément commun aux quatre étapes") : bouton retour, fil de segments, lien "Passer".
-// Fixe (ne défile pas), comme le pied fixe — la maquette (écran 22) le montre en dehors de la
+// En-tête partagé des parcours en quatre étapes : l'onboarding client (les quatre écrans de
+// docs/ecrans/L1-05-onboarding-client.md, "Élément commun aux quatre étapes") ET l'activation
+// de l'espace coach (docs/ecrans/L1-08-activation-espace-coach.md — étape 1/4 ici, étapes 2 à 4
+// au lot L2). Bouton retour, fil de segments, et lien "Passer" quand `onPasser` est fourni
+// (jamais côté coach : l'activation n'est pas une étape qu'on saute). Fixe (ne défile pas),
+// comme le pied fixe — la maquette de l'onboarding client (écran 22) le montre en dehors de la
 // zone `overflow:hidden` du contenu, jamais dans le flux du ScrollView.
 export type ProprietesEnteteOnboarding = {
   etape: 1 | 2 | 3 | 4;
-  // Absent à l'étape 1 uniquement (fiche : "« Passer » n'apparaît pas à l'étape 1", le prénom
-  // étant la seule donnée obligatoire de tout l'onboarding) — sa présence pilote directement
+  // Absent quand l'étape ne se saute pas : l'étape 1 de l'onboarding client (fiche L1-05 :
+  // "« Passer » n'apparaît pas à l'étape 1", le prénom étant la seule donnée obligatoire de
+  // tout l'onboarding) et toute l'activation coach (L1-08). Sa présence pilote directement
   // l'affichage du lien, jamais un booléen séparé qu'un écran pourrait oublier de synchroniser.
   onPasser?: () => void;
   // Pendant l'enregistrement d'une étape (docs/ecrans/L1-05, États : "Chargement") : retour et

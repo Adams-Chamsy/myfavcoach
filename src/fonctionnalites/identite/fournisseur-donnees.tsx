@@ -1,4 +1,12 @@
-import { type ReactNode, createContext, useContext, useEffect, useState } from 'react';
+import {
+  type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { useSession } from './fournisseur-session';
 import type { EtatProfils, PortDonnees } from '@/services/donnees/port';
@@ -14,21 +22,26 @@ import type { EtatProfils, PortDonnees } from '@/services/donnees/port';
 // tentative). garde.ts n'a pas besoin de les distinguer — dans les deux cas, la seule décision
 // sûre est le repli vers l'onboarding (voir son commentaire) — donc ce fournisseur ne les
 // distingue pas non plus, plutôt que d'exposer une troisième valeur que personne ne lirait.
-// `port` voyage dans le contexte, à côté de `profils` (P1.11) : les quatre écrans
-// d'onboarding (docs/ecrans/L1-05) doivent pouvoir ÉCRIRE (creerProfilClient, etc.), pas
-// seulement lire l'état déjà chargé. Toujours présent (même en chargement) : c'est
-// l'INJECTION du port qui est synchrone (voir ProprietesFournisseurDonnees), seule la LECTURE
-// initiale est asynchrone.
+// `port` voyage dans le contexte, à côté de `profils` (P1.11) : les écrans qui ÉCRIVENT
+// (creerProfilClient, creerProfilCoach, etc.) en ont besoin, pas seulement ceux qui lisent
+// l'état déjà chargé. Toujours présent (même en chargement) : c'est l'INJECTION du port qui
+// est synchrone (voir ProprietesFournisseurDonnees), seule la LECTURE initiale est asynchrone.
 //
-// Pas de rafraîchir() ici, délibérément : aucun écran de ce lot ne relit `profils` après une
-// écriture dans la MÊME session d'app — chaque étape navigue par un `router.push` direct vers
-// la suivante (jamais via determinerDestination), et la reprise après fermeture/réouverture
-// (critère 2 de L1-05) repart d'un FournisseurDonnees fraîchement monté, qui relit déjà l'état
-// serveur à jour. À ajouter si un futur écran a besoin de voir ses propres écritures reflétées
-// dans `profils` sans redémarrer l'app.
+// `rafraichir()` — ajouté à P1.14 (docs/ecrans/L1-08-activation-espace-coach.md). L'activation
+// de l'espace coach CRÉE un profil qui n'existait pas au dernier `lireEtatProfils` : sans
+// relire, la feuille de bascule (L1-06) montrerait un état faux (`coachExiste: false`) dans la
+// session MÊME où le profil vient d'être créé — donc au moment précis où l'utilisateur veut
+// l'utiliser. Les écrans d'onboarding client (P1.11) n'en ont pas besoin (chaque étape navigue
+// par un `router.push` direct, la reprise repart d'un fournisseur fraîchement monté) : c'est
+// pour ça qu'il n'existait pas avant.
 export type EtatDonnees =
-  | { chargement: true; profils: null; port: PortDonnees }
-  | { chargement: false; profils: EtatProfils | null; port: PortDonnees };
+  | { chargement: true; profils: null; port: PortDonnees; rafraichir: () => Promise<void> }
+  | {
+      chargement: false;
+      profils: EtatProfils | null;
+      port: PortDonnees;
+      rafraichir: () => Promise<void>;
+    };
 
 const ContexteDonnees = createContext<EtatDonnees | null>(null);
 
@@ -53,39 +66,43 @@ export function FournisseurDonnees({ children, port }: ProprietesFournisseurDonn
   const { session } = useSession();
   const [resultat, setResultat] = useState<ResultatLecture | null>(null);
 
+  const compteIdVerifie = session?.emailVerifie ? session.compteId : undefined;
+
+  // Comparé au moment où une lecture se résout : le compte vérifié a pu changer entre-temps
+  // (session fermée, autre compte) ou le composant être démonté — dans ces cas on ignore le
+  // résultat plutôt que d'écraser l'état avec des profils périmés. Écrit à chaque rendu, jamais
+  // lu pendant le rendu (seul un gestionnaire asynchrone le lit).
+  const compteIdRef = useRef(compteIdVerifie);
   useEffect(() => {
-    if (!session || !session.emailVerifie) return;
+    compteIdRef.current = compteIdVerifie;
+  });
 
-    let monte = true;
-    const compteId = session.compteId;
+  const rafraichir = useCallback(async () => {
+    const compteId = compteIdRef.current;
+    if (!compteId) return;
+    try {
+      const profils = await port.lireEtatProfils();
+      if (compteIdRef.current === compteId) setResultat({ compteId, profils });
+    } catch {
+      // Une lecture qui échoue n'autorise rien (même principe que FournisseurSession) : repli
+      // sûr vers "profils: null", que garde.ts traite comme "onboarding non terminé", jamais
+      // comme un espace client ou coach.
+      if (compteIdRef.current === compteId) setResultat({ compteId, profils: null });
+    }
+  }, [port]);
 
-    port
-      .lireEtatProfils()
-      .then((profils) => {
-        if (monte) setResultat({ compteId, profils });
-      })
-      .catch(() => {
-        // Une lecture qui échoue n'autorise rien (même principe que FournisseurSession) :
-        // repli sûr vers "profils: null", que garde.ts traite comme "onboarding non terminé",
-        // jamais comme un espace client ou coach.
-        if (monte) setResultat({ compteId, profils: null });
-      });
+  // Lecture initiale, et relance quand le compte vérifié change (connexion, vérification,
+  // bascule de compte). `rafraichir` ne dépend que de `port` : la relance est pilotée par
+  // `compteIdVerifie` ici, pas par une nouvelle identité de fonction.
+  useEffect(() => {
+    void rafraichir();
+  }, [rafraichir, compteIdVerifie]);
 
-    return () => {
-      monte = false;
-    };
-    // session?.compteId / emailVerifie, pas l'objet session : sa référence change à chaque
-    // notification de FournisseurSession (ex. rafraîchissement de jeton), sans que ces deux
-    // valeurs changent — redéclencher la lecture à chaque fois serait un appel réseau superflu.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.compteId, session?.emailVerifie, port]);
-
-  const etat: EtatDonnees =
-    !session || !session.emailVerifie
-      ? { chargement: false, profils: null, port }
-      : resultat && resultat.compteId === session.compteId
-        ? { chargement: false, profils: resultat.profils, port }
-        : { chargement: true, profils: null, port };
+  const etat: EtatDonnees = !compteIdVerifie
+    ? { chargement: false, profils: null, port, rafraichir }
+    : resultat && resultat.compteId === compteIdVerifie
+      ? { chargement: false, profils: resultat.profils, port, rafraichir }
+      : { chargement: true, profils: null, port, rafraichir };
 
   return <ContexteDonnees.Provider value={etat}>{children}</ContexteDonnees.Provider>;
 }

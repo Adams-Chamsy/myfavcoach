@@ -11,7 +11,10 @@ import { useTheme } from '@/theme/fournisseur';
 // "decimal" : clavier numerique avec separateur decimal (docs/ecrans/L1-05-onboarding-client.md,
 // etape 3/4 : "poids... en kilogrammes avec une decimale") — Champ ne filtre ni ne parse la
 // saisie, juste le clavier ; c'est a l'ecran appelant de valider le format.
-export type TypeChamp = 'texte' | 'email' | 'motDePasse' | 'decimal';
+// "telephone" : clavier telephone (docs/ecrans/L1-08-activation-espace-coach.md, "Telephone |
+// Format francais, indicatif fixe") — un clavier alphabetique pour un numero est un defaut
+// d'ergonomie. Comme "decimal", Champ ne valide rien : l'ecran verifie le format.
+export type TypeChamp = 'texte' | 'email' | 'motDePasse' | 'decimal' | 'telephone';
 
 export type ProprietesChamp = {
   libelle: string;
@@ -111,9 +114,17 @@ export const Champ = forwardRef<TextInput, ProprietesChamp>(function Champ(
           accessibilityLabel={nomAccessible}
           accessibilityState={{ disabled: desactive }}
           keyboardType={
-            type === 'email' ? 'email-address' : type === 'decimal' ? 'decimal-pad' : 'default'
+            type === 'email'
+              ? 'email-address'
+              : type === 'decimal'
+                ? 'decimal-pad'
+                : type === 'telephone'
+                  ? 'phone-pad'
+                  : 'default'
           }
-          autoCapitalize={type === 'email' || estMotDePasse ? 'none' : 'sentences'}
+          autoCapitalize={
+            type === 'email' || type === 'telephone' || estMotDePasse ? 'none' : 'sentences'
+          }
           autoCorrect={type === 'email' ? false : true}
           secureTextEntry={estMotDePasse && !motDePasseVisible}
           style={{

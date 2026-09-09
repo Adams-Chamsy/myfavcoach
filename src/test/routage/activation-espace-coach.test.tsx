@@ -9,10 +9,16 @@ import { creerFauxPortAuth } from '@/services/auth/faux';
 import { creerFauxPortDonnees } from '@/services/donnees/faux';
 import { FournisseurTheme } from '@/theme/fournisseur';
 
-// docs/ecrans/L1-06-bascule-espace.md, critère 5, sens inverse — symétrique de
-// bascule-client-vers-coach.test.tsx (voir son en-tête pour le raisonnement complet), dans un
-// fichier séparé pour la même raison que profondeur-pile-*.test.tsx (P1.11) : plusieurs
-// renderRouter() dans un seul fichier se sont montrés instables l'un après l'autre.
+// docs/ecrans/L1-08-activation-espace-coach.md, critère 2 : après validation, l'application est
+// dans l'espace coach, et la pile de l'espace quitté est réinitialisée (pas seulement masquée).
+// CLAUDE.md §8 : ne se prouve pas avec un écran isolé et expo-router mocké — seul renderRouter
+// rend la VRAIE pile.
+//
+// fireEvent ne déclenche aucun rendu fiable sous les minuteurs factices de renderRouter (leçon
+// des autres fichiers de src/test/routage/) : on remplace donc devenir-coach.tsx par un double
+// minimal qui rejoue EXACTEMENT ce que fait surValider après succès — creerProfilCoach PUIS
+// rafraichir PUIS router.replace('/(coach)/pilotage'). Le suivi du formulaire lui-même est
+// couvert par app/(onboarding)/devenir-coach.test.tsx.
 const METRIQUES_ZONES_SURES: Metrics = {
   insets: { top: 59, right: 0, bottom: 34, left: 0 },
   frame: { x: 0, y: 0, width: 393, height: 852 },
@@ -37,17 +43,19 @@ function creerRacineFaux(
   };
 }
 
-// Rejoue exactement la séquence de FeuilleBascule.basculerVers('client') après acceptation
-// serveur, depuis l'espace COACH cette fois : port.basculerProfil PUIS rafraichir() PUIS
-// router.replace (voir bascule-client-vers-coach.test.tsx pour pourquoi rafraichir() est là).
-function PilotageBasculeVersClient() {
+function DevenirCoachValideAuMontage() {
   const { port, rafraichir } = useDonnees();
   const routeur = useRouter();
   useEffect(() => {
     port
-      .basculerProfil('client')
+      .creerProfilCoach({
+        discipline: 'yoga',
+        telephone: '0612345678',
+        prenom: 'Camille',
+        nom: 'Dupré',
+      })
       .then(() => rafraichir())
-      .then(() => routeur.replace('/(client)/accueil'));
+      .then(() => routeur.replace('/(coach)/pilotage'));
   }, [port, rafraichir, routeur]);
   return null;
 }
@@ -58,20 +66,22 @@ async function compteConnecteEtVerifie(portAuth: ReturnType<typeof creerFauxPort
   await portAuth.connecter('camille@exemple.fr', 'bon-mot-de-passe');
 }
 
+// renderRouter() force des minuteurs Jest factices sans les retirer lui-même — sans ce retrait
+// ils fuient vers les fichiers suivants du même worker (leçon de P1.11).
 afterEach(() => {
   jest.useRealTimers();
 });
 
-it('la bascule coach → client réinitialise la pile coach : elle disparaît de l’arbre, canGoBack() faux (critère 5)', async () => {
+it('après validation, l’application est dans l’espace coach et la pile est réinitialisée (critère 2)', async () => {
   const portAuth = creerFauxPortAuth();
   await compteConnecteEtVerifie(portAuth);
   const portDonnees = creerFauxPortDonnees();
   portDonnees.definirEtatProfilsPourTest({
-    profilActif: 'coach',
+    profilActif: 'client',
     clientExiste: true,
     clientOnboardingEtape: 5,
-    coachExiste: true,
-    identiteActive: { prenom: 'Camille', nom: 'Coach' },
+    coachExiste: false,
+    identiteActive: { prenom: 'Camille', nom: 'Dupré' },
     attentesCoach: 0,
   });
 
@@ -80,18 +90,25 @@ it('la bascule coach → client réinitialise la pile coach : elle disparaît de
       appDir: './app',
       overrides: {
         _layout: creerRacineFaux(portAuth, portDonnees),
-        '(coach)/pilotage': PilotageBasculeVersClient,
+        '(onboarding)/devenir-coach': DevenirCoachValideAuMontage,
       },
     },
-    { initialUrl: '/(coach)/pilotage' },
+    { initialUrl: '/(onboarding)/devenir-coach' },
   );
 
   act(() => jest.runOnlyPendingTimers());
-  await waitFor(() => expect(rendu.getPathname()).toBe('/accueil'));
+  await waitFor(() => expect(rendu.getPathname()).toBe('/pilotage'));
 
-  // Critère 5, sens inverse : la pile de l'espace COACH disparaît de l'arbre plutôt que d'y
-  // rester masquée derrière — sinon le retour arrière matériel Android y ramènerait.
+  // L'espace quitté n'est pas conservé derrière : router.replace a remplacé l'entrée racine, pas
+  // empilé — le retour arrière matériel ne peut pas y ramener.
   expect(router.canGoBack()).toBe(false);
   const racine = rendu.getRouterState()?.routes[0]?.state;
-  expect(racine?.routes.map((r: { name: string }) => r.name)).toEqual(['(client)']);
+  expect(racine?.routes.map((r: { name: string }) => r.name)).toEqual(['(coach)']);
+
+  // « Un rechargement complet y revient » : le profil actif est bien côté serveur (ici le faux),
+  // pas seulement en mémoire de navigation. La redirection au démarrage à froid depuis cet état
+  // est prouvée par src/test/routage/redirections.test.ts (garde.ts, règle 6).
+  const etat = await portDonnees.lireEtatProfils();
+  expect(etat.profilActif).toBe('coach');
+  expect(etat.coachExiste).toBe(true);
 });
