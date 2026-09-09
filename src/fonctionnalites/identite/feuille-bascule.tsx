@@ -105,10 +105,10 @@ export function FeuilleBascule({ ouverte, onFermer, children }: ProprietesFeuill
   function allerReglagesCompte() {
     if (enCours) return;
     onFermer();
-    // Asymétrie assumée (docs/prompts/L1.md, P1.12) : app/(coach)/moi.tsx n'existe pas encore,
-    // seul P1.13 (docs/ecrans/L1-07-compte-reglages.md) construit les deux écrans "moi" pour de
-    // bon. Depuis l'espace coach, ce lien mène à une route qui n'existe pas encore — même
-    // asymétrie que la deuxième entrée de cette feuille (voir app/(client)/moi.tsx).
+    // Les deux routes "moi" existent depuis P1.13 (docs/ecrans/L1-07-compte-reglages.md) :
+    // app/(client)/moi.tsx et app/(coach)/moi.tsx, même écran (EcranCompte), déclarées
+    // href:null dans leur _layout respectif — atteintes seulement par l'avatar et cette
+    // feuille, jamais un onglet.
     router.push((profils!.profilActif === 'coach' ? '/(coach)/moi' : '/(client)/moi') as Href);
   }
 
