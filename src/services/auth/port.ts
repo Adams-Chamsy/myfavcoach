@@ -63,7 +63,25 @@ export type PortAuth = {
   // qui vient justement d'authentifier l'appel. Prouvé contre la base réelle par
   // src/test/rls.banc.ts, pas par un simulacre (critère 4 de la fiche).
   changerMotDePasse(nouveauMotDePasse: string): Promise<ResultatAuth>;
+
+  // docs/ecrans/L1-09-mes-informations.md, « Adresse e-mail et mot de passe » (P1.13c) :
+  // changement de mot de passe DEPUIS une session ouverte, avec vérification du mot de passe
+  // actuel (un téléphone brièvement déverrouillé ne doit pas suffire). Distinct de
+  // changerMotDePasse ci-dessus, qui sert le parcours de récupération par lien (L1-04) où il
+  // n'y a PAS de mot de passe actuel à connaître. Un `actuel` faux rend
+  // `{ code: 'identifiants_invalides' }`. Ferme aussi toutes les AUTRES sessions du compte,
+  // comme changerMotDePasse.
+  changerMotDePasseConnecte(actuel: string, nouveau: string): Promise<ResultatAuth>;
+
+  // docs/ecrans/L1-09 : le changement d'adresse n'est effectif qu'après confirmation sur les
+  // DEUX adresses (l'ancienne et la nouvelle). Déclenche l'envoi des deux courriels ; l'adresse
+  // du compte ne change pas tant que les deux liens ne sont pas suivis.
   changerEmail(nouvelEmail: string): Promise<ResultatAuth>;
+
+  // L'adresse vers laquelle un changement est en cours mais pas encore confirmé (les deux
+  // liens pas encore suivis), ou null s'il n'y en a pas. Sert le bandeau d'attente persistant
+  // de L1-09.
+  lireAdresseEnAttente(): Promise<string | null>;
   sessionCourante(): Promise<SessionAuth | null>;
   // Renvoie la fonction de désabonnement (convention des effets React : `useEffect(() =>
   // port.surChangementDeSession(cb), [])`).

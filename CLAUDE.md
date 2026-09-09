@@ -237,23 +237,28 @@ restent la bonne pente pour ça, plus rapides et plus stables). Trois pièges tr
 
 Pas de test de capture d'écran (snapshot) : ils passent tout seuls et ne prouvent rien.
 
-**`screen.findBy*` instable sur un écran monté derrière plusieurs fournisseurs asynchrones —
-trouvé à P1.13a.** L'écran compte (`src/fonctionnalites/compte/ecran-compte.tsx`) se monte sous
-`SafeAreaProvider` → `FournisseurTheme` → `FournisseurSession` → `FournisseurDonnees`, et
-s'enveloppe lui-même dans `FeuilleBascule` + `Modale` — deux composants qui montent chacun un
-`Modal` natif et animent via Reanimated. Avec ce montage, `await screen.findByText(...)` échoue
-de façon non déterministe : tantôt « `render` function has not been called » (levé par le proxy
-`screen` de `@testing-library/react-native` alors que `render()` A bien été appelé dans le même
-helper), tantôt un crash dur du worker Jest (« trying to import a file after the Jest environment
-has been torn down » → `PanResponder` devenu `undefined` dans `feuille-basse.tsx`) qui fait
-tomber tout le fichier. Remplacer chaque `await screen.findByX(v)` par
-`await waitFor(() => expect(screen.queryByX(v)).toBeTruthy())` rend la suite fiable — même
-montage, mêmes assertions, seul l'appel change. Les tests d'écran d'onboarding (P1.11), qui
-n'enveloppent pas dans `FeuilleBascule`/`Modale`, utilisent `findBy*` sans souci. **Cause non
-établie** : l'hypothèse est que le `waitFor` interne de `findBy*` s'accorde mal avec l'auto-`act`
-de la bibliothèque quand des mises à jour d'état tardives (lecture des profils, ordonnancement
-Reanimated des deux `Modal`) arrivent après le premier rendu — non prouvé. En pratique : sur un
-écran à fournisseurs asynchrones multiples, `waitFor` + `queryBy`, jamais `findBy`.
+**Tests d'écran à état asynchrone — `await` CHAQUE `fireEvent`, `waitFor` + `queryBy` jamais
+`findBy`. Trouvé à P1.13a puis P1.13c.** Sur les écrans qui montent Reanimated et/ou lisent un
+port de façon asynchrone (`src/fonctionnalites/compte/ecran-compte.tsx`,
+`app/(compte)/identifiants.tsx` — deux `Champ` masqués donc deux `BoutonIcone` Reanimated),
+deux symptômes apparaissent quand l'auto-`act` de `@testing-library/react-native` (v14) ne
+s'installe pas :
+- `await screen.findByText(...)` lève « `render` function has not been called » (par le proxy
+  `screen`, alors que `render()` A bien été appelé), parfois un crash dur du worker Jest
+  (« trying to import a file after the Jest environment has been torn down » →
+  `PanResponder` `undefined` dans `feuille-basse.tsx`) qui fait tomber tout le fichier.
+- un `fireEvent.changeText`/`press` NON `await`é laisse la mise à jour d'état d'un gestionnaire
+  asynchrone (`await port.xxx()` puis `setState`) sans jamais s'appliquer : le message d'erreur
+  n'apparaît pas, et le rendu suivant du même fichier casse (le montage ~7 échoue au `render`).
+Parade, appliquée dans tous les tests d'écran depuis :
+- `await` DEVANT chaque `fireEvent` (`await fireEvent.press(...)`, `await fireEvent.changeText(...)`,
+  `await fireEvent(node, 'blur')`) — c'est ce `await` qui vide la file `act`. Modèle déjà suivi
+  par `app/(public)/inscription.test.tsx`.
+- `await waitFor(() => expect(screen.queryByX(v)).toBeTruthy())`, jamais `await screen.findByX(v)`.
+Les tests d'onboarding (P1.11), plus légers, tolèrent `findBy*` — mais la règle ci-dessus est
+la bonne pente pour tout nouvel écran. **Cause non établie** : l'auto-`act` de RTL v14 sous
+`jest-expo` ne couvre pas les continuations post-`await` sans un `await fireEvent`/`waitFor`
+actif ; non prouvé plus finement.
 
 **Zones sûres — angle mort structurel, trouvé à P1.12, de la même famille que le rendu web (§6).**
 `react-test-renderer` (donc `npm test`, `test:a11y`, tout test d'écran) ne fait aucune mise en

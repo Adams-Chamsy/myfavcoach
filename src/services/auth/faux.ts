@@ -15,6 +15,9 @@ type CompteFaux = {
   // Réutilise compteId comme "code" du lien de vérification : suffisant pour ce faux (unique
   // par compte), jamais une hypothèse sur la vraie forme du code Supabase (voir supabase.ts).
   lienExpire: boolean;
+  // Changement d'adresse demandé mais pas encore confirmé sur les deux liens (docs/ecrans/
+  // L1-09) : `email` NE CHANGE PAS tant que ceci est renseigné. null = aucun changement en cours.
+  emailEnAttente: string | null;
 };
 
 // N'analyse JAMAIS la date de naissance via `new Date(dateNaissance)` : une chaîne "AAAA-MM-JJ"
@@ -53,6 +56,9 @@ export type FauxPortAuth = PortAuth & {
   lienVerificationPourTest(email: string): string;
   // Simule un lien périmé ou déjà utilisé (critère 3 de la fiche), sans horloge à avancer.
   expirerLienPourTest(email: string): void;
+  // Simule les DEUX liens de confirmation d'un changement d'adresse suivis (docs/ecrans/L1-09) :
+  // l'adresse en attente devient l'adresse du compte, l'attente se vide.
+  confirmerChangementEmailPourTest(): void;
 };
 
 // Faux en mémoire : respecte le même contrat que src/services/auth/supabase.ts, y compris ses
@@ -100,6 +106,7 @@ export function creerFauxPortAuth(): FauxPortAuth {
           dateNaissance,
           emailVerifie: false,
           lienExpire: false,
+          emailEnAttente: null,
         });
       }
       return { succes: true };
@@ -163,16 +170,33 @@ export function creerFauxPortAuth(): FauxPortAuth {
       return { succes: true };
     },
 
+    async changerMotDePasseConnecte(actuel, nouveau) {
+      if (!compteConnecte) {
+        throw new Error(
+          'changerMotDePasseConnecte appelé sans session active : erreur de l’appelant, pas un échec utilisateur.',
+        );
+      }
+      if (compteConnecte.motDePasse !== actuel) {
+        return erreur('identifiants_invalides', 'Adresse ou mot de passe incorrect.');
+      }
+      compteConnecte.motDePasse = nouveau;
+      return { succes: true };
+    },
+
     async changerEmail(nouvelEmail) {
       if (!compteConnecte) {
         throw new Error(
           'changerEmail appelé sans session active : erreur de l’appelant, pas un échec utilisateur.',
         );
       }
-      comptes.delete(compteConnecte.email);
-      compteConnecte.email = nouvelEmail;
-      comptes.set(nouvelEmail, compteConnecte);
+      // L'adresse ne change PAS ici : elle attend la confirmation des deux liens (docs/ecrans/
+      // L1-09). Un test joue cette confirmation avec confirmerChangementEmailPourTest().
+      compteConnecte.emailEnAttente = nouvelEmail;
       return { succes: true };
+    },
+
+    async lireAdresseEnAttente() {
+      return compteConnecte?.emailEnAttente ?? null;
     },
 
     async sessionCourante() {
@@ -225,6 +249,19 @@ export function creerFauxPortAuth(): FauxPortAuth {
         throw new Error(`expirerLienPourTest : aucun compte pour "${email}".`);
       }
       compte.lienExpire = true;
+    },
+
+    confirmerChangementEmailPourTest() {
+      if (!compteConnecte || !compteConnecte.emailEnAttente) {
+        throw new Error(
+          'confirmerChangementEmailPourTest : aucun changement d’adresse en attente.',
+        );
+      }
+      comptes.delete(compteConnecte.email);
+      compteConnecte.email = compteConnecte.emailEnAttente;
+      compteConnecte.emailEnAttente = null;
+      comptes.set(compteConnecte.email, compteConnecte);
+      notifier();
     },
   } satisfies FauxPortAuth;
 }

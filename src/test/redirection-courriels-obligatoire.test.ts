@@ -31,4 +31,16 @@ describe('les appels Supabase qui envoient un courriel passent tous par leur env
       expect(occurrences).toBe(1);
     },
   );
+
+  // Quatrième appel (P1.13c) : updateUser({ email }) envoie lui aussi une confirmation par
+  // courriel — un lien à l'ancienne ET à la nouvelle adresse — donc exige un emailRedirectTo,
+  // sinon GoTrue retombe sur site_url (lien mort). updateUser({ password }), qui n'envoie
+  // rien, est exclu par le filtre `email:`.
+  it('tout updateUser qui change l’adresse porte emailRedirectTo, une seule fois', () => {
+    const appelsAdresse = (source.match(/updateUser\([\s\S]{0,200}?\)/g) ?? []).filter((appel) =>
+      /\bemail\s*:/.test(appel),
+    );
+    expect(appelsAdresse).toHaveLength(1);
+    expect(appelsAdresse[0]).toContain('emailRedirectTo');
+  });
 });

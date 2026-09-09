@@ -17,6 +17,10 @@ import type { ErreurAuth, PortAuth, SessionAuth } from './port';
 // déjà marquée NON VÉRIFIÉE sur `etablirSessionDepuisLien`).
 const LIEN_VERIFICATION_EMAIL = 'myfavcoach://auth/rappel';
 const LIEN_REINITIALISATION_MOT_DE_PASSE = 'myfavcoach://auth/mot-de-passe';
+// docs/ecrans/L1-09-mes-informations.md (P1.13c) : GoTrue envoie deux courriels à la demande de
+// changement d'adresse (ancienne + nouvelle), tous deux avec ce lien. Déclaré dans
+// supabase/config.toml (additional_redirect_urls) — les deux ensemble sont nécessaires.
+const LIEN_CHANGEMENT_ADRESSE = 'myfavcoach://auth/adresse';
 
 // Version du texte de consentement CGU accepté à l'inscription (docs/domaine.md §3.12 : "un
 // consentement sans version est un consentement inutilisable"). Aucun texte CGU réel n'existe
@@ -27,21 +31,19 @@ const LIEN_REINITIALISATION_MOT_DE_PASSE = 'myfavcoach://auth/mot-de-passe';
 const VERSION_CGU_ACCEPTEE = '2026-09-04';
 
 // Rendu STRUCTUREL, pas seulement documenté : deux trous (inscrire, renvoyerVerification)
-// avaient déjà échappé à une relecture avant d'être trouvés à P1.9. Les trois appels du SDK qui
-// envoient un courriel avec un lien passent maintenant OBLIGATOIREMENT par l'une de ces trois
-// fonctions — le lien profond est câblé DANS la fonction, jamais un paramètre qu'un appelant
-// pourrait omettre. src/test/redirection-courriels-obligatoire.test.ts vérifie qu'aucun appel
-// direct à signUp/resend/resetPasswordForEmail ne subsiste ailleurs dans ce fichier : la
-// garantie est mécanique, pas une consigne à se rappeler au prochain appel.
+// avaient déjà échappé à une relecture avant d'être trouvés à P1.9. Les QUATRE appels du SDK
+// qui envoient un courriel avec un lien passent maintenant OBLIGATOIREMENT par l'une des quatre
+// fonctions d'enveloppe (envoyerCourrielInscription, renvoyerCourrielVerification,
+// envoyerCourrielReinitialisation, envoyerCourrielChangementAdresse) — le lien profond est
+// câblé DANS la fonction, jamais un paramètre qu'un appelant pourrait omettre.
+// src/test/redirection-courriels-obligatoire.test.ts vérifie qu'aucun appel direct à
+// signUp/resend/resetPasswordForEmail, ni aucun updateUser({ email ... }), ne subsiste ailleurs
+// dans ce fichier : la garantie est mécanique, pas une consigne à se rappeler au prochain appel.
 //
-// Quatrième cas trouvé en balayant à P1.9, PAS corrigé ici : updateUser({ email }) (voir
-// changerEmail plus bas) envoie lui aussi un courriel avec un lien ("By default, email updates
-// sends a confirmation link to both the user's current and new email" —
-// node_modules/@supabase/auth-js/dist/main/GoTrueClient.d.ts), donc a besoin du même
-// `emailRedirectTo`. Aucune route de destination n'existe encore pour confirmer un changement
-// d'adresse (aucun écran, aucune entrée dans additional_redirect_urls) : inventer une valeur
-// ici serait pointer vers un lien mort. Voir docs/dette.md — à câbler avec le vrai écran, pas
-// avant.
+// Le 4ᵉ cas (updateUser({ email }), "email updates sends a confirmation link to both the user's
+// current and new email" — node_modules/@supabase/auth-js/dist/main/GoTrueClient.d.ts) a été
+// câblé à P1.13c : la route de destination existe désormais (myfavcoach://auth/adresse, déclaré
+// dans supabase/config.toml), l'écran L1-09 l'utilise.
 function envoyerCourrielInscription(
   email: string,
   motDePasse: string,
@@ -77,6 +79,20 @@ function envoyerCourrielReinitialisation(
   return supabase.auth.resetPasswordForEmail(email, {
     redirectTo: LIEN_REINITIALISATION_MOT_DE_PASSE,
   });
+}
+
+// Quatrième appel du SDK qui envoie un courriel avec un lien (voir le commentaire sur
+// envoyerCourrielInscription) : updateUser({ email }) envoie une confirmation à l'ancienne ET à
+// la nouvelle adresse. Comme les trois autres, le lien profond est câblé ici, jamais laissé à
+// un appelant. src/test/redirection-courriels-obligatoire.test.ts vérifie qu'aucun
+// updateUser({ email ... }) ne subsiste ailleurs dans ce fichier.
+function envoyerCourrielChangementAdresse(
+  nouvelEmail: string,
+): ReturnType<typeof supabase.auth.updateUser> {
+  return supabase.auth.updateUser(
+    { email: nouvelEmail },
+    { emailRedirectTo: LIEN_CHANGEMENT_ADRESSE },
+  );
 }
 
 function versSessionAuth(session: SessionSupabaseJs): SessionAuth {
@@ -184,14 +200,49 @@ export const portAuthSupabase: PortAuth = {
     return { succes: true };
   },
 
-  // NON CÂBLÉ : envoie un courriel avec un lien de confirmation (voir le commentaire sur
-  // envoyerCourrielInscription plus haut) sans `emailRedirectTo` — retombe donc sur `site_url`,
-  // pas sur l'application. Aucune route de destination n'existe encore (aucun écran de
-  // changement d'adresse au jalon 1) : rien à câbler tant qu'elle n'existe pas. Voir
-  // docs/dette.md. Cette méthode n'est appelée par aucun écran à ce jour.
+  // CÂBLÉ à P1.13c (docs/ecrans/L1-09) : passe par envoyerCourrielChangementAdresse, qui porte
+  // le lien profond myfavcoach://auth/adresse (déclaré dans supabase/config.toml). GoTrue
+  // envoie une confirmation à l'ANCIENNE et à la NOUVELLE adresse ; tant que les deux liens ne
+  // sont pas suivis, auth.users.email ne change pas (lireAdresseEnAttente ci-dessous rend
+  // l'adresse cible entre-temps).
   async changerEmail(nouvelEmail) {
-    const { error } = await supabase.auth.updateUser({ email: nouvelEmail });
+    const { error } = await envoyerCourrielChangementAdresse(nouvelEmail);
     if (error) return { succes: false, erreur: traduireErreur(error) };
+    return { succes: true };
+  },
+
+  // auth.users.new_email : renseigné par GoTrue pendant un changement d'adresse non encore
+  // confirmé sur les deux liens, vide sinon. getUser() fait un aller-retour réseau (contrairement
+  // à getSession()) — nécessaire ici, la session locale ne porte pas new_email.
+  async lireAdresseEnAttente() {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) return null;
+    return data.user?.new_email ?? null;
+  },
+
+  async changerMotDePasseConnecte(actuel, nouveau) {
+    // Vérifie le mot de passe ACTUEL avant tout : docs/ecrans/L1-09 le liste comme un champ
+    // obligatoire, sa raison d'être est qu'un téléphone brièvement déverrouillé ne suffise pas.
+    // signInWithPassword réémet une session pour le MÊME compte (aucune rupture pour
+    // l'utilisateur) et renvoie invalid_credentials si `actuel` est faux.
+    const { data: donneesSession } = await supabase.auth.getSession();
+    const email = donneesSession.session?.user.email;
+    if (!email) {
+      throw new Error(
+        'changerMotDePasseConnecte appelé sans session active : erreur de l’appelant.',
+      );
+    }
+    const verification = await supabase.auth.signInWithPassword({ email, password: actuel });
+    if (verification.error) {
+      return { succes: false, erreur: traduireErreur(verification.error) };
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: nouveau });
+    if (error) return { succes: false, erreur: traduireErreur(error) };
+
+    // Ferme toutes les AUTRES sessions, jamais celle-ci (même mécanisme et même raison que
+    // changerMotDePasse ci-dessus) ; best-effort, le mot de passe est déjà changé.
+    await supabase.auth.signOut({ scope: 'others' }).catch(() => {});
     return { succes: true };
   },
 
