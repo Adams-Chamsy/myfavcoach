@@ -7,6 +7,14 @@ import { join } from 'path';
 // un service de rapport de plantage. Trois garanties structurelles, en plus de son absence des
 // URL (le port l'envoie dans le CORPS d'un PATCH, filtre = compte_id seul) et de son absence
 // des traces d'erreur serveur (src/test/rls.banc.ts).
+//
+// FIL-PIÈGE VOLONTAIRE — le premier `it` ci-dessous échoue le jour où une dépendance de
+// rapport de plantage (Sentry ou équivalent) entre dans package.json. Ce n'est PAS le signal
+// de supprimer l'assertion : c'est le signal de prouver que l'outil est configuré pour retirer
+// les corps de requête ET les champs `poids_*` de tout ce qu'il envoie (scrubbing / beforeSend
+// / denyUrls selon l'outil), puis de remplacer cette assertion par la vérification de cette
+// configuration. Retirer le test sans le remplacer rouvrirait un chemin de fuite d'une donnée
+// de catégorie 9 RGPD, sans que rien ne le signale.
 const RACINE_DEPOT = join(__dirname, '..', '..');
 const CE_FICHIER = join(__dirname, 'donnees-sante-hors-journal.test.ts');
 
