@@ -17,7 +17,13 @@ import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donne
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { portAuthSupabase } from '@/services/auth/supabase';
 import { portDonneesSupabase } from '@/services/donnees/supabase';
+import { neutraliserConsoleEnProduction } from '@/services/journalisation';
 import { FournisseurTheme } from '@/theme/fournisseur';
+
+// Avant tout : en production, console.* devient inerte — une donnée de santé (le poids) ne doit
+// jamais atteindre le journal système de l'appareil (CLAUDE.md §10, docs/ecrans/L1-05
+// critère 5). Sans effet en développement.
+neutraliserConsoleEnProduction();
 
 // Deux liens profonds reçus par courriel, au démarrage à froid SEULEMENT — l'URL qui a lancé
 // cette instance de l'application. Traité ici, pas dans les écrans concernés, parce qu'aucun
