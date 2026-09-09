@@ -1,0 +1,60 @@
+# Banc RLS (src/test/rls.banc.ts, `npm run test:rls`) contre une pile Supabase ÉPHÉMÈRE,
+# montée sur le runner — JAMAIS le projet de développement distant partagé avec l'usage manuel.
+#
+# Workflow séparé de verif.yml exprès : `npm run verif` n'inclut pas test:rls en CI (voir le
+# commentaire en tête de verif.yml pour les deux raisons de fond — projet partagé, clé admin
+# hors dépôt), et src/test/verif-ci-synchronisee.test.ts refuse que test:rls apparaisse dans
+# verif.yml. Ici la pile est locale au runner : les deux objections tombent.
+#
+# `supabase start` lance des conteneurs Docker (Postgres, GoTrue, PostgREST…). Sa clé anonyme
+# et sa clé d'administration sont FIXES et publiques — les valeurs de démo du CLI Supabase,
+# aucun secret de dépôt. La garde de rls.banc.ts autorise l'hôte localhost en plus du projet
+# distant.
+#
+# `.env` et `.secrets-rls.local` sont ignorés par git : ce workflow les écrit à la volée, avec
+# les valeurs de la pile locale uniquement.
+name: Banc RLS
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  banc-rls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Studio et imgproxy ne servent pas au banc : exclus pour raccourcir le démarrage.
+      - name: Démarrer la pile Supabase locale
+        run: supabase start -x studio,imgproxy
+
+      # Rejoue supabase/migrations/*.sql sur une base vide — la même garantie que le critère 5
+      # de la porte de sortie du lot L1 (migrations rejouables de zéro).
+      - name: Rejouer les migrations de zéro
+        run: supabase db reset
+
+      - name: Écrire .env et .secrets-rls.local depuis la pile locale
+        run: |
+          set -euo pipefail
+          eval "$(supabase status -o env)"
+          printf 'EXPO_PUBLIC_SUPABASE_ANON_KEY=%s\n' "$ANON_KEY" > .env
+          {
+            printf 'SUPABASE_URL_TEST=%s\n' "$API_URL"
+            printf 'SUPABASE_CLE_ADMIN_TEST=%s\n' "$SERVICE_ROLE_KEY"
+            printf 'BANC_RLS_MOT_DE_PASSE=banc-rls-ci-%s\n' "$GITHUB_RUN_ID"
+          } > .secrets-rls.local
+
+      - name: Banc RLS
+        run: npm run test:rls

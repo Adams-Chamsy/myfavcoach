@@ -7,8 +7,9 @@ import { join } from 'path';
 // seulement le jour ou la CI passe malgre une regle locale cassee, ou l'inverse. Ce test
 // compare les deux listes plutot que de compter sur un commentaire qu'on oublie de relire.
 //
-// Seul ecart tolere : test:rls, volontairement absent de la CI (commentaire en tete de
-// verif.yml, docs/dette.md) — jamais un autre.
+// Seul ecart tolere : test:rls, volontairement absent de CE fichier — il tourne dans son
+// propre workflow, .github/workflows/banc-rls.yml, contre une pile Supabase ephemere
+// (commentaire en tete de verif.yml, docs/dette.md) — jamais un autre ecart.
 const RACINE_DEPOT = join(__dirname, '..', '..');
 
 function extraireEtapesVerif(scriptVerif: string): string[] {

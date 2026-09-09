@@ -115,10 +115,10 @@ describe('secrets interdits côté application', () => {
   // ne peut pas fuir par le dépôt.
   //
   // Chaque exception est nommée une par une : ajouter une clé ici est un choix humain, jamais
-  // un motif générique qui laisserait passer un dixième fichier sans que personne le décide.
-  // Les neuf ci-dessous nomment "service_role" pour avertir qu'elle est interdite, ou l'utilisent
-  // légitimement côté outillage de test ou de migration (jamais dans l'application) — la doc
-  // qui nomme le danger n'est pas le danger :
+  // un motif générique qui laisserait passer un fichier de plus sans que personne le décide.
+  // Les dix ci-dessous nomment "service_role" pour avertir qu'elle est interdite, ou l'utilisent
+  // légitimement côté outillage de test, de migration ou de CI (jamais dans l'application) — la
+  // doc qui nomme le danger n'est pas le danger :
   //   - .env.exemple                                 : le commentaire qui explique le préfixe EXPO_PUBLIC_
   //   - CLAUDE.md                                     : §2, la règle elle-même
   //   - docs/backend.md                               : §6, "ce qui ne quitte jamais le serveur"
@@ -128,6 +128,7 @@ describe('secrets interdits côté application', () => {
   //   - supabase/migrations/0003_accorder_service_role.sql : corrige cette hypothèse — les GRANT que ce rôle nécessite réellement sur ce projet, justifiés ligne à ligne
   //   - supabase/config.toml                          : commentaire généré par `supabase init`, décrivant les rôles de la Data API
   //   - src/test/rls.banc.ts                          : le nom de variable (SERVICE_ROLE_KEY) apparaît pour préparer le banc ; sa valeur, jamais écrite ici, est lue depuis .secrets-rls.local (ignoré par git) — jamais dans l'application
+  //   - .github/workflows/banc-rls.yml                : le nom de variable shell issu de `supabase status -o env` (pile locale du runner) ; sa valeur, une clé de démo FIXE du CLI Supabase, n'est jamais écrite ici — lue puis passée à .secrets-rls.local, ignoré par git
   describe('clé service_role', () => {
     const EXCEPTIONS = new Set([
       '.env.exemple',
@@ -139,6 +140,7 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0003_accorder_service_role.sql',
       'supabase/config.toml',
       'src/test/rls.banc.ts',
+      '.github/workflows/banc-rls.yml',
     ]);
     const fichiers = contenuDe(fichiersSuivisParGit().filter((chemin) => !EXCEPTIONS.has(chemin)));
 

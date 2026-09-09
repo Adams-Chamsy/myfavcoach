@@ -1,14 +1,16 @@
-# npm run test:rls (banc RLS, src/test/rls.banc.ts) n'est PAS une etape de cette CI, alors
+# npm run test:rls (banc RLS, src/test/rls.banc.ts) n'est PAS une etape de CE workflow, alors
 # qu'il fait partie de `npm run verif` en local. Deux raisons, pas un oubli :
-#   - il ecrit (cree ET supprime des comptes reels) dans le projet Supabase de DEVELOPPEMENT,
-#     partage avec l'usage manuel du developpeur ; deux executions simultanees (deux jobs CI,
-#     ou une CI en meme temps qu'un `npm run test:rls` local) se marcheraient dessus sur les
-#     memes comptes.
+#   - EN LOCAL il ecrit (cree ET supprime des comptes reels) dans le projet Supabase de
+#     DEVELOPPEMENT, partage avec l'usage manuel du developpeur ; deux executions simultanees se
+#     marcheraient dessus sur les memes comptes.
 #   - il a besoin de la clef secrete d'administration de ce projet (SUPABASE_CLE_ADMIN_TEST),
 #     qui ne vit que dans .secrets-rls.local (local, ignore par git), jamais dans les secrets de
 #     ce depot.
-# Un projet Supabase dedie aux tests reglerait les deux (docs/dette.md, echeance L4). Tant que
-# ce projet n'existe pas, NE RAJOUTE PAS test:rls ici : ce ne serait pas reparer un oubli.
+# La CI l'execute quand meme, mais dans un workflow SEPARE (.github/workflows/banc-rls.yml,
+# P1.15) qui monte une pile Supabase EPHEMERE sur le runner (`supabase start`) : les deux
+# objections ci-dessus tombent (pile jetable, cles locales fixes). NE RAJOUTE PAS test:rls
+# ici : src/test/verif-ci-synchronisee.test.ts l'interdit dans ce fichier, et sa place est
+# dans banc-rls.yml.
 #
 # Toute AUTRE etape ajoutee a npm run verif (package.json) doit etre ajoutee ici aussi, dans le
 # meme ordre. src/test/verif-ci-synchronisee.test.ts le verifie a chaque `npm test` : il compare

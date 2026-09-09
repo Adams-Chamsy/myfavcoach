@@ -41,12 +41,21 @@ const SUFFIXE_COMPTE = Date.now();
 const PREFIXE_EMAIL = 'banc-rls-';
 const DOMAINE_EMAIL = 'banc-rls.test';
 
-// GARDE DE SÉCURITÉ — seule référence de projet acceptée. Ce banc CRÉE et SUPPRIME des comptes
-// réels : pointé par erreur sur un mauvais projet (et un jour sur la production), il
-// détruirait des données réelles. Une variable d'environnement mal copiée suffit — c'est
-// exactement ce que cette constante empêche, en refusant de continuer plutôt que de faire
-// confiance à ce que .secrets-rls.local contient.
+// GARDE DE SÉCURITÉ — seules cibles acceptées. Ce banc CRÉE et SUPPRIME des comptes réels :
+// pointé par erreur sur un mauvais projet (et un jour sur la production), il détruirait des
+// données réelles. Une variable d'environnement mal copiée suffit — c'est exactement ce que
+// cette garde empêche, en refusant de continuer plutôt que de faire confiance à ce que
+// .secrets-rls.local contient.
+//
+// Deux cibles, jamais une autre :
+//   - le projet Supabase de DÉVELOPPEMENT distant (référence ci-dessous), pour l'usage local ;
+//   - une pile Supabase LOCALE (`supabase start`, hôte localhost / 127.0.0.1) — sans donnée
+//     réelle partagée, donc sans risque à créer/supprimer. C'est la cible du workflow
+//     .github/workflows/banc-rls.yml (P1.15) : la CI monte une pile éphémère plutôt que de
+//     toucher au projet distant partagé.
+// Un autre distant (autre référence, `.supabase.co` de prod incluse) est toujours refusé.
 const REFERENCE_PROJET_AUTORISEE = 'imzdtntaqbtymoacsxua';
+const HOTES_LOCAUX_AUTORISES = new Set(['localhost', '127.0.0.1']);
 
 let API_URL: string;
 let ANON_KEY: string;
@@ -115,14 +124,23 @@ function chargerConfigurationBanc(): {
     );
   }
 
+  let hoteUrl = '';
+  try {
+    hoteUrl = new URL(apiUrl!.trim()).hostname;
+  } catch {
+    hoteUrl = '';
+  }
   const correspondanceUrl = /^https:\/\/([a-z0-9]+)\.supabase\.co\/?$/.exec(apiUrl!.trim());
   const referenceTrouvee = correspondanceUrl?.[1] ?? apiUrl!;
-  if (referenceTrouvee !== REFERENCE_PROJET_AUTORISEE) {
+  const cibleAutorisee =
+    HOTES_LOCAUX_AUTORISES.has(hoteUrl) || referenceTrouvee === REFERENCE_PROJET_AUTORISEE;
+  if (!cibleAutorisee) {
     throw new Error(
       [
-        'GARDE DE SÉCURITÉ : SUPABASE_URL_TEST ne pointe pas vers le projet Supabase de',
-        `développement autorisé (${REFERENCE_PROJET_AUTORISEE}).`,
-        `Référence trouvée : "${referenceTrouvee}".`,
+        'GARDE DE SÉCURITÉ : SUPABASE_URL_TEST ne pointe ni vers le projet Supabase de',
+        `développement autorisé (${REFERENCE_PROJET_AUTORISEE}), ni vers une pile locale`,
+        '(hôte localhost / 127.0.0.1).',
+        `Cible trouvée : "${hoteUrl || referenceTrouvee}".`,
         '',
         'Ce banc CRÉE et SUPPRIME des comptes réels : corrige SUPABASE_URL_TEST dans',
         '.secrets-rls.local avant de relancer. Ne contourne jamais cette garde.',
