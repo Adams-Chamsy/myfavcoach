@@ -305,4 +305,46 @@ export const portDonneesSupabase: PortDonnees = {
     if (error) return echec(error);
     return { succes: true };
   },
+
+  async lireConsentementSante() {
+    // Vue consentements_courants (0001_creer_identite.sql) : dernier état par (compte, type),
+    // security_invoker donc scopée à l'appelant. Aucune ligne = jamais enregistré.
+    const { data, error } = await supabase
+      .from('consentements_courants')
+      .select('accorde, version')
+      .eq('type', 'donneesSante')
+      .limit(1);
+    if (error) throw error;
+    const ligne = data?.[0] as { accorde: boolean; version: string } | undefined;
+    return { accorde: ligne?.accorde ?? false, version: ligne?.version ?? null };
+  },
+
+  async enregistrerConsentementSante(accorde, version) {
+    // Journal d'ajout (docs/domaine.md §3.12) : toujours un INSERT, jamais un UPDATE — un
+    // retrait est une nouvelle ligne accorde=false. consentements n'a d'ailleurs aucun GRANT
+    // UPDATE (0001_creer_identite.sql). compte_id explicite : la politique INSERT l'exige.
+    const compteId = await compteIdCourant();
+    const { error } = await supabase.from('consentements').insert({
+      compte_id: compteId,
+      type: 'donneesSante',
+      accorde,
+      version,
+      origine: 'ecran_confidentialite',
+    });
+    if (error) return echec(error);
+    return { succes: true };
+  },
+
+  async effacerMesuresCorporelles() {
+    // Remettre les colonnes de poids à NULL : autorisé même consentement retiré — le
+    // déclencheur de 0004_proteger_donnees_sante.sql ne bloque que l'écriture d'une valeur NON
+    // nulle. Filtre `.eq('compte_id', ...)` explicite obligatoire (safeupdate, voir l'en-tête).
+    const compteId = await compteIdCourant();
+    const { error } = await supabase
+      .from('profils_client')
+      .update({ poids_depart_grammes: null, poids_cible_grammes: null })
+      .eq('compte_id', compteId);
+    if (error) return echec(error);
+    return { succes: true };
+  },
 } satisfies PortDonnees;

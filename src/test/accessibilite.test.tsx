@@ -20,6 +20,7 @@ import Verification from '../../app/(public)/verification';
 import Connexion from '../../app/(public)/connexion';
 import MotDePasseOublie from '../../app/(public)/mot-de-passe-oublie';
 import NouveauMotDePasse from '../../app/(public)/nouveau-mot-de-passe';
+import Confidentialite from '../../app/(compte)/confidentialite';
 import Identifiants from '../../app/(compte)/identifiants';
 import Informations from '../../app/(compte)/informations';
 import OnboardingIdentite from '../../app/(onboarding)/1-identite';
@@ -116,6 +117,7 @@ const ECRANS_CHROME_HAUT = new Set([
   'app/(coach)/moi.tsx',
   'app/(compte)/informations.tsx',
   'app/(compte)/identifiants.tsx',
+  'app/(compte)/confidentialite.tsx',
 ]);
 
 type OffsetHaut = { ancre: boolean; offset: number };
@@ -471,6 +473,18 @@ const CORPUS: EntreeCorpus[] = [
     creerElement: () => (
       <FournisseurSession key="identifiants" port={portAuthOnboarding}>
         <Identifiants />
+      </FournisseurSession>
+    ),
+  },
+  {
+    // Écran L1-09 « Confidentialité » : useDonnees() → lecture du consentement (faux partagé,
+    // accorde=false par défaut). Pose son propre chrome haut.
+    nom: 'app/(compte)/confidentialite.tsx',
+    creerElement: () => (
+      <FournisseurSession key="confidentialite" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <Confidentialite />
+        </FournisseurDonnees>
       </FournisseurSession>
     ),
   },

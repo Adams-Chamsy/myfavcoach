@@ -936,4 +936,24 @@ describe('poids du profil client protégé par consentement (0004_proteger_donne
     });
     expect(statut).toBeGreaterThanOrEqual(400);
   });
+
+  // docs/ecrans/L1-09, « Confidentialité » (P1.13d) : après un retrait, « Effacer mes mesures
+  // enregistrées » remet les colonnes de poids à NULL. Le déclencheur ne bloque que l'écriture
+  // d'une valeur NON nulle (0004, `and new.poids_* is not null`) — l'effacement doit donc
+  // passer malgré le consentement retiré. C n'a toujours pas de consentement `donneesSante`
+  // actif à ce stade du fichier.
+  it('consentement retiré : effacer le poids (le remettre à NULL) est accepté', async () => {
+    const { statut } = await appelRest(`/rest/v1/profils_client?compte_id=eq.${C.compteId}`, {
+      methode: 'PATCH',
+      session: C,
+      corps: { poids_depart_grammes: null, poids_cible_grammes: null },
+    });
+    expect(statut).toBe(200);
+
+    const { corps } = await appelRest(
+      `/rest/v1/profils_client?compte_id=eq.${C.compteId}&select=poids_depart_grammes,poids_cible_grammes`,
+      { session: 'admin' },
+    );
+    expect((corps as { poids_depart_grammes: number | null }[])[0].poids_depart_grammes).toBeNull();
+  });
 });

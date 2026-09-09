@@ -127,4 +127,20 @@ export type PortDonnees = {
   // (protégée), jamais discipline (P1.14).
   lireInformations(): Promise<InformationsCompte>;
   enregistrerInformations(modifs: ModificationsInformations): Promise<ResultatEcriture>;
+
+  // docs/ecrans/L1-09-mes-informations.md, section « Confidentialité » (P1.13d). Le
+  // consentement `donneesSante` est un JOURNAL d'ajout (docs/domaine.md §3.12) :
+  // enregistrerConsentementSante insère une NOUVELLE ligne (accorde reflétant le nouvel état),
+  // jamais une mise à jour. lireConsentementSante rend l'état courant (vue
+  // consentements_courants). `version` est null seulement si aucun consentement n'a jamais été
+  // enregistré pour ce compte.
+  lireConsentementSante(): Promise<{ accorde: boolean; version: string | null }>;
+  enregistrerConsentementSante(accorde: boolean, version: string): Promise<ResultatEcriture>;
+
+  // Efface les mesures corporelles enregistrées — à ce lot, poids_depart_grammes et
+  // poids_cible_grammes (profils_client), les seules données de santé écrites (voir
+  // 0004_proteger_donnees_sante.sql). Les remettre à NULL est autorisé même consentement
+  // retiré : le déclencheur ne bloque que l'écriture d'une valeur NON nulle. Irréversible,
+  // offert seulement après un retrait de consentement.
+  effacerMesuresCorporelles(): Promise<ResultatEcriture>;
 };

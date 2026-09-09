@@ -5,18 +5,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
 import { Champ } from '@/composants/champ';
+import {
+  TEXTE_CONSENTEMENT_SANTE,
+  VERSION_CONSENTEMENT_SANTE,
+} from '@/fonctionnalites/identite/consentement-sante';
 import { EnteteOnboarding } from '@/fonctionnalites/identite/entete-onboarding';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { useTheme } from '@/theme/fournisseur';
 
-// docs/domaine.md §3.12 : "un consentement sans version est un consentement inutilisable" —
-// même mécanisme que VERSION_CGU_ACCEPTEE (src/services/auth/supabase.ts), mais pour LE texte
-// exact affiché ci-dessous. Contrairement aux CGU (lot L11, texte pas encore rédigé), ce texte
-// EST le texte réel de ce lot : rien de provisoire ici.
-const VERSION_CONSENTEMENT_SANTE = '2026-09-04';
-
-const TEXTE_CONSENTEMENT =
-  "J'accepte que My fav Coach enregistre mes données de santé pour suivre ma progression.";
+// Texte et version du consentement santé : source unique, partagée avec l'écran Confidentialité
+// (P1.13d). Voir src/fonctionnalites/identite/consentement-sante.ts.
+const TEXTE_CONSENTEMENT = TEXTE_CONSENTEMENT_SANTE;
 
 // "en kilogrammes avec une décimale" (fiche) : virgule ET point acceptés en saisie (clavier
 // français), convertis en grammes entiers (profils_client.poids_*_grammes, entier — voir

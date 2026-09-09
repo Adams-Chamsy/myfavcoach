@@ -18,6 +18,9 @@ export type FauxPortDonnees = PortDonnees & {
   // source dans ce faux : elles viennent d'ici.
   definirInformationsPourTest(informations: InformationsCompte): void;
 
+  // Place l'état courant du consentement santé (docs/ecrans/L1-09, « Confidentialité »).
+  definirConsentementSantePourTest(etat: { accorde: boolean; version: string | null }): void;
+
   // Fait échouer le PROCHAIN appel d'écriture (creerProfilClient, enregistrerObjectifsEtRythme,
   // enregistrerPointDeDepart, terminerOnboarding), un seul coup, puis revient au succès —
   // aucune règle métier naturelle (mot de passe erroné, etc.) n'existe côté écriture de profil
@@ -71,6 +74,12 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
   let etat: EtatProfils = etatProfilsParDefaut();
   let profilOnboarding: ProfilOnboarding = profilOnboardingVide();
   let informations: InformationsCompte = informationsCompteParDefaut();
+  // État courant du consentement santé (journal réduit à son dernier état, suffisant ici).
+  // version null = aucun consentement jamais enregistré.
+  let consentementSante: { accorde: boolean; version: string | null } = {
+    accorde: false,
+    version: null,
+  };
   let prochaineEcritureEchoue: string | null = null;
 
   // true : applique nouvelEtat/nouveauProfil et rend { succes: true } ; false : consomme
@@ -122,8 +131,13 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
       );
     },
 
-    async enregistrerPointDeDepart({ consentementAccorde, poidsDepartGrammes, poidsCibleGrammes }) {
-      return ecrire(
+    async enregistrerPointDeDepart({
+      consentementAccorde,
+      versionConsentement,
+      poidsDepartGrammes,
+      poidsCibleGrammes,
+    }) {
+      const resultat = ecrire(
         { ...etat, clientOnboardingEtape: 4 },
         {
           ...profilOnboarding,
@@ -135,6 +149,10 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
             : profilOnboarding.poidsCibleGrammes,
         },
       );
+      if (resultat.succes && consentementAccorde) {
+        consentementSante = { accorde: true, version: versionConsentement };
+      }
+      return resultat;
     },
 
     async terminerOnboarding() {
@@ -177,6 +195,38 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
             ? { ...informations, prenom: modifs.prenom, nom: modifs.nom }
             : informations;
       etat = { ...etat, identiteActive: { prenom: modifs.prenom, nom: modifs.nom } };
+      return { succes: true };
+    },
+
+    definirConsentementSantePourTest(nouvelEtat) {
+      consentementSante = nouvelEtat;
+    },
+
+    async lireConsentementSante() {
+      return consentementSante;
+    },
+
+    async enregistrerConsentementSante(accorde, version) {
+      if (prochaineEcritureEchoue !== null) {
+        const erreur = prochaineEcritureEchoue;
+        prochaineEcritureEchoue = null;
+        return { succes: false, erreur };
+      }
+      consentementSante = { accorde, version };
+      return { succes: true };
+    },
+
+    async effacerMesuresCorporelles() {
+      if (prochaineEcritureEchoue !== null) {
+        const erreur = prochaineEcritureEchoue;
+        prochaineEcritureEchoue = null;
+        return { succes: false, erreur };
+      }
+      profilOnboarding = {
+        ...profilOnboarding,
+        poidsDepartGrammes: null,
+        poidsCibleGrammes: null,
+      };
       return { succes: true };
     },
   } satisfies FauxPortDonnees;
