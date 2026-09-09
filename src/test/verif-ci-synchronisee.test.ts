@@ -29,7 +29,18 @@ function extraireEtapesVerif(scriptVerif: string): string[] {
 
 function extraireEtapesWorkflow(contenuYaml: string): string[] {
   const etapes: string[] = [];
+  let dansBlocScript = false;
   for (const ligne of contenuYaml.split('\n')) {
+    // `run: |` ouvre un script multi-ligne (préparation CI : .env de substitution) — pas une
+    // sous-commande de `npm run verif`. On saute ce bloc jusqu'à la prochaine clé de step.
+    if (/^\s*run:\s*\|\s*$/.test(ligne)) {
+      dansBlocScript = true;
+      continue;
+    }
+    if (dansBlocScript) {
+      if (/^\s*-?\s*(name|uses|run|with|env|id|if):/.test(ligne)) dansBlocScript = false;
+      else continue;
+    }
     const correspondance = /^\s*run:\s*(.+)$/.exec(ligne);
     if (!correspondance) continue;
     const commande = correspondance[1].trim();
