@@ -28,11 +28,27 @@ import {
   programmesDemonstration,
   seancesDemonstration,
 } from '@/fixtures/demonstration';
+import { EcranCompte } from '@/fonctionnalites/compte/ecran-compte';
 import { FeuilleBascule } from '@/fonctionnalites/identite/feuille-bascule';
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
+import { creerSessionDemonstration } from '@/fixtures/session-demonstration';
 import { creerFauxPortAuth } from '@/services/auth/faux';
 import { creerFauxPortDonnees } from '@/services/donnees/faux';
+import Bienvenue from './(public)/index';
+import Inscription from './(public)/inscription';
+import Verification from './(public)/verification';
+import Connexion from './(public)/connexion';
+import MotDePasseOublie from './(public)/mot-de-passe-oublie';
+import NouveauMotDePasse from './(public)/nouveau-mot-de-passe';
+import OnboardingIdentite from './(onboarding)/1-identite';
+import OnboardingObjectifs from './(onboarding)/2-objectifs';
+import OnboardingPoids from './(onboarding)/3-poids';
+import OnboardingCestParti from './(onboarding)/4-cest-parti';
+import DevenirCoach from './(onboarding)/devenir-coach';
+import Informations from './(compte)/informations';
+import Identifiants from './(compte)/identifiants';
+import Confidentialite from './(compte)/confidentialite';
 import {
   FournisseurMouvementReduit,
   FournisseurTheme,
@@ -99,6 +115,7 @@ function Corps({
       <SectionEtats />
       <SectionIcones />
       <SectionFeuilleBascule />
+      <SectionEcransL1 />
       <PiedGalerie
         themeClair={themeClair}
         onChangeThemeClair={onChangeThemeClair}
@@ -1076,6 +1093,85 @@ function SectionFeuilleBascule() {
         coachExiste={false}
         portAuth={portAuth}
       />
+    </Section>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// 14 · Écrans du lot L1 (docs/prompts/L1.md, P1.15)
+// ---------------------------------------------------------------------------------------------
+
+// Toutes les surfaces ajoutées au lot L1, réunies ici pour être exercées dans les deux thèmes
+// comme le reste de la galerie (l'interrupteur clair/sombre du pied s'y applique). Chaque écran
+// tourne dans ses vrais fournisseurs, sur la session de démonstration partagée
+// (src/fixtures/session-demonstration.ts) — la même mise en scène que le corpus de
+// npm run test:a11y, jamais une seconde qui en dériverait.
+//
+// La feuille de bascule (L1-06), dans ses deux variantes, est déjà la section 13 juste
+// au-dessus.
+//
+// Ces écrans posent leur propre chrome haut (barre d'état) et réclament chacun toute la
+// hauteur : bornés ici dans un cadre fixe qui rogne. C'est une vignette pour vérifier le rendu
+// et les contrastes, pas la géométrie grandeur nature — celle-ci reste une vérification sur
+// appareil (docs/dette.md, zones sûres).
+const ECRANS_L1: { titre: string; rendu: () => ReactNode }[] = [
+  { titre: 'L1-01 · Bienvenue', rendu: () => <Bienvenue /> },
+  { titre: 'L1-02 · Création de compte', rendu: () => <Inscription /> },
+  { titre: 'L1-03 · Vérification de l’adresse', rendu: () => <Verification /> },
+  { titre: 'L1-04 · Connexion', rendu: () => <Connexion /> },
+  { titre: 'L1-04 · Mot de passe oublié', rendu: () => <MotDePasseOublie /> },
+  { titre: 'L1-04 · Nouveau mot de passe', rendu: () => <NouveauMotDePasse /> },
+  { titre: 'L1-05 · Onboarding 1/4 — identité', rendu: () => <OnboardingIdentite /> },
+  { titre: 'L1-05 · Onboarding 2/4 — objectifs', rendu: () => <OnboardingObjectifs /> },
+  { titre: 'L1-05 · Onboarding 3/4 — point de départ', rendu: () => <OnboardingPoids /> },
+  { titre: 'L1-05 · Onboarding 4/4 — c’est parti', rendu: () => <OnboardingCestParti /> },
+  { titre: 'L1-07 · Compte et réglages', rendu: () => <EcranCompte /> },
+  { titre: 'L1-08 · Activation de l’espace coach', rendu: () => <DevenirCoach /> },
+  { titre: 'L1-09 · Mes informations', rendu: () => <Informations /> },
+  { titre: 'L1-09 · Adresse e-mail et mot de passe', rendu: () => <Identifiants /> },
+  { titre: 'L1-09 · Confidentialité', rendu: () => <Confidentialite /> },
+];
+
+function SectionEcransL1() {
+  const theme = useTheme();
+  const [session, setSession] = useState<Awaited<
+    ReturnType<typeof creerSessionDemonstration>
+  > | null>(null);
+
+  useEffect(() => {
+    let monte = true;
+    void creerSessionDemonstration().then((s) => {
+      if (monte) setSession(s);
+    });
+    return () => {
+      monte = false;
+    };
+  }, []);
+
+  // Le temps que la session de démonstration se prépare (quelques microtâches, jamais un vrai
+  // réseau) : rien à montrer, plutôt que des écrans sans session valide.
+  if (!session) return null;
+
+  return (
+    <Section titre="14 · Écrans du lot L1">
+      {ECRANS_L1.map(({ titre, rendu }) => (
+        <View key={titre} style={{ gap: theme.espace[2] }}>
+          <SousTitre texte={titre} />
+          <View
+            style={{
+              height: 520,
+              overflow: 'hidden',
+              borderRadius: theme.rayon.saisie,
+              borderWidth: 1,
+              borderColor: theme.couleur.bordure.discrete,
+            }}
+          >
+            <FournisseurSession port={session.portAuth}>
+              <FournisseurDonnees port={session.portDonnees}>{rendu()}</FournisseurDonnees>
+            </FournisseurSession>
+          </View>
+        </View>
+      ))}
     </Section>
   );
 }

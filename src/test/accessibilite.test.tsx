@@ -28,7 +28,7 @@ import OnboardingIdentite from '../../app/(onboarding)/1-identite';
 import OnboardingObjectifs from '../../app/(onboarding)/2-objectifs';
 import OnboardingPoids from '../../app/(onboarding)/3-poids';
 import OnboardingCestParti from '../../app/(onboarding)/4-cest-parti';
-import { objectifsOnboarding, rythmesOnboarding } from '@/fixtures/demonstration';
+import { creerSessionDemonstration } from '@/fixtures/session-demonstration';
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
@@ -554,25 +554,13 @@ let portAuthOnboarding: ReturnType<typeof creerFauxPortAuth>;
 let portDonneesOnboarding: ReturnType<typeof creerFauxPortDonnees>;
 
 async function preparerSessionOnboarding() {
-  portAuthOnboarding = creerFauxPortAuth();
-  await portAuthOnboarding.inscrire('camille@exemple.fr', 'bon-mot-de-passe', '2000-01-01');
-  portAuthOnboarding.verifierEmailPourTest('camille@exemple.fr');
-  await portAuthOnboarding.connecter('camille@exemple.fr', 'bon-mot-de-passe');
-
-  // Un profil déjà bien rempli : les étapes 2 à 4 ont ainsi un contenu réel à analyser (chips
-  // sélectionnées, récapitulatif rempli), pas seulement leur état vide.
-  portDonneesOnboarding = creerFauxPortDonnees();
-  await portDonneesOnboarding.creerProfilClient('Camille', 'Dupont');
-  await portDonneesOnboarding.enregistrerObjectifsEtRythme(
-    [objectifsOnboarding[0].cle, objectifsOnboarding[1].cle],
-    rythmesOnboarding[1].cle,
-  );
-  await portDonneesOnboarding.enregistrerPointDeDepart({
-    consentementAccorde: true,
-    versionConsentement: '2026-09-04',
-    poidsDepartGrammes: 70500,
-    poidsCibleGrammes: 65000,
-  });
+  // Même mise en scène que la section « Écrans du lot L1 » de la galerie : un profil client
+  // déjà rempli, pour que les étapes 2 à 4 aient un contenu réel à analyser (chips
+  // sélectionnées, récapitulatif) et pas seulement leur état vide. Partagée via
+  // src/fixtures/session-demonstration.ts.
+  const session = await creerSessionDemonstration();
+  portAuthOnboarding = session.portAuth;
+  portDonneesOnboarding = session.portDonnees;
 }
 
 CORPUS.push(
