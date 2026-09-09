@@ -1,5 +1,5 @@
 import * as Linking from 'expo-linking';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, AppState, Text, View } from 'react-native';
 
@@ -152,6 +152,10 @@ export default function Verification() {
     router.back();
   }
 
+  function surSeConnecter() {
+    router.replace('/(public)/connexion' as Href);
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
       <View
@@ -279,6 +283,23 @@ export default function Verification() {
             Rien dans ta boîte ? Regarde dans les indésirables. L’expéditeur est
             bonjour@myfavcoach.fr.
           </Text>
+        </View>
+
+        {/* Toujours visible, pour TOUT LE MONDE : ne distingue donc rien (l'anti-énumération de
+            comptes de docs/ecrans/L1-02 reste intacte). Une réinscription par erreur avec une
+            adresse déjà confirmée n'envoie aucun courriel — cette ligne est la seule porte de
+            sortie pour qui est dans ce cas, sans que l'écran ait à le savoir ni à le dire. */}
+        <View style={{ gap: theme.espace[1], alignItems: 'center' }}>
+          <Text
+            style={{
+              ...theme.texte.petit,
+              color: theme.couleur.texte.secondaire,
+              textAlign: 'center',
+            }}
+          >
+            Tu as peut-être déjà un compte avec cette adresse.
+          </Text>
+          <Bouton variante="discret" libelle="Se connecter" onPress={surSeConnecter} />
         </View>
       </View>
     </View>

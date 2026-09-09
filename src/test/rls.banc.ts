@@ -791,13 +791,18 @@ describe('changement de mot de passe : sessions ouvertes ailleurs (docs/ecrans/L
 });
 
 // docs/ecrans/L1-09-mes-informations.md, critère 4 : un changement d'adresse ne prend effet
-// qu'après confirmation (double_confirm_changes = true, supabase/config.toml — un lien à
-// l'ancienne adresse ET un à la nouvelle). Prouve l'invariant côté base : après la demande,
-// auth.users.email n'a pas bougé. Le domaine .test n'étant pas routable, l'envoi réel des
-// courriels peut échouer — sans importance, la garantie testée est que l'adresse DU COMPTE ne
-// change pas avant que les liens soient suivis.
+// qu'après confirmation (double_confirm_changes = true, supabase/config.toml). Prouve
+// l'invariant côté base : la demande MET EN ATTENTE la nouvelle adresse (auth.users.new_email)
+// sans toucher à auth.users.email.
+//
+// Passe par POST /auth/v1/admin/generate_link (type email_change_new) et JAMAIS par
+// PUT /auth/v1/user : les deux mettent la même chose en attente, mais generate_link N'ENVOIE
+// AUCUN COURRIEL (il rend le lien directement), là où PUT /user tenterait un envoi à chaque
+// exécution du banc vers une adresse .test non routable — du quota consommé pour rien
+// (service de courriel intégré, ~2/h sur le plan gratuit). generate_link exige la clé admin,
+// que le banc a déjà.
 describe("changement d'adresse : effectif seulement après confirmation (docs/ecrans/L1-09)", () => {
-  it('PUT /user avec une nouvelle adresse ne modifie pas auth.users.email tant que les liens ne sont pas suivis', async () => {
+  it('met la nouvelle adresse en attente (new_email) sans modifier auth.users.email', async () => {
     const email = `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-e@${DOMAINE_EMAIL}`;
     const nouvelEmail = `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-e-nouveau@${DOMAINE_EMAIL}`;
     const session = await creerCompteReel(email, {
@@ -806,22 +811,24 @@ describe("changement d'adresse : effectif seulement après confirmation (docs/ec
     });
 
     try {
-      // Même endpoint que portAuthSupabase.changerEmail (via updateUser({ email })).
-      await fetch(`${API_URL}/auth/v1/user`, {
-        method: 'PUT',
+      const lien = await fetch(`${API_URL}/auth/v1/admin/generate_link`, {
+        method: 'POST',
         headers: {
-          apikey: ANON_KEY,
-          Authorization: `Bearer ${session.jwt}`,
+          apikey: SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: nouvelEmail }),
+        body: JSON.stringify({ type: 'email_change_new', email, new_email: nouvelEmail }),
       });
+      expect(lien.status).toBeLessThan(400);
 
       const relu = await fetch(`${API_URL}/auth/v1/admin/users/${session.compteId}`, {
         headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
       });
-      const utilisateur = (await relu.json()) as { email: string };
+      const utilisateur = (await relu.json()) as { email: string; new_email: string | null };
+      // L'adresse du compte n'a pas bougé ; la nouvelle n'est que MISE EN ATTENTE.
       expect(utilisateur.email).toBe(email);
+      expect(utilisateur.new_email).toBe(nouvelEmail);
     } finally {
       await supprimerCompteReel(session.compteId);
     }

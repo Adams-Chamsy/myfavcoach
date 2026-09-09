@@ -33,6 +33,10 @@ Deux actions, dans cet ordre :
 Encart `marque.secondaire` en bas : « Rien dans ta boîte ? Regarde dans les indésirables.
 L'expéditeur est bonjour@myfavcoach.fr. »
 
+**Sous l'encart**, toujours visible : « Tu as peut-être déjà un compte avec cette adresse. » +
+action discrète « Se connecter » → L1-04. Voir la règle ci-dessous : cette ligne s'affiche pour
+tout le monde, sans condition, donc elle ne révèle rien.
+
 ---
 
 ## États
@@ -64,6 +68,13 @@ Le lien du courriel ouvre l'application par lien profond : `myfavcoach://auth/ra
 
 ## Règles
 
+- **La ligne « Se connecter » est inconditionnelle** — trou de conception rattrapé après coup.
+  L'anti-énumération de comptes (`docs/ecrans/L1-02`) est correcte et ne bouge pas : une
+  réinscription avec une adresse **déjà confirmée** renvoie une réponse de succès obfusquée et
+  n'envoie **aucun** courriel (il n'y a rien à confirmer). L'utilisateur atterrit alors sur cet
+  écran à attendre un courriel qui n'arrivera jamais, sans moyen de le savoir — et le serveur
+  ne peut pas le lui dire sans rouvrir la faille. La seule aide possible est une porte de sortie
+  affichée pour **tous** : puisqu'elle ne dépend d'aucun état de compte, elle ne distingue rien.
 - L'écran **n'interroge pas le serveur en boucle**. Il attend le lien profond, ou un retour au
   premier plan : à ce moment-là, une seule vérification d'état.
 - Le décompte de renvoi est côté application pour le confort ; la limite réelle est côté
@@ -87,5 +98,7 @@ Le lien du courriel ouvre l'application par lien profond : `myfavcoach://auth/ra
 5. Aucun appel réseau répété : un test compte les appels sur 30 secondes d'écran ouvert, le
    compte attendu est zéro.
 6. Le lecteur d'écran annonce le titre à l'arrivée, et le changement d'état au renvoi.
-7. Surfaces nouvelles dans la galerie, **exercées en clair et en sombre**.
-8. `npm run verif` passe.
+7. La ligne « Se connecter » est présente dans **tous** les états de l'écran (attente, renvoyé,
+   lien expiré, erreur) et mène à L1-04 — testé.
+8. Surfaces nouvelles dans la galerie, **exercées en clair et en sombre**.
+9. `npm run verif` passe.

@@ -127,6 +127,27 @@ describe('Verification (docs/ecrans/L1-03-verification-email.md)', () => {
     expect(mockRemplacer).not.toHaveBeenCalled();
   });
 
+  // Critère 7 : « Se connecter » toujours présente (elle ne distingue rien : anti-énumération
+  // intacte) et mène à L1-04. Ici en état d'attente ET en état "lien expiré".
+  it('« Se connecter » est présente et mène à la connexion, y compris quand le lien a expiré', async () => {
+    const port = creerFauxPortAuth();
+    await port.inscrire('camille@exemple.fr', 'un-mot-de-passe', '2000-01-01');
+    const lien = port.lienVerificationPourTest('camille@exemple.fr');
+    port.expirerLienPourTest('camille@exemple.fr');
+
+    await rendreVerification(port);
+    expect(screen.getByText('Se connecter')).toBeTruthy();
+
+    await act(async () => {
+      mockEcouteursUrl.forEach((gestionnaire) => gestionnaire({ url: lien }));
+      await Promise.resolve();
+    });
+    expect(screen.getByText('Ce lien a expiré')).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Se connecter'));
+    expect(mockRemplacer).toHaveBeenCalledWith('/(public)/connexion');
+  });
+
   // Critère 5 : aucun appel réseau répété sur 30 secondes d'écran ouvert sans événement.
   it('ne fait aucun appel réseau sur 30 secondes sans lien profond ni retour au premier plan', async () => {
     jest.useFakeTimers();
