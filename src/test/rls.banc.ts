@@ -434,6 +434,57 @@ describe('profils_client', () => {
     });
     expect(statut).toBeGreaterThanOrEqual(400);
   });
+
+  // Sens illégitime de profils_client_insert_espace_client, chemin « autre compte » : le
+  // WITH CHECK exige compte_id = auth.uid(). Miroir de « A tente de créer son profil coach hors
+  // espace coach » (describe profils_coach) — le cas était couvert côté coach, pas côté client.
+  it('A insère un profil client pour le compte de B : refusé, profil de B intact', async () => {
+    const { statut } = await appelRest('/rest/v1/profils_client', {
+      methode: 'POST',
+      session: A,
+      corps: { compte_id: B.compteId, prenom: 'PIRATE' },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+
+    const { corps: relu } = await appelRest(`/rest/v1/profils_client?compte_id=eq.${B.compteId}`, {
+      session: 'admin',
+    });
+    expect((relu as { prenom: string }[])[0].prenom).toBe('B');
+  });
+
+  // Sens illégitime, chemin « espace » : le WITH CHECK exige aussi profil_actif_courant() =
+  // 'client'. Compte dédié muni d'un profil coach (donc profil actif 'coach') et SANS profil
+  // client — creer_profil_coach le place exactement dans cet état. Il tente alors d'insérer son
+  // propre profil client : refusé parce qu'il n'est pas en espace client.
+  it('un compte en espace coach ne peut pas insérer son profil client : refusé', async () => {
+    const email = `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-insert-client-espace@${DOMAINE_EMAIL}`;
+    const compte = await creerCompteReel(email, {
+      date_naissance: '1990-01-01',
+      cgu_version_acceptee: '2026-08-01',
+    });
+    try {
+      const creationCoach = await appelRest('/rest/v1/rpc/creer_profil_coach', {
+        methode: 'POST',
+        session: compte,
+        corps: { discipline: 'yoga', telephone: '0612345678', prenom: 'X', nom: 'Y' },
+      });
+      expect(creationCoach.statut).toBeLessThan(400);
+
+      const { statut } = await appelRest('/rest/v1/profils_client', {
+        methode: 'POST',
+        session: compte,
+        corps: { compte_id: compte.compteId, prenom: 'X' },
+      });
+      expect(statut).toBeGreaterThanOrEqual(400);
+
+      const { corps } = await appelRest(`/rest/v1/profils_client?compte_id=eq.${compte.compteId}`, {
+        session: 'admin',
+      });
+      expect(corps).toEqual([]);
+    } finally {
+      await supprimerCompteReel(compte.compteId);
+    }
+  });
 });
 
 describe('profils_coach', () => {
@@ -700,7 +751,31 @@ describe('comptes', () => {
   });
 });
 
-describe('consentements', () => {
+// consentements : le journal d'ajout qui porte la seule donnée de santé du lot
+// (docs/domaine.md §3.12, 0004_proteger_donnees_sante.sql). Sa chaîne de confidentialité — un
+// compte n'insère un consentement QUE pour lui-même, n'en lit QUE les siens — se prouve dans
+// les deux sens ici, pas seulement via la vue consentements_courants plus bas.
+describe('consentements (journal — chaîne de confidentialité de la donnée de santé)', () => {
+  beforeAll(async () => {
+    // Sens légitime de consentements_insert_proprietaire : A insère SON propre consentement.
+    const { statut } = await appelRest('/rest/v1/consentements', {
+      methode: 'POST',
+      session: A,
+      corps: {
+        compte_id: A.compteId,
+        type: 'donneesSante',
+        accorde: true,
+        version: '2026-08-01',
+        origine: 'banc',
+      },
+    });
+    if (statut >= 400) {
+      throw new Error(
+        `Préparation : insertion du consentement de A refusée (${statut}) — consentements_insert_proprietaire ne laisse pas passer le cas légitime.`,
+      );
+    }
+  }, 30_000);
+
   it("l'insertion d'un consentement sans version est refusée", async () => {
     const { statut } = await appelRest('/rest/v1/consentements', {
       methode: 'POST',
@@ -708,6 +783,47 @@ describe('consentements', () => {
       corps: { compte_id: A.compteId, type: 'donneesSante', accorde: true, origine: 'banc' },
     });
     expect(statut).toBeGreaterThanOrEqual(400);
+  });
+
+  // Sens illégitime de consentements_insert_proprietaire : A insère un consentement AU NOM DE B.
+  it('A insère un consentement pour le compte de B : refusé, et B n’en a aucun', async () => {
+    const { statut } = await appelRest('/rest/v1/consentements', {
+      methode: 'POST',
+      session: A,
+      corps: {
+        compte_id: B.compteId,
+        type: 'donneesSante',
+        accorde: true,
+        version: '2026-08-01',
+        origine: 'banc',
+      },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+
+    // Preuve indépendante : rien n'a été écrit dans le journal de B.
+    const { corps } = await appelRest(
+      `/rest/v1/consentements?compte_id=eq.${B.compteId}&type=eq.donneesSante`,
+      { session: 'admin' },
+    );
+    expect(corps).toEqual([]);
+  });
+
+  // Sens légitime de consentements_select_proprietaire, SELECT DIRECT sur le journal (pas la vue).
+  it('A lit ses propres consentements (journal) : au moins une ligne', async () => {
+    const { statut, corps } = await appelRest(`/rest/v1/consentements?compte_id=eq.${A.compteId}`, {
+      session: A,
+    });
+    expect(statut).toBe(200);
+    expect((corps as unknown[]).length).toBeGreaterThanOrEqual(1);
+  });
+
+  // Sens illégitime : A lit le journal de consentements de B.
+  it('A lit les consentements de B (journal) : zéro ligne', async () => {
+    const { statut, corps } = await appelRest(`/rest/v1/consentements?compte_id=eq.${B.compteId}`, {
+      session: A,
+    });
+    expect(statut).toBe(200);
+    expect(corps).toEqual([]);
   });
 });
 
