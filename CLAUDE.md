@@ -260,6 +260,24 @@ la bonne pente pour tout nouvel écran. **Cause non établie** : l'auto-`act` de
 `jest-expo` ne couvre pas les continuations post-`await` sans un `await fireEvent`/`waitFor`
 actif ; non prouvé plus finement.
 
+**Le rafraîchissement de l'état appartient au fournisseur, pas à l'appelant. Trouvé à P1.14
+puis P1.15 — trois oublis en trois prompts.** Trois écritures changent `EtatProfils` côté
+serveur : `creerProfilCoach`, `basculerProfil`, `enregistrerInformations`
+(`src/services/donnees/port.ts`). Une écriture qui change l'état serveur sans relire ensuite
+laisse l'interface mentir jusqu'au redémarrage — la feuille de bascule montre la coche sur le
+mauvais espace, l'écran compte affiche l'ancien prénom. Et le mensonge est **invisible aux
+tests** : un test d'écran monte l'écran seul, `expo-router` mocké, et prouve que l'écriture a
+été appelée — jamais ce qu'un consommateur monté à côté lit après (même famille d'angle mort
+que la pile de navigation, plus haut). Tant que « relire ensuite » restait une politesse à se
+rappeler à chaque appel, il y avait un oubli de plus, et il tombait dans un lot où personne ne
+regardait l'écran. Donc `FournisseurDonnees` (`src/fonctionnalites/identite/`) **enveloppe** ces
+trois écritures : `useDonnees()` n'expose plus la méthode brute du port, il expose une version
+qui relit l'état en cas de succès. `useDonnees().port` est typé `PortDonneesLecture` (les trois
+retirées) — un écran qui écrit `port.basculerProfil(...)` ne compile pas — et
+`src/test/ecriture-etat-profils-passe-par-le-fournisseur.test.ts` balaie le contournement par
+`as`. **Une quatrième écriture qui change `EtatProfils` s'enveloppe pareil** ; on n'appelle
+jamais un `rafraichir()` à la main depuis un écran.
+
 **Zones sûres — angle mort structurel, trouvé à P1.12, de la même famille que le rendu web (§6).**
 `react-test-renderer` (donc `npm test`, `test:a11y`, tout test d'écran) ne fait aucune mise en
 page : pas de flexbox résolu, pas de coordonnées. Un écran qui applique `useSafeAreaInsets()` et

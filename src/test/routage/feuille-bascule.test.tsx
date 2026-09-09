@@ -58,11 +58,13 @@ describe('FeuilleBascule (docs/ecrans/L1-06-bascule-espace.md)', () => {
   // bascule-coach-vers-client.test.tsx — ici, useRouter() est mocké : ce test prouve le bon
   // href ET, la feuille restant montée, la FRAÎCHEUR de `profils.profilActif` après bascule.
   //
-  // Trouvé sur simulateur : sans rafraichir() dans basculerVers, la coche restait sur l'espace
-  // quitté et l'utilisateur ne pouvait plus revenir (la ligne « déjà active » est inerte). Les
-  // deux tests renderRouter ne l'ont jamais vu : ils remplacent tout l'écran par une doublure
-  // et n'observent que la pile, jamais la feuille rouverte ni `profils.profilActif`. La coche
-  // active passe par l'accessibilityLabel (« Espace coach, espace actif »), donc observable.
+  // Trouvé sur simulateur (P1.14) : sans relecture d'EtatProfils après la bascule, la coche
+  // restait sur l'espace quitté et l'utilisateur ne pouvait plus revenir (la ligne « déjà
+  // active » est inerte). Depuis P1.15 la relecture est intégrée à basculerProfil (fournisseur),
+  // plus à cet écran — mais l'assertion reste ici : les deux tests renderRouter ne l'ont jamais
+  // vue, ils remplacent tout l'écran par une doublure et n'observent que la pile, jamais la
+  // feuille rouverte ni `profils.profilActif`. La coche active passe par l'accessibilityLabel
+  // (« Espace coach, espace actif »), donc observable.
   it('depuis l’espace client → coach : demande /(coach)/pilotage ET la coche passe sur coach', async () => {
     const portDonnees = creerFauxPortDonnees();
     portDonnees.definirEtatProfilsPourTest(

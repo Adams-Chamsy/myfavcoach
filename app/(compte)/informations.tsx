@@ -51,7 +51,7 @@ export default function Informations() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { port } = useDonnees();
+  const { port, enregistrerInformations } = useDonnees();
 
   const [lecture, setLecture] = useState<InformationsCompte | null>(null);
   const [chargement, setChargement] = useState(true);
@@ -125,14 +125,16 @@ export default function Informations() {
             nom: nom.trim() === '' ? null : nom.trim(),
           };
 
-    const resultat = await port.enregistrerInformations(modifs);
+    const resultat = await enregistrerInformations(modifs);
     setEnregistrement(false);
     if (!resultat.succes) {
       setErreurEcriture(resultat.erreur);
       return;
     }
     // Succès : les valeurs saisies deviennent les nouvelles « valeurs d'origine » — le bouton
-    // redevient inactif, la garde de sortie se relâche, l'utilisateur reste sur l'écran.
+    // redevient inactif, la garde de sortie se relâche, l'utilisateur reste sur l'écran. Le
+    // prénom/nom du profil actif est aussi EtatProfils.identiteActive (lu par l'écran compte,
+    // la feuille de bascule) : le fournisseur l'a rafraîchi, cet écran n'a rien à faire de plus.
     setEmpreinteInitiale(empreinte(lecture.profil, { prenom, nom, titreCourt, bio }));
   }
 

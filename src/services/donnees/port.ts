@@ -116,9 +116,10 @@ export type PortDonnees = {
   // docs/ecrans/L1-08-activation-espace-coach.md : appelle la fonction de base
   // creer_profil_coach (0005, SECURITY DEFINER). Création ATOMIQUE — profil coach inséré ET
   // profil actif passé à 'coach', ou rien. prenom/nom sont fournis par l'appelant : repris du
-  // profil client s'il existe, sinon saisis à l'écran. Après succès, l'appelant doit
-  // rafraîchir l'état (FournisseurDonnees.rafraichir) : le profil coach n'existait pas au
-  // dernier lireEtatProfils.
+  // profil client s'il existe, sinon saisis à l'écran. Change EtatProfils côté serveur (le
+  // profil coach n'existait pas au dernier lireEtatProfils) : jamais appelée depuis un écran,
+  // seulement par FournisseurDonnees, qui relit l'état juste après (voir PortDonneesLecture
+  // plus bas et CLAUDE.md §8).
   creerProfilCoach(donnees: {
     discipline: string;
     telephone: string;
@@ -131,13 +132,17 @@ export type PortDonnees = {
   // authenticated). Vérifie elle-même que le profil demandé existe pour ce compte ; refuse
   // sinon. L'application n'écrit JAMAIS profil_actif directement — cette méthode est le seul
   // chemin, et son résultat ne sert qu'à savoir si la bascule a eu lieu, jamais à décider un
-  // droit (le champ profilActif rechargé ensuite ne sert que le routage et la palette).
+  // droit (le champ profilActif rechargé ensuite ne sert que le routage et la palette). Change
+  // EtatProfils côté serveur : passe par FournisseurDonnees comme creerProfilCoach ci-dessus.
   basculerProfil(profil: ProfilActif): Promise<ResultatEcriture>;
 
   // docs/ecrans/L1-09-mes-informations.md, « Mes informations ». Lit et écrit le profil ACTIF
   // (profils_client ou profils_coach selon comptes.profil_actif). enregistrerInformations ne
   // touche que les colonnes accordées en UPDATE pour ce lot — jamais date_naissance
-  // (protégée), jamais discipline (P1.14).
+  // (protégée), jamais discipline (P1.14). Le prénom/nom du profil actif est aussi
+  // EtatProfils.identiteActive : cette écriture change donc EtatProfils, et passe par
+  // FournisseurDonnees comme les deux au-dessus. lireInformations, elle, reste appelable
+  // directement.
   lireInformations(): Promise<InformationsCompte>;
   enregistrerInformations(modifs: ModificationsInformations): Promise<ResultatEcriture>;
 
@@ -157,3 +162,16 @@ export type PortDonnees = {
   // offert seulement après un retrait de consentement.
   effacerMesuresCorporelles(): Promise<ResultatEcriture>;
 };
+
+// Les trois écritures qui changent EtatProfils. Elles ne sont JAMAIS appelées sur un `port`
+// brut depuis un écran : FournisseurDonnees les enveloppe pour relire l'état juste après
+// (CLAUDE.md §8, « Le rafraîchissement de l'état appartient au fournisseur »). Trois oublis en
+// trois prompts (P1.13→P1.15) : tant que rafraîchir restait une politesse à se rappeler, il y
+// avait un oubli de plus.
+export type EcritureEtatProfils = 'creerProfilCoach' | 'basculerProfil' | 'enregistrerInformations';
+
+// Ce qu'un écran atteint par useDonnees().port : tout PortDonnees SAUF ces trois écritures.
+// Un écran qui écrit `port.basculerProfil(...)` ne compile pas ; un balayage
+// (src/test/ecriture-etat-profils-passe-par-le-fournisseur.test.ts) ferme le contournement par
+// `as`.
+export type PortDonneesLecture = Omit<PortDonnees, EcritureEtatProfils>;

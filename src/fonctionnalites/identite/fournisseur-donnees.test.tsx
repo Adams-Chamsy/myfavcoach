@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { creerFauxPortAuth } from '@/services/auth/faux';
 import type { PortAuth } from '@/services/auth/port';
 import { creerFauxPortDonnees, etatProfilsParDefaut } from '@/services/donnees/faux';
-import type { EtatProfils, PortDonnees } from '@/services/donnees/port';
+import type { EtatProfils, InformationsCompte, PortDonnees } from '@/services/donnees/port';
 import { FournisseurDonnees, useDonnees } from './fournisseur-donnees';
 import { FournisseurSession } from './fournisseur-session';
 
@@ -45,7 +45,9 @@ describe('useDonnees', () => {
 
   // P1.11 : les écrans d'onboarding ont besoin d'écrire (creerProfilClient, etc.), pas
   // seulement de lire — port doit donc être atteignable, même pendant le chargement de la
-  // lecture initiale (l'injection du port, elle, est synchrone).
+  // lecture initiale (l'injection du port, elle, est synchrone). Depuis P1.15, `port` est typé
+  // PortDonneesLecture : les trois écritures d'EtatProfils n'y sont plus, elles ont leur propre
+  // enveloppe sur le contexte (voir le describe plus bas).
   it('expose le port injecté, y compris pendant le chargement', async () => {
     const portAuth = creerFauxPortAuth();
     const portDonnees = creerFauxPortDonnees();
@@ -185,5 +187,123 @@ describe('useDonnees', () => {
 
     expect(result.current.chargement).toBe(false);
     expect(result.current.profils?.coachExiste).toBe(true);
+  });
+});
+
+// La règle de P1.15 (CLAUDE.md §8) : les trois écritures qui changent EtatProfils passent par
+// le fournisseur, et APRÈS chacune, l'état lu par un consommateur (`profils`) est à jour SANS
+// que l'appelant rafraîchisse à la main. Un test par méthode, jamais un seul générique : c'est
+// exactement le motif « ça marche pour deux, on oublie la troisième » qui a créé la dette.
+describe('les écritures d’EtatProfils rafraîchissent l’état lu, sans rafraîchir à la main', () => {
+  it('creerProfilCoach : profils reflète coachExiste + profilActif coach juste après', async () => {
+    const portAuth = creerFauxPortAuth();
+    await compteConnecteEtVerifie(portAuth);
+    const portDonnees = creerFauxPortDonnees();
+    portDonnees.definirEtatProfilsPourTest(
+      etatProfilsParDefaut({ profilActif: 'client', clientExiste: true, coachExiste: false }),
+    );
+
+    const { result } = await renderHook(() => useDonnees(), {
+      wrapper: envelopper(portAuth, portDonnees),
+    });
+    await waitFor(() => expect(result.current.chargement).toBe(false));
+    expect(result.current.profils?.coachExiste).toBe(false);
+
+    await act(async () => {
+      const r = await result.current.creerProfilCoach({
+        discipline: 'yoga',
+        telephone: '0612345678',
+        prenom: 'Camille',
+        nom: 'Dupré',
+      });
+      expect(r.succes).toBe(true);
+    });
+
+    expect(result.current.profils?.coachExiste).toBe(true);
+    expect(result.current.profils?.profilActif).toBe('coach');
+  });
+
+  it('basculerProfil : profils reflète le nouveau profil actif juste après', async () => {
+    const portAuth = creerFauxPortAuth();
+    await compteConnecteEtVerifie(portAuth);
+    const portDonnees = creerFauxPortDonnees();
+    portDonnees.definirEtatProfilsPourTest(
+      etatProfilsParDefaut({ profilActif: 'client', clientExiste: true, coachExiste: true }),
+    );
+
+    const { result } = await renderHook(() => useDonnees(), {
+      wrapper: envelopper(portAuth, portDonnees),
+    });
+    await waitFor(() => expect(result.current.chargement).toBe(false));
+    expect(result.current.profils?.profilActif).toBe('client');
+
+    await act(async () => {
+      const r = await result.current.basculerProfil('coach');
+      expect(r.succes).toBe(true);
+    });
+
+    expect(result.current.profils?.profilActif).toBe('coach');
+  });
+
+  it('enregistrerInformations : profils.identiteActive reflète le nouveau prénom juste après', async () => {
+    const portAuth = creerFauxPortAuth();
+    await compteConnecteEtVerifie(portAuth);
+    const portDonnees = creerFauxPortDonnees();
+    portDonnees.definirEtatProfilsPourTest(
+      etatProfilsParDefaut({
+        profilActif: 'client',
+        clientExiste: true,
+        identiteActive: { prenom: 'Ancien', nom: 'Nom' },
+      }),
+    );
+    const infoClient: InformationsCompte = {
+      profil: 'client',
+      prenom: 'Ancien',
+      nom: 'Nom',
+      dateNaissance: '2000-01-01',
+    };
+    portDonnees.definirInformationsPourTest(infoClient);
+
+    const { result } = await renderHook(() => useDonnees(), {
+      wrapper: envelopper(portAuth, portDonnees),
+    });
+    await waitFor(() => expect(result.current.chargement).toBe(false));
+    expect(result.current.profils?.identiteActive.prenom).toBe('Ancien');
+
+    await act(async () => {
+      const r = await result.current.enregistrerInformations({
+        profil: 'client',
+        prenom: 'Nouveau',
+        nom: 'Nom',
+      });
+      expect(r.succes).toBe(true);
+    });
+
+    expect(result.current.profils?.identiteActive.prenom).toBe('Nouveau');
+  });
+
+  it('un échec d’écriture ne rafraîchit pas : profils reste sur l’ancienne valeur', async () => {
+    const portAuth = creerFauxPortAuth();
+    await compteConnecteEtVerifie(portAuth);
+    const portDonnees = creerFauxPortDonnees();
+    portDonnees.definirEtatProfilsPourTest(
+      etatProfilsParDefaut({ profilActif: 'client', clientExiste: true, coachExiste: true }),
+    );
+
+    const { result } = await renderHook(() => useDonnees(), {
+      wrapper: envelopper(portAuth, portDonnees),
+    });
+    await waitFor(() => expect(result.current.chargement).toBe(false));
+
+    const relecture = jest.spyOn(portDonnees, 'lireEtatProfils');
+    portDonnees.echouerProchaineEcriturePourTest('Panne côté serveur.');
+
+    await act(async () => {
+      const r = await result.current.basculerProfil('coach');
+      expect(r.succes).toBe(false);
+    });
+
+    expect(relecture).not.toHaveBeenCalled();
+    expect(result.current.profils?.profilActif).toBe('client');
   });
 });

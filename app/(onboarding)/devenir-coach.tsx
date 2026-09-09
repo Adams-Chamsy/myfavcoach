@@ -22,9 +22,10 @@ import { useTheme } from '@/theme/fournisseur';
 // premier lancement coach (écran 19) est L2, le prestataire de paiement est L4. Rien ici ne
 // les touche.
 //
-// La création est ATOMIQUE : port.creerProfilCoach appelle la fonction de base
-// creer_profil_coach (0005), qui insère le profil ET passe le profil actif à 'coach' dans une
-// seule transaction. Pas deux appels enchaînés depuis l'application.
+// La création est ATOMIQUE : creerProfilCoach (du fournisseur, qui appelle la fonction de base
+// creer_profil_coach, 0005) insère le profil ET passe le profil actif à 'coach' dans une seule
+// transaction. Pas deux appels enchaînés depuis l'application. Le fournisseur relit EtatProfils
+// après un succès — l'écran n'a rien à rafraîchir lui-même (CLAUDE.md §8).
 
 const REASSURANCES: { icone: NomIcone; texte: string }[] = [
   {
@@ -50,7 +51,7 @@ export default function DevenirCoach() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { profils, port, rafraichir } = useDonnees();
+  const { profils, creerProfilCoach } = useDonnees();
 
   // Repris du profil client s'il existe, sans redemander (fiche, Règles + critère 6). Le nom
   // du client est facultatif (docs/domaine.md §3.2) alors que celui du coach est requis : si le
@@ -78,7 +79,7 @@ export default function DevenirCoach() {
     if (!disciplineChoisie) return;
     setErreur(null);
     setChargement(true);
-    const resultat = await port.creerProfilCoach({
+    const resultat = await creerProfilCoach({
       discipline: disciplineChoisie,
       telephone: nettoyerTelephone(telephone),
       prenom: prenomFinal,
@@ -89,10 +90,6 @@ export default function DevenirCoach() {
       setErreur(resultat.erreur);
       return;
     }
-    // Le profil coach n'existait pas au dernier lireEtatProfils : sans ce rafraîchissement, la
-    // feuille de bascule montrerait "Devenir coach" au lieu de "Espace coach" dans cette même
-    // session (FournisseurDonnees, en-tête).
-    await rafraichir();
     setChargement(false);
     // Arrive sur le pilotage provisoire du lot L0 (fiche, "Après validation"). Un rechargement
     // complet y revient : le profil actif est côté serveur (critère 2).

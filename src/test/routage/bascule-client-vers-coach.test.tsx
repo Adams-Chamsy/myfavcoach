@@ -16,7 +16,7 @@ import { FournisseurTheme } from '@/theme/fournisseur';
 // (mêmes hrefs demandés à router.replace, mockés) : ce fichier-ci n'a donc pas besoin de rejouer
 // la vraie pression sur l'avatar puis sur la ligne — remplace l'écran (client)/accueil par un
 // écran minimal qui fait EXACTEMENT ce que FeuilleBascule.basculerVers('coach') fait une fois la
-// bascule acceptée (port.basculerProfil PUIS router.replace), même principe que
+// bascule acceptée (basculerProfil du fournisseur PUIS router.replace), même principe que
 // EtapeUnPousseVersEtapeDeux (profondeur-pile-push-onboarding.test.tsx, P1.11) : isole la
 // question de la pile de la fiabilité d'une pression simulée sur un vrai Pressable — vérifié en
 // écrivant ce fichier que fireEvent.press ne déclenche ICI aucun nouveau rendu, y compris pour
@@ -47,20 +47,17 @@ function creerRacineFaux(
 }
 
 // Rejoue exactement la séquence de FeuilleBascule.basculerVers('coach') après acceptation
-// serveur : port.basculerProfil PUIS rafraichir() PUIS router.replace, jamais dans un autre
-// ordre (docs/ecrans/L1-06-bascule-espace.md, Règles : "la valeur locale ne sert qu'à choisir
-// la branche de navigation", jamais écrite avant confirmation). rafraichir() n'affecte pas la
-// pile testée ici, mais l'omettre ferait diverger cette doublure du vrai code — c'est cette
-// divergence qui avait rendu le défaut de fraîcheur de `profils.profilActif` invisible.
+// serveur : basculerProfil (du fournisseur — il relit EtatProfils lui-même en cas de succès)
+// PUIS router.replace, jamais l'inverse (docs/ecrans/L1-06-bascule-espace.md, Règles : "la
+// valeur locale ne sert qu'à choisir la branche de navigation", jamais écrite avant
+// confirmation). La relecture n'affecte pas la pile testée ici, mais passer par la méthode
+// enveloppée garde cette doublure alignée sur le vrai code.
 function AccueilBasculeVersCoach() {
-  const { port, rafraichir } = useDonnees();
+  const { basculerProfil } = useDonnees();
   const routeur = useRouter();
   useEffect(() => {
-    port
-      .basculerProfil('coach')
-      .then(() => rafraichir())
-      .then(() => routeur.replace('/(coach)/pilotage'));
-  }, [port, rafraichir, routeur]);
+    basculerProfil('coach').then(() => routeur.replace('/(coach)/pilotage'));
+  }, [basculerProfil, routeur]);
   return null;
 }
 

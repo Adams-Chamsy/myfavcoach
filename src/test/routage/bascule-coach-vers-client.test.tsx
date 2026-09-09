@@ -13,6 +13,9 @@ import { FournisseurTheme } from '@/theme/fournisseur';
 // bascule-client-vers-coach.test.tsx (voir son en-tête pour le raisonnement complet), dans un
 // fichier séparé pour la même raison que profondeur-pile-*.test.tsx (P1.11) : plusieurs
 // renderRouter() dans un seul fichier se sont montrés instables l'un après l'autre.
+//
+// Le double rejoue basculerProfil (du fournisseur, qui relit EtatProfils en cas de succès)
+// PUIS router.replace — voir bascule-client-vers-coach.test.tsx pour le détail.
 const METRIQUES_ZONES_SURES: Metrics = {
   insets: { top: 59, right: 0, bottom: 34, left: 0 },
   frame: { x: 0, y: 0, width: 393, height: 852 },
@@ -38,17 +41,14 @@ function creerRacineFaux(
 }
 
 // Rejoue exactement la séquence de FeuilleBascule.basculerVers('client') après acceptation
-// serveur, depuis l'espace COACH cette fois : port.basculerProfil PUIS rafraichir() PUIS
-// router.replace (voir bascule-client-vers-coach.test.tsx pour pourquoi rafraichir() est là).
+// serveur, depuis l'espace COACH cette fois : basculerProfil (du fournisseur) PUIS
+// router.replace.
 function PilotageBasculeVersClient() {
-  const { port, rafraichir } = useDonnees();
+  const { basculerProfil } = useDonnees();
   const routeur = useRouter();
   useEffect(() => {
-    port
-      .basculerProfil('client')
-      .then(() => rafraichir())
-      .then(() => routeur.replace('/(client)/accueil'));
-  }, [port, rafraichir, routeur]);
+    basculerProfil('client').then(() => routeur.replace('/(client)/accueil'));
+  }, [basculerProfil, routeur]);
   return null;
 }
 

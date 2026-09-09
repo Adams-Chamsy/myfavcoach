@@ -9,7 +9,7 @@ import {
 } from 'react';
 
 import { useSession } from './fournisseur-session';
-import type { EtatProfils, PortDonnees } from '@/services/donnees/port';
+import type { EtatProfils, PortDonnees, PortDonneesLecture } from '@/services/donnees/port';
 
 // Miroir de fournisseur-session.tsx (P1.8), pour src/services/donnees/ (P1.10). Ne lit
 // JAMAIS le port tant qu'aucune session vérifiée n'existe : un compte non vérifié ou non
@@ -27,21 +27,27 @@ import type { EtatProfils, PortDonnees } from '@/services/donnees/port';
 // l'état déjà chargé. Toujours présent (même en chargement) : c'est l'INJECTION du port qui
 // est synchrone (voir ProprietesFournisseurDonnees), seule la LECTURE initiale est asynchrone.
 //
-// `rafraichir()` — ajouté à P1.14 (docs/ecrans/L1-08-activation-espace-coach.md). L'activation
-// de l'espace coach CRÉE un profil qui n'existait pas au dernier `lireEtatProfils` : sans
-// relire, la feuille de bascule (L1-06) montrerait un état faux (`coachExiste: false`) dans la
-// session MÊME où le profil vient d'être créé — donc au moment précis où l'utilisateur veut
-// l'utiliser. Les écrans d'onboarding client (P1.11) n'en ont pas besoin (chaque étape navigue
-// par un `router.push` direct, la reprise repart d'un fournisseur fraîchement monté) : c'est
-// pour ça qu'il n'existait pas avant.
+// Le rafraîchissement de l'état appartient au fournisseur, pas à l'appelant (P1.15). Trois
+// écritures changent `EtatProfils` côté serveur — `creerProfilCoach`, `basculerProfil`,
+// `enregistrerInformations` — et après chacune, l'état lu ici est périmé jusqu'au prochain
+// montage. Entre P1.13 et P1.15, chaque appelant devait penser à relire ensuite : trois fois,
+// l'un d'eux a oublié, et le défaut ne vire jamais rouge parce qu'un test d'écran monte
+// l'écran seul et ne regarde jamais ce qu'un consommateur voisin lit après (CLAUDE.md §8).
+// Donc le fournisseur enveloppe ces trois-là : `useDonnees()` n'expose PLUS la méthode brute,
+// il expose une version qui relit l'état en cas de succès. `useDonnees().port` est typé
+// `PortDonneesLecture` (ces trois retirées) : un écran ne peut plus les appeler par erreur.
+// Les écrans d'onboarding client (P1.11) restent hors du lot : chaque étape navigue par un
+// `router.push` direct, la reprise repart d'un fournisseur neuf — rien à rafraîchir en place.
+export type EcrituresEtatProfils = Pick<
+  PortDonnees,
+  'creerProfilCoach' | 'basculerProfil' | 'enregistrerInformations'
+>;
+
+type EtatDonneesCommun = { port: PortDonneesLecture } & EcrituresEtatProfils;
+
 export type EtatDonnees =
-  | { chargement: true; profils: null; port: PortDonnees; rafraichir: () => Promise<void> }
-  | {
-      chargement: false;
-      profils: EtatProfils | null;
-      port: PortDonnees;
-      rafraichir: () => Promise<void>;
-    };
+  | ({ chargement: true; profils: null } & EtatDonneesCommun)
+  | ({ chargement: false; profils: EtatProfils | null } & EtatDonneesCommun);
 
 const ContexteDonnees = createContext<EtatDonnees | null>(null);
 
@@ -98,11 +104,46 @@ export function FournisseurDonnees({ children, port }: ProprietesFournisseurDonn
     void rafraichir();
   }, [rafraichir, compteIdVerifie]);
 
+  // Les trois écritures d'EtatProfils, enveloppées : même signature que le port, mais une
+  // relecture de l'état en cas de succès. `rafraichir` ne relit rien tant qu'il n'y a pas de
+  // session vérifiée (garde interne) — un échec du port laisse donc l'état intact. Stables tant
+  // que `port` l'est (prop injectée) : sûres en dépendance d'un `useEffect` d'écran.
+  const creerProfilCoach = useCallback<PortDonnees['creerProfilCoach']>(
+    async (donnees) => {
+      const resultatEcriture = await port.creerProfilCoach(donnees);
+      if (resultatEcriture.succes) await rafraichir();
+      return resultatEcriture;
+    },
+    [port, rafraichir],
+  );
+  const basculerProfil = useCallback<PortDonnees['basculerProfil']>(
+    async (profil) => {
+      const resultatEcriture = await port.basculerProfil(profil);
+      if (resultatEcriture.succes) await rafraichir();
+      return resultatEcriture;
+    },
+    [port, rafraichir],
+  );
+  const enregistrerInformations = useCallback<PortDonnees['enregistrerInformations']>(
+    async (modifs) => {
+      const resultatEcriture = await port.enregistrerInformations(modifs);
+      if (resultatEcriture.succes) await rafraichir();
+      return resultatEcriture;
+    },
+    [port, rafraichir],
+  );
+
+  const ecritures: EcrituresEtatProfils = {
+    creerProfilCoach,
+    basculerProfil,
+    enregistrerInformations,
+  };
+
   const etat: EtatDonnees = !compteIdVerifie
-    ? { chargement: false, profils: null, port, rafraichir }
+    ? { chargement: false, profils: null, port, ...ecritures }
     : resultat && resultat.compteId === compteIdVerifie
-      ? { chargement: false, profils: resultat.profils, port, rafraichir }
-      : { chargement: true, profils: null, port, rafraichir };
+      ? { chargement: false, profils: resultat.profils, port, ...ecritures }
+      : { chargement: true, profils: null, port, ...ecritures };
 
   return <ContexteDonnees.Provider value={etat}>{children}</ContexteDonnees.Provider>;
 }
