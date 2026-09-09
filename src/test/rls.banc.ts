@@ -32,7 +32,6 @@ import { join } from 'path';
 
 const RACINE_DEPOT = join(__dirname, '..', '..');
 const SUFFIXE_COMPTE = Date.now();
-const MOT_DE_PASSE = 'Un-mot-de-passe-de-banc-2026';
 
 // Préfixe et domaine des adresses de test : reconnaissables dans le tableau de bord Supabase
 // (le projet est partagé avec l'usage manuel), et utilisés tels quels par
@@ -52,6 +51,10 @@ const REFERENCE_PROJET_AUTORISEE = 'imzdtntaqbtymoacsxua';
 let API_URL: string;
 let ANON_KEY: string;
 let SERVICE_ROLE_KEY: string;
+// Mot de passe des comptes éphémères du banc : lu depuis .secrets-rls.local
+// (BANC_RLS_MOT_DE_PASSE), jamais en clair dans ce fichier suivi par git. Renseigné par le
+// beforeAll global, comme API_URL / ANON_KEY / SERVICE_ROLE_KEY.
+let MOT_DE_PASSE: string;
 
 type Session = { compteId: string; jwt: string };
 type Appelant = Session | 'anon' | 'admin';
@@ -79,19 +82,27 @@ function lireFichierEnv(chemin: string): Record<string, string> {
 }
 
 // Lit les identifiants réseau (.env pour la clé anonyme, déjà publique ; .secrets-rls.local pour
-// l'URL et la clé secrète d'administration du banc), vérifie qu'aucun ne manque, puis applique
-// la garde de sécurité sur la référence de projet AVANT tout appel réseau.
-function chargerConfigurationBanc(): { apiUrl: string; anonKey: string; cleAdmin: string } {
+// l'URL, la clé secrète d'administration du banc et le mot de passe des comptes éphémères),
+// vérifie qu'aucun ne manque, puis applique la garde de sécurité sur la référence de projet
+// AVANT tout appel réseau.
+function chargerConfigurationBanc(): {
+  apiUrl: string;
+  anonKey: string;
+  cleAdmin: string;
+  motDePasse: string;
+} {
   const variablesPubliques = lireFichierEnv(join(RACINE_DEPOT, '.env'));
   const variablesTest = lireFichierEnv(join(RACINE_DEPOT, '.secrets-rls.local'));
 
   const anonKey = variablesPubliques.EXPO_PUBLIC_SUPABASE_ANON_KEY;
   const apiUrl = variablesTest.SUPABASE_URL_TEST;
   const cleAdmin = variablesTest.SUPABASE_CLE_ADMIN_TEST;
+  const motDePasse = variablesTest.BANC_RLS_MOT_DE_PASSE;
 
   const manquantes: string[] = [];
   if (!apiUrl) manquantes.push('SUPABASE_URL_TEST (.secrets-rls.local)');
   if (!cleAdmin) manquantes.push('SUPABASE_CLE_ADMIN_TEST (.secrets-rls.local)');
+  if (!motDePasse) manquantes.push('BANC_RLS_MOT_DE_PASSE (.secrets-rls.local)');
   if (!anonKey) manquantes.push('EXPO_PUBLIC_SUPABASE_ANON_KEY (.env)');
   if (manquantes.length > 0) {
     throw new Error(
@@ -119,7 +130,12 @@ function chargerConfigurationBanc(): { apiUrl: string; anonKey: string; cleAdmin
     );
   }
 
-  return { apiUrl: apiUrl!.replace(/\/$/, ''), anonKey: anonKey!, cleAdmin: cleAdmin! };
+  return {
+    apiUrl: apiUrl!.replace(/\/$/, ''),
+    anonKey: anonKey!,
+    cleAdmin: cleAdmin!,
+    motDePasse: motDePasse!,
+  };
 }
 
 async function appelRest(
@@ -215,6 +231,7 @@ beforeAll(async () => {
   API_URL = configuration.apiUrl;
   ANON_KEY = configuration.anonKey;
   SERVICE_ROLE_KEY = configuration.cleAdmin;
+  MOT_DE_PASSE = configuration.motDePasse;
 
   // A : profil client seul. B : profil client + profil coach. C : aucun profil.
   A = await creerCompteReel(`${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-a@${DOMAINE_EMAIL}`, {

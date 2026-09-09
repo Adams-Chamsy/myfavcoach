@@ -36,6 +36,12 @@ function coupables(fichiers: { chemin: string; contenu: string }[], motif: RegEx
   return fichiers.filter((f) => motif.test(f.contenu)).map((f) => f.chemin);
 }
 
+// Un littéral chaîne d'au moins 4 caractères affecté (`=`) ou passé comme valeur (`:`) à
+// quelque chose qui se nomme `password` / `mot_de_passe` / `motDePasse`. Ne matche PAS un
+// identifiant (`password: MOT_DE_PASSE`), un template littéral (backticks), ni une variable qui
+// se contente de nommer la chose (`const motDePasse = secrets.X`).
+const MOTIF_MOT_DE_PASSE_EN_CLAIR = /(?:password|mot[_-]?de[_-]?passe)\s*[:=]\s*['"][^'"]{4,}['"]/i;
+
 describe('secrets interdits côté application', () => {
   // Le balayage doit pouvoir échouer : ces trois tests exercent la fonction de détection avec
   // un contenu écrit exprès, avant de lui faire confiance pour dire "rien trouvé" sur le vrai
@@ -61,6 +67,22 @@ describe('secrets interdits côté application', () => {
       const propre = [{ chemin: 'propre.ts', contenu: "export const x = 'rien ici';" }];
       expect(coupables(propre, /stripe/i)).toEqual([]);
       expect(coupables(propre, /service_role/i)).toEqual([]);
+    });
+
+    it('trouve un mot de passe en clair affecté à une variable / une clé', () => {
+      const trouves = coupables(
+        [{ chemin: 'poison.mjs', contenu: "const password = 'hunter2-en-clair';" }],
+        MOTIF_MOT_DE_PASSE_EN_CLAIR,
+      );
+      expect(trouves).toEqual(['poison.mjs']);
+    });
+
+    it('ne confond pas une variable qui NOMME un mot de passe avec un mot de passe en clair', () => {
+      const propre = [
+        { chemin: 'ok.mjs', contenu: 'const motDePasse = secrets.BANC_RLS_MOT_DE_PASSE;' },
+        { chemin: 'ok2.ts', contenu: 'password: MOT_DE_PASSE,' },
+      ];
+      expect(coupables(propre, MOTIF_MOT_DE_PASSE_EN_CLAIR)).toEqual([]);
     });
   });
 
@@ -122,6 +144,24 @@ describe('secrets interdits côté application', () => {
 
     it('aucun fichier suivi par git (hors exceptions nommées) ne contient "service_role"', () => {
       expect(coupables(fichiers, /service_role/i)).toEqual([]);
+    });
+  });
+
+  // Portée : l'outillage qui s'authentifie contre le VRAI projet Supabase de développement —
+  // scripts/*.mjs et src/test/rls.banc.ts. Là, un mot de passe n'a rien à faire en clair dans
+  // un fichier suivi : il vient de .secrets-rls.local (ignoré par git). Ailleurs (tests
+  // d'écran, faux ports en mémoire), un mot de passe littéral est une donnée de fixture qui ne
+  // s'authentifie contre rien de réel — hors périmètre ici, sinon ce balayage ne serait que du
+  // bruit. Trouvé après coup : scripts/comptes-test-durables.mjs et rls.banc.ts en avaient un.
+  describe('mot de passe en clair (outillage vers le vrai projet)', () => {
+    const fichiers = contenuDe(
+      fichiersSuivisParGit().filter(
+        (chemin) => chemin.startsWith('scripts/') || chemin === 'src/test/rls.banc.ts',
+      ),
+    );
+
+    it('aucun mot de passe en clair dans scripts/ ni dans src/test/rls.banc.ts', () => {
+      expect(coupables(fichiers, MOTIF_MOT_DE_PASSE_EN_CLAIR)).toEqual([]);
     });
   });
 });
