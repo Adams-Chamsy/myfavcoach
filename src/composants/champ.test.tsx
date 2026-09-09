@@ -44,6 +44,18 @@ describe('Champ', () => {
     expect(screen.queryByLabelText(/erreur :/)).toBeNull();
   });
 
+  // docs/ecrans/L1-05-onboarding-client.md, critère 3 : « leur inertie est perceptible
+  // autrement que par la couleur ». `desactive` doit donc rendre le champ inerte À LA SAISIE
+  // (editable=false) ET l'annoncer au lecteur d'écran (accessibilityState.disabled), pas
+  // seulement le griser.
+  it('desactive : le champ est inerte à la saisie et annoncé désactivé, pas seulement grisé', async () => {
+    await rendreChamp({ desactive: true });
+
+    const champ = screen.getByLabelText('Objectif');
+    expect(champ.props.editable).toBe(false);
+    expect(champ.props.accessibilityState.disabled).toBe(true);
+  });
+
   // docs/ecrans/L1-02-creation-compte.md : "Adresse e-mail | clavier e-mail, sans majuscule
   // automatique, sans correction".
   it('type email : clavier dédié, sans majuscule automatique ni correction', async () => {

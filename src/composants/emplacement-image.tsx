@@ -18,6 +18,14 @@ export type ProprietesEmplacementImage = {
   // flex:1 sans toucher au sens de taille.pleinCadre pour l'usage d'origine. Ignore en dehors du
   // ratio "pleinCadre".
   remplir?: boolean;
+  // Couleurs du repli typographique. Par defaut marque.primaire / texte.surMarque LUS PAR LE
+  // CONTEXTE (comme Avatar) : correct pour un repli au fil d'une liste, qui suit le theme
+  // ambiant. Une surface qui fixe son propre theme (ile sombre : docs/ecrans/L1-01-bienvenue.md,
+  // CLAUDE.md §5) doit au contraire passer des valeurs EXPLICITES d'un theme choisi
+  // (themes.clair.* / themes.sombre.*), sinon le repli s'inverse sous une passe de theme
+  // differente (npm run test:a11y en sombre) et devient illisible sous le degrade de l'ecran.
+  fondRepli?: string;
+  couleurTexteRepli?: string;
 };
 
 const RATIOS: Record<'portrait3x4' | 'paysage4x3', number> = {
@@ -30,8 +38,12 @@ export function EmplacementImage({
   ratio,
   source,
   remplir = false,
+  fondRepli,
+  couleurTexteRepli,
 }: ProprietesEmplacementImage) {
   const theme = useTheme();
+  const fond = fondRepli ?? theme.couleur.marque.primaire;
+  const couleurTexte = couleurTexteRepli ?? theme.couleur.texte.surMarque;
   const styleDimension =
     ratio === 'pleinCadre'
       ? remplir
@@ -58,7 +70,7 @@ export function EmplacementImage({
       style={{
         width: '100%',
         borderRadius: theme.rayon.media,
-        backgroundColor: theme.couleur.marque.primaire,
+        backgroundColor: fond,
         alignItems: 'center',
         justifyContent: 'center',
         ...styleDimension,
@@ -74,7 +86,7 @@ export function EmplacementImage({
           fontFamily: font.uiBold,
           fontSize: theme.texte.titre1.fontSize,
           lineHeight: theme.texte.titre1.lineHeight,
-          color: theme.couleur.texte.surMarque,
+          color: couleurTexte,
         }}
         accessibilityElementsHidden
         importantForAccessibility="no"

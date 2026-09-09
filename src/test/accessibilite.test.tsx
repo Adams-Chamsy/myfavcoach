@@ -328,6 +328,12 @@ type OptionsAnalyse = {
   // Action a jouer une fois le rendu monte, avant l'analyse — ex. basculer l'interrupteur
   // "Sombre" de la galerie pour la passe sombre.
   apresRendu?: (rendu: RenderResult) => Promise<void>;
+  // Fond de reference impose pour les Text sans ancetre a fond hex — a la place du fond racine
+  // de l'application. Pour L1-01 (docs/ecrans/L1-01-bienvenue.md, critere 5) : le texte flotte
+  // au-dessus d'un degrade SVG que react-test-renderer ne compose pas ; on impose alors le
+  // POINT LE PLUS CLAIR du degrade (le repli d'EmplacementImage, sombre.fond.canevas), jamais
+  // l'encre pleine du bas.
+  fondReference?: string;
 };
 
 // react-native-safe-area-context n'a pas de mesure native sous Jest (aucun onLayout ne se
@@ -341,7 +347,7 @@ const METRIQUES_ZONES_SURES: Metrics = {
 };
 
 async function analyser(element: ReactElement, options: OptionsAnalyse): Promise<Resultats> {
-  const { dejaEnveloppe = false, themeForce, apresRendu } = options;
+  const { dejaEnveloppe = false, themeForce, apresRendu, fondReference } = options;
   const resultats: Resultats = {
     contrastes: [],
     cibles: [],
@@ -363,7 +369,7 @@ async function analyser(element: ReactElement, options: OptionsAnalyse): Promise
   analyserArbre(
     arbre,
     {
-      fond: fondRacine(themeForce),
+      fond: fondReference ?? fondRacine(themeForce),
       opaciteDepuisFond: 1,
       ancetreAvecLabel: false,
       texteFreresDirects: false,
@@ -391,6 +397,9 @@ type EntreeCorpus = {
   dejaEnveloppe?: boolean;
   // Seule la galerie a besoin d'agir apres le montage, et seulement pour la passe sombre.
   apresRenduParTheme?: Partial<Record<ThemeAVerifier, (rendu: RenderResult) => Promise<void>>>;
+  // Voir OptionsAnalyse.fondReference. Une fonction du theme : le fond impose peut differer
+  // entre les deux passes.
+  fondReference?: (theme: ThemeAVerifier) => string;
 };
 
 const CORPUS: EntreeCorpus[] = [
@@ -502,7 +511,19 @@ const CORPUS: EntreeCorpus[] = [
       </FournisseurSession>
     ),
   },
-  { nom: 'app/(public)/index.tsx', creerElement: () => <Bienvenue key="bienvenue" /> },
+  {
+    // docs/ecrans/L1-01-bienvenue.md, critère 5 : « couples texte/fond mesurés sur le dégradé
+    // AU POINT LE PLUS CLAIR, pas sur l'encre pleine ». Le dégradé va de son extrémité
+    // transparente (au-dessus du repli de l'EmplacementImage de fond) vers clair.fond.inverse.
+    // Depuis la correction de l'île, le repli est EXPLICITEMENT sombre (sombre.fond.canevas,
+    // #14120F) : il n'existe donc plus AUCUN point du dégradé plus clair que clair.fond.inverse
+    // (#17211E). On épingle cette valeur comme fond de référence : react-test-renderer ne
+    // compose pas le SVG, et si un jour le fond racine de l'écran cessait de la poser, la
+    // mesure retomberait sinon sur le canevas clair de l'app — un faux vert.
+    nom: 'app/(public)/index.tsx',
+    creerElement: () => <Bienvenue key="bienvenue" />,
+    fondReference: () => themes.clair.fond.inverse,
+  },
   {
     nom: 'app/(public)/inscription.tsx',
     creerElement: () => (
@@ -619,11 +640,18 @@ describe('accessibilité automatisée (npm run test:a11y)', () => {
 
       // Rendu sequentiel, un fichier a la fois : les erreurs restent attribuables a une seule
       // source, et chaque render() partage le meme act() de testing-library sans se chevaucher.
-      for (const { nom, creerElement, dejaEnveloppe, apresRenduParTheme } of CORPUS) {
+      for (const {
+        nom,
+        creerElement,
+        dejaEnveloppe,
+        apresRenduParTheme,
+        fondReference,
+      } of CORPUS) {
         const resultats = await analyser(creerElement(), {
           dejaEnveloppe,
           themeForce,
           apresRendu: apresRenduParTheme?.[themeForce],
+          fondReference: fondReference?.(themeForce),
         });
 
         for (const c of resultats.contrastes) {

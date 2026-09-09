@@ -162,7 +162,18 @@ export default function Bienvenue() {
   return (
     <View style={{ flex: 1, backgroundColor: clair.fond.inverse }}>
       <View style={{ flex: 1, position: 'relative', minHeight: 0 }}>
-        <EmplacementImage nom="My fav Coach" ratio="pleinCadre" remplir />
+        {/* Repli EXPLICITE en tokens sombre : cet écran est une île fixe et son dégradé va vers
+            l'encre. Sans ça, EmplacementImage prend marque.primaire par le contexte — vert
+            foncé en clair, vert CLAIR sous la passe sombre de npm run test:a11y — et le texte
+            de l'écran (surSombre, clair) devient illisible au point le plus transparent du
+            dégradé (docs/ecrans/L1-01-bienvenue.md, critère 5 ; CLAUDE.md §5). */}
+        <EmplacementImage
+          nom="My fav Coach"
+          ratio="pleinCadre"
+          remplir
+          fondRepli={sombre.fond.canevas}
+          couleurTexteRepli={sombre.texte.surSombre}
+        />
         <DegradeVersEncre couleur={clair.fond.inverse} />
         <View
           style={{
