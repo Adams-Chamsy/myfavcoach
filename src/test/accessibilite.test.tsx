@@ -20,6 +20,7 @@ import Verification from '../../app/(public)/verification';
 import Connexion from '../../app/(public)/connexion';
 import MotDePasseOublie from '../../app/(public)/mot-de-passe-oublie';
 import NouveauMotDePasse from '../../app/(public)/nouveau-mot-de-passe';
+import Informations from '../../app/(compte)/informations';
 import OnboardingIdentite from '../../app/(onboarding)/1-identite';
 import OnboardingObjectifs from '../../app/(onboarding)/2-objectifs';
 import OnboardingPoids from '../../app/(onboarding)/3-poids';
@@ -46,6 +47,11 @@ jest.mock('expo-router', () => {
   return {
     ...reel,
     useRouter: () => ({ ...reel.useRouter(), canGoBack: () => false }),
+    // useGardeSortie (app/(compte)/informations.tsx) appelle useNavigation().addListener
+    // ('beforeRemove', ...) — l'implémentation réelle lève hors d'un vrai conteneur de
+    // navigation, qu'aucun écran de ce corpus n'a. Stub inerte : le listener n'est jamais
+    // notifié ici (aucune sortie n'est jouée), on vérifie seulement le rendu.
+    useNavigation: () => ({ addListener: () => () => {}, dispatch: () => {} }),
   };
 });
 
@@ -107,6 +113,7 @@ const ECRANS_CHROME_HAUT = new Set([
   'app/(coach)/pilotage.tsx',
   'app/(client)/moi.tsx',
   'app/(coach)/moi.tsx',
+  'app/(compte)/informations.tsx',
 ]);
 
 type OffsetHaut = { ancre: boolean; offset: number };
@@ -442,6 +449,19 @@ const CORPUS: EntreeCorpus[] = [
   { nom: 'app/(coach)/clients.tsx', creerElement: () => <Clients key="clients" /> },
   { nom: 'app/(coach)/agenda.tsx', creerElement: () => <Agenda key="agenda" /> },
   { nom: 'app/(coach)/revenus.tsx', creerElement: () => <Revenus key="revenus" /> },
+  {
+    // Écran L1-09 « Mes informations » : lit le profil actif via useDonnees(). Le faux partagé
+    // n'a pas d'informations posées → variante client, champs vides — suffisant pour vérifier
+    // contraste, cibles et zone sûre du haut (l'écran pose son propre chrome).
+    nom: 'app/(compte)/informations.tsx',
+    creerElement: () => (
+      <FournisseurSession key="informations" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <Informations />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
   { nom: 'app/(public)/index.tsx', creerElement: () => <Bienvenue key="bienvenue" /> },
   {
     nom: 'app/(public)/inscription.tsx',

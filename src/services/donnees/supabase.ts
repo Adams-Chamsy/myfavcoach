@@ -1,6 +1,7 @@
 import { supabase } from '@/services/supabase/client';
 import type {
   EtatProfils,
+  InformationsCompte,
   PortDonnees,
   ProfilActif,
   ProfilOnboarding,
@@ -222,6 +223,85 @@ export const portDonneesSupabase: PortDonnees = {
   // proposer cette bascule que pour un profil déjà connu comme existant.
   async basculerProfil(profil) {
     const { error } = await supabase.rpc('basculer_profil', { profil });
+    if (error) return echec(error);
+    return { succes: true };
+  },
+
+  async lireInformations() {
+    // date_naissance : SELECT accordé sur comptes, RLS comptes_select_soi limite déjà à la
+    // ligne de l'appelant. Lecture seule côté écran ET côté serveur (colonne hors GRANT
+    // UPDATE, 0001_creer_identite.sql).
+    const [{ data: profilActif, error: erreurProfilActif }, compte] = await Promise.all([
+      supabase.rpc('profil_actif_courant'),
+      supabase.from('comptes').select('date_naissance').limit(1),
+    ]);
+    if (erreurProfilActif) throw erreurProfilActif;
+    if (compte.error) throw compte.error;
+    const dateNaissance =
+      (compte.data?.[0] as { date_naissance: string } | undefined)?.date_naissance ?? '';
+
+    if (profilActif === 'coach') {
+      const { data, error } = await supabase
+        .from('profils_coach')
+        .select('prenom, nom, discipline, titre_court, bio')
+        .limit(1);
+      if (error) throw error;
+      const ligne = data?.[0] as
+        | {
+            prenom: string;
+            nom: string;
+            discipline: string;
+            titre_court: string | null;
+            bio: string | null;
+          }
+        | undefined;
+      return {
+        profil: 'coach',
+        prenom: ligne?.prenom ?? '',
+        nom: ligne?.nom ?? '',
+        discipline: ligne?.discipline ?? '',
+        titreCourt: ligne?.titre_court ?? null,
+        bio: ligne?.bio ?? null,
+        dateNaissance,
+      } satisfies InformationsCompte;
+    }
+
+    const { data, error } = await supabase.from('profils_client').select('prenom, nom').limit(1);
+    if (error) throw error;
+    const ligne = data?.[0] as { prenom: string; nom: string | null } | undefined;
+    return {
+      profil: 'client',
+      prenom: ligne?.prenom ?? '',
+      nom: ligne?.nom ?? null,
+      dateNaissance,
+    } satisfies InformationsCompte;
+  },
+
+  async enregistrerInformations(modifs) {
+    // Filtre `.eq('compte_id', ...)` EXPLICITE obligatoire — voir le commentaire d'en-tête de
+    // ce fichier (safeupdate refuse tout UPDATE sans WHERE, avant même RLS). La condition
+    // d'espace (`profil_actif_courant() = 'coach'`/'client') est portée par la politique, pas
+    // rejouée ici : l'écran n'ouvre ce formulaire que dans l'espace du profil concerné.
+    const compteId = await compteIdCourant();
+
+    if (modifs.profil === 'coach') {
+      const { error } = await supabase
+        .from('profils_coach')
+        .update({
+          prenom: modifs.prenom,
+          nom: modifs.nom,
+          titre_court: modifs.titreCourt,
+          bio: modifs.bio,
+        })
+        .eq('compte_id', compteId);
+      if (error) return echec(error);
+      return { succes: true };
+    }
+
+    const { error } = await supabase
+      .from('profils_client')
+      .update({ prenom: modifs.prenom, nom: modifs.nom === '' ? null : modifs.nom })
+      .eq('compte_id', compteId);
     if (error) return echec(error);
     return { succes: true };
   },

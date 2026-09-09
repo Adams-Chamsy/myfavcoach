@@ -37,6 +37,30 @@ export type EtatProfils = {
 
 export type ResultatEcriture = { succes: true } | { succes: false; erreur: string };
 
+// docs/ecrans/L1-09-mes-informations.md, « Mes informations ». Le formulaire modifie le PROFIL
+// ACTIF, pas le compte — il n'est donc pas le même des deux côtés, d'où l'union discriminée.
+// `dateNaissance` vient de comptes.date_naissance (ISO 'AAAA-MM-JJ') : toujours en lecture
+// seule, elle porte la règle des 18 ans (colonne hors de la liste GRANT UPDATE,
+// 0001_creer_identite.sql). `discipline` (coach) est en lecture seule à ce lot : la liste
+// figée des disciplines est une décision produit qui gouverne la recherche du lot L3, prise à
+// P1.14 (activation de l'espace coach), pas ici.
+export type InformationsCompte =
+  | { profil: 'client'; prenom: string; nom: string | null; dateNaissance: string }
+  | {
+      profil: 'coach';
+      prenom: string;
+      nom: string;
+      discipline: string;
+      titreCourt: string | null;
+      bio: string | null;
+      dateNaissance: string;
+    };
+
+// Ce que l'écran peut réécrire — jamais dateNaissance ni discipline (voir InformationsCompte).
+export type ModificationsInformations =
+  | { profil: 'client'; prenom: string; nom: string | null }
+  | { profil: 'coach'; prenom: string; nom: string; titreCourt: string | null; bio: string | null };
+
 // Ce que les quatre étapes ont accumulé jusqu'ici — distinct d'EtatProfils (qui ne porte que
 // le ROUTAGE : quelle étape afficher, jamais son contenu). Nécessaire pour deux besoins réels,
 // pas construit d'avance : le critère 2 de docs/ecrans/L1-05 ("Quitter l'application à l'étape
@@ -96,4 +120,11 @@ export type PortDonnees = {
   // chemin, et son résultat ne sert qu'à savoir si la bascule a eu lieu, jamais à décider un
   // droit (le champ profilActif rechargé ensuite ne sert que le routage et la palette).
   basculerProfil(profil: ProfilActif): Promise<ResultatEcriture>;
+
+  // docs/ecrans/L1-09-mes-informations.md, « Mes informations ». Lit et écrit le profil ACTIF
+  // (profils_client ou profils_coach selon comptes.profil_actif). enregistrerInformations ne
+  // touche que les colonnes accordées en UPDATE pour ce lot — jamais date_naissance
+  // (protégée), jamais discipline (P1.14).
+  lireInformations(): Promise<InformationsCompte>;
+  enregistrerInformations(modifs: ModificationsInformations): Promise<ResultatEcriture>;
 };

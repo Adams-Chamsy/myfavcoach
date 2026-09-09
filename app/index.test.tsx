@@ -152,6 +152,8 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       enregistrerPointDeDepart: jest.fn(),
       terminerOnboarding: jest.fn(),
       basculerProfil: jest.fn(),
+      lireInformations: jest.fn(),
+      enregistrerInformations: jest.fn(),
     };
 
     await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);

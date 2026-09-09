@@ -1,10 +1,22 @@
-import type { EtatProfils, PortDonnees, ProfilOnboarding, ResultatEcriture } from './port';
+import type {
+  EtatProfils,
+  InformationsCompte,
+  ModificationsInformations,
+  PortDonnees,
+  ProfilOnboarding,
+  ResultatEcriture,
+} from './port';
 
 export type FauxPortDonnees = PortDonnees & {
   // Réservé aux tests d'écran, jamais dans PortDonnees ni appelé par un écran — même
   // convention que src/services/auth/faux.ts (verifierEmailPourTest, etc.) : place un compte
   // dans un état donné sans passer par un vrai onboarding ou une vraie bascule d'espace.
   definirEtatProfilsPourTest(etat: EtatProfils): void;
+
+  // Place le contenu de « Mes informations » (docs/ecrans/L1-09) dans un état donné, sans
+  // rejouer une écriture. La date de naissance et, côté coach, la discipline n'ont pas d'autre
+  // source dans ce faux : elles viennent d'ici.
+  definirInformationsPourTest(informations: InformationsCompte): void;
 
   // Fait échouer le PROCHAIN appel d'écriture (creerProfilClient, enregistrerObjectifsEtRythme,
   // enregistrerPointDeDepart, terminerOnboarding), un seul coup, puis revient au succès —
@@ -35,6 +47,13 @@ export function etatProfilsParDefaut(surcharges: Partial<EtatProfils> = {}): Eta
   };
 }
 
+// Défaut le plus honnête : un compte neuf est en espace client (voir etatProfilsParDefaut),
+// prénom vide, sans nom. La date de naissance a forcément une valeur (colonne NOT NULL de
+// comptes) — une majeure quelconque, jamais analysée ici.
+function informationsCompteParDefaut(): InformationsCompte {
+  return { profil: 'client', prenom: '', nom: null, dateNaissance: '2000-01-01' };
+}
+
 function profilOnboardingVide(): ProfilOnboarding {
   return {
     prenom: '',
@@ -51,6 +70,7 @@ function profilOnboardingVide(): ProfilOnboarding {
 export function creerFauxPortDonnees(): FauxPortDonnees {
   let etat: EtatProfils = etatProfilsParDefaut();
   let profilOnboarding: ProfilOnboarding = profilOnboardingVide();
+  let informations: InformationsCompte = informationsCompteParDefaut();
   let prochaineEcritureEchoue: string | null = null;
 
   // true : applique nouvelEtat/nouveauProfil et rend { succes: true } ; false : consomme
@@ -78,6 +98,10 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
 
     definirEtatProfilsPourTest(nouvelEtat) {
       etat = nouvelEtat;
+    },
+
+    definirInformationsPourTest(nouvellesInformations) {
+      informations = nouvellesInformations;
     },
 
     echouerProchaineEcriturePourTest(erreur = 'Une erreur de test, jamais affichée telle quelle.') {
@@ -124,6 +148,36 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     // profil déjà connu comme existant (voir le commentaire de PortDonnees.basculerProfil).
     async basculerProfil(profil) {
       return ecrire({ ...etat, profilActif: profil }, profilOnboarding);
+    },
+
+    async lireInformations() {
+      return informations;
+    },
+
+    async enregistrerInformations(modifs: ModificationsInformations) {
+      if (prochaineEcritureEchoue !== null) {
+        const erreur = prochaineEcritureEchoue;
+        prochaineEcritureEchoue = null;
+        return { succes: false, erreur };
+      }
+
+      // Garde dateNaissance et, côté coach, discipline : ni l'une ni l'autre n'est réécrite ici
+      // (colonnes protégées / P1.14). L'identité active (lue par lireEtatProfils, affichée par
+      // l'écran compte) suit la même écriture, comme en base.
+      informations =
+        modifs.profil === 'coach' && informations.profil === 'coach'
+          ? {
+              ...informations,
+              prenom: modifs.prenom,
+              nom: modifs.nom,
+              titreCourt: modifs.titreCourt,
+              bio: modifs.bio,
+            }
+          : modifs.profil === 'client' && informations.profil === 'client'
+            ? { ...informations, prenom: modifs.prenom, nom: modifs.nom }
+            : informations;
+      etat = { ...etat, identiteActive: { prenom: modifs.prenom, nom: modifs.nom } };
+      return { succes: true };
     },
   } satisfies FauxPortDonnees;
 }

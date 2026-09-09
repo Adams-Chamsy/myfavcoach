@@ -629,6 +629,19 @@ describe('comptes', () => {
     expect(statut).toBeGreaterThanOrEqual(400);
   });
 
+  it('une mise à jour directe de comptes.date_naissance est refusée (base de la lecture seule L1-09)', async () => {
+    // docs/ecrans/L1-09-mes-informations.md : la date de naissance est en lecture seule parce
+    // qu'elle porte la règle des 18 ans. « Lecture seule dans l'arbre rendu » (critère 3) est
+    // une garantie d'écran ; la vraie barrière est ici — colonne hors de la liste GRANT UPDATE
+    // (0001_creer_identite.sql), PostgREST refuse la requête, jamais une écriture silencieuse.
+    const { statut } = await appelRest(`/rest/v1/comptes?id=eq.${A.compteId}`, {
+      methode: 'PATCH',
+      session: A,
+      corps: { date_naissance: '1990-01-01' },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+  });
+
   it("l'insertion d'un compte de moins de 18 ans est refusée par le déclencheur", async () => {
     const reponse = await fetch(`${API_URL}/auth/v1/admin/users`, {
       method: 'POST',
