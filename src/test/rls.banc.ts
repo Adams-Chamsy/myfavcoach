@@ -547,6 +547,17 @@ describe('profils_coach', () => {
     expect(corps).toHaveLength(1);
   });
 
+  // Sens illégitime de profils_coach_select_proprietaire : A (session authentifiée) lit le
+  // profil coach de B → zéro ligne. Miroir exact de « A lit le profil client de B » (describe
+  // profils_client) : le rouge/vert de ce chemin précis n'était pas prouvé côté coach.
+  it('A lit le profil coach de B : zéro ligne', async () => {
+    const { statut, corps } = await appelRest(`/rest/v1/profils_coach?compte_id=eq.${B.compteId}`, {
+      session: A,
+    });
+    expect(statut).toBe(200);
+    expect(corps).toEqual([]);
+  });
+
   // Ce test ne PROUVE PAS profils_coach_insert_espace_coach : le cycle rouge/vert de P1.5 a
   // montré 21/21 verts avec ET sans cette politique — elle refuse ce qu'un défaut absence-de-
   // politique refuserait de toute façon (personne ne peut satisfaire son WITH CHECK par ce
