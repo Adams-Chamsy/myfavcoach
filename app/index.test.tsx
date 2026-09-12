@@ -160,6 +160,23 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       lireConsentementSante: jest.fn(),
       enregistrerConsentementSante: jest.fn(),
       effacerMesuresCorporelles: jest.fn(),
+      lireDossierVerification: jest.fn(),
+      lirePiecesDeposees: jest.fn(),
+      deposerPieceVerification: jest.fn(),
+      lireMesOffres: jest.fn(),
+      creerOffreBrouillon: jest.fn(),
+      modifierOffre: jest.fn(),
+      publierOffre: jest.fn(),
+      retirerOffre: jest.fn(),
+      lireProfilCoachPublic: jest.fn(),
+      lireOffresPublieesDeCoach: jest.fn(),
+      demanderSuppressionCompte: jest.fn(),
+      lireConsentementCommunications: jest.fn(),
+      enregistrerConsentementCommunications: jest.fn(),
+      lireHistoriqueConsentements: jest.fn(),
+      demanderExportDonnees: jest.fn(),
+      lireDernierExport: jest.fn(),
+      lireDatesDocuments: jest.fn(),
     };
 
     await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);

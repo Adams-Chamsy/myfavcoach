@@ -21,8 +21,11 @@ import Connexion from '../../app/(public)/connexion';
 import MotDePasseOublie from '../../app/(public)/mot-de-passe-oublie';
 import NouveauMotDePasse from '../../app/(public)/nouveau-mot-de-passe';
 import Confidentialite from '../../app/(compte)/confidentialite';
+import Documents from '../../app/(compte)/documents';
+import Export from '../../app/(compte)/export';
 import Identifiants from '../../app/(compte)/identifiants';
 import Informations from '../../app/(compte)/informations';
+import Suppression from '../../app/(compte)/suppression';
 import DevenirCoach from '../../app/(onboarding)/devenir-coach';
 import OnboardingIdentite from '../../app/(onboarding)/1-identite';
 import OnboardingObjectifs from '../../app/(onboarding)/2-objectifs';
@@ -119,6 +122,9 @@ const ECRANS_CHROME_HAUT = new Set([
   'app/(compte)/informations.tsx',
   'app/(compte)/identifiants.tsx',
   'app/(compte)/confidentialite.tsx',
+  'app/(compte)/suppression.tsx',
+  'app/(compte)/documents.tsx',
+  'app/(compte)/export.tsx',
 ]);
 
 type OffsetHaut = { ancre: boolean; offset: number };
@@ -499,6 +505,43 @@ const CORPUS: EntreeCorpus[] = [
     ),
   },
   {
+    // L2-01 « Suppression de compte » : useDonnees() + useSession(). Le faux partagé a un profil
+    // client sans profil coach → aucun bandeau (ni coach ni abonnement). Pose son propre chrome
+    // haut.
+    nom: 'app/(compte)/suppression.tsx',
+    creerElement: () => (
+      <FournisseurSession key="suppression" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <Suppression />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    // L2-03 « Documents » (surface authentifiée) : useDonnees() → lireDatesDocuments (faux
+    // partagé, valeurs par défaut). Pose son propre chrome haut.
+    nom: 'app/(compte)/documents.tsx',
+    creerElement: () => (
+      <FournisseurSession key="documents" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <Documents />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    // L2-04 « Exporter mes données » : useDonnees() → lireDernierExport (faux partagé, aucun
+    // export demandé). Pose son propre chrome haut.
+    nom: 'app/(compte)/export.tsx',
+    creerElement: () => (
+      <FournisseurSession key="export" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <Export />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
     // Écran L1-08 « Activation de l'espace coach » : EnteteOnboarding + chips de discipline +
     // champ téléphone. Le faux partagé a un profil client (Camille Dupont) → prénom/nom repris,
     // pas de champ pour eux.
@@ -698,5 +741,11 @@ describe('accessibilité automatisée (npm run test:a11y)', () => {
       expect(echecsIcone).toEqual([]);
       expect(echecsZoneSure).toEqual([]);
     },
+    // Délai explicite au-delà du défaut Jest (5000 ms) : le corpus s'est alourdi lot après lot
+    // (L2-01/03/04 ajoutés à P2.13) et a dépassé le défaut une fois sous `npm test` complet (88
+    // suites en parallèle) alors qu'il passait large en isolé (~1,5 s/thème) — contention de
+    // charge, pas une régression du test lui-même. 15 s garde une marge confortable sans cacher
+    // une vraie dérive de performance future.
+    15000,
   );
 });

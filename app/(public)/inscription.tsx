@@ -411,20 +411,20 @@ export default function Inscription() {
         >
           En créant ton compte, tu acceptes les{' '}
           <Text
-            onPress={() => {
-              // Aucune URL n'existe avant la rédaction des textes légaux (lot L2, C-06) — même
-              // raison que app/(public)/index.tsx, voir docs/dette.md. L'enregistrement du
-              // consentement AVEC SA VERSION (règle de la fiche, "Pas de case à cocher") n'a
-              // pas non plus de mécanisme aujourd'hui : docs/api.md ne décrit que le
-              // consentement de données de santé (§3.12), pas un consentement CGU à
-              // l'inscription — même échéance, voir docs/dette.md.
-            }}
+            // L2-03 (C-06) : ouvre la surface publique du lecteur de document, sans session.
+            // L'enregistrement du consentement CGU AVEC SA VERSION reste un mécanisme distinct
+            // (VERSION_CGU_ACCEPTEE, src/services/auth/supabase.ts, déjà écrit à l'inscription
+            // depuis L1) — cette page ne fait que permettre de LIRE le texte, jamais l'accepter.
+            onPress={() => router.push('/(public)/documents/cgu' as Href)}
             style={{ textDecorationLine: 'underline' }}
           >
             CGU
           </Text>{' '}
           et la{' '}
-          <Text onPress={() => {}} style={{ textDecorationLine: 'underline' }}>
+          <Text
+            onPress={() => router.push('/(public)/documents/confidentialite' as Href)}
+            style={{ textDecorationLine: 'underline' }}
+          >
             politique de confidentialité
           </Text>
           .

@@ -24,8 +24,12 @@ const METRIQUES_ZONES_SURES: Metrics = {
 
 const LABEL_SWITCH = 'Enregistrer mes données de santé';
 const LABEL_EFFACER = 'Effacer mes mesures enregistrées';
+const LABEL_SWITCH_COMMUNICATIONS = 'Nouveautés et conseils';
 
-async function rendre(consentement: { accorde: boolean; version: string | null }) {
+async function rendre(
+  consentement: { accorde: boolean; version: string | null },
+  communications: { accorde: boolean; version: string | null } = { accorde: false, version: null },
+) {
   const portAuth = creerFauxPortAuth();
   await portAuth.inscrire('camille@exemple.fr', 'bon-mot-de-passe', '2000-01-01');
   portAuth.verifierEmailPourTest('camille@exemple.fr');
@@ -34,6 +38,8 @@ async function rendre(consentement: { accorde: boolean; version: string | null }
   const portDonnees = creerFauxPortDonnees();
   portDonnees.definirEtatProfilsPourTest(etatProfilsParDefaut({ clientExiste: true }));
   portDonnees.definirConsentementSantePourTest(consentement);
+  portDonnees.definirConsentementCommunicationsPourTest(communications);
+  portDonnees.definirHistoriqueConsentementsPourTest([]);
 
   render(
     <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
@@ -66,12 +72,67 @@ describe('Confidentialité (docs/ecrans/L1-09-mes-informations.md, « Confidenti
     expect(screen.getByText('Version du 04/09/2026')).toBeTruthy();
   });
 
-  it('n’affiche aucun réglage de notifications ni de communications commerciales', async () => {
+  // L2-02 (C-04) : les notifications restent au lot L10, absentes ici — mais communications
+  // commerciales EST désormais légitime sur cet écran (correction de L2-02), donc plus dans
+  // cette liste d'exclusion.
+  it('n’affiche aucun réglage de notifications (L10, pas encore construit)', async () => {
     await rendre({ accorde: true, version: VERSION_CONSENTEMENT_SANTE });
 
     const rendu = JSON.stringify(screen.toJSON()).toLowerCase();
     expect(rendu).not.toContain('notification');
-    expect(rendu).not.toContain('commercial');
+  });
+
+  // L2-02, critère 7 : aucun troisième interrupteur (« rappels de séance », ou toute autre
+  // préférence de notification) — défaut trouvé dans une version antérieure de la maquette.
+  it('n’affiche qu’un seul autre interrupteur que celui de santé (pas de « rappels de séance »)', async () => {
+    await rendre({ accorde: true, version: VERSION_CONSENTEMENT_SANTE });
+
+    expect(screen.queryByLabelText(/rappel/i)).toBeNull();
+    expect(screen.getByLabelText(LABEL_SWITCH)).toBeTruthy();
+    expect(screen.getByLabelText(LABEL_SWITCH_COMMUNICATIONS)).toBeTruthy();
+  });
+
+  // L2-02, critère 6 : effet immédiat par interrupteur, jamais de bouton « Enregistrer ».
+  it('n’affiche aucun bouton « Enregistrer »', async () => {
+    await rendre({ accorde: true, version: VERSION_CONSENTEMENT_SANTE });
+    expect(screen.queryByText('Enregistrer')).toBeNull();
+  });
+
+  // L2-02 : accorder OU retirer le consentement communications est immédiat, sans modale —
+  // contrairement au bloc santé, une seule conséquence (plus de courriel), déjà dite par
+  // l'intitulé.
+  it('communications commerciales : accorder et retirer sont tous deux immédiats, sans modale, journal en ajout seul', async () => {
+    const { portDonnees } = await rendre(
+      { accorde: true, version: VERSION_CONSENTEMENT_SANTE },
+      { accorde: false, version: null },
+    );
+    const espion = jest.spyOn(portDonnees, 'enregistrerConsentementCommunications');
+
+    await fireEvent(screen.getByLabelText(LABEL_SWITCH_COMMUNICATIONS), 'valueChange', true);
+    await waitFor(() => expect(espion).toHaveBeenCalledWith(true, expect.any(String)));
+    expect(screen.queryByText('Retirer ton consentement ?')).toBeNull();
+
+    await fireEvent(screen.getByLabelText(LABEL_SWITCH_COMMUNICATIONS), 'valueChange', false);
+    await waitFor(() => expect(espion).toHaveBeenCalledWith(false, expect.any(String)));
+    // Aucune modale de conséquences déclenchée par ce second appel non plus.
+    expect(screen.queryByText('Retirer ton consentement ?')).toBeNull();
+  });
+
+  // L2-02 : « Historique de mes décisions » ouvre le journal en lecture.
+  it('« Historique de mes décisions » affiche le journal du compte courant', async () => {
+    const { portDonnees } = await rendre({ accorde: true, version: VERSION_CONSENTEMENT_SANTE });
+    portDonnees.definirHistoriqueConsentementsPourTest([
+      {
+        type: 'donneesSante',
+        accorde: true,
+        version: VERSION_CONSENTEMENT_SANTE,
+        horodatage: '2026-09-04T10:00:00.000Z',
+      },
+    ]);
+
+    await fireEvent.press(screen.getByText('Historique de mes décisions'));
+
+    await waitFor(() => expect(screen.getByText(/donneesSante/)).toBeTruthy());
   });
 
   it('accorder le consentement est immédiat, sans modale', async () => {

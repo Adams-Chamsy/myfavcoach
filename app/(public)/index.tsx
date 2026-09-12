@@ -153,10 +153,10 @@ export default function Bienvenue() {
     router.push('/(public)/connexion' as Href);
   }
 
-  function surLienLegal(_document: 'cgu' | 'confidentialite') {
-    // "Tant que les textes ne sont pas rédigés (lot L2, C-06), ils pointent vers une version de
-    // développement datée" (docs/ecrans/L1-01-bienvenue.md, Règles) — cette version n'existe
-    // pas encore. Aucune URL n'est inventée ici : espace réservé, voir docs/dette.md.
+  // L2-03 (C-06) : ouvre la surface publique du lecteur de document, sans session — même route
+  // que celle wirée depuis app/(public)/inscription.tsx.
+  function surLienLegal(document: 'cgu' | 'confidentialite') {
+    router.push(`/(public)/documents/${document}` as Href);
   }
 
   return (

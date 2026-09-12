@@ -33,15 +33,19 @@ jobs:
           cache: npm
       - run: npm ci
       # .env est ignoré par git : la CI en écrit un de substitution. Ces valeurs ne servent
-      # qu'à laisser le bundle web se construire (npm run verif:serveur) — src/services/supabase/
-      # client.ts exige EXPO_PUBLIC_SUPABASE_URL / _ANON_KEY au chargement du module, mais ne
-      # fait aucun appel réseau ici. Aucun secret : une URL de forme valide et une chaîne
-      # quelconque suffisent.
+      # qu'à laisser le bundle web se construire (npm run verif:serveur, npm run verif:bundle) —
+      # src/services/supabase/client.ts exige EXPO_PUBLIC_SUPABASE_URL / _ANON_KEY au chargement
+      # du module, mais ne fait aucun appel réseau ici. Aucun secret : une URL de forme valide et
+      # des chaînes quelconques suffisent. Les deux clefs (mobile, admin) sont VOLONTAIREMENT
+      # distinctes : verifier-bundle-production.mjs échoue si elles sont identiques (voir son
+      # propre garde-fou), pour ne jamais confondre "la clef mobile légitimement présente" et
+      # "la clef admin qui ne devrait jamais l'être".
       - name: .env de substitution (CI)
         run: |
           {
             echo "EXPO_PUBLIC_SUPABASE_URL=https://exemple-ci.supabase.co"
             echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=cle-anon-de-substitution-ci"
+            echo "EXPO_PUBLIC_SUPABASE_ADMIN_ANON_KEY=cle-admin-de-substitution-ci"
           } > .env
       - name: Tokens
         run: npm run tokens
@@ -53,5 +57,7 @@ jobs:
         run: npm test
       - name: Accessibilité
         run: npm run test:a11y
+      - name: Bundle de production
+        run: npm run verif:bundle
       - name: Serveur de développement
         run: npm run verif:serveur

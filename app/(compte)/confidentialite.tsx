@@ -9,22 +9,26 @@ import { textesRepliErreur } from '@/composants/etats/textes';
 import { Modale } from '@/composants/modale';
 import { Squelette } from '@/composants/squelette';
 import {
+  TEXTE_CONSENTEMENT_COMMUNICATIONS,
+  VERSION_CONSENTEMENT_COMMUNICATIONS,
+} from '@/fonctionnalites/identite/consentement-communications';
+import {
   TEXTE_CONSENTEMENT_SANTE,
   VERSION_CONSENTEMENT_SANTE,
 } from '@/fonctionnalites/identite/consentement-sante';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { useTheme } from '@/theme/fournisseur';
 
-// docs/ecrans/L1-09-mes-informations.md, section « Confidentialité ». Un seul réglage au lot L1 :
-// le consentement aux données de santé (docs/domaine.md §3.12). Le consentement aux
-// notifications arrive avec le lot L10, celui aux communications commerciales avec le lot
-// L2 (C-04) — ils ne figurent pas ici, pas même désactivés.
+// docs/ecrans/L1-09-mes-informations.md + docs/ecrans/L2-02-consentement-communications.md
+// (C-04). Renommé « Mes autorisations » (L2-02) : deux réglages désormais — santé (L1) et
+// communications commerciales (L2), le seul des trois consentements cités par
+// docs/perimetre.md (C-04) qui ne dépend d'aucune fonctionnalité pas encore construite (les
+// notifications restent au lot L10, absentes ici, pas même désactivées).
 //
-// Le consentement est un JOURNAL d'ajout : accorder comme retirer insère une nouvelle ligne
-// (port.enregistrerConsentementSante), jamais une mise à jour. L'accord est immédiat ; le
-// retrait passe par une Modale qui énonce ses deux conséquences. Après un retrait, une ligne
-// « Effacer mes mesures enregistrées » apparaît, à double confirmation — l'effacement est
-// irréversible.
+// Chaque consentement est un JOURNAL d'ajout : accorder comme retirer insère une nouvelle ligne,
+// jamais une mise à jour. Le bloc santé garde sa Modale de retrait à deux conséquences (inchangé
+// depuis L1) ; le bloc communications retire IMMÉDIATEMENT, sans modale — une seule conséquence
+// (plus de courriel), déjà dite par l'intitulé (L2-02, Règles).
 
 function formaterVersion(version: string): string {
   const [annee, mois, jour] = version.split('-');
@@ -43,6 +47,11 @@ export default function Confidentialite() {
   const [erreurLecture, setErreurLecture] = useState(false);
   const [accorde, setAccorde] = useState(false);
   const [versionEnregistree, setVersionEnregistree] = useState<string | null>(null);
+  const [accordeCommunications, setAccordeCommunications] = useState(false);
+  const [historiqueOuvert, setHistoriqueOuvert] = useState(false);
+  const [historique, setHistorique] = useState<
+    { type: string; accorde: boolean; version: string; horodatage: string }[] | null
+  >(null);
 
   const [confirmationRetrait, setConfirmationRetrait] = useState(false);
   const [etapeEffacement, setEtapeEffacement] = useState<EtapeEffacement>(null);
@@ -51,12 +60,12 @@ export default function Confidentialite() {
 
   useEffect(() => {
     let monte = true;
-    port
-      .lireConsentementSante()
-      .then((etat) => {
+    Promise.all([port.lireConsentementSante(), port.lireConsentementCommunications()])
+      .then(([sante, communications]) => {
         if (!monte) return;
-        setAccorde(etat.accorde);
-        setVersionEnregistree(etat.version);
+        setAccorde(sante.accorde);
+        setVersionEnregistree(sante.version);
+        setAccordeCommunications(communications.accorde);
         setChargement(false);
       })
       .catch(() => {
@@ -68,6 +77,22 @@ export default function Confidentialite() {
       monte = false;
     };
   }, [port]);
+
+  async function surBasculeCommunications(nouvelAccord: boolean) {
+    setEcritureEnCours(true);
+    const resultat = await port.enregistrerConsentementCommunications(
+      nouvelAccord,
+      VERSION_CONSENTEMENT_COMMUNICATIONS,
+    );
+    setEcritureEnCours(false);
+    if (resultat.succes) setAccordeCommunications(nouvelAccord);
+  }
+
+  async function ouvrirHistorique() {
+    setHistoriqueOuvert(true);
+    const lignes = await port.lireHistoriqueConsentements();
+    setHistorique(lignes);
+  }
 
   async function definirConsentement(nouvelAccord: boolean) {
     setEcritureEnCours(true);
@@ -147,7 +172,7 @@ export default function Confidentialite() {
             >
               <BoutonIcone nom="retour" accessibilityLabel="Retour" onPress={() => router.back()} />
               <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-                Confidentialité
+                Mes autorisations
               </Text>
             </View>
 
@@ -230,6 +255,84 @@ export default function Confidentialite() {
                     <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.succesEncre }}>
                       Tes mesures enregistrées ont été effacées.
                     </Text>
+                  </View>
+                ) : null}
+
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: theme.espace[3],
+                    minHeight: theme.taille.tapMin,
+                  }}
+                >
+                  <Text
+                    style={{
+                      ...theme.texte.corps,
+                      flex: 1,
+                      color: theme.couleur.texte.principal,
+                    }}
+                  >
+                    Nouveautés et conseils
+                  </Text>
+                  <Switch
+                    value={accordeCommunications}
+                    onValueChange={(v) => void surBasculeCommunications(v)}
+                    disabled={ecritureEnCours}
+                    accessibilityLabel="Nouveautés et conseils"
+                    trackColor={{
+                      false: theme.couleur.gris[300],
+                      true: theme.couleur.marque.primaireTeinte2,
+                    }}
+                    thumbColor={theme.couleur.fond.surface}
+                  />
+                </View>
+                <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+                  {TEXTE_CONSENTEMENT_COMMUNICATIONS}
+                </Text>
+                <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.attenue }}>
+                  Les messages liés à ton abonnement et à tes paiements arrivent quoi qu’il arrive :
+                  ils ne relèvent pas d’une autorisation.
+                </Text>
+
+                <Pressable
+                  onPress={() =>
+                    historiqueOuvert ? setHistoriqueOuvert(false) : void ouvrirHistorique()
+                  }
+                  accessibilityRole="button"
+                  style={{ minHeight: theme.taille.tapMin, justifyContent: 'center' }}
+                >
+                  <Text
+                    style={{
+                      ...theme.texte.corps,
+                      color: theme.couleur.marque.primaire,
+                    }}
+                  >
+                    Historique de mes décisions
+                  </Text>
+                </Pressable>
+
+                {historiqueOuvert ? (
+                  <View style={{ gap: theme.espace[2] }}>
+                    {historique === null ? (
+                      <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.attenue }}>
+                        Chargement…
+                      </Text>
+                    ) : historique.length === 0 ? (
+                      <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.attenue }}>
+                        Aucune décision enregistrée.
+                      </Text>
+                    ) : (
+                      historique.map((l, index) => (
+                        <Text
+                          key={`${l.type}-${l.horodatage}-${index}`}
+                          style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}
+                        >
+                          {new Date(l.horodatage).toLocaleDateString('fr-FR')} · {l.type} ·{' '}
+                          {l.accorde ? 'accordé' : 'retiré'} (v{l.version})
+                        </Text>
+                      ))
+                    )}
                   </View>
                 ) : null}
               </ScrollView>

@@ -1932,6 +1932,119 @@ describe('pieces_verification', () => {
     expect(statut).toBeGreaterThanOrEqual(400);
   });
 
+  // --- Relation imbriquée PostgREST, dans les deux sens (porte de sortie L2, point 1 — le seul
+  // chemin d'accès à une pièce d'identité qui n'avait jamais été essayé). Même famille que le
+  // test « anon atteint profils_coach par relation imbriquée depuis offres » plus haut, mais sur
+  // la table la plus sensible du schéma : un embed PostgREST traverse une relation déclarée par
+  // clé étrangère (pieces_verification.coach_id -> profils_coach.id) et ne doit jamais contourner
+  // ni le GRANT colonne par colonne (chemin_stockage absent des deux côtés) ni la politique RLS
+  // de la table embarquée — PostgREST réévalue les deux pour la relation imbriquée, mais ce n'est
+  // vérifié nulle part dans ce dépôt avant cette section. ---
+
+  describe('relation imbriquée PostgREST (pieces_verification <-> profils_coach)', () => {
+    // Colonnes EXPLICITEMENT accordées des deux côtés de la relation embarquée — jamais "*". Un
+    // "*" sur la table embarquée échoue systématiquement au niveau du GRANT (compte_id absent de
+    // celui de profils_coach, chemin_stockage absent de celui de pieces_verification), et ce
+    // AVANT même que RLS n'entre en jeu : un premier essai avec "*" l'a confirmé empiriquement
+    // (403 dans les six cas, y compris pour A/B qui ont pourtant un grant colonne par colonne sur
+    // la table de base). Cette forme-là prouve seulement le grant, pas la politique RLS de la
+    // relation embarquée — ce que ce test doit réellement établir. Colonnes explicites ici pour
+    // que le grant passe et que ce soit RLS, seule, qui décide de ce qui apparaît.
+    const EMBED_PIECES = `pieces_verification(${COLONNES_PIECES_ACCORDEES})`;
+    const EMBED_PROFIL_COACH = `profils_coach(${COLONNES_PROFIL_COACH_ACCORDEES})`;
+
+    // Sens 1 : depuis pieces_verification, embarquer profils_coach. Peu de risque nouveau (la
+    // ligne de base est déjà fermée à anon/A), mais jamais vérifié : à prouver, pas à supposer.
+    it('anon : pieces_verification(profils_coach) — refusé à la base, jamais atteint', async () => {
+      const { statut, corps } = await appelRest(
+        `/rest/v1/pieces_verification?id=eq.${idPieceB}&select=${COLONNES_PIECES_ACCORDEES},${EMBED_PROFIL_COACH}`,
+        { session: 'anon' },
+      );
+      // anon n'a aucun GRANT sur pieces_verification (colonne ou table) : refusé avant même
+      // d'atteindre la relation imbriquée.
+      expect(statut).toBeGreaterThanOrEqual(400);
+      expect(JSON.stringify(corps)).not.toMatch(/chemin_stockage|compte_id/);
+    });
+
+    it('A (compte ordinaire, ni propriétaire ni examinateur) : pieces_verification(profils_coach) — ligne vide', async () => {
+      const { statut, corps } = await appelRest(
+        `/rest/v1/pieces_verification?id=eq.${idPieceB}&select=${COLONNES_PIECES_ACCORDEES},${EMBED_PROFIL_COACH}`,
+        { session: A },
+      );
+      // A a le GRANT colonne (authenticated) des deux côtés de la relation, donc le grant seul
+      // ne suffit plus à refuser : c'est bien la politique RLS de pieces_verification (ni
+      // propriétaire, ni examinateur) qui doit vider la ligne de base — avec ou sans la
+      // relation imbriquée demandée.
+      expect(statut).toBe(200);
+      expect(corps).toEqual([]);
+    });
+
+    it('B (coach propriétaire) : pieces_verification(profils_coach) — sa ligne, son propre profil, jamais compte_id ni chemin_stockage', async () => {
+      const { statut, corps } = await appelRest(
+        `/rest/v1/pieces_verification?id=eq.${idPieceB}&select=${COLONNES_PIECES_ACCORDEES},${EMBED_PROFIL_COACH}`,
+        { session: B },
+      );
+      expect(statut).toBe(200);
+      const lignes = corps as { profils_coach?: { compte_id?: unknown } }[];
+      expect(lignes).toHaveLength(1);
+      expect(lignes[0].profils_coach).toBeTruthy();
+      expect(JSON.stringify(corps)).not.toMatch(/chemin_stockage|compte_id/);
+    });
+
+    // Sens 2, le chemin réellement redouté : depuis profils_coach (lisible par anon dès qu'un
+    // coach est vérifié), embarquer pieces_verification. C'est la table cible la plus dangereuse
+    // du schéma, atteinte depuis la table la plus largement ouverte du schéma.
+    it('anon : profils_coach(pieces_verification) — profil visible, aucune pièce', async () => {
+      const { statut, corps } = await appelRest(
+        `/rest/v1/profils_coach?id=eq.${profilCoachIdB}&select=${COLONNES_PROFIL_COACH_ACCORDEES},${EMBED_PIECES}`,
+        { session: 'anon' },
+      );
+      // anon n'a AUCUN grant sur pieces_verification, contrairement à A/B ci-dessous
+      // (authenticated seulement) : soit PostgREST refuse la requête entière, soit elle réussit
+      // sans la relation imbriquée peuplée — jamais avec une pièce dedans.
+      expect(JSON.stringify(corps)).not.toMatch(/chemin_stockage/);
+      if (statut < 400) {
+        const lignes = corps as { pieces_verification?: unknown[] }[];
+        expect(lignes[0]?.pieces_verification ?? []).toEqual([]);
+      } else {
+        expect(statut).toBeGreaterThanOrEqual(400);
+      }
+    });
+
+    it('A (compte ordinaire) : profils_coach(pieces_verification) — profil visible, aucune pièce', async () => {
+      const { statut, corps } = await appelRest(
+        `/rest/v1/profils_coach?id=eq.${profilCoachIdB}&select=${COLONNES_PROFIL_COACH_ACCORDEES},${EMBED_PIECES}`,
+        { session: A },
+      );
+      // A a le grant colonne sur pieces_verification (authenticated) : le grant seul ne bloque
+      // plus rien ici, c'est exactement pour ça que ce cas est le plus dangereux des six — seule
+      // la politique RLS de pieces_verification (ni propriétaire, ni examinateur) doit vider la
+      // relation imbriquée. Le profil de B reste lisible (verifiee), la pièce non.
+      expect(statut).toBe(200);
+      const lignes = corps as { pieces_verification?: unknown[] }[];
+      expect(lignes).toHaveLength(1);
+      expect(lignes[0].pieces_verification).toEqual([]);
+      expect(JSON.stringify(corps)).not.toMatch(/chemin_stockage/);
+    });
+
+    it('B (coach propriétaire) : profils_coach(pieces_verification) — sa propre pièce, jamais chemin_stockage', async () => {
+      const { statut, corps } = await appelRest(
+        `/rest/v1/profils_coach?id=eq.${profilCoachIdB}&select=${COLONNES_PROFIL_COACH_ACCORDEES},${EMBED_PIECES}`,
+        { session: B },
+      );
+      // B lit son propre profil, avec sa propre pièce en relation imbriquée (RLS le permet, il
+      // en est propriétaire) — mais le grant colonne par colonne exclut chemin_stockage même
+      // pour lui : la métadonnée apparaît, jamais le chemin réel du fichier.
+      expect(statut).toBe(200);
+      const lignes = corps as { pieces_verification?: { type?: string }[] }[];
+      expect(lignes).toHaveLength(1);
+      expect(lignes[0].pieces_verification).toEqual(
+        expect.arrayContaining([expect.objectContaining({ type: 'identite' })]),
+      );
+      expect(JSON.stringify(corps)).not.toMatch(/chemin_stockage/);
+    });
+  });
+
   // --- Lecture réservée au back-office (docs/backend.md §9, 0013_creer_role_examinateur.sql).
   // Trouvé manquant en relisant P2.5 : 0012 fermait la lecture à tout le monde sauf
   // service_role, sans jamais construire le chemin réservé à un vrai compte examinateur que son
@@ -1998,6 +2111,28 @@ describe('pieces_verification', () => {
         session: EX,
       });
       expect(statut).toBeLessThan(300);
+    });
+
+    // L2-10 (consultation d'un dossier) : le back-office ne lit jamais le fichier brut, il
+    // demande une URL SIGNÉE (POST /storage/v1/object/sign/..., endpoint distinct du GET direct
+    // ci-dessus, soumis à la même politique SELECT sur storage.objects mais jamais prouvé
+    // séparément jusqu'ici — rouge/vert dans les deux sens, comme toute lecture inter-comptes
+    // (docs/backend.md §8).
+    it("l'examinateur crée une URL signée pour la pièce de B : accepté", async () => {
+      const { statut, corps } = await appelRest(
+        `/storage/v1/object/sign/pieces-verification/${cheminPieceB}`,
+        { methode: 'POST', session: EX, corps: { expiresIn: 600 } },
+      );
+      expect(statut).toBeLessThan(300);
+      expect((corps as { signedURL?: string }).signedURL).toBeDefined();
+    });
+
+    it('un compte ordinaire (A) tente de créer une URL signée pour la pièce de B : refusé', async () => {
+      const { statut } = await appelRest(
+        `/storage/v1/object/sign/pieces-verification/${cheminPieceB}`,
+        { methode: 'POST', session: A, corps: { expiresIn: 600 } },
+      );
+      expect(statut).toBeGreaterThanOrEqual(400);
     });
 
     it('est_examinateur_courant() : vrai pour EX, faux pour un compte ordinaire, refusé pour anon', async () => {

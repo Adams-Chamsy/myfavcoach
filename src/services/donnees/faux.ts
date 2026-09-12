@@ -1,10 +1,16 @@
 import type {
+  DossierVerification,
   EtatProfils,
   InformationsCompte,
   ModificationsInformations,
+  ModificationsOffre,
+  Offre,
+  PieceDeposee,
   PortDonnees,
+  ProfilCoachPublic,
   ProfilOnboarding,
   ResultatEcriture,
+  TypePiece,
 } from './port';
 
 export type FauxPortDonnees = PortDonnees & {
@@ -27,6 +33,35 @@ export type FauxPortDonnees = PortDonnees & {
   // pour déclencher un échec organiquement, contrairement à src/services/auth/faux.ts. Sert
   // l'état "Erreur" de docs/ecrans/L1-05 (critère : "l'étape n'avance pas et rien n'est perdu").
   echouerProchaineEcriturePourTest(erreur?: string): void;
+
+  definirDossierVerificationPourTest(dossier: DossierVerification): void;
+  definirPiecesDeposeesPourTest(pieces: PieceDeposee[]): void;
+  definirOffresPourTest(offres: Offre[]): void;
+  // publierOffre échoue avec ce code au prochain appel, une seule fois — sert les deux refus
+  // testés par L2-15 (coach_non_verifie, engagement_humain_requis).
+  echouerProchainePublicationPourTest(code: string): void;
+  definirProfilsCoachPublicsPourTest(profils: Record<string, ProfilCoachPublic>): void;
+  definirOffresPubliquesPourTest(offres: Record<string, Offre[]>): void;
+
+  definirConsentementCommunicationsPourTest(etat: {
+    accorde: boolean;
+    version: string | null;
+  }): void;
+  definirHistoriqueConsentementsPourTest(
+    historique: { type: string; accorde: boolean; version: string; horodatage: string }[],
+  ): void;
+  echouerProchainExportPourTest(code: string): void;
+  definirDernierExportPourTest(
+    export_: {
+      demandeLe: string;
+      pretLe: string | null;
+      urlTelechargement: string | null;
+      expireLe: string | null;
+      tailleOctets: number | null;
+    } | null,
+  ): void;
+
+  definirDatesDocumentsPourTest(dates: { cguVersionAcceptee: string; creeLe: string }): void;
 };
 
 // docs/api.md §3 : un compte neuf a toujours profilActif = 'client' (colonne NOT NULL, défaut
@@ -81,6 +116,38 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     version: null,
   };
   let prochaineEcritureEchoue: string | null = null;
+  let dossierVerification: DossierVerification = { statut: 'absente', deposeLe: null, motif: null };
+  let piecesDeposees: PieceDeposee[] = [];
+  let offres: Offre[] = [];
+  let prochainePublicationEchoue: string | null = null;
+  let profilsCoachPublics: Record<string, ProfilCoachPublic> = {};
+  let offresPubliques: Record<string, Offre[]> = {};
+  let consentementCommunications: { accorde: boolean; version: string | null } = {
+    accorde: false,
+    version: null,
+  };
+  let historiqueConsentements: {
+    type: string;
+    accorde: boolean;
+    version: string;
+    horodatage: string;
+  }[] = [];
+  let prochainExportEchoue: string | null = null;
+  let dernierExport: {
+    demandeLe: string;
+    pretLe: string | null;
+    urlTelechargement: string | null;
+    expireLe: string | null;
+    tailleOctets: number | null;
+  } | null = null;
+  let prochainIdOffre = 1;
+  // Valeurs par défaut arbitraires (le vrai « acceptée le » vient de comptes.cree_le, aucune
+  // signification particulière ici) : un test qui exerce le bandeau « Une version a changé »
+  // passe explicitement une version différente via definirDatesDocumentsPourTest.
+  let datesDocuments: { cguVersionAcceptee: string; creeLe: string } = {
+    cguVersionAcceptee: '2026-09-04',
+    creeLe: '2026-01-01T00:00:00.000Z',
+  };
 
   // true : applique nouvelEtat/nouveauProfil et rend { succes: true } ; false : consomme
   // l'échec programmé et ne change rien (docs/ecrans/L1-05, États : "l'étape n'avance pas et
@@ -244,6 +311,194 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
         poidsCibleGrammes: null,
       };
       return { succes: true };
+    },
+
+    definirDossierVerificationPourTest(dossier) {
+      dossierVerification = dossier;
+    },
+    async lireDossierVerification() {
+      return dossierVerification;
+    },
+
+    definirPiecesDeposeesPourTest(pieces) {
+      piecesDeposees = pieces;
+    },
+    async lirePiecesDeposees() {
+      return piecesDeposees;
+    },
+
+    async deposerPieceVerification(type: TypePiece) {
+      if (prochaineEcritureEchoue !== null) {
+        const erreur = prochaineEcritureEchoue;
+        prochaineEcritureEchoue = null;
+        return { succes: false, erreur };
+      }
+      piecesDeposees = [
+        ...piecesDeposees.filter((p) => p.type !== type),
+        { type, deposeLe: new Date().toISOString() },
+      ];
+      return { succes: true };
+    },
+
+    definirOffresPourTest(nouvellesOffres) {
+      offres = nouvellesOffres;
+    },
+    async lireMesOffres() {
+      return offres;
+    },
+
+    async creerOffreBrouillon(modifs: ModificationsOffre) {
+      if (prochaineEcritureEchoue !== null) {
+        const erreur = prochaineEcritureEchoue;
+        prochaineEcritureEchoue = null;
+        return { succes: false, erreur };
+      }
+      const id = `offre-test-${prochainIdOffre++}`;
+      offres = [
+        ...offres,
+        {
+          id,
+          titre: modifs.titre,
+          description: modifs.description,
+          prixCentimes: modifs.prixCentimes,
+          benefices: modifs.benefices,
+          engagementHumain: modifs.engagementHumain,
+          estMiseEnAvant: modifs.estMiseEnAvant,
+          publieeLe: null,
+          retireeLe: null,
+        },
+      ];
+      return { succes: true, id };
+    },
+
+    async modifierOffre(id: string, modifs: ModificationsOffre) {
+      if (prochaineEcritureEchoue !== null) {
+        const erreur = prochaineEcritureEchoue;
+        prochaineEcritureEchoue = null;
+        return { succes: false, erreur };
+      }
+      offres = offres.map((o) =>
+        o.id === id
+          ? {
+              ...o,
+              titre: modifs.titre,
+              description: modifs.description,
+              prixCentimes: modifs.prixCentimes,
+              benefices: modifs.benefices,
+              engagementHumain: modifs.engagementHumain,
+              estMiseEnAvant: modifs.estMiseEnAvant,
+            }
+          : o,
+      );
+      return { succes: true };
+    },
+
+    echouerProchainePublicationPourTest(code) {
+      prochainePublicationEchoue = code;
+    },
+    async publierOffre(id: string) {
+      if (prochainePublicationEchoue !== null) {
+        const code = prochainePublicationEchoue;
+        prochainePublicationEchoue = null;
+        return { succes: false, code };
+      }
+      offres = offres.map((o) =>
+        o.id === id ? { ...o, publieeLe: new Date().toISOString(), retireeLe: null } : o,
+      );
+      return { succes: true };
+    },
+
+    async retirerOffre(id: string) {
+      offres = offres.map((o) => (o.id === id ? { ...o, retireeLe: new Date().toISOString() } : o));
+      return { succes: true };
+    },
+
+    definirProfilsCoachPublicsPourTest(profils) {
+      profilsCoachPublics = profils;
+    },
+    async lireProfilCoachPublic(coachId: string) {
+      return profilsCoachPublics[coachId] ?? null;
+    },
+
+    definirOffresPubliquesPourTest(nouvellesOffresPubliques) {
+      offresPubliques = nouvellesOffresPubliques;
+    },
+    async lireOffresPublieesDeCoach(coachId: string) {
+      return offresPubliques[coachId] ?? [];
+    },
+
+    async demanderSuppressionCompte() {
+      if (prochaineEcritureEchoue !== null) {
+        const erreur = prochaineEcritureEchoue;
+        prochaineEcritureEchoue = null;
+        return { succes: false, erreur };
+      }
+      return { succes: true };
+    },
+
+    definirConsentementCommunicationsPourTest(nouvelEtat) {
+      consentementCommunications = nouvelEtat;
+    },
+    async lireConsentementCommunications() {
+      return consentementCommunications;
+    },
+    async enregistrerConsentementCommunications(accorde, version) {
+      if (prochaineEcritureEchoue !== null) {
+        const erreur = prochaineEcritureEchoue;
+        prochaineEcritureEchoue = null;
+        return { succes: false, erreur };
+      }
+      consentementCommunications = { accorde, version };
+      historiqueConsentements = [
+        {
+          type: 'communicationsCommerciales',
+          accorde,
+          version,
+          horodatage: new Date().toISOString(),
+        },
+        ...historiqueConsentements,
+      ];
+      return { succes: true };
+    },
+
+    definirHistoriqueConsentementsPourTest(historique) {
+      historiqueConsentements = historique;
+    },
+    async lireHistoriqueConsentements() {
+      return historiqueConsentements;
+    },
+
+    echouerProchainExportPourTest(code) {
+      prochainExportEchoue = code;
+    },
+    async demanderExportDonnees() {
+      if (prochainExportEchoue !== null) {
+        const code = prochainExportEchoue;
+        prochainExportEchoue = null;
+        return { succes: false, code };
+      }
+      dernierExport = {
+        demandeLe: new Date().toISOString(),
+        pretLe: null,
+        urlTelechargement: null,
+        expireLe: null,
+        tailleOctets: null,
+      };
+      return { succes: true };
+    },
+
+    definirDernierExportPourTest(export_) {
+      dernierExport = export_;
+    },
+    async lireDernierExport() {
+      return dernierExport;
+    },
+
+    definirDatesDocumentsPourTest(dates) {
+      datesDocuments = dates;
+    },
+    async lireDatesDocuments() {
+      return datesDocuments;
     },
   } satisfies FauxPortDonnees;
 }

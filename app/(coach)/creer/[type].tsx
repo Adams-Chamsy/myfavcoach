@@ -1,6 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 
 import { EcranProvisoire } from '@/composants/ecran-provisoire';
+import { EcranCreationOffre } from '@/fonctionnalites/offres/ecran-creation-offre';
 
 // Cible des trois entrées de la feuille "Créer" (docs/ecrans/L0-02-coquille-coach.md). Dans le
 // groupe app/(coach)/, pas en dehors : ce sont des écrans de l'espace coach, et les en sortir
@@ -16,8 +17,12 @@ const CONFIGURATION: Record<string, { titre: string; lot: string }> = {
 
 export default function Creer() {
   const { type } = useLocalSearchParams<{ type: string }>();
-  const configuration = CONFIGURATION[type ?? ''];
 
+  // L2-15 (docs/prompts/L2.md P2.10) : seule "offre" a un écran réel à ce lot. programme/seance
+  // restent la coquille provisoire (L6, hors périmètre).
+  if (type === 'offre') return <EcranCreationOffre />;
+
+  const configuration = CONFIGURATION[type ?? ''];
   return (
     <EcranProvisoire titre={configuration?.titre ?? 'Créer'} lot={configuration?.lot ?? '?'} />
   );

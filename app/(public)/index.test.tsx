@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Platform } from 'react-native';
 import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 
@@ -7,8 +7,10 @@ import { FournisseurTheme } from '@/theme/fournisseur';
 import { taille, themes } from '@/theme/tokens';
 import Bienvenue from './index';
 
+const mockPousser = jest.fn();
+
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: mockPousser }),
 }));
 
 // Mêmes métriques représentatives que src/test/accessibilite.test.tsx : aucune mesure native
@@ -112,5 +114,18 @@ describe('Bienvenue (docs/ecrans/L1-01-bienvenue.md)', () => {
     await rendreBienvenue();
     expect(fetchEspionne).not.toHaveBeenCalled();
     fetchEspionne.mockRestore();
+  });
+
+  // L2-03 (C-06) : les liens CGU/confidentialité ouvrent désormais la surface publique du
+  // lecteur de document, sans session (fiche, critère 1) — auparavant des liens morts
+  // (surLienLegal, commentaire d'origine).
+  it('les liens CGU et confidentialité ouvrent la surface publique du lecteur de document', async () => {
+    await rendreBienvenue();
+
+    fireEvent.press(screen.getByText('CGU'));
+    expect(mockPousser).toHaveBeenCalledWith('/(public)/documents/cgu');
+
+    fireEvent.press(screen.getByText('politique de confidentialité'));
+    expect(mockPousser).toHaveBeenCalledWith('/(public)/documents/confidentialite');
   });
 });

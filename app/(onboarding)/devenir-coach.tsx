@@ -91,9 +91,10 @@ export default function DevenirCoach() {
       return;
     }
     setChargement(false);
-    // Arrive sur le pilotage provisoire du lot L0 (fiche, "Après validation"). Un rechargement
-    // complet y revient : le profil actif est côté serveur (critère 2).
-    router.replace('/(coach)/pilotage');
+    // L2-05 : l'étape 1 (celle-ci) enchaîne désormais sur l'étape 2/4 (profil), pas directement
+    // sur le pilotage — docs/prompts/L2.md P2.8. router.push, pas replace : l'étape 2 peut
+    // revenir ici (EnteteOnboarding).
+    router.push('/(onboarding)/devenir-coach-profil');
   }
 
   return (

@@ -10,16 +10,21 @@ import { join } from 'path';
 //
 // Étendu en P2.5 (docs/prompts/L2.md) : pieces_verification.chemin_stockage rejoint cette
 // garantie. Ce n'est pas une donnée de santé, mais son exposition serait pire — irréversible et
-// identifiante (supabase/migrations/0012_creer_pieces_verification.sql). Aucun écran ne le lit
-// encore (P2.5 est backend seul ; l'écran de dépôt arrive avec docs/ecrans/L2-06), donc le 4ᵉ
-// test ci-dessous est aujourd'hui vacueusement vert — RÈGLE 8 : il reste écrit pour armer la
-// garde AVANT le code qui pourrait la violer, même famille que le test 2 (aucun gestionnaire
-// d'erreur global n'existe non plus aujourd'hui). Le jour où un écran lit chemin_stockage
-// (jamais renvoyé par l'API de toute façon, voir le GRANT SELECT de la migration — seul un
-// futur back-office y touchera), il ne devra jamais apparaître dans un console.*/rapport de
-// plantage ni dans une URL de requête (paramètre de requête signée, log d'accès serveur) : ce
-// test échouera alors pour de bon, et c'est le signal d'écrire le scrubbing plutôt que de
-// supprimer l'assertion.
+// identifiante (supabase/migrations/0012_creer_pieces_verification.sql). Écrit en P2.5 comme un
+// FIL-PIÈGE — RÈGLE 8 : la garde posée AVANT le code qui pourrait la violer, à un moment où
+// aucun écran ne lisait encore chemin_stockage (P2.5 était backend seul).
+//
+// CE N'EST PLUS LE CAS : depuis P2.6/P2.10, `app/(onboarding)/devenir-coach-verification.tsx`
+// (L2-06) ET `app/(admin)/verification.tsx` (L2-10) lisent tous deux chemin_stockage pour de
+// vrai (dépôt du fichier, consultation par l'examinateur). Le 4ᵉ test ci-dessous n'est donc plus
+// vacueusement vert : il scanne réellement ces deux fichiers à chaque exécution, et son passage
+// prouve — pas suppose — qu'aucun des deux ne journalise ni ne construit d'URL avec cette
+// colonne. Corrigé ici après l'avoir trouvé encore décrit comme vacueux pendant la revue de fin
+// de lot L2 (porte de sortie, point 3) : un commentaire faux sur CE fichier précis coûte cher,
+// puisque c'est lui qui protège la donnée la plus sensible du dépôt.
+//
+// S'il échoue un jour : c'est le signal d'écrire le scrubbing (console/rapport de plantage) ou
+// de retirer la construction d'URL fautive, jamais de supprimer l'assertion.
 //
 // FIL-PIÈGE VOLONTAIRE — le premier `it` ci-dessous échoue le jour où une dépendance de
 // rapport de plantage (Sentry ou équivalent) entre dans package.json. Ce n'est PAS le signal
@@ -85,8 +90,8 @@ describe('la donnée de santé du lot n’atteint ni journal ni rapport de plant
 
   // 4 · chemin_stockage (pieces_verification, P2.5) ne doit jamais atteindre un console.* ni
   // être assemblé dans une URL de requête (paramètre `?...chemin_stockage...` ou inversement).
-  // Vert vacueux tant qu'aucun écran ne le lit (voir le commentaire d'en-tête) — armé pour le
-  // jour où un écran de back-office/dépôt le fera.
+  // Réellement exercé depuis P2.6/P2.10 (voir le commentaire d'en-tête) : L2-06 et L2-10 lisent
+  // tous deux cette colonne, ce test les scanne donc pour de vrai à chaque exécution.
   it('chemin_stockage n’apparaît dans aucun console.* ni construction d’URL, dans src/ ou app/', () => {
     const MOTIF_CONSOLE = /console\.[a-z]+\([^)]*chemin_stockage/i;
     // [?&] suivi d'une clef=valeur (un vrai paramètre de requête), jamais un simple "?." de

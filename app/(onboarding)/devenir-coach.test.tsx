@@ -13,9 +13,15 @@ import DevenirCoach from './devenir-coach';
 
 const mockRemplacer = jest.fn();
 const mockRetour = jest.fn();
+const mockPousser = jest.fn();
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ replace: mockRemplacer, back: mockRetour, canGoBack: () => true }),
+  useRouter: () => ({
+    replace: mockRemplacer,
+    push: mockPousser,
+    back: mockRetour,
+    canGoBack: () => true,
+  }),
 }));
 
 const METRIQUES_ZONES_SURES: Metrics = {
@@ -125,8 +131,9 @@ describe('DevenirCoach (docs/ecrans/L1-08-activation-espace-coach.md)', () => {
     await waitFor(() => expect(boutonDesactive()).toBe(false));
   });
 
-  // Critère 2 (côté écran) : après succès, rafraîchit l'état puis va sur le pilotage coach.
-  it('une validation réussie rafraîchit l’état et va sur le pilotage coach', async () => {
+  // Critère 2 (côté écran) : après succès, rafraîchit l'état puis enchaîne sur l'étape 2/4
+  // (L2-05, docs/prompts/L2.md P2.8) — plus directement sur le pilotage depuis ce lot.
+  it('une validation réussie rafraîchit l’état et enchaîne sur l’étape 2/4 (profil)', async () => {
     const { portDonnees } = await rendre();
 
     await fireEvent.press(screen.getByText('Préparation physique'));
@@ -134,7 +141,9 @@ describe('DevenirCoach (docs/ecrans/L1-08-activation-espace-coach.md)', () => {
     await waitFor(() => expect(boutonDesactive()).toBe(false));
     await fireEvent.press(screen.getByText('Ouvrir mon espace coach'));
 
-    await waitFor(() => expect(mockRemplacer).toHaveBeenCalledWith('/(coach)/pilotage'));
+    await waitFor(() =>
+      expect(mockPousser).toHaveBeenCalledWith('/(onboarding)/devenir-coach-profil'),
+    );
     const etat = await portDonnees.lireEtatProfils();
     expect(etat.coachExiste).toBe(true);
     expect(etat.profilActif).toBe('coach');

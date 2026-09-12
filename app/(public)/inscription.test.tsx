@@ -272,4 +272,16 @@ describe('Inscription (docs/ecrans/L1-02-creation-compte.md)', () => {
       true,
     );
   });
+
+  // L2-03 (C-06) : les liens CGU/confidentialité ouvrent désormais la surface publique du
+  // lecteur de document, sans session — auparavant des liens morts.
+  it('les liens CGU et confidentialité ouvrent la surface publique du lecteur de document', async () => {
+    await rendreInscription(creerFauxPortAuth());
+
+    await fireEvent.press(screen.getByText('CGU'));
+    expect(mockPousser).toHaveBeenCalledWith('/(public)/documents/cgu');
+
+    await fireEvent.press(screen.getByText('politique de confidentialité'));
+    expect(mockPousser).toHaveBeenCalledWith('/(public)/documents/confidentialite');
+  });
 });

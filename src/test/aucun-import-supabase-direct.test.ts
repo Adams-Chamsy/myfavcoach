@@ -97,14 +97,38 @@ describe('aucun import direct de src/services/supabase/ hors des adaptateurs', (
   // adaptateurs eux-mêmes, qui ont le droit d'importer le client.
   describe('sur le vrai dépôt', () => {
     const PREFIXES = ['app/', 'src/composants/', 'src/fonctionnalites/'];
+    // app/(admin)/ est l'EXCEPTION documentée (docs/ecrans/L2-10-back-office-verification.md,
+    // docs/backend.md §9) : il n'utilise JAMAIS src/services/supabase/client.ts (celui du
+    // paquet mobile) mais instancie son propre client (src/services/supabase/client-admin.ts),
+    // avec sa propre variable d'environnement. C'est l'app mobile qui ne doit jamais importer
+    // Supabase directement — app/(admin)/ n'en fait pas partie.
     const fichiers = contenuDe(
-      fichiersSuivisParGit().filter((chemin) =>
-        PREFIXES.some((prefixe) => chemin.startsWith(prefixe)),
+      fichiersSuivisParGit().filter(
+        (chemin) =>
+          PREFIXES.some((prefixe) => chemin.startsWith(prefixe)) &&
+          !chemin.startsWith('app/(admin)/'),
       ),
     );
 
     it("aucun fichier de app/, src/composants/ ou src/fonctionnalites/ n'importe src/services/supabase/ directement", () => {
       expect(coupables(fichiers)).toEqual([]);
+    });
+  });
+
+  // L2-10 : l'exception ci-dessus (app/(admin)/) a une contrepartie précise — jamais LE CLIENT
+  // MOBILE (services/supabase/client, la clé anonyme embarquée dans le paquet). Seul
+  // services/supabase/client-admin (sa propre clé, docs/backend.md §9) est permis ici.
+  describe("app/(admin)/ n'importe jamais le client mobile", () => {
+    const MOTIF_CLIENT_MOBILE = /services\/supabase\/client['"]/;
+    const fichiersAdmin = contenuDe(
+      fichiersSuivisParGit().filter((chemin) => chemin.startsWith('app/(admin)/')),
+    );
+
+    it("aucun fichier de app/(admin)/ n'importe services/supabase/client (le client mobile)", () => {
+      const coupablesMobile = fichiersAdmin
+        .filter((f) => MOTIF_CLIENT_MOBILE.test(f.contenu))
+        .map((f) => f.chemin);
+      expect(coupablesMobile).toEqual([]);
     });
   });
 });

@@ -78,6 +78,63 @@ export type ProfilOnboarding = {
   poidsCibleGrammes: number | null;
 };
 
+// docs/domaine.md §4.2, les six valeurs de statut_verification_enum (0001_creer_identite.sql).
+export type StatutVerification =
+  'absente' | 'en_examen' | 'complement_demande' | 'verifiee' | 'refusee' | 'revoquee';
+
+// L2-09 : motif = celui renvoyé par le serveur (dernière DecisionVerification, docs/domaine.md
+// §3.14), jamais un texte générique inventé à l'écran. deposeLe sert au calcul de l'échéance
+// 48 h ouvrées (fiche L2-09) — null tant qu'aucun document n'a été déposé.
+export type DossierVerification = {
+  statut: StatutVerification;
+  deposeLe: string | null;
+  motif: string | null;
+};
+
+// L2-06 : les trois types fermés du dossier (docs/domaine.md §4.2). Une pièce déposée n'expose
+// jamais son chemin de stockage à l'application (0012_creer_pieces_verification.sql, décision
+// "pas même lui") — seuls type/dates en sortent.
+export type TypePiece = 'identite' | 'diplome_ou_certification' | 'assurance_rc_pro';
+export type PieceDeposee = { type: TypePiece; deposeLe: string };
+
+// L2-15/L2-10 : docs/domaine.md §3.3. Une seule nature d'offre au jalon 1 — pas de champ type.
+export type Offre = {
+  id: string;
+  titre: string;
+  description: string | null;
+  prixCentimes: number;
+  benefices: string[];
+  engagementHumain: string[];
+  estMiseEnAvant: boolean;
+  publieeLe: string | null;
+  retireeLe: string | null;
+};
+
+export type ModificationsOffre = {
+  titre: string;
+  description: string | null;
+  prixCentimes: number;
+  benefices: string[];
+  engagementHumain: string[];
+  estMiseEnAvant: boolean;
+};
+
+// L2-12/13/14 : lecture PUBLIQUE (anon compris, docs/backend.md §8) — jamais compte_id, jamais
+// une offre non publiée d'un autre coach. `verifiee` gouverne l'affichage du badge, pas l'accès :
+// un coach non vérifié reste consultable (docs/domaine.md §4.2, "préparer et être consultable").
+export type ProfilCoachPublic = {
+  id: string;
+  prenom: string;
+  nom: string;
+  photoUrl: string | null;
+  discipline: string;
+  titreCourt: string | null;
+  bio: string | null;
+  verifiee: boolean;
+  parcoursTexte: string | null;
+  langues: string[];
+};
+
 export type PortDonnees = {
   lireEtatProfils(): Promise<EtatProfils>;
 
@@ -161,6 +218,79 @@ export type PortDonnees = {
   // retiré : le déclencheur ne bloque que l'écriture d'une valeur NON nulle. Irréversible,
   // offert seulement après un retrait de consentement.
   effacerMesuresCorporelles(): Promise<ResultatEcriture>;
+
+  // L2-09 : statut du dossier + motif de la dernière décision, pour l'écran d'attente.
+  lireDossierVerification(): Promise<DossierVerification>;
+
+  // L2-06 : les pièces déjà déposées par le coach courant (métadonnées seules, jamais le
+  // fichier — 0012_creer_pieces_verification.sql).
+  lirePiecesDeposees(): Promise<PieceDeposee[]>;
+
+  // L2-06 : dépôt d'UNE pièce, de bout en bout — URL signée à usage unique (docs/api.md §4),
+  // envoi du fichier, puis ligne de métadonnées. Le fichier ne transite jamais par ce port lui-
+  // même (il part directement vers Supabase Storage) ni par aucune route applicative.
+  deposerPieceVerification(
+    type: TypePiece,
+    fichier: { uri: string; nom: string; typeMime: string },
+  ): Promise<ResultatEcriture>;
+
+  // L2-15/L2-11 : offres du coach courant, brouillons compris (lecture propriétaire).
+  lireMesOffres(): Promise<Offre[]>;
+  creerOffreBrouillon(
+    modifs: ModificationsOffre,
+  ): Promise<{ succes: true; id: string } | { succes: false; erreur: string }>;
+  modifierOffre(id: string, modifs: ModificationsOffre): Promise<ResultatEcriture>;
+  // Textes exacts des deux refus possibles (docs/api.md §5) : 'coach_non_verifie' |
+  // 'engagement_humain_requis' — l'écran choisit son propre libellé à partir du code.
+  publierOffre(id: string): Promise<{ succes: true } | { succes: false; code: string }>;
+  retirerOffre(id: string): Promise<ResultatEcriture>;
+
+  // L2-12/13/14 : lecture publique (anon compris), jamais authentifiée. null si le coach
+  // n'existe pas ou si son compte est supprimé.
+  lireProfilCoachPublic(coachId: string): Promise<ProfilCoachPublic | null>;
+  lireOffresPublieesDeCoach(coachId: string): Promise<Offre[]>;
+
+  // L2-01 (C-03) : appelle supprimer_mon_compte() (0018, SECURITY DEFINER) — comptes.supprime_le
+  // n'a aucun GRANT UPDATE, comme profil_actif/statut_verification. L'écran vide ensuite la
+  // session lui-même (port.deconnecter(), src/services/auth/) : ce port ne s'en charge pas, il
+  // n'est pas le port d'authentification.
+  demanderSuppressionCompte(motif: string | null): Promise<ResultatEcriture>;
+
+  // L2-02 (C-04) : même mécanisme que enregistrerConsentementSante/lireConsentementSante — un
+  // second type de journal (`consentements.type = 'communicationsCommerciales'`), jamais une
+  // méthode générique paramétrée par type (le port reste un type par consentement, comme il
+  // l'était déjà pour la santé).
+  lireConsentementCommunications(): Promise<{ accorde: boolean; version: string | null }>;
+  enregistrerConsentementCommunications(
+    accorde: boolean,
+    version: string,
+  ): Promise<ResultatEcriture>;
+
+  // L2-02, "Historique de mes décisions" : le journal complet (les deux types), le plus récent
+  // en premier — lecture seule, jamais un point d'écriture.
+  lireHistoriqueConsentements(): Promise<
+    { type: string; accorde: boolean; version: string; horodatage: string }[]
+  >;
+
+  // L2-04 (C-07) : demander_export_donnees() (0018) applique la règle "un export par mois
+  // maximum" côté serveur, jamais côté écran — l'écran ne fait que relire l'état après. Aucune
+  // transition automatique vers "prêt" à ce lot (docs/dette.md) : rien ne la produirait pour de
+  // vrai, ce port ne prétend pas le contraire.
+  demanderExportDonnees(): Promise<{ succes: true } | { succes: false; code: string }>;
+  lireDernierExport(): Promise<{
+    demandeLe: string;
+    pretLe: string | null;
+    urlTelechargement: string | null;
+    expireLe: string | null;
+    tailleOctets: number | null;
+  } | null>;
+
+  // L2-03 (C-06) : cguVersionAcceptee et creeLe viennent tous deux de comptes (0001), déjà
+  // lisibles par comptes_select_soi (0002) — aucune nouvelle politique. creeLe sert de date
+  // « acceptée le » pour les CGU/CGV : comptes ne porte aucune colonne dédiée à la date
+  // d'acceptation elle-même, seulement à sa version — exact tant qu'aucune ré-acceptation n'a
+  // eu lieu depuis la création du compte (docs/dette.md).
+  lireDatesDocuments(): Promise<{ cguVersionAcceptee: string; creeLe: string }>;
 };
 
 // Les trois écritures qui changent EtatProfils. Elles ne sont JAMAIS appelées sur un `port`

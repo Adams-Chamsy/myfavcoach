@@ -35,10 +35,17 @@ const blockListTests = /\/app\/.*\.test\.tsx?$/;
 // (developpement) ne le fait pas.
 const blockListGalerie = /\/app\/_galerie\.tsx$/;
 
+// L2-10 (docs/ecrans/L2-10-back-office-verification.md, critere 7) : meme mecanisme que
+// blockListGalerie ci-dessus, applique a app/(admin)/ tout entier -- retire du bundle de
+// production mobile, pas seulement inatteignable par la navigation (deja garanti par
+// src/test/aucun-lien-vers-admin.test.ts, qui couvre l'autre moitie de la garantie). Le groupe
+// reste charge en developpement (`expo start`) pour que le back-office tourne localement.
+const blockListAdmin = /\/app\/\(admin\)\//;
+
 config.resolver.blockList = [
   ...blockListExistantEnListe,
   blockListTests,
-  ...(process.env.NODE_ENV === 'production' ? [blockListGalerie] : []),
+  ...(process.env.NODE_ENV === 'production' ? [blockListGalerie, blockListAdmin] : []),
 ];
 
 module.exports = config;

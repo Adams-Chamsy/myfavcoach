@@ -93,6 +93,13 @@ corrections l'emportent sur la maquette.**
 - ❌ Ajouter un achat in-app, un SDK de publicité, un traceur analytique tiers.
 - ❌ Toucher à `maquettes/`, à `design/tokens.json` sans instruction explicite, ou aux fichiers
   générés dans `src/theme/`.
+- ❌ Écraser, régénérer depuis `.env.exemple`, ou modifier `.env` de quelque façon que ce soit
+  sans instruction explicite — même pour débloquer une commande qui en a besoin (`expo export`,
+  `expo start`...). Un `.env` local ignoré par git ne peut pas être reconstruit s'il est perdu :
+  lire son contenu pour vérifier une valeur est permis, l'écraser ne l'est pas. Si une commande
+  échoue faute de `.env` rempli, le dire et demander plutôt que de le remplir soi-même. Cette
+  règle vaut identiquement pour tout sous-agent dispatché — CLAUDE.md se propage à un sous-agent
+  fraîchement lancé dans ce dépôt (vérifié empiriquement), donc l'interdiction aussi.
 - ❌ Supprimer ou contourner un test qui échoue. Si un test est faux, dis-le, ne le réécris pas
   pour qu'il passe.
 - ❌ `any`, `@ts-ignore`, `eslint-disable` sans commentaire justifiant la ligne.

@@ -34,7 +34,8 @@ import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donne
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerSessionDemonstration } from '@/fixtures/session-demonstration';
 import { creerFauxPortAuth } from '@/services/auth/faux';
-import { creerFauxPortDonnees } from '@/services/donnees/faux';
+import { creerFauxPortDonnees, etatProfilsParDefaut } from '@/services/donnees/faux';
+import { VERSION_CGU_ACCEPTEE } from '@/fonctionnalites/identite/documents-legaux';
 import Bienvenue from './(public)/index';
 import Inscription from './(public)/inscription';
 import Verification from './(public)/verification';
@@ -46,9 +47,20 @@ import OnboardingObjectifs from './(onboarding)/2-objectifs';
 import OnboardingPoids from './(onboarding)/3-poids';
 import OnboardingCestParti from './(onboarding)/4-cest-parti';
 import DevenirCoach from './(onboarding)/devenir-coach';
+import DevenirCoachProfil from './(onboarding)/devenir-coach-profil';
+import DevenirCoachVerification from './(onboarding)/devenir-coach-verification';
+import DevenirCoachRecapitulatif from './(onboarding)/devenir-coach-recapitulatif';
+import { AttenteVerification } from '@/fonctionnalites/coach/attente-verification';
+import { PremierLancement } from '@/fonctionnalites/coach/premier-lancement';
+import { EcranCreationOffre } from '@/fonctionnalites/offres/ecran-creation-offre';
 import Informations from './(compte)/informations';
 import Identifiants from './(compte)/identifiants';
 import Confidentialite from './(compte)/confidentialite';
+import Suppression from './(compte)/suppression';
+import Documents from './(compte)/documents';
+import Export from './(compte)/export';
+import { CorpsDocumentLegal } from './(public)/documents/[type]';
+import { CorpsProfilCoachPublic } from './(client)/coach/[id]';
 import {
   FournisseurMouvementReduit,
   FournisseurTheme,
@@ -116,6 +128,7 @@ function Corps({
       <SectionIcones />
       <SectionFeuilleBascule />
       <SectionEcransL1 />
+      <SectionEcransL2 />
       <PiedGalerie
         themeClair={themeClair}
         onChangeThemeClair={onChangeThemeClair}
@@ -1132,6 +1145,207 @@ const ECRANS_L1: { titre: string; rendu: () => ReactNode }[] = [
   { titre: 'L1-09 · Confidentialité', rendu: () => <Confidentialite /> },
 ];
 
+// L2-03/L2-04 ont besoin d'un état de compte distinct de la session partagée (contrat coach,
+// bandeau de version modifiée, export "prêt") : chacun construit son propre faux port de
+// données via useState(() => ...) (mémoïsé, jamais recréé au re-rendu — même technique que
+// DemonstrationFeuilleBascule ci-dessus), monté dans son propre FournisseurDonnees qui masque
+// celui de SectionEcransL2 pour ce seul rendu.
+function DocumentsAvecFixture({
+  coachExiste,
+  versionAJour,
+}: {
+  coachExiste: boolean;
+  versionAJour: boolean;
+}) {
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    p.definirEtatProfilsPourTest(etatProfilsParDefaut({ coachExiste, clientExiste: !coachExiste }));
+    p.definirDatesDocumentsPourTest(
+      versionAJour
+        ? { cguVersionAcceptee: VERSION_CGU_ACCEPTEE, creeLe: '2026-01-01T00:00:00.000Z' }
+        : { cguVersionAcceptee: '2020-01-01', creeLe: '2020-01-01T00:00:00.000Z' },
+    );
+    return p;
+  });
+  return (
+    <FournisseurDonnees port={port}>
+      <Documents />
+    </FournisseurDonnees>
+  );
+}
+
+function ExportAvecFixture({ etat }: { etat: 'en_preparation' | 'pret' }) {
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    p.definirEtatProfilsPourTest(etatProfilsParDefaut({ clientExiste: true }));
+    p.definirDernierExportPourTest(
+      etat === 'pret'
+        ? {
+            demandeLe: '2026-09-01T00:00:00.000Z',
+            pretLe: '2026-09-02T00:00:00.000Z',
+            urlTelechargement: 'https://exemple.test/export.json',
+            expireLe: '2099-01-01T00:00:00.000Z',
+            tailleOctets: 2_202_009,
+          }
+        : {
+            demandeLe: '2026-09-01T00:00:00.000Z',
+            pretLe: null,
+            urlTelechargement: null,
+            expireLe: null,
+            tailleOctets: null,
+          },
+    );
+    return p;
+  });
+  return (
+    <FournisseurDonnees port={port}>
+      <Export />
+    </FournisseurDonnees>
+  );
+}
+
+// L2-12/13/14 : lecture PUBLIQUE (docs/backend.md §8), donc aucun besoin de la session de
+// démonstration partagée — un compte anonyme la lit tout autant. Trouvé absent de la galerie à
+// P2.13 (le paramètre de route [id] en était la seule raison, résolue par CorpsProfilCoachPublic
+// ci-dessus, docs/dette.md avant correction).
+function ProfilCoachPublicAvecFixture() {
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    p.definirProfilsCoachPublicsPourTest({
+      'coach-galerie': {
+        id: 'coach-galerie',
+        prenom: 'Nadia',
+        nom: 'Belkacem',
+        photoUrl: null,
+        discipline: 'Cybersécurité',
+        titreCourt: 'Sécurité offensive',
+        bio: 'Dix ans d’expérience en tests d’intrusion pour des équipes produit.',
+        verifiee: true,
+        parcoursTexte: 'Ancienne pentesteuse chez un cabinet de conseil, indépendante depuis 2023.',
+        langues: ['Français', 'Anglais'],
+      },
+    });
+    p.definirOffresPubliquesPourTest({
+      'coach-galerie': [
+        {
+          id: 'offre-galerie',
+          titre: 'Suivi hebdomadaire',
+          description: null,
+          prixCentimes: 4900,
+          benefices: ['Un point par semaine', 'Réponses sous 24 h'],
+          engagementHumain: ['Un point par semaine'],
+          estMiseEnAvant: true,
+          publieeLe: '2026-01-01T00:00:00.000Z',
+          retireeLe: null,
+        },
+      ],
+    });
+    return p;
+  });
+  return (
+    <FournisseurDonnees port={port}>
+      <CorpsProfilCoachPublic id="coach-galerie" />
+    </FournisseurDonnees>
+  );
+}
+
+// L2-05/06/07 réutilisent la session de démonstration partagée (déjà coachExiste après
+// DevenirCoach ci-dessus dans le parcours réel, mais la galerie rend chaque écran isolément —
+// FournisseurDonnees ne bloque aucun de ces trois écrans en l'absence de coachExiste). L2-09 et
+// L2-11 prennent des props directes (dossier/lignes) : pas de fournisseur nécessaire pour eux.
+const ECRANS_L2: { titre: string; rendu: () => ReactNode }[] = [
+  { titre: 'L2-05 · Devenir coach — étape 2/4 (profil)', rendu: () => <DevenirCoachProfil /> },
+  {
+    titre: 'L2-06 · Devenir coach — étape 3/4 (vérification)',
+    rendu: () => <DevenirCoachVerification />,
+  },
+  {
+    titre: 'L2-07 · Devenir coach — étape 4/4 (c’est parti)',
+    rendu: () => <DevenirCoachRecapitulatif />,
+  },
+  {
+    titre: 'L2-09 · En attente de vérification — en_examen',
+    rendu: () => (
+      <AttenteVerification
+        dossier={{ statut: 'en_examen', deposeLe: '2026-09-10T09:00:00.000Z', motif: null }}
+      />
+    ),
+  },
+  {
+    titre: 'L2-09 · En attente de vérification — complement_demande',
+    rendu: () => (
+      <AttenteVerification
+        dossier={{
+          statut: 'complement_demande',
+          deposeLe: '2026-09-10T09:00:00.000Z',
+          motif: 'Diplôme illisible : la photo est trop floue pour lire l’organisme et la date.',
+        }}
+      />
+    ),
+  },
+  {
+    titre: 'L2-09 · En attente de vérification — refusee',
+    rendu: () => (
+      <AttenteVerification
+        dossier={{
+          statut: 'refusee',
+          deposeLe: '2026-09-08T09:00:00.000Z',
+          motif: 'Dossier incomplet.',
+        }}
+      />
+    ),
+  },
+  {
+    titre: 'L2-11 · Premier lancement coach',
+    rendu: () => (
+      <PremierLancement
+        prenom="Nadia"
+        lignes={[
+          { libelle: 'Photo et bio renseignées', fait: true, route: '/(compte)/informations' },
+          { libelle: 'Créer ta première offre', fait: false, route: '/(coach)/creer/offre' },
+          { libelle: 'Vérifier ton identité', fait: true, route: '/(coach)/creer/offre' },
+        ]}
+      />
+    ),
+  },
+  { titre: 'L2-15 · Créer et publier une offre', rendu: () => <EcranCreationOffre /> },
+  { titre: 'L2-01 · Suppression de compte', rendu: () => <Suppression /> },
+  {
+    titre: 'L2-03 · Documents (client, à jour)',
+    rendu: () => <DocumentsAvecFixture coachExiste={false} versionAJour />,
+  },
+  {
+    titre: 'L2-03 · Documents (coach, version modifiée)',
+    rendu: () => <DocumentsAvecFixture coachExiste versionAJour={false} />,
+  },
+  {
+    titre: 'L2-03 · Document public — CGU',
+    rendu: () => <CorpsDocumentLegal type="cgu" />,
+  },
+  {
+    titre: 'L2-03 · Document public — CGV',
+    rendu: () => <CorpsDocumentLegal type="cgv" />,
+  },
+  {
+    titre: 'L2-03 · Document public — confidentialité',
+    rendu: () => <CorpsDocumentLegal type="confidentialite" />,
+  },
+  {
+    titre: 'L2-03 · Document public — contrat coach',
+    rendu: () => <CorpsDocumentLegal type="contrat-coach" />,
+  },
+  { titre: 'L2-04 · Export — aucun demandé', rendu: () => <Export /> },
+  {
+    titre: 'L2-04 · Export — en préparation',
+    rendu: () => <ExportAvecFixture etat="en_preparation" />,
+  },
+  { titre: 'L2-04 · Export — prêt', rendu: () => <ExportAvecFixture etat="pret" /> },
+  {
+    titre: 'L2-12/13/14 · Profil coach public (offres, avis, parcours)',
+    rendu: () => <ProfilCoachPublicAvecFixture />,
+  },
+];
+
 function SectionEcransL1() {
   const theme = useTheme();
   const [session, setSession] = useState<Awaited<
@@ -1155,6 +1369,48 @@ function SectionEcransL1() {
   return (
     <Section titre="14 · Écrans du lot L1">
       {ECRANS_L1.map(({ titre, rendu }) => (
+        <View key={titre} style={{ gap: theme.espace[2] }}>
+          <SousTitre texte={titre} />
+          <View
+            style={{
+              height: 520,
+              overflow: 'hidden',
+              borderRadius: theme.rayon.saisie,
+              borderWidth: 1,
+              borderColor: theme.couleur.bordure.discrete,
+            }}
+          >
+            <FournisseurSession port={session.portAuth}>
+              <FournisseurDonnees port={session.portDonnees}>{rendu()}</FournisseurDonnees>
+            </FournisseurSession>
+          </View>
+        </View>
+      ))}
+    </Section>
+  );
+}
+
+function SectionEcransL2() {
+  const theme = useTheme();
+  const [session, setSession] = useState<Awaited<
+    ReturnType<typeof creerSessionDemonstration>
+  > | null>(null);
+
+  useEffect(() => {
+    let monte = true;
+    void creerSessionDemonstration().then((s) => {
+      if (monte) setSession(s);
+    });
+    return () => {
+      monte = false;
+    };
+  }, []);
+
+  if (!session) return null;
+
+  return (
+    <Section titre="15 · Écrans du lot L2">
+      {ECRANS_L2.map(({ titre, rendu }) => (
         <View key={titre} style={{ gap: theme.espace[2] }}>
           <SousTitre texte={titre} />
           <View

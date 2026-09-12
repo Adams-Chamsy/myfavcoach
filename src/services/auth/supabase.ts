@@ -28,7 +28,15 @@ const LIEN_CHANGEMENT_ADRESSE = 'myfavcoach://auth/adresse';
 // implicite d'app/(public)/inscription.tsx ("En créant ton compte, tu acceptes les CGU...") —
 // pas un document juridique rédigé. À faire avancer avec la vraie rédaction en L2 (C-06),
 // jamais à bumper pour un autre motif.
-const VERSION_CGU_ACCEPTEE = '2026-09-04';
+//
+// DUPLIQUÉE dans src/fonctionnalites/identite/documents-legaux.ts (même valeur, volontairement
+// pas importée d'ici : un adaptateur ne s'importe jamais depuis un écran, CLAUDE.md §2) — les
+// deux copies DOIVENT rester identiques à la main tant qu'aucune n'est unifiée, voir le
+// commentaire de ce fichier et docs/dette.md. Exportée UNIQUEMENT pour que
+// src/test/version-cgu-synchronisee.test.ts puisse comparer les deux valeurs et échouer si
+// elles divergent — jamais pour qu'un écran l'importe (aucun écran ne le fait, un écran lit
+// documents-legaux.ts).
+export const VERSION_CGU_ACCEPTEE = '2026-09-04';
 
 // Rendu STRUCTUREL, pas seulement documenté : deux trous (inscrire, renvoyerVerification)
 // avaient déjà échappé à une relecture avant d'être trouvés à P1.9. Les QUATRE appels du SDK

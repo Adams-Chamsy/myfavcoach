@@ -1,12 +1,45 @@
 import { supabase } from '@/services/supabase/client';
 import type {
+  DossierVerification,
   EtatProfils,
   InformationsCompte,
+  Offre,
+  PieceDeposee,
   PortDonnees,
   ProfilActif,
+  ProfilCoachPublic,
   ProfilOnboarding,
   ResultatEcriture,
+  TypePiece,
 } from './port';
+
+const COMPARTIMENT_PIECES = 'pieces-verification';
+
+type LigneOffre = {
+  id: string;
+  titre: string;
+  description: string | null;
+  prix_centimes: number;
+  benefices: string[];
+  engagement_humain: string[];
+  est_mise_en_avant: boolean;
+  publiee_le: string | null;
+  retiree_le: string | null;
+};
+
+function offreDepuisLigne(ligne: LigneOffre): Offre {
+  return {
+    id: ligne.id,
+    titre: ligne.titre,
+    description: ligne.description,
+    prixCentimes: ligne.prix_centimes,
+    benefices: ligne.benefices,
+    engagementHumain: ligne.engagement_humain,
+    estMiseEnAvant: ligne.est_mise_en_avant,
+    publieeLe: ligne.publiee_le,
+    retireeLe: ligne.retiree_le,
+  };
+}
 
 const PROFIL_ONBOARDING_VIDE: ProfilOnboarding = {
   prenom: '',
@@ -362,5 +395,286 @@ export const portDonneesSupabase: PortDonnees = {
       .eq('compte_id', compteId);
     if (error) return echec(error);
     return { succes: true };
+  },
+
+  async lireDossierVerification() {
+    // profil_actif_courant() n'est pas requis ici : profils_coach_select_proprietaire admet
+    // la propre ligne du coach quel que soit son espace actif (L2-09, "consultable pendant
+    // l'attente"). decisions_verification n'a AUCUNE politique de lecture (0015) — le motif
+    // vient donc de pieces_verification/profils_coach seuls, jamais d'une lecture directe du
+    // journal, qui échouerait de toute façon.
+    const { data, error } = await supabase
+      .from('profils_coach')
+      .select('id, statut_verification')
+      .limit(1);
+    if (error) throw error;
+    const ligne = data?.[0] as
+      { id: string; statut_verification: DossierVerification['statut'] } | undefined;
+    if (!ligne) return { statut: 'absente', deposeLe: null, motif: null };
+
+    const pieces = await supabase
+      .from('pieces_verification')
+      .select('depose_le')
+      .eq('coach_id', ligne.id)
+      .order('depose_le', { ascending: true })
+      .limit(1);
+    if (pieces.error) throw pieces.error;
+    const premierDepot = (pieces.data?.[0] as { depose_le: string } | undefined)?.depose_le ?? null;
+
+    // Le motif exact d'une décision n'est lisible nulle part côté application
+    // (decisions_verification n'a aucun GRANT, 0015) : L2-09 l'affiche quand le back-office
+    // (L2-10) le transmettra par un autre canal — non construit à ce lot, voir le rapport.
+    return { statut: ligne.statut_verification, deposeLe: premierDepot, motif: null };
+  },
+
+  async lirePiecesDeposees() {
+    const { data, error } = await supabase
+      .from('pieces_verification')
+      .select('type, depose_le')
+      .order('depose_le', { ascending: true });
+    if (error) throw error;
+    return (data ?? []).map((ligne: { type: string; depose_le: string }): PieceDeposee => ({
+      type: ligne.type as TypePiece,
+      deposeLe: ligne.depose_le,
+    }));
+  },
+
+  async deposerPieceVerification(type, fichier) {
+    const { data: coach, error: erreurCoach } = await supabase
+      .from('profils_coach')
+      .select('id')
+      .limit(1);
+    if (erreurCoach) return echec(erreurCoach);
+    const coachId = (coach?.[0] as { id: string } | undefined)?.id;
+    if (!coachId) return echec(new Error('Aucun profil coach pour ce compte.'));
+
+    const { data: chemin, error: erreurChemin } = await supabase.rpc('nouveau_chemin_stockage');
+    if (erreurChemin) return echec(erreurChemin);
+
+    // Le fichier part directement vers Storage (URL signée, docs/api.md §4) : jamais par une
+    // route applicative de ce dépôt. `fichier.uri` vient du sélecteur natif (hors périmètre de
+    // ce port — voir le rapport de P2.8 sur la dépendance manquante).
+    const reponseFichier = await fetch(fichier.uri);
+    const contenu = await reponseFichier.blob();
+    const { error: erreurEnvoi } = await supabase.storage
+      .from(COMPARTIMENT_PIECES)
+      .upload(chemin as string, contenu, { contentType: fichier.typeMime });
+    if (erreurEnvoi) return echec(erreurEnvoi);
+
+    const { error: erreurLigne } = await supabase.from('pieces_verification').insert({
+      coach_id: coachId,
+      type,
+      chemin_stockage: chemin,
+    });
+    if (erreurLigne) return echec(erreurLigne);
+    return { succes: true };
+  },
+
+  async lireMesOffres() {
+    const { data, error } = await supabase
+      .from('offres')
+      .select(
+        'id, titre, description, prix_centimes, benefices, engagement_humain, est_mise_en_avant, publiee_le, retiree_le',
+      )
+      .order('cree_le', { ascending: false });
+    if (error) throw error;
+    return ((data as LigneOffre[] | null) ?? []).map(offreDepuisLigne);
+  },
+
+  async creerOffreBrouillon(modifs) {
+    const { data: coach, error: erreurCoach } = await supabase
+      .from('profils_coach')
+      .select('id')
+      .limit(1);
+    if (erreurCoach) return echec(erreurCoach) as { succes: false; erreur: string };
+    const coachId = (coach?.[0] as { id: string } | undefined)?.id;
+    if (!coachId)
+      return { succes: false, erreur: 'On a un souci de notre côté. Réessaie dans un instant.' };
+
+    const { data, error } = await supabase
+      .from('offres')
+      .insert({
+        coach_id: coachId,
+        titre: modifs.titre,
+        description: modifs.description,
+        prix_centimes: modifs.prixCentimes,
+        benefices: modifs.benefices,
+        engagement_humain: modifs.engagementHumain,
+        est_mise_en_avant: modifs.estMiseEnAvant,
+      })
+      .select('id');
+    if (error)
+      return { succes: false, erreur: 'On a un souci de notre côté. Réessaie dans un instant.' };
+    return { succes: true, id: (data?.[0] as { id: string }).id };
+  },
+
+  async modifierOffre(id, modifs) {
+    const { error } = await supabase
+      .from('offres')
+      .update({
+        titre: modifs.titre,
+        description: modifs.description,
+        prix_centimes: modifs.prixCentimes,
+        benefices: modifs.benefices,
+        engagement_humain: modifs.engagementHumain,
+        est_mise_en_avant: modifs.estMiseEnAvant,
+      })
+      .eq('id', id);
+    if (error) return echec(error);
+    return { succes: true };
+  },
+
+  // Textes exacts (docs/ecrans/L2-15-creation-offre-coach.md, Règles) : l'écran les choisit à
+  // partir du code, jamais un message brut du serveur.
+  async publierOffre(id) {
+    const { error } = await supabase.rpc('publier_offre', { offre_id: id });
+    if (!error) return { succes: true };
+    const code = (error.message.match(/engagement_humain_requis|coach_non_verifie/) ?? [])[0];
+    return { succes: false, code: code ?? 'inconnu' };
+  },
+
+  async retirerOffre(id) {
+    const { error } = await supabase.rpc('retirer_offre', { offre_id: id });
+    if (error) return echec(error);
+    return { succes: true };
+  },
+
+  async lireProfilCoachPublic(coachId) {
+    const { data, error } = await supabase
+      .from('profils_coach')
+      .select(
+        'id, prenom, nom, photo_url, discipline, titre_court, bio, statut_verification, parcours_texte, langues',
+      )
+      .eq('id', coachId)
+      .limit(1);
+    if (error) throw error;
+    const ligne = data?.[0] as
+      | {
+          id: string;
+          prenom: string;
+          nom: string;
+          photo_url: string | null;
+          discipline: string;
+          titre_court: string | null;
+          bio: string | null;
+          statut_verification: string;
+          parcours_texte: string | null;
+          langues: string[];
+        }
+      | undefined;
+    if (!ligne) return null;
+    return {
+      id: ligne.id,
+      prenom: ligne.prenom,
+      nom: ligne.nom,
+      photoUrl: ligne.photo_url,
+      discipline: ligne.discipline,
+      titreCourt: ligne.titre_court,
+      bio: ligne.bio,
+      verifiee: ligne.statut_verification === 'verifiee',
+      parcoursTexte: ligne.parcours_texte,
+      langues: ligne.langues,
+    } satisfies ProfilCoachPublic;
+  },
+
+  async lireOffresPublieesDeCoach(coachId) {
+    const { data, error } = await supabase
+      .from('offres')
+      .select(
+        'id, titre, description, prix_centimes, benefices, engagement_humain, est_mise_en_avant, publiee_le, retiree_le',
+      )
+      .eq('coach_id', coachId)
+      .not('publiee_le', 'is', null)
+      .is('retiree_le', null);
+    if (error) throw error;
+    return ((data as LigneOffre[] | null) ?? []).map(offreDepuisLigne);
+  },
+
+  async demanderSuppressionCompte(motif) {
+    const { error } = await supabase.rpc('supprimer_mon_compte', { p_motif: motif });
+    if (error) return echec(error);
+    return { succes: true };
+  },
+
+  async lireConsentementCommunications() {
+    const { data, error } = await supabase
+      .from('consentements_courants')
+      .select('accorde, version')
+      .eq('type', 'communicationsCommerciales')
+      .limit(1);
+    if (error) throw error;
+    const ligne = data?.[0] as { accorde: boolean; version: string } | undefined;
+    return { accorde: ligne?.accorde ?? false, version: ligne?.version ?? null };
+  },
+
+  async enregistrerConsentementCommunications(accorde, version) {
+    const compteId = await compteIdCourant();
+    const { error } = await supabase.from('consentements').insert({
+      compte_id: compteId,
+      type: 'communicationsCommerciales',
+      accorde,
+      version,
+      origine: 'ecran_confidentialite',
+    });
+    if (error) return echec(error);
+    return { succes: true };
+  },
+
+  async lireHistoriqueConsentements() {
+    const { data, error } = await supabase
+      .from('consentements')
+      .select('type, accorde, version, horodatage')
+      .order('horodatage', { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as {
+      type: string;
+      accorde: boolean;
+      version: string;
+      horodatage: string;
+    }[];
+  },
+
+  async demanderExportDonnees() {
+    const { error } = await supabase.rpc('demander_export_donnees');
+    if (!error) return { succes: true };
+    const code = error.message.includes('export_trop_recent') ? 'export_trop_recent' : 'inconnu';
+    return { succes: false, code };
+  },
+
+  async lireDernierExport() {
+    const { data, error } = await supabase
+      .from('demandes_export')
+      .select('demande_le, pret_le, url_signee, expire_le, taille_octets')
+      .order('demande_le', { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    const ligne = data?.[0] as
+      | {
+          demande_le: string;
+          pret_le: string | null;
+          url_signee: string | null;
+          expire_le: string | null;
+          taille_octets: number | null;
+        }
+      | undefined;
+    if (!ligne) return null;
+    return {
+      demandeLe: ligne.demande_le,
+      pretLe: ligne.pret_le,
+      urlTelechargement: ligne.url_signee,
+      expireLe: ligne.expire_le,
+      tailleOctets: ligne.taille_octets,
+    };
+  },
+
+  async lireDatesDocuments() {
+    const { data, error } = await supabase
+      .from('comptes')
+      .select('cgu_version_acceptee, cree_le')
+      .limit(1);
+    if (error) throw error;
+    const ligne = data?.[0] as { cgu_version_acceptee: string; cree_le: string } | undefined;
+    if (!ligne) throw new Error('Compte introuvable (lireDatesDocuments).');
+    return { cguVersionAcceptee: ligne.cgu_version_acceptee, creeLe: ligne.cree_le };
   },
 } satisfies PortDonnees;

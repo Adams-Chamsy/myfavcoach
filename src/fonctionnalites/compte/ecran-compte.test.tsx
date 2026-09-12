@@ -92,11 +92,13 @@ describe('EcranCompte (docs/ecrans/L1-07-compte-reglages.md)', () => {
     expect(MoiClient).toBe(EcranCompte);
   });
 
-  // Critère 2 : les trois lignes ouvrent réellement leur destination, aucune ligne inerte.
+  // Critère 2 : chaque ligne ouvre réellement sa destination, aucune ligne inerte.
   it.each([
     ['Mes informations', '/(compte)/informations'],
     ['Adresse e-mail et mot de passe', '/(compte)/identifiants'],
-    ['Confidentialité', '/(compte)/confidentialite'],
+    ['Mes autorisations', '/(compte)/confidentialite'],
+    ['Documents contractuels', '/(compte)/documents'],
+    ['Exporter mes données', '/(compte)/export'],
   ])('la ligne « %s » ouvre %s', async (libelle, route) => {
     await rendreEcran();
 
@@ -187,19 +189,16 @@ describe('EcranCompte (docs/ecrans/L1-07-compte-reglages.md)', () => {
     }
   });
 
-  // Critère 9 (suite), isolé du reste : « supprimer mon compte » relevait du lot L11 à
-  // l'écriture de ce test, remonté depuis à L2, C-03 (docs/perimetre.md, révision du
-  // 12 septembre) — le lot qui suit immédiatement celui-ci, pas un lot lointain comme les deux
-  // ci-dessus. CETTE ASSERTION S'INVERSE AU LOT L2, ELLE NE SE RETIRE PAS : quand C-03
-  // construira l'écran de suppression de compte, « supprimer mon compte » DOIT apparaître dans
-  // ce rendu, et ce test devra alors affirmer sa PRÉSENCE, pas son absence. La retirer au lieu
-  // de l'inverser ferait disparaître la couverture au moment exact où elle commence à servir —
-  // le faux vert « une liste d'exclusion qui ne protégeait rien » (docs/prompts/L1.md, tableau
-  // des faux verts, 3ᵉ ligne).
-  it('n’affiche pas encore « supprimer mon compte » (L1 — à inverser en présence au lot L2)', async () => {
+  // Critère 9 (suite), INVERSÉE comme annoncé par son propre commentaire d'origine (P1.13) :
+  // « supprimer mon compte » devait apparaître dès que C-03 construirait l'écran de suppression
+  // — c'est fait (P2.12, L2-01). La retirer au lieu de l'inverser aurait fait disparaître la
+  // couverture au moment exact où elle commence à servir (docs/prompts/L1.md, tableau des faux
+  // verts, 3ᵉ ligne).
+  it('affiche désormais « Supprimer mon compte », qui ouvre L2-01', async () => {
     await rendreEcran();
 
-    const rendu = JSON.stringify(screen.toJSON()).toLowerCase();
-    expect(rendu).not.toContain('supprimer mon compte');
+    fireEvent.press(screen.getByLabelText('Supprimer mon compte'));
+
+    expect(mockPousser).toHaveBeenCalledWith('/(compte)/suppression');
   });
 });
