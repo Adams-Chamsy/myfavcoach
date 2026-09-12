@@ -1,9 +1,17 @@
 # L2-13 · Profil coach — onglet Avis (27)
 
-**Lot** L2 · **Rôle** client, et visiteur non connecté (`anon`) · **Route**
+**Lot** L4 (**replanifié depuis L2 le 12 septembre 2026**, `docs/perimetre.md` §2/§4 — voir
+Règles) · **Rôle** client, et visiteur non connecté (`anon`) · **Route**
 `app/(client)/coach/[id]/avis.tsx` (ou onglet de `L2-12`, voir Règles)
 **Référence visuelle** `maquettes/MyFavCoach-Parcours_dc.html`, bloc « 27 · Profil coach —
 onglet Avis », `data-screen-label="27 Avis"`.
+
+**Ce qui est déjà livré, à L2, et le reste au jalon 1** : l'onglet existe
+(`app/(client)/coach/[id].tsx`, `OngletAvis`) et affiche un état vide honnête — **pas un
+placeholder en attente de L4, l'état normal de tous les profils au lancement**, tant qu'aucun
+abonnement ne rend un dépôt possible (voir Règles). Le reste de cette fiche (moyenne, filtre par
+étiquette, liste d'avis) décrit ce que `L4` construit par-dessus cet état vide, pas ce qui
+manque à L2.
 
 ---
 
@@ -27,6 +35,12 @@ souscrite, étoiles, texte, réponse du coach le cas échéant.
 
 ## Règles
 
+- **Replanifiée depuis L2, pas un écran non livré** : la condition de dépôt d'un avis
+  (`docs/domaine.md` §3.11 — abonnement actif ≥ 30 jours ou résilié ≤ 60 jours) ne peut être
+  vérifiée avant que `Abonnement` existe (L4) — aucune insertion légitime n'est possible plus
+  tôt. La distinction avec « pas encore construit » compte : ce n'est plus une dette de L2
+  (`docs/dette.md` ne la liste plus), c'est une dépendance réelle, écrite ici et dans
+  `docs/perimetre.md`.
 - **Lecture inter-comptes** (`docs/backend.md` §8), même famille que `L2-12` : seuls les avis
   `statut = publie` sont lisibles ici — jamais un avis `signale` ou `masque`, pour aucun
   lecteur, propriétaire de l'avis excepté.
@@ -49,12 +63,18 @@ souscrite, étoiles, texte, réponse du coach le cas échéant.
 
 ## Critères d'acceptation
 
-1. Un avis `signale` ou `masque` n'apparaît jamais, quel que soit le compte qui consulte —
+**Déjà vrai à L2, jalon 1** :
+
+1. À 0 avis (tous les profils, au lancement) : état vide honnête, jamais de badge « Nouveau »,
+   ni note ni compteur.
+2. Accessible sans session (`anon`).
+3. Galerie, deux thèmes.
+4. `npm run verif` passe.
+
+**Reste à construire à L4**, une fois `avis` réelle et un dépôt possible :
+
+5. Un avis `signale` ou `masque` n'apparaît jamais, quel que soit le compte qui consulte —
    testé pour `anon` et pour un autre client.
-2. Sous 5 avis, jamais de badge « Nouveau », aucune moyenne affichée — à 0 avis (le seul cas
-   atteignable au jalon 1, la table `avis` n'existe pas encore : `docs/dette.md`), un état vide
-   honnête.
-3. Le filtre par étiquette ne montre que les étiquettes réellement portées par un avis publié.
-4. Accessible sans session (`anon`).
-5. Galerie, deux thèmes.
-6. `npm run verif` passe.
+6. Entre 1 et 4 avis : les avis un par un, sans moyenne calculée. À 5 avis ou plus : moyenne,
+   étoiles, distribution.
+7. Le filtre par étiquette ne montre que les étiquettes réellement portées par un avis publié.

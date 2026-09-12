@@ -51,7 +51,7 @@ Numérotation du dossier de design. « Fiche » = fiche d'écran à rédiger dan
 | 01 | Accueil / découverte | L3 | |
 | 02 | Recherche + filtres | L3 | filtre « Asynchrone » retiré |
 | 03 | Profil coach — offres | L2 | offre « Programme seul » retirée |
-| 27 | Profil coach — avis | L2 | thèmes = étiquettes figées, pas d'extraction |
+| 27 | Profil coach — avis | L4 | thèmes = étiquettes figées, pas d'extraction. **Replanifié depuis L2 le 12 septembre 2026** : la condition de dépôt (`docs/domaine.md` §3.11 — abonnement actif ≥ 30 jours ou résilié ≤ 60 jours) ne peut être vérifiée avant que `Abonnement` existe (L4) — aucune insertion légitime n'est possible plus tôt, pas seulement « pas encore construite ». Jusque-là, l'état vide honnête de L2-13 (`docs/domaine.md` §5.1) est l'état normal de **tous** les profils, pas une exception à corriger |
 | 28 | Profil coach — parcours | L2 | |
 | 04a | Tunnel — choix de l'offre | L4 | une seule nature d'offre |
 | 04b | Tunnel — récapitulatif et paiement | L4 | |
@@ -164,7 +164,7 @@ dis-le. Ne propose pas d'« ajouter juste le socle pour plus tard ».
 | **L1** | Identité, comptes, deux profils, bascule de rôle, onboarding, réglages | L0 |
 | **L2** | Profil coach, offres, pièces et vérification, back-office, conformité de base (C-03, C-04, C-06) | L1 |
 | **L3** | Découverte : accueil, recherche, filtres, classement | L2 |
-| **L4** | Abonnement, paiement, facturation, échecs et relances | L3 |
+| **L4** | Abonnement, paiement, facturation, échecs et relances, **table `avis` et écran L2-13** (§2, remarque de l'écran 27 : replanifiés depuis L2, aucun dépôt légitime possible avant que l'abonnement existe) | L3 |
 | **L5** | Commission, soldes, versements, écran revenus, factures et reçus (C-05) | L4 |
 | **L6** | Contenu : studio, programmes, séances, séance du jour, questionnaire santé | L2 |
 | **L7** | Suivi client et métriques calculées | L6 |
