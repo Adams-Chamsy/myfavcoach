@@ -2023,3 +2023,166 @@ describe('pieces_verification', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+// decider_verification_coach (0015_creer_decision_verification.sql, P2.6)
+// ---------------------------------------------------------------------------------------------
+
+describe('decider_verification_coach', () => {
+  let coachEnExamen: Session;
+  let profilCoachEnExamenId: string;
+  let EXX: Session;
+
+  beforeAll(async () => {
+    // Coach dédié, forcé à 'en_examen' par service_role : seul état de départ nécessaire pour
+    // prouver la transition acceptée vers 'verifiee'. D (module-level, describe('offres')) sert
+    // pour la transition illégale depuis 'absente'.
+    coachEnExamen = await creerCompteReel(
+      `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-coach-examen@${DOMAINE_EMAIL}`,
+      { date_naissance: '1992-01-01', cgu_version_acceptee: '2026-08-01' },
+    );
+    const creationProfil = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        compte_id: coachEnExamen.compteId,
+        prenom: 'Examen',
+        nom: 'Coach',
+        discipline: 'natation',
+      },
+    });
+    if (creationProfil.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : profil du coach en examen refusé (${creationProfil.statut}) : ` +
+          `${JSON.stringify(creationProfil.corps)}`,
+      );
+    }
+    profilCoachEnExamenId = (creationProfil.corps as { id: string }[])[0].id;
+
+    const misEnExamen = await appelRest(`/rest/v1/profils_coach?id=eq.${profilCoachEnExamenId}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { statut_verification: 'en_examen' },
+    });
+    if (misEnExamen.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : passage en 'en_examen' refusé (${misEnExamen.statut}) : ` +
+          `${JSON.stringify(misEnExamen.corps)}`,
+      );
+    }
+
+    EXX = await creerCompteReel(
+      `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-examinateur-p26@${DOMAINE_EMAIL}`,
+      {
+        date_naissance: '1988-01-01',
+        cgu_version_acceptee: '2026-08-01',
+      },
+    );
+    const promotion = await appelRest(`/rest/v1/comptes?id=eq.${EXX.compteId}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { est_examinateur: true },
+    });
+    if (promotion.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : promotion de EXX en examinateur refusée (${promotion.statut}) : ` +
+          `${JSON.stringify(promotion.corps)}`,
+      );
+    }
+  }, 30_000);
+
+  afterAll(async () => {
+    if (coachEnExamen) await supprimerCompteReel(coachEnExamen.compteId);
+    if (EXX) await supprimerCompteReel(EXX.compteId);
+  });
+
+  it('un compte authenticated ordinaire (A) appelle la fonction : refusé (examinateur_requis)', async () => {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/decider_verification_coach', {
+      methode: 'POST',
+      session: A,
+      corps: { p_coach_id: profilCoachEnExamenId, p_decision: 'verifiee', p_motif: 'test' },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(corps)).toMatch(/examinateur_requis/);
+  });
+
+  it('anon appelle la fonction : refusé', async () => {
+    const { statut } = await appelRest('/rest/v1/rpc/decider_verification_coach', {
+      methode: 'POST',
+      session: 'anon',
+      corps: { p_coach_id: profilCoachEnExamenId, p_decision: 'verifiee', p_motif: 'test' },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+  });
+
+  it("l'examinateur tente 'absente' vers 'verifiee' (coach D) : refusé (transition_invalide)", async () => {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/decider_verification_coach', {
+      methode: 'POST',
+      session: EXX,
+      corps: { p_coach_id: profilCoachIdD, p_decision: 'verifiee', p_motif: 'test' },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(corps)).toMatch(/transition_invalide/);
+  });
+
+  it("l'examinateur appelle sans motif : refusé (motif_requis)", async () => {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/decider_verification_coach', {
+      methode: 'POST',
+      session: EXX,
+      corps: { p_coach_id: profilCoachEnExamenId, p_decision: 'verifiee', p_motif: '   ' },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(corps)).toMatch(/motif_requis/);
+  });
+
+  it("l'examinateur décide 'en_examen' vers 'verifiee' : accepté, journalisé", async () => {
+    const { statut } = await appelRest('/rest/v1/rpc/decider_verification_coach', {
+      methode: 'POST',
+      session: EXX,
+      corps: {
+        p_coach_id: profilCoachEnExamenId,
+        p_decision: 'verifiee',
+        p_motif: 'Dossier complet et conforme',
+      },
+    });
+    expect(statut).toBe(204);
+
+    const relu = await appelRest(
+      `/rest/v1/profils_coach?id=eq.${profilCoachEnExamenId}&select=statut_verification`,
+      { session: 'admin' },
+    );
+    expect((relu.corps as { statut_verification: string }[])[0].statut_verification).toBe(
+      'verifiee',
+    );
+
+    const journal = await appelRest(
+      `/rest/v1/decisions_verification?dossier=eq.${profilCoachEnExamenId}`,
+      { session: 'admin' },
+    );
+    expect(journal.statut).toBe(200);
+    const lignes = journal.corps as Record<string, unknown>[];
+    expect(lignes).toHaveLength(1);
+    expect(lignes[0].decision).toBe('verifiee');
+    expect(lignes[0].examinateur).toBe(EXX.compteId);
+    expect(lignes[0].motif).toBe('Dossier complet et conforme');
+  });
+
+  it("l'examinateur retente 'verifiee' vers 'verifiee' (déjà décidé) : refusé, transition non listée", async () => {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/decider_verification_coach', {
+      methode: 'POST',
+      session: EXX,
+      corps: { p_coach_id: profilCoachEnExamenId, p_decision: 'verifiee', p_motif: 'test' },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(corps)).toMatch(/transition_invalide/);
+  });
+
+  it('une mise à jour directe de statut_verification, même par un examinateur, reste refusée (régression L1)', async () => {
+    const { statut } = await appelRest(`/rest/v1/profils_coach?id=eq.${profilCoachEnExamenId}`, {
+      methode: 'PATCH',
+      session: EXX,
+      corps: { statut_verification: 'refusee' },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+  });
+});

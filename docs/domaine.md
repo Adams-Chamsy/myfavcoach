@@ -264,6 +264,24 @@ d'un consentement passé doit rester reconstituable (`supabase/migrations/0001_c
 Accusé de réception immédiat, décision notifiée à l'auteur.
 `Blocage` : symétrique dans ses effets — plus aucun message ni visibilité entre les deux profils.
 
+### 3.14 DecisionVerification
+
+`dossier` (le `ProfilCoach` concerné), `examinateur` (le compte d'équipe qui décide —
+`docs/backend.md` §9), `decision` (`verifiee` | `complement_demande` | `refusee`), `motif`
+(texte ; **nomme la pièce concernée** quand la décision porte sur un document précis d'un
+dossier par ailleurs complet — §4.2), `horodatage`.
+
+**Journal en ajout seul**, même forme que `Consentement` (§3.12) : une décision ne se modifie
+jamais, elle s'ajoute. Un dossier accumule une ligne par aller-retour (dépôt →
+`complement_demande` → nouveau dépôt → `verifiee`, par exemple) ; le statut courant à afficher
+au coach reste `profils_coach.statut_verification` (une seule valeur, jamais recalculée depuis
+ce journal) — ce journal répond à « qui a décidé quoi, quand, pourquoi », pas à « où en est le
+dossier maintenant ». Même séparation que `consentements` / `consentements_courants` (§3.12).
+
+Pas de suppression, pas de modification : une décision fausse ou à corriger ne s'efface pas,
+elle est suivie d'une nouvelle décision qui la remplace en pratique — la trace complète reste
+lisible, y compris l'erreur.
+
 ---
 
 ## 4. Machines à états

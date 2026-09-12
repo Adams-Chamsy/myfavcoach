@@ -132,6 +132,7 @@ describe('secrets interdits côté application', () => {
   //   - supabase/migrations/0012_creer_pieces_verification.sql : lecture complète + insertion pour le banc et le futur back-office (P2.6/P2.10), en attendant est_examinateur_courant()
   //   - supabase/migrations/0013_creer_role_examinateur.sql : commentaires expliquant pourquoi la promotion est_examinateur reste une opération manuelle par service_role, jamais par l'application
   //   - supabase/migrations/0014_accorder_service_role_promotion_examinateur.sql : GRANT UPDATE étroit (une seule colonne) pour que service_role puisse réaliser cette opération manuelle, jamais un rôle client
+  //   - supabase/migrations/0015_creer_decision_verification.sql : GRANT SELECT seul pour service_role, pour vérifier au banc qu'une décision a bien été journalisée
   //   - supabase/config.toml                          : commentaire généré par `supabase init`, décrivant les rôles de la Data API
   //   - src/test/rls.banc.ts                          : le nom de variable (SERVICE_ROLE_KEY) apparaît pour préparer le banc ; sa valeur, jamais écrite ici, est lue depuis .secrets-rls.local (ignoré par git) — jamais dans l'application
   //   - .github/workflows/banc-rls.yml                : le nom de variable shell issu de `supabase status -o env` (pile locale du runner) ; sa valeur, une clé de démo FIXE du CLI Supabase, n'est jamais écrite ici — lue puis passée à .secrets-rls.local, ignoré par git
@@ -150,6 +151,7 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0012_creer_pieces_verification.sql',
       'supabase/migrations/0013_creer_role_examinateur.sql',
       'supabase/migrations/0014_accorder_service_role_promotion_examinateur.sql',
+      'supabase/migrations/0015_creer_decision_verification.sql',
       'supabase/config.toml',
       'src/test/rls.banc.ts',
       '.github/workflows/banc-rls.yml',
