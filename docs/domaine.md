@@ -493,7 +493,7 @@ Remplacée par trois composantes qui existent dès la publication d'un profil, s
 |---|---|---|
 | Discipline demandée | 1er (filtre puis tri) | Un coach dont l'offre publiée ne correspond pas à la discipline recherchée n'apparaît pas — ce n'est pas un simple bonus de score. Une recherche libre (texte, pas de discipline choisie) trie par correspondance textuelle sur titre/discipline/bio, comme avant |
 | Proximité géographique | 2e | Inchangé (§5.7) : 1,0 à 0 km → 0 à 25 km ; « visio » = 0,6 fixe |
-| Complétude du profil | 3e | Compte simple sur 3 : bio renseignée, parcours renseigné, photo déposée — chaque élément présent vaut 1, absent vaut 0 |
+| Complétude du profil | 3e | Compte sur 3, **à seuil par champ, jamais un simple « renseigné / vide »** : bio ≥ 80 caractères, parcours ≥ 80 caractères, photo présente (pas de seuil de longueur pour une photo — elle existe ou non). Chaque champ qui atteint son seuil vaut 1 point, sinon 0. Sans seuil, une bio de trois mots vaudrait autant qu'une bio réelle dès que les coachs comprennent comment le critère marche — le point se vide. Seuils choisis, pas mesurés : à revoir si les coachs les contournent en pratique (même statut que les bornes de prix, §3.3) |
 
 **Rotation** : à égalité stricte sur les trois critères ci-dessus (même discipline, même tranche
 de proximité, même complétude), l'ordre n'est pas figé sur un axe secondaire arbitraire (nom,
