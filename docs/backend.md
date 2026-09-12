@@ -212,3 +212,52 @@ encore posé la question — le même défaut que « une liste d'exclusion qui n
 (`docs/prompts/L1.md`, tableau des faux verts, 3ᵉ ligne), appliqué à la lecture plutôt qu'à
 l'écriture.
 
+---
+
+## 9. Rôle d'équipe (examinateur) : un compte distinct, un rôle serveur
+
+Le back-office de vérification (`docs/ecrans/L2-10-back-office-verification.md`, BO-01) est une
+route de ce même dépôt (`app/(admin)/`), pas une application séparée — mais elle donne accès à
+des pièces d'identité et décide qui peut encaisser. Trois règles, aucune négociable :
+
+- **Un compte Supabase distinct**, créé dans `auth.users` comme n'importe quel autre — le
+  déclencheur `creer_compte_depuis_auth()` (`0001_creer_identite.sql`) lui crée donc aussi une
+  ligne `comptes`, sans y échapper : pas la peine de contourner ce mécanisme, la ligne `comptes`
+  d'un examinateur n'a simplement ni `profils_client` ni `profils_coach`. Jamais un compte
+  client ou coach existant promu à la volée.
+- **Le rôle est une colonne serveur, jamais un drapeau côté client.**
+  `comptes.est_examinateur boolean not null default false` — **aucun `GRANT SELECT` ni
+  `GRANT UPDATE` sur cette colonne**, pour aucun rôle (`anon`, `authenticated`). Rien dans
+  l'application ne peut la lire ni l'écrire directement ; elle n'existe que pour être consultée
+  par une fonction serveur, sur le modèle exact de `profil_actif_courant()`
+  (`0002_politiques.sql`) :
+
+  ```sql
+  create or replace function public.est_examinateur_courant()
+  returns boolean
+  language sql
+  security definer
+  stable
+  set search_path = public
+  as $$
+    select coalesce(est_examinateur, false) from public.comptes where id = auth.uid();
+  $$;
+
+  revoke all on function public.est_examinateur_courant() from public, anon, authenticated;
+  grant execute on function public.est_examinateur_courant() to authenticated;
+  ```
+
+  Toute politique RLS que `app/(admin)/` traverse (lecture des dossiers, des pièces, écriture
+  d'une `DecisionVerification`, `docs/domaine.md` §3.14) s'appuie sur
+  `public.est_examinateur_courant()`, jamais sur une valeur envoyée par le client — même
+  principe que le profil actif (§7 ci-dessus) : la vérité est toujours relue côté serveur, à
+  chaque requête.
+- **Jamais un mot de passe partagé.** Chaque examinateur a son propre compte `auth.users`, donc
+  son propre mot de passe (ou methode d'authentification Supabase Auth) — une décision de
+  vérification (`docs/domaine.md` §3.14) porte l'identité de son auteur, ce qui suppose que
+  cette identité soit individuelle. Un compte partagé rendrait le champ `examinateur` du journal
+  inutile : il dirait « quelqu'un », jamais qui.
+
+Attribuer `est_examinateur = true` à un compte reste une opération manuelle, hors application
+(`service_role`, directement en base) — aucun écran de ce dépôt ne doit permettre à un compte de
+se l'attribuer, ni à un examinateur d'en promouvoir un autre.

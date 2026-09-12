@@ -293,9 +293,24 @@ verifiee --(diplôme expiré / signalement fondé)--> revoquee
 refusee|revoquee --(nouveau dossier)--> en_examen
 ```
 
-Objectif de délai annoncé : 48 h ouvrées. **Un coach non `verifiee` ne peut pas publier
-d'offre ni encaisser.** Il peut préparer son profil et ses programmes.
-Le badge public « vérifié » n'apparaît qu'en `verifiee`.
+Le dossier porte **trois pièces** : pièce d'identité, diplôme ou certification, et **attestation
+d'assurance responsabilité civile professionnelle** — les trois obligatoires, aucune facultative.
+Une plateforme de mise en relation sportive qui n'exigerait pas la RC pro de ses coachs serait
+exposée ; ce n'est pas une nuance d'écran, c'est une condition du dossier.
+
+Objectif de délai annoncé : **48 h ouvrées**, pour l'ensemble du dossier.
+
+**Un seul statut par dossier, jamais un statut par pièce.** Les six valeurs ci-dessus qualifient
+le dossier entier, pas un document. Quand une seule pièce bloque un dossier par ailleurs
+complet, le statut reste `complement_demande` et **le motif rédigé par l'examinateur nomme la
+pièce concernée** (« Diplôme illisible : la photo est trop floue pour lire l'organisme et la
+date. ») — jamais un statut individuel par document, qui serait un second modèle à côté de
+celui-ci.
+
+**Un coach non `verifiee` ne peut pas publier d'offre ni encaisser.** Il peut préparer son
+profil et ses programmes — et son profil est **consultable par lien direct dès qu'il existe**,
+sans le badge « vérifié » (qui n'apparaît qu'en `verifiee`) : préparer et être consultable, oui ;
+publier une offre ou encaisser, non, avant `verifiee`.
 
 ### 4.3 Abonnement
 

@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -264,6 +265,14 @@ let profilCoachIdD: string;
 // ligne visée existe ou non — ce n'est pas la politique RLS qui répond, c'est le grant.
 const COLONNES_PROFIL_COACH_ACCORDEES =
   'id,prenom,nom,photo_url,discipline,titre_court,bio,commune_base_insee,statut_verification,cree_le';
+
+// Même mécanique, sur comptes cette fois : liste exacte du GRANT SELECT de
+// 0013_creer_role_examinateur.sql, qui a retiré le SELECT table-large hérité de
+// 0001_creer_identite.sql/0006_verrouiller_grants.sql pour en exclure est_examinateur (jamais
+// accordée à authenticated, docs/backend.md §9). Un GET/PATCH sans select= explicite équivaut à
+// select=*, qui échouerait désormais en 403 pour la même raison que ci-dessus.
+const COLONNES_COMPTES_ACCORDEES =
+  'id,date_naissance,telephone,profil_actif,cgu_version_acceptee,cree_le,supprime_le';
 
 beforeAll(async () => {
   const configuration = chargerConfigurationBanc();
@@ -718,17 +727,19 @@ describe('comptes', () => {
   // passe par service_role, qui contourne RLS et n'est jamais concerné par cette politique).
   // Supprimer comptes_select_soi ne faisait alors ROUGIR aucun test.
   it('A lit son compte : une ligne', async () => {
-    const { statut, corps } = await appelRest(`/rest/v1/comptes?id=eq.${A.compteId}`, {
-      session: A,
-    });
+    const { statut, corps } = await appelRest(
+      `/rest/v1/comptes?id=eq.${A.compteId}&select=${COLONNES_COMPTES_ACCORDEES}`,
+      { session: A },
+    );
     expect(statut).toBe(200);
     expect(corps).toHaveLength(1);
   });
 
   it('A lit le compte de B : zéro ligne', async () => {
-    const { statut, corps } = await appelRest(`/rest/v1/comptes?id=eq.${B.compteId}`, {
-      session: A,
-    });
+    const { statut, corps } = await appelRest(
+      `/rest/v1/comptes?id=eq.${B.compteId}&select=${COLONNES_COMPTES_ACCORDEES}`,
+      { session: A },
+    );
     expect(statut).toBe(200);
     expect(corps).toEqual([]);
   });
@@ -739,21 +750,27 @@ describe('comptes', () => {
   // (0001_creer_identite.sql) ; sans ces deux scénarios, supprimer comptes_update_soi ne
   // faisait ROUGIR aucun test.
   it('A modifie son téléphone : accepté', async () => {
-    const { statut, corps } = await appelRest(`/rest/v1/comptes?id=eq.${A.compteId}`, {
-      methode: 'PATCH',
-      session: A,
-      corps: { telephone: '0600000001' },
-    });
+    const { statut, corps } = await appelRest(
+      `/rest/v1/comptes?id=eq.${A.compteId}&select=${COLONNES_COMPTES_ACCORDEES}`,
+      {
+        methode: 'PATCH',
+        session: A,
+        corps: { telephone: '0600000001' },
+      },
+    );
     expect(statut).toBe(200);
     expect((corps as { telephone: string }[])[0].telephone).toBe('0600000001');
   });
 
   it('A modifie le téléphone de B : refusé', async () => {
-    const { corps } = await appelRest(`/rest/v1/comptes?id=eq.${B.compteId}`, {
-      methode: 'PATCH',
-      session: A,
-      corps: { telephone: '0600000002' },
-    });
+    const { corps } = await appelRest(
+      `/rest/v1/comptes?id=eq.${B.compteId}&select=${COLONNES_COMPTES_ACCORDEES}`,
+      {
+        methode: 'PATCH',
+        session: A,
+        corps: { telephone: '0600000002' },
+      },
+    );
     // RLS sans ligne correspondante = 0 ligne affectée, silencieusement (docs/backend.md §5).
     expect(corps).toEqual([]);
 
@@ -1694,5 +1711,315 @@ describe('offres', () => {
     if (statut < 400) {
       expect(corps).toEqual([]);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// pieces_verification (0012_creer_pieces_verification.sql, P2.5)
+// ---------------------------------------------------------------------------------------------
+
+// L'API Storage n'est pas PostgREST, mais c'est le même hôte (API_URL) et le même schéma
+// d'autorisation (apikey + Bearer) : appelRest sert tel quel, chemin = /storage/v1/object/...
+// Le corps envoyé n'a rien d'un vrai fichier (une pièce d'identité inventée serait une donnée
+// de contenu, interdite par CLAUDE.md §4) — seul le fait qu'un objet existe ou non, et qui peut
+// le relire, est sous test ici.
+describe('pieces_verification', () => {
+  const CHEMIN_STOCKAGE_BASE = '/storage/v1/object/pieces-verification';
+  // Liste exacte du GRANT SELECT de 0012_creer_pieces_verification.sql — chemin_stockage en
+  // est absent, volontairement (décision 2 du fichier de migration). Un GET sans select=
+  // équivaut à select=* et exigerait donc un GRANT sur TOUTES les colonnes, chemin_stockage
+  // compris : même mécanique déjà rencontrée sur profils_coach (COLONNES_PROFIL_COACH_ACCORDEES,
+  // plus haut dans ce fichier) et sur l'INSERT de pieces_verification ci-dessous.
+  const COLONNES_PIECES_ACCORDEES = 'id,coach_id,type,depose_le,examinee_le,cree_le';
+
+  let cheminPieceB: string;
+  let idPieceB: string;
+
+  beforeAll(async () => {
+    // B repasse en espace coach : describe('offres') l'a laissée en espace client dans son
+    // propre afterAll (précaution symétrique, voir son commentaire).
+    const bascule = await appelRest('/rest/v1/rpc/basculer_profil', {
+      methode: 'POST',
+      session: B,
+      corps: { profil: 'coach' },
+    });
+    if (bascule.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : bascule de B en coach refusée (${bascule.statut}) : ` +
+          `${JSON.stringify(bascule.corps)}`,
+      );
+    }
+  }, 30_000);
+
+  afterAll(async () => {
+    await appelRest('/rest/v1/rpc/basculer_profil', {
+      methode: 'POST',
+      session: B,
+      corps: { profil: 'client' },
+    });
+  });
+
+  // --- Sens légitime : dépôt par le propriétaire, fichier ET ligne de métadonnées. ---
+
+  it('B dépose une pièce : le fichier est accepté, puis la ligne de métadonnées aussi', async () => {
+    cheminPieceB = randomUUID();
+    const depotFichier = await appelRest(`${CHEMIN_STOCKAGE_BASE}/${cheminPieceB}`, {
+      methode: 'POST',
+      session: B,
+      corps: { contenu: 'pièce de test, jamais un vrai document (CLAUDE.md §4)' },
+    });
+    expect(depotFichier.statut).toBeLessThan(300);
+
+    // select= explicite, colonnes accordées seulement : la représentation par défaut d'un
+    // POST équivaut à select=*, qui exigerait un GRANT SELECT sur chemin_stockage — absent par
+    // décision (voir le commentaire d'en-tête de 0012_creer_pieces_verification.sql). Même
+    // mécanique que l'INSERT de offres avec return=minimal, ici avec un select= ciblé pour
+    // récupérer idPieceB dans le même appel.
+    const ligne = await appelRest(
+      '/rest/v1/pieces_verification?select=id,coach_id,type,depose_le,examinee_le,cree_le',
+      {
+        methode: 'POST',
+        session: B,
+        corps: { coach_id: profilCoachIdB, type: 'identite', chemin_stockage: cheminPieceB },
+      },
+    );
+    expect(ligne.statut).toBe(201);
+    idPieceB = (ligne.corps as { id: string }[])[0].id;
+  });
+
+  // Cas légitime de la décision "affichage métadonnées seules" (P2.5, point 3) : le coach voit
+  // qu'il a déposé une pièce, de quel type, sans jamais recevoir chemin_stockage.
+  it('B lit les métadonnées de sa pièce : une ligne, sans chemin_stockage', async () => {
+    const { statut, corps } = await appelRest(
+      `/rest/v1/pieces_verification?id=eq.${idPieceB}&select=${COLONNES_PIECES_ACCORDEES}`,
+      { session: B },
+    );
+    expect(statut).toBe(200);
+    const lignes = corps as Record<string, unknown>[];
+    expect(lignes).toHaveLength(1);
+    expect(lignes[0].type).toBe('identite');
+    expect(lignes[0]).not.toHaveProperty('chemin_stockage');
+  });
+
+  // --- Sens illégitimes : lecture du FICHIER, par quiconque, y compris son propriétaire. ---
+
+  it('B relit le fichier de sa propre pièce : refusé (P2.5, point 3 — "pas même lui")', async () => {
+    const { statut } = await appelRest(`${CHEMIN_STOCKAGE_BASE}/${cheminPieceB}`, {
+      session: B,
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+  });
+
+  it('un autre compte (A) relit la pièce de B : refusé, ni le fichier ni la ligne', async () => {
+    const fichier = await appelRest(`${CHEMIN_STOCKAGE_BASE}/${cheminPieceB}`, { session: A });
+    expect(fichier.statut).toBeGreaterThanOrEqual(400);
+
+    const ligne = await appelRest(
+      `/rest/v1/pieces_verification?id=eq.${idPieceB}&select=${COLONNES_PIECES_ACCORDEES}`,
+      { session: A },
+    );
+    expect(ligne.statut).toBe(200);
+    expect(ligne.corps).toEqual([]);
+  });
+
+  it('anon relit la pièce de B : refusé, ni le fichier ni la ligne', async () => {
+    const fichier = await appelRest(`${CHEMIN_STOCKAGE_BASE}/${cheminPieceB}`, {
+      session: 'anon',
+    });
+    expect(fichier.statut).toBeGreaterThanOrEqual(400);
+
+    // anon n'a AUCUN grant sur cette table (le GRANT SELECT colonne par colonne ne vise que
+    // authenticated) : même avec select= explicite, refusé par le grant avant même la RLS.
+    const ligne = await appelRest(
+      `/rest/v1/pieces_verification?id=eq.${idPieceB}&select=${COLONNES_PIECES_ACCORDEES}`,
+      { session: 'anon' },
+    );
+    expect(ligne.statut).toBeGreaterThanOrEqual(400);
+  });
+
+  // Cas explicitement demandé par P2.5, point 5 : un chemin construit à la main depuis un
+  // coach_id public — exactement la convention REJETÉE à la décision du point 4. L'objet est
+  // posé réellement (par service_role, jamais par un rôle client) pour que le refus observé
+  // vienne bien de l'absence de politique SELECT sur storage.objects, pas de l'absence de
+  // l'objet lui-même.
+  it('un chemin deviné depuis le coach_id public de B (convention rejetée) : refusé malgré tout', async () => {
+    const cheminDevine = `${profilCoachIdB}/identite-fabriquee.pdf`;
+    const depotAdmin = await appelRest(`${CHEMIN_STOCKAGE_BASE}/${cheminDevine}`, {
+      methode: 'POST',
+      session: 'admin',
+      corps: { contenu: 'objet posé directement par service_role, pour ce test seulement' },
+    });
+    if (depotAdmin.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : dépôt admin au chemin deviné refusé (${depotAdmin.statut}) : ` +
+          `${JSON.stringify(depotAdmin.corps)}`,
+      );
+    }
+
+    const lectureAnon = await appelRest(`${CHEMIN_STOCKAGE_BASE}/${cheminDevine}`, {
+      session: 'anon',
+    });
+    expect(lectureAnon.statut).toBeGreaterThanOrEqual(400);
+
+    const lectureA = await appelRest(`${CHEMIN_STOCKAGE_BASE}/${cheminDevine}`, { session: A });
+    expect(lectureA.statut).toBeGreaterThanOrEqual(400);
+  });
+
+  // --- Sens illégitimes : écriture de la LIGNE par qui n'en a pas le droit. ---
+
+  it('B insère une pièce pour le coach_id de D (un autre coach) : refusé', async () => {
+    const { statut } = await appelRest('/rest/v1/pieces_verification', {
+      methode: 'POST',
+      session: B,
+      prefer: 'return=minimal',
+      corps: { coach_id: profilCoachIdD, type: 'identite', chemin_stockage: randomUUID() },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+  });
+
+  it('B, en espace CLIENT, insère une pièce : refusé', async () => {
+    const versClient = await appelRest('/rest/v1/rpc/basculer_profil', {
+      methode: 'POST',
+      session: B,
+      corps: { profil: 'client' },
+    });
+    if (versClient.statut >= 400) {
+      throw new Error(
+        `Préparation du test : bascule de B en client refusée (${versClient.statut}) : ` +
+          `${JSON.stringify(versClient.corps)}`,
+      );
+    }
+
+    const { statut } = await appelRest('/rest/v1/pieces_verification', {
+      methode: 'POST',
+      session: B,
+      prefer: 'return=minimal',
+      corps: { coach_id: profilCoachIdB, type: 'identite', chemin_stockage: randomUUID() },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+
+    // Repasse en coach : les tests suivants du describe (aucun ici, mais son propre afterAll)
+    // supposent cet état.
+    const versCoach = await appelRest('/rest/v1/rpc/basculer_profil', {
+      methode: 'POST',
+      session: B,
+      corps: { profil: 'coach' },
+    });
+    if (versCoach.statut >= 400) {
+      throw new Error(
+        `Nettoyage du test : bascule de B en coach refusée (${versCoach.statut}) : ` +
+          `${JSON.stringify(versCoach.corps)}`,
+      );
+    }
+  });
+
+  it('anon insère une pièce : refusé', async () => {
+    const { statut } = await appelRest('/rest/v1/pieces_verification', {
+      methode: 'POST',
+      session: 'anon',
+      prefer: 'return=minimal',
+      corps: { coach_id: profilCoachIdB, type: 'identite', chemin_stockage: randomUUID() },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+  });
+
+  it('anon dépose un fichier dans le compartiment : refusé', async () => {
+    const { statut } = await appelRest(`${CHEMIN_STOCKAGE_BASE}/${randomUUID()}`, {
+      methode: 'POST',
+      session: 'anon',
+      corps: { contenu: 'tentative anon' },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+  });
+
+  // --- Lecture réservée au back-office (docs/backend.md §9, 0013_creer_role_examinateur.sql).
+  // Trouvé manquant en relisant P2.5 : 0012 fermait la lecture à tout le monde sauf
+  // service_role, sans jamais construire le chemin réservé à un vrai compte examinateur que son
+  // propre commentaire promettait. Les deux sens exigés : l'examinateur lit, un compte
+  // ordinaire ne lit pas — ni le fichier, ni chemin_stockage via la fonction dédiée. ---
+  describe("lecture par l'examinateur", () => {
+    let EX: Session;
+
+    beforeAll(async () => {
+      EX = await creerCompteReel(`${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-examinateur@${DOMAINE_EMAIL}`, {
+        date_naissance: '1988-01-01',
+        cgu_version_acceptee: '2026-08-01',
+      });
+      // est_examinateur = true reste une opération manuelle par service_role, jamais par
+      // l'application (docs/backend.md §9, dernière phrase) — ce PATCH admin simule exactement
+      // cette opération pour le banc.
+      const promotion = await appelRest(`/rest/v1/comptes?id=eq.${EX.compteId}`, {
+        methode: 'PATCH',
+        session: 'admin',
+        corps: { est_examinateur: true },
+      });
+      if (promotion.statut >= 400) {
+        throw new Error(
+          `Préparation du banc : promotion de EX en examinateur refusée (${promotion.statut}) : ` +
+            `${JSON.stringify(promotion.corps)}`,
+        );
+      }
+    }, 30_000);
+
+    afterAll(async () => {
+      if (EX) await supprimerCompteReel(EX.compteId);
+    });
+
+    it("l'examinateur lit la pièce de B via pieces_verification_pour_examinateur() : chemin_stockage inclus", async () => {
+      const { statut, corps } = await appelRest(
+        '/rest/v1/rpc/pieces_verification_pour_examinateur',
+        { methode: 'POST', session: EX },
+      );
+      expect(statut).toBe(200);
+      const ligneB = (corps as Record<string, unknown>[]).find((l) => l.id === idPieceB);
+      expect(ligneB).toBeDefined();
+      expect(ligneB?.chemin_stockage).toBe(cheminPieceB);
+    });
+
+    it('un compte ordinaire (A) appelle la même fonction : ensemble vide, jamais une erreur', async () => {
+      const { statut, corps } = await appelRest(
+        '/rest/v1/rpc/pieces_verification_pour_examinateur',
+        { methode: 'POST', session: A },
+      );
+      expect(statut).toBe(200);
+      expect(corps).toEqual([]);
+    });
+
+    it('anon ne peut pas appeler pieces_verification_pour_examinateur (revoke from public, anon)', async () => {
+      const { statut } = await appelRest('/rest/v1/rpc/pieces_verification_pour_examinateur', {
+        methode: 'POST',
+        session: 'anon',
+      });
+      expect(statut).toBeGreaterThanOrEqual(400);
+    });
+
+    it("l'examinateur lit le FICHIER de la pièce de B (storage.objects) : accepté", async () => {
+      const { statut } = await appelRest(`${CHEMIN_STOCKAGE_BASE}/${cheminPieceB}`, {
+        session: EX,
+      });
+      expect(statut).toBeLessThan(300);
+    });
+
+    it('est_examinateur_courant() : vrai pour EX, faux pour un compte ordinaire, refusé pour anon', async () => {
+      const pourEx = await appelRest('/rest/v1/rpc/est_examinateur_courant', {
+        methode: 'POST',
+        session: EX,
+      });
+      expect(pourEx.statut).toBe(200);
+      expect(pourEx.corps).toBe(true);
+
+      const pourA = await appelRest('/rest/v1/rpc/est_examinateur_courant', {
+        methode: 'POST',
+        session: A,
+      });
+      expect(pourA.statut).toBe(200);
+      expect(pourA.corps).toBe(false);
+
+      const pourAnon = await appelRest('/rest/v1/rpc/est_examinateur_courant', {
+        methode: 'POST',
+        session: 'anon',
+      });
+      expect(pourAnon.statut).toBeGreaterThanOrEqual(400);
+    });
   });
 });

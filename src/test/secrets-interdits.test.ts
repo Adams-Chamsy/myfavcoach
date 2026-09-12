@@ -129,6 +129,9 @@ describe('secrets interdits côté application', () => {
   //   - supabase/migrations/0003_accorder_service_role.sql : corrige cette hypothèse — les GRANT que ce rôle nécessite réellement sur ce projet, justifiés ligne à ligne
   //   - supabase/migrations/0009_accorder_service_role_offres.sql : même correction, pour offres (P2.2 avait oublié service_role, trouvé par le banc de P2.4)
   //   - supabase/migrations/0010_accorder_service_role_verification_banc.sql : grant étroit pour la seule fixture du banc (statut_verification), en attendant la vraie fonction de P2.6
+  //   - supabase/migrations/0012_creer_pieces_verification.sql : lecture complète + insertion pour le banc et le futur back-office (P2.6/P2.10), en attendant est_examinateur_courant()
+  //   - supabase/migrations/0013_creer_role_examinateur.sql : commentaires expliquant pourquoi la promotion est_examinateur reste une opération manuelle par service_role, jamais par l'application
+  //   - supabase/migrations/0014_accorder_service_role_promotion_examinateur.sql : GRANT UPDATE étroit (une seule colonne) pour que service_role puisse réaliser cette opération manuelle, jamais un rôle client
   //   - supabase/config.toml                          : commentaire généré par `supabase init`, décrivant les rôles de la Data API
   //   - src/test/rls.banc.ts                          : le nom de variable (SERVICE_ROLE_KEY) apparaît pour préparer le banc ; sa valeur, jamais écrite ici, est lue depuis .secrets-rls.local (ignoré par git) — jamais dans l'application
   //   - .github/workflows/banc-rls.yml                : le nom de variable shell issu de `supabase status -o env` (pile locale du runner) ; sa valeur, une clé de démo FIXE du CLI Supabase, n'est jamais écrite ici — lue puis passée à .secrets-rls.local, ignoré par git
@@ -144,6 +147,9 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0003_accorder_service_role.sql',
       'supabase/migrations/0009_accorder_service_role_offres.sql',
       'supabase/migrations/0010_accorder_service_role_verification_banc.sql',
+      'supabase/migrations/0012_creer_pieces_verification.sql',
+      'supabase/migrations/0013_creer_role_examinateur.sql',
+      'supabase/migrations/0014_accorder_service_role_promotion_examinateur.sql',
       'supabase/config.toml',
       'src/test/rls.banc.ts',
       '.github/workflows/banc-rls.yml',

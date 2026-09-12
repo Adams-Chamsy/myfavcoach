@@ -8,13 +8,27 @@ import { join } from 'path';
 // URL (le port l'envoie dans le CORPS d'un PATCH, filtre = compte_id seul) et de son absence
 // des traces d'erreur serveur (src/test/rls.banc.ts).
 //
+// Étendu en P2.5 (docs/prompts/L2.md) : pieces_verification.chemin_stockage rejoint cette
+// garantie. Ce n'est pas une donnée de santé, mais son exposition serait pire — irréversible et
+// identifiante (supabase/migrations/0012_creer_pieces_verification.sql). Aucun écran ne le lit
+// encore (P2.5 est backend seul ; l'écran de dépôt arrive avec docs/ecrans/L2-06), donc le 4ᵉ
+// test ci-dessous est aujourd'hui vacueusement vert — RÈGLE 8 : il reste écrit pour armer la
+// garde AVANT le code qui pourrait la violer, même famille que le test 2 (aucun gestionnaire
+// d'erreur global n'existe non plus aujourd'hui). Le jour où un écran lit chemin_stockage
+// (jamais renvoyé par l'API de toute façon, voir le GRANT SELECT de la migration — seul un
+// futur back-office y touchera), il ne devra jamais apparaître dans un console.*/rapport de
+// plantage ni dans une URL de requête (paramètre de requête signée, log d'accès serveur) : ce
+// test échouera alors pour de bon, et c'est le signal d'écrire le scrubbing plutôt que de
+// supprimer l'assertion.
+//
 // FIL-PIÈGE VOLONTAIRE — le premier `it` ci-dessous échoue le jour où une dépendance de
 // rapport de plantage (Sentry ou équivalent) entre dans package.json. Ce n'est PAS le signal
 // de supprimer l'assertion : c'est le signal de prouver que l'outil est configuré pour retirer
-// les corps de requête ET les champs `poids_*` de tout ce qu'il envoie (scrubbing / beforeSend
-// / denyUrls selon l'outil), puis de remplacer cette assertion par la vérification de cette
-// configuration. Retirer le test sans le remplacer rouvrirait un chemin de fuite d'une donnée
-// de catégorie 9 RGPD, sans que rien ne le signale.
+// les corps de requête ET les champs `poids_*`/`chemin_stockage` de tout ce qu'il envoie
+// (scrubbing / beforeSend / denyUrls selon l'outil), puis de remplacer cette assertion par la
+// vérification de cette configuration. Retirer le test sans le remplacer rouvrirait un chemin
+// de fuite d'une donnée de catégorie 9 RGPD ou d'une pièce d'identité, sans que rien ne le
+// signale.
 const RACINE_DEPOT = join(__dirname, '..', '..');
 const CE_FICHIER = join(__dirname, 'donnees-sante-hors-journal.test.ts');
 
@@ -67,5 +81,24 @@ describe('la donnée de santé du lot n’atteint ni journal ni rapport de plant
   it('app/_layout.tsx appelle neutraliserConsoleEnProduction au chargement du module', () => {
     const layout = readFileSync(join(RACINE_DEPOT, 'app/_layout.tsx'), 'utf8');
     expect(layout).toMatch(/^neutraliserConsoleEnProduction\(\);/m);
+  });
+
+  // 4 · chemin_stockage (pieces_verification, P2.5) ne doit jamais atteindre un console.* ni
+  // être assemblé dans une URL de requête (paramètre `?...chemin_stockage...` ou inversement).
+  // Vert vacueux tant qu'aucun écran ne le lit (voir le commentaire d'en-tête) — armé pour le
+  // jour où un écran de back-office/dépôt le fera.
+  it('chemin_stockage n’apparaît dans aucun console.* ni construction d’URL, dans src/ ou app/', () => {
+    const MOTIF_CONSOLE = /console\.[a-z]+\([^)]*chemin_stockage/i;
+    // [?&] suivi d'une clef=valeur (un vrai paramètre de requête), jamais un simple "?." de
+    // chaînage optionnel TypeScript — trouvé en écrivant ce test : `ligneB?.chemin_stockage`
+    // (accès de propriété, aucun rapport avec une URL) faisait échouer un premier motif trop
+    // large (`[?&][^...]*chemin_stockage`), qui ne distinguait pas les deux.
+    const MOTIF_URL =
+      /[?&][a-zA-Z_][a-zA-Z0-9_]*=[^`'"\n]*chemin_stockage|chemin_stockage[^`'"\n]*[?&][a-zA-Z_][a-zA-Z0-9_]*=/i;
+    const coupables = fichiersSuivis(['src', 'app']).filter((c) => {
+      const contenu = readFileSync(join(RACINE_DEPOT, c), 'utf8');
+      return MOTIF_CONSOLE.test(contenu) || MOTIF_URL.test(contenu);
+    });
+    expect(coupables).toEqual([]);
   });
 });

@@ -1,0 +1,13 @@
+-- Corrige une restriction de 0003_accorder_service_role.sql, devenue trop etroite depuis
+-- 0013_creer_role_examinateur.sql : "Ni UPDATE ni DELETE [sur comptes] : aucun appelant
+-- service_role legitime n'en a besoin a ce stade" etait vrai avant que la promotion
+-- examinateur existe. docs/backend.md §9 : "Attribuer est_examinateur = true a un compte reste
+-- une operation manuelle, hors application (service_role, directement en base)" -- ce paragraphe
+-- decrit precisement un appelant service_role legitime pour un UPDATE, et sa propre regle "aucun
+-- GRANT SELECT ni GRANT UPDATE sur cette colonne, pour aucun role" vise explicitement anon et
+-- authenticated, jamais service_role (cite entre parentheses juste apres). Sans ce GRANT, la
+-- seule facon de promouvoir un examinateur serait un acces direct a Postgres (psql, ou
+-- `supabase db query --linked`), hors de portee du banc automatise -- ce GRANT, etroit a une
+-- seule colonne, permet au banc de simuler cette operation manuelle sans la rendre accessible a
+-- aucun role client.
+grant update (est_examinateur) on public.comptes to service_role;
