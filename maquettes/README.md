@@ -7,7 +7,13 @@ Les corrections listées dans `docs/design-system.md` §1 Corrections l'emporten
 est dessiné ici : en cas d'écart entre une maquette et une correction, c'est la correction qui
 fait foi.
 
-## Les 7 fichiers
+**Ajout du 12 septembre 2026.** `MyFavCoach-L2_dc.html` est postérieur au dossier de cadrage du
+20 août : produit pour combler des écrans absents du dossier d'origine, listés « à concevoir »
+dans `docs/perimetre.md`. Il est lecture seule au même titre que les sept fichiers du dossier
+d'origine dès son premier commit — la même règle s'applique, la date de production ne change
+rien à son statut une fois déposé.
+
+## Les 8 fichiers
 
 ### `MyFavCoach-System_dc.html`
 Design system + écrans 1→3.
@@ -63,6 +69,19 @@ Tablette & montre — écrans 29→36, **hors périmètre du jalon 1** (voir `do
 - 34 Montre repos
 - 35 Montre fin
 - 36 Montre notif
+
+### `MyFavCoach-L2_dc.html`
+Huit écrans absents du dossier d'origine, produits après le 20 août pour le lot L2 (un pour L4,
+un pour L5, le reste L2). Aucune nature d'offre au-delà de l'abonnement, aucune photo
+corporelle, aucun média — rien n'anticipe le jalon 2.
+- 23b Dépôt des pièces
+- 23c Attente de vérification
+- Créer une offre (coach)
+- 04c Confirmation d'abonnement — lot L4
+- C-03 Supprimer mon compte
+- C-04 Mes consentements
+- C-06 Documents contractuels
+- C-07 Exporter mes données
 
 ### `MyFavCoach-Handoff_dc.html`
 Pas un écran de l'application : documentation de passation pour l'équipe dev.

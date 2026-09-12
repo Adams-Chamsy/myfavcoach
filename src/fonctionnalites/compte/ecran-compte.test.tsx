@@ -177,13 +177,29 @@ describe('EcranCompte (docs/ecrans/L1-07-compte-reglages.md)', () => {
     );
   });
 
-  // Critère 9 : aucune chaîne des lots L4, L10 ou L11 dans le rendu.
-  it('n’affiche aucune fonctionnalité des lots L4, L10 ou L11', async () => {
+  // Critère 9 : aucune chaîne des lots L4 ou L10 dans le rendu — ces deux-là restent loin.
+  it('n’affiche aucune fonctionnalité des lots L4 ou L10', async () => {
     await rendreEcran();
 
     const rendu = JSON.stringify(screen.toJSON()).toLowerCase();
-    for (const interdit of ['abonnement', 'notification', 'supprimer mon compte']) {
+    for (const interdit of ['abonnement', 'notification']) {
       expect(rendu).not.toContain(interdit);
     }
+  });
+
+  // Critère 9 (suite), isolé du reste : « supprimer mon compte » relevait du lot L11 à
+  // l'écriture de ce test, remonté depuis à L2, C-03 (docs/perimetre.md, révision du
+  // 12 septembre) — le lot qui suit immédiatement celui-ci, pas un lot lointain comme les deux
+  // ci-dessus. CETTE ASSERTION S'INVERSE AU LOT L2, ELLE NE SE RETIRE PAS : quand C-03
+  // construira l'écran de suppression de compte, « supprimer mon compte » DOIT apparaître dans
+  // ce rendu, et ce test devra alors affirmer sa PRÉSENCE, pas son absence. La retirer au lieu
+  // de l'inverser ferait disparaître la couverture au moment exact où elle commence à servir —
+  // le faux vert « une liste d'exclusion qui ne protégeait rien » (docs/prompts/L1.md, tableau
+  // des faux verts, 3ᵉ ligne).
+  it('n’affiche pas encore « supprimer mon compte » (L1 — à inverser en présence au lot L2)', async () => {
+    await rendreEcran();
+
+    const rendu = JSON.stringify(screen.toJSON()).toLowerCase();
+    expect(rendu).not.toContain('supprimer mon compte');
   });
 });

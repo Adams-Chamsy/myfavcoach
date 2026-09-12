@@ -57,8 +57,10 @@ Et qui ne doit pas y figurer, même désactivé, même en « à venir » :
 |---|---|
 | Les deux cartes d'abonnement, la pause, la résiliation | L4 |
 | Notifications | L10 |
-| Aide, documents contractuels, factures | L11 |
-| Supprimer mon compte | L11 |
+| Aide | non rattachée à un écran du périmètre actuel |
+| Documents contractuels | L2 (C-06) |
+| Factures | L5 (C-05) |
+| Supprimer mon compte | L2 (C-03) |
 | Choix du thème | jamais au jalon 1 — le clair est forcé |
 
 **Règle** : une ligne qui n'ouvre rien ne s'affiche pas. Un réglage grisé « bientôt disponible »
@@ -112,7 +114,7 @@ est une promesse que personne n'a demandée et que le produit devra tenir.
 7. L'action de déconnexion est annoncée comme destructrice au lecteur d'écran.
 8. À 200 %, les libellés passent sur deux lignes, les lignes de liste s'étirent, rien n'est
    tronqué.
-9. Un test vérifie qu'aucune chaîne des lots L4, L10 ou L11 (« abonnement », « notification »,
+9. Un test vérifie qu'aucune chaîne des lots L4, L10 ou L2 (C-03) (« abonnement », « notification »,
    « supprimer mon compte ») n'apparaît dans le rendu.
 10. L'écran est dans la galerie, **exercé en clair et en sombre**.
 11. `npm run verif` passe.

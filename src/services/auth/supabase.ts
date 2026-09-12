@@ -24,10 +24,10 @@ const LIEN_CHANGEMENT_ADRESSE = 'myfavcoach://auth/adresse';
 
 // Version du texte de consentement CGU accepté à l'inscription (docs/domaine.md §3.12 : "un
 // consentement sans version est un consentement inutilisable"). Aucun texte CGU réel n'existe
-// encore (lot L11, docs/dette.md) : cette version date le mécanisme actuel — la phrase
+// encore (lot L2 (C-06), docs/dette.md) : cette version date le mécanisme actuel — la phrase
 // implicite d'app/(public)/inscription.tsx ("En créant ton compte, tu acceptes les CGU...") —
-// pas un document juridique rédigé. À faire avancer avec la vraie rédaction en L11, jamais à
-// bumper pour un autre motif.
+// pas un document juridique rédigé. À faire avancer avec la vraie rédaction en L2 (C-06),
+// jamais à bumper pour un autre motif.
 const VERSION_CGU_ACCEPTEE = '2026-09-04';
 
 // Rendu STRUCTUREL, pas seulement documenté : deux trous (inscrire, renvoyerVerification)

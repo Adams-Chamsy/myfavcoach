@@ -68,8 +68,8 @@ Un seul réglage au lot L1 : le consentement aux données de santé.
 - Après retrait, une ligne apparaît : « Effacer mes mesures enregistrées », en `etat.erreur`,
   avec double confirmation.
 
-Les consentements aux notifications et aux communications commerciales arrivent aux lots L10 et
-L11 : **ils ne figurent pas ici**, pas même désactivés.
+Le consentement aux notifications arrive avec le lot L10, celui aux communications commerciales
+avec le lot L2 (C-04) : **ils ne figurent pas ici**, pas même désactivés.
 
 ---
 

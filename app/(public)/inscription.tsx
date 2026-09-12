@@ -412,7 +412,7 @@ export default function Inscription() {
           En créant ton compte, tu acceptes les{' '}
           <Text
             onPress={() => {
-              // Aucune URL n'existe avant la rédaction des textes légaux (lot L11) — même
+              // Aucune URL n'existe avant la rédaction des textes légaux (lot L2, C-06) — même
               // raison que app/(public)/index.tsx, voir docs/dette.md. L'enregistrement du
               // consentement AVEC SA VERSION (règle de la fiche, "Pas de case à cocher") n'a
               // pas non plus de mécanisme aujourd'hui : docs/api.md ne décrit que le

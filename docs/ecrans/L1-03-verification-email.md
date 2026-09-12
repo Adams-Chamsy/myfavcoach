@@ -82,7 +82,7 @@ Le lien du courriel ouvre l'application par lien profond : `myfavcoach://auth/ra
   jamais un code technique.
 - La purge des comptes non vérifiés à 30 jours (`docs/domaine.md` §4.1) **n'est pas
   implémentée à ce lot** : elle demande une tâche planifiée côté base. Inscrite dans
-  `docs/dette.md`, échéance lot L11.
+  `docs/dette.md`, échéance lot L2 (C-03).
 
 ---
 

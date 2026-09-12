@@ -24,8 +24,13 @@ import { themes } from '@/theme/tokens';
 //
 // Trois lignes SEULEMENT, et elles ouvrent réellement leur destination (docs/prompts/L1.md,
 // P1.13 : « une ligne qui n'ouvre rien ne s'affiche pas »). Ni abonnements (L4), ni
-// notifications (L10), ni documents ou suppression de compte (L11) — même désactivés, même
-// « bientôt ». Un test le vérifie : src/fonctionnalites/compte/ecran-compte.test.tsx, critère 9.
+// notifications (L10) — deux lots réellement loin. Un test le vérifie :
+// src/fonctionnalites/compte/ecran-compte.test.tsx, critère 9.
+//
+// « Supprimer mon compte » est absent pour la même raison, mais pas pour la même durée : ce
+// lot est désormais L2 (C-03, docs/perimetre.md, révision du 12 septembre), pas L11 — le lot
+// qui suit celui-ci. Cette ligne DEVRA apparaître ici au lot L2, pas rester absente : voir le
+// test jumeau, isolé pour cette raison précise dans ecran-compte.test.tsx.
 
 type LigneReglage = { cle: string; libelle: string; icone: NomIcone; route: Href };
 

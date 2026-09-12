@@ -58,7 +58,7 @@ jalon 1 où c'est autorisé.
   déclenchera l'écran L1-08 après la création du compte. Un compte reste **un compte, deux
   profils optionnels**.
 - Les liens de la mention légale ouvrent une vue web sur les documents publiés. Tant que les
-  textes ne sont pas rédigés (lot L11), ils pointent vers une **version de développement
+  textes ne sont pas rédigés (lot L2, C-06), ils pointent vers une **version de développement
   datée**, et c'est la **version acceptée qui est enregistrée** avec le compte. Le texte peut
   changer, la trace de ce qui a été accepté ne se rattrape pas.
 - Aucune valeur en dur : la maquette écrit 36 et 38 pour le logotype et l'accroche, les tokens

@@ -154,7 +154,7 @@ export default function Bienvenue() {
   }
 
   function surLienLegal(_document: 'cgu' | 'confidentialite') {
-    // "Tant que les textes ne sont pas rédigés (lot L11), ils pointent vers une version de
+    // "Tant que les textes ne sont pas rédigés (lot L2, C-06), ils pointent vers une version de
     // développement datée" (docs/ecrans/L1-01-bienvenue.md, Règles) — cette version n'existe
     // pas encore. Aucune URL n'est inventée ici : espace réservé, voir docs/dette.md.
   }

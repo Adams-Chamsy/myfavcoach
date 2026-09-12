@@ -406,19 +406,21 @@ Le corps d'une notification poussée ne contient **jamais** de donnée de santé
 
 ---
 
-## 14. Conformité (L11)
+## 14. Conformité (L2, L5, L8)
 
-**Servi par :** PostgREST + politiques pour signalements et blocages. L'export de portabilité
-(`GET /moi/export`) est une fonction distante : elle rassemble des données de plusieurs tables et
-envoie un courriel avec un lien signé, hors de portée d'une requête PostgREST unique.
+**Servi par :** PostgREST + politiques pour signalements et blocages (C-01, C-02). `/documents-legaux`
+(C-06) est servie par PostgREST direct : simple lecture d'une table de versions en vigueur, aucune
+fonction, aucune politique au-delà de l'accès authentifié standard. L'export de portabilité
+(`GET /moi/export`, C-07) est une fonction distante : elle rassemble des données de plusieurs tables
+et envoie un courriel avec un lien signé, hors de portée d'une requête PostgREST unique.
 
 | Verbe | Chemin |
 |---|---|
 | `POST` | `/signalements` — `{ "cibleType": "message", "cibleId": "…", "motif": "…" }` → 202 |
 | `GET` | `/signalements` — les miens et leur suite |
 | `POST` | `/blocages`, `DELETE /blocages/{id}`, `GET /blocages` |
-| `GET` | `/documents-legaux` — versions en vigueur |
-| `GET` | `/moi/export` — portabilité, 202 puis courriel avec lien signé |
+| `GET` | `/documents-legaux` — versions en vigueur (C-06) |
+| `GET` | `/moi/export` — portabilité, 202 puis courriel avec lien signé (C-07) |
 
 ---
 

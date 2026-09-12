@@ -16,9 +16,9 @@ import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { useTheme } from '@/theme/fournisseur';
 
 // docs/ecrans/L1-09-mes-informations.md, section « Confidentialité ». Un seul réglage au lot L1 :
-// le consentement aux données de santé (docs/domaine.md §3.12). Les consentements aux
-// notifications et aux communications commerciales arrivent aux lots L10/L11 — ils ne figurent
-// pas ici, pas même désactivés.
+// le consentement aux données de santé (docs/domaine.md §3.12). Le consentement aux
+// notifications arrive avec le lot L10, celui aux communications commerciales avec le lot
+// L2 (C-04) — ils ne figurent pas ici, pas même désactivés.
 //
 // Le consentement est un JOURNAL d'ajout : accorder comme retirer insère une nouvelle ligne
 // (port.enregistrerConsentementSante), jamais une mise à jour. L'accord est immédiat ; le

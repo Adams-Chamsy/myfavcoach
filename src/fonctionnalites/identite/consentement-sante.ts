@@ -7,8 +7,8 @@
 //
 // « Un consentement sans version est un consentement inutilisable » (docs/domaine.md §3.12,
 // contrainte NOT NULL de consentements.version) — même mécanisme que VERSION_CGU_ACCEPTEE
-// (src/services/auth/supabase.ts). Contrairement aux CGU (lot L11, texte pas encore rédigé),
-// CE texte est le texte réel de ce lot : rien de provisoire.
+// (src/services/auth/supabase.ts). Contrairement aux CGU (lot L2 (C-06), texte pas encore
+// rédigé), CE texte est le texte réel de ce lot : rien de provisoire.
 export const VERSION_CONSENTEMENT_SANTE = '2026-09-04';
 
 export const TEXTE_CONSENTEMENT_SANTE =
