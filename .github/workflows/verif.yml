@@ -32,14 +32,17 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      # .env est ignoré par git : la CI en écrit un de substitution. Ces valeurs ne servent
-      # qu'à laisser le bundle web se construire (npm run verif:serveur, npm run verif:bundle) —
-      # src/services/supabase/client.ts exige EXPO_PUBLIC_SUPABASE_URL / _ANON_KEY au chargement
-      # du module, mais ne fait aucun appel réseau ici. Aucun secret : une URL de forme valide et
-      # des chaînes quelconques suffisent. Les deux clefs (mobile, admin) sont VOLONTAIREMENT
-      # distinctes : verifier-bundle-production.mjs échoue si elles sont identiques (voir son
-      # propre garde-fou), pour ne jamais confondre "la clef mobile légitimement présente" et
-      # "la clef admin qui ne devrait jamais l'être".
+      # .env est ignoré par git : la CI en écrit un de substitution, à partir de
+      # .env.ci-substitution (suivi par git, SEULE source de ces valeurs — scripts/
+      # reproduire-conditions-ci.sh lit le même fichier, pour ne jamais laisser CI et la
+      # reproduction locale diverger). Ces valeurs ne servent qu'à laisser le bundle web se
+      # construire (npm run verif:serveur, npm run verif:bundle) — src/services/supabase/client.ts
+      # exige EXPO_PUBLIC_SUPABASE_URL / _ANON_KEY au chargement du module, mais ne fait aucun
+      # appel réseau ici. Aucun secret : une URL de forme valide et des chaînes quelconques
+      # suffisent. Les deux clefs (mobile, admin) sont VOLONTAIREMENT distinctes :
+      # verifier-bundle-production.mjs échoue si elles sont identiques (voir son propre
+      # garde-fou), pour ne jamais confondre "la clef mobile légitimement présente" et "la clef
+      # admin qui ne devrait jamais l'être".
       # chmod 444 après l'écriture : src/test/env-protege.test.ts (CLAUDE.md §4) exige qu'un
       # .env existant soit toujours en lecture seule, sans distinguer un vrai poste local d'un
       # runner CI — un .env de substitution laissé inscriptible aurait fait échouer ce test à
@@ -47,11 +50,7 @@ jobs:
       # Rien en aval n'écrit .env de nouveau : aucune étape suivante n'en a besoin.
       - name: .env de substitution (CI)
         run: |
-          {
-            echo "EXPO_PUBLIC_SUPABASE_URL=https://exemple-ci.supabase.co"
-            echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=cle-anon-de-substitution-ci"
-            echo "EXPO_PUBLIC_SUPABASE_ADMIN_ANON_KEY=cle-admin-de-substitution-ci"
-          } > .env
+          cp .env.ci-substitution .env
           chmod 444 .env
       - name: Tokens
         run: npm run tokens
