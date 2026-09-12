@@ -442,9 +442,22 @@ Chaque métrique affichée dans les maquettes a une formule. Aucune n'est estim�
 application : elles viennent toutes du serveur, déjà calculées.
 
 ### 5.1 Note d'un coach
-Moyenne arithmétique des `Avis` en statut `publie`, arrondie au dixième.
-**Affichée à partir de 5 avis.** En dessous : badge « Nouveau », aucune note, aucun tri par note.
-La distribution par étoiles est le simple comptage par valeur.
+Moyenne arithmétique des `Avis` en statut `publie`, arrondie au dixième. **Affichée à partir de
+5 avis publiés seulement** — en dessous, aucune moyenne n'est calculée, jamais une moyenne sur
+un échantillon trop petit pour être honnête. La distribution par étoiles reste le simple
+comptage par valeur, sans seuil.
+
+Trois affichages distincts selon le nombre d'avis publiés, jamais de badge « Nouveau » dans
+aucun des trois cas :
+
+- **0 avis** : ni note, ni compteur. La place que la note aurait occupée montre à la place la
+  date de vérification du coach, sa discipline, et son parcours — de l'information réelle,
+  jamais un badge qui ne dit rien.
+- **1 à 4 avis** : aucune moyenne calculée (échantillon trop petit), mais les avis existent
+  réellement — ils s'affichent un par un (étoiles, texte, auteur), jamais résumés en un chiffre.
+  Un compteur simple (« 3 avis ») reste honnête à ce stade, à la différence d'une moyenne.
+- **5 avis ou plus** : moyenne affichée, arrondie au dixième, distribution par étoiles, tri par
+  note possible.
 
 ### 5.2 Assiduité d'un client
 Sur les 28 derniers jours :
@@ -469,19 +482,34 @@ La commission porte sur le montant TTC encaissé. Les frais du prestataire sont 
 la plateforme**, pas du coach : c'est ce qui rend le taux annonçable simplement.
 
 ### 5.6 Classement « Pertinence »
-Déterministe, reproductible, et publié dans les CGU. Score = somme pondérée, calculée à la
-requête :
+**Révisé le 12 septembre 2026 — ne trie plus sur l'avis.** La version précédente pondérait Note,
+Assiduité moyenne des abonnés et Délai de réponse (65 points sur 100) : trois mesures qui
+dépendent d'un historique d'usage (avis publiés, séances suivies, messages échangés) qu'**aucun**
+coach n'aura au lancement — un classement qui s'appuie dessus revient à ne classer personne tant
+que la plateforme est vide, l'exact problème d'amorçage qu'un marketplace biface doit éviter.
+Remplacée par trois composantes qui existent dès la publication d'un profil, sans historique :
 
-| Composante | Poids | Détail |
+| Critère | Ordre | Détail |
 |---|---|---|
-| Correspondance textuelle | 40 | titre, discipline, bio |
-| Proximité géographique | 20 | 1,0 à 0 km → 0 à 25 km ; « visio » = 0,6 fixe |
-| Note | 15 | 0 si moins de 5 avis |
-| Assiduité moyenne des abonnés | 10 | mesure de qualité réelle, pas de popularité |
-| Délai de réponse | 10 | |
-| Fraîcheur du profil | 5 | activité dans les 30 jours |
+| Discipline demandée | 1er (filtre puis tri) | Un coach dont l'offre publiée ne correspond pas à la discipline recherchée n'apparaît pas — ce n'est pas un simple bonus de score. Une recherche libre (texte, pas de discipline choisie) trie par correspondance textuelle sur titre/discipline/bio, comme avant |
+| Proximité géographique | 2e | Inchangé (§5.7) : 1,0 à 0 km → 0 à 25 km ; « visio » = 0,6 fixe |
+| Complétude du profil | 3e | Compte simple sur 3 : bio renseignée, parcours renseigné, photo déposée — chaque élément présent vaut 1, absent vaut 0 |
 
-Aucune composante payante. Aucun coup de pouce manuel. À égalité, ordre alphabétique du nom.
+**Rotation** : à égalité stricte sur les trois critères ci-dessus (même discipline, même tranche
+de proximité, même complétude), l'ordre n'est pas figé sur un axe secondaire arbitraire (nom,
+date de création...) qui avantagerait toujours les mêmes coachs — un bruit léger, tiré à chaque
+requête (`random()` côté serveur, pas un ordre mémorisé côté client), départage les ex-æquo. Sans
+elle, le premier coach inscrit dans une discipline resterait indéfiniment en tête, jamais
+délogé faute d'avis pour le dépasser.
+
+Aucune composante payante. Aucun coup de pouce manuel. Déterministe sur les trois premiers
+critères ; seul le rang au sein d'un groupe strictement ex-æquo varie d'une requête à l'autre —
+publié dans les CGU comme la version précédente.
+
+**Ce que ce remplacement change pour L4+** : quand les avis, l'assiduité et le délai de réponse
+existeront pour de vrai, rien n'interdit de les réintroduire comme quatrième critère (après
+complétude, jamais avant discipline/proximité) — mais ce sera une nouvelle décision produit à
+prendre à ce moment-là, pas un retour automatique à cette table.
 
 ### 5.7 Recherche géographique
 Une commune (référentiel INSEE) + rayon fixe de 25 km à vol d'oiseau depuis le centroïde.

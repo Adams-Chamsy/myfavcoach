@@ -563,6 +563,17 @@ export const portDonneesSupabase: PortDonnees = {
         }
       | undefined;
     if (!ligne) return null;
+    const verifiee = ligne.statut_verification === 'verifiee';
+    // Appelée seulement si verifiee : la fonction renvoie déjà null sinon (0019), mais éviter
+    // l'appel réseau pour un coach non vérifié reste la lecture la plus honnête du cas.
+    let verifieeDepuisLe: string | null = null;
+    if (verifiee) {
+      const { data: date, error: erreurDate } = await supabase.rpc('date_verification_coach', {
+        p_coach_id: coachId,
+      });
+      if (erreurDate) throw erreurDate;
+      verifieeDepuisLe = date;
+    }
     return {
       id: ligne.id,
       prenom: ligne.prenom,
@@ -571,7 +582,8 @@ export const portDonneesSupabase: PortDonnees = {
       discipline: ligne.discipline,
       titreCourt: ligne.titre_court,
       bio: ligne.bio,
-      verifiee: ligne.statut_verification === 'verifiee',
+      verifiee,
+      verifieeDepuisLe,
       parcoursTexte: ligne.parcours_texte,
       langues: ligne.langues,
     } satisfies ProfilCoachPublic;

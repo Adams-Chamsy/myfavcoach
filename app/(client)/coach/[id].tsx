@@ -77,6 +77,13 @@ export function CorpsProfilCoachPublic({ id }: { id: string | undefined }) {
         <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
           {profil.discipline} {profil.titreCourt ? `· ${profil.titreCourt}` : ''}
         </Text>
+        {/* docs/domaine.md §5.1, révisé le 12 septembre 2026 : information réelle à la place
+            d'une note ou d'un badge « Nouveau », plutôt utile quel que soit le nombre d'avis. */}
+        {profil.verifiee && profil.verifieeDepuisLe ? (
+          <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.attenue }}>
+            Vérifié depuis le {new Date(profil.verifieeDepuisLe).toLocaleDateString('fr-FR')}
+          </Text>
+        ) : null}
         {profil.bio ? (
           <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}>
             {profil.bio}
@@ -172,24 +179,18 @@ function OngletOffres({ offres }: { offres: Offre[] }) {
 }
 
 // L2-13 : aucun avis réel n'existe au jalon 1 (aucune table `avis`, docs/domaine.md §3.11 non
-// implémentée à ce lot). __DEV__ (faux en production, React Native) gate le SEUL contenu de
-// démonstration — en production, l'onglet affiche honnêtement "aucun avis" (badge « Nouveau »,
-// docs/domaine.md §5.1 : sous 5 avis, aucune note), qui est la vérité pour un coach sans avis
-// réel, pas une invention.
+// implémentée à ce lot) — le seul cas atteignable en production est donc "0 avis". Révisé le
+// 12 septembre 2026 (docs/domaine.md §5.1) : plus de badge « Nouveau » dans aucun des trois cas
+// (0, 1-4, 5+ avis) — à 0 avis, ni note ni compteur, un état honnête comme OngletOffres/
+// OngletParcours juste au-dessus. La date de vérification qui accompagne ce cas (§5.1) est déjà
+// affichée dans l'en-tête, pas répétée ici (voir « Vérifié depuis le » plus haut).
 function OngletAvis() {
-  const theme = useTheme();
-  if (__DEV__) {
-    return (
-      <View style={{ gap: theme.espace[2] }}>
-        <Badge statut="neutre" libelle="Nouveau" />
-        <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.attenue }}>
-          (Démonstration locale seulement — aucun avis réel n’existe encore, docs/domaine.md §3.11
-          non implémentée à ce lot.)
-        </Text>
-      </View>
-    );
-  }
-  return <Badge statut="neutre" libelle="Nouveau" />;
+  return (
+    <EtatVide
+      titre="Aucun avis pour l’instant"
+      explication="Ce coach n’a pas encore reçu d’avis."
+    />
+  );
 }
 
 function OngletParcours({ profil }: { profil: ProfilCoachPublic }) {

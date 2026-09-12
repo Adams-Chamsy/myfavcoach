@@ -1221,6 +1221,7 @@ function ProfilCoachPublicAvecFixture() {
         titreCourt: 'Sécurité offensive',
         bio: 'Dix ans d’expérience en tests d’intrusion pour des équipes produit.',
         verifiee: true,
+        verifieeDepuisLe: '2026-03-01T00:00:00.000Z',
         parcoursTexte: 'Ancienne pentesteuse chez un cabinet de conseil, indépendante depuis 2023.',
         langues: ['Français', 'Anglais'],
       },

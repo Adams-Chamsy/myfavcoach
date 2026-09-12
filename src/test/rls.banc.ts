@@ -2321,3 +2321,172 @@ describe('decider_verification_coach', () => {
     expect(statut).toBeGreaterThanOrEqual(400);
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+// date_verification_coach (0019_creer_date_verification_publique.sql, correction docs/domaine.md
+// §5.1 du 12 septembre 2026)
+// ---------------------------------------------------------------------------------------------
+
+describe('date_verification_coach', () => {
+  let coachVerifie: Session;
+  let profilCoachVerifieId: string;
+  let examinateurDate: Session;
+  // Capturée en beforeAll, jamais fixée à l'avance : decisions_verification.horodatage vaut
+  // now() au moment de l'appel (0015), et service_role n'a JAMAIS eu de GRANT INSERT sur cette
+  // table (délibéré, "l'écriture directe contournerait la validation de transition" — voir le
+  // commentaire de 0015) — trouvé en écrivant ce banc (403, pas une supposition). La seule
+  // façon honnête de poser la précondition est donc le vrai mécanisme, decider_verification_coach
+  // (déjà testé pour lui-même juste au-dessus), pas un raccourci qui contournerait la même règle
+  // que ce fichier vérifie par ailleurs.
+  let horodatageAttendu: string;
+
+  beforeAll(async () => {
+    coachVerifie = await creerCompteReel(
+      `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-coach-date-verif@${DOMAINE_EMAIL}`,
+      { date_naissance: '1990-01-01', cgu_version_acceptee: '2026-08-01' },
+    );
+    const creationProfil = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        compte_id: coachVerifie.compteId,
+        prenom: 'Date',
+        nom: 'Verification',
+        discipline: 'natation',
+      },
+    });
+    if (creationProfil.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : profil du coach à vérifier refusé (${creationProfil.statut}) : ` +
+          `${JSON.stringify(creationProfil.corps)}`,
+      );
+    }
+    profilCoachVerifieId = (creationProfil.corps as { id: string }[])[0].id;
+
+    const misEnExamen = await appelRest(`/rest/v1/profils_coach?id=eq.${profilCoachVerifieId}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { statut_verification: 'en_examen' },
+    });
+    if (misEnExamen.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : passage en 'en_examen' refusé (${misEnExamen.statut}) : ` +
+          `${JSON.stringify(misEnExamen.corps)}`,
+      );
+    }
+
+    examinateurDate = await creerCompteReel(
+      `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-examinateur-date-verif@${DOMAINE_EMAIL}`,
+      { date_naissance: '1988-01-01', cgu_version_acceptee: '2026-08-01' },
+    );
+    const promotion = await appelRest(`/rest/v1/comptes?id=eq.${examinateurDate.compteId}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { est_examinateur: true },
+    });
+    if (promotion.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : promotion de l'examinateur refusée (${promotion.statut}) : ` +
+          `${JSON.stringify(promotion.corps)}`,
+      );
+    }
+
+    const decision = await appelRest('/rest/v1/rpc/decider_verification_coach', {
+      methode: 'POST',
+      session: examinateurDate,
+      corps: {
+        p_coach_id: profilCoachVerifieId,
+        p_decision: 'verifiee',
+        p_motif: 'Préparation du banc — date_verification_coach',
+      },
+    });
+    if (decision.statut !== 204) {
+      throw new Error(
+        `Préparation du banc : décision 'verifiee' refusée (${decision.statut}) : ` +
+          `${JSON.stringify(decision.corps)}`,
+      );
+    }
+
+    // Lue via admin (SELECT seul accordé, voir plus haut) — jamais devinée : la date exacte que
+    // decider_verification_coach a réellement journalisée (now() au moment de l'appel).
+    const journal = await appelRest(
+      `/rest/v1/decisions_verification?dossier=eq.${profilCoachVerifieId}&decision=eq.verifiee&select=horodatage`,
+      { session: 'admin' },
+    );
+    const lignes = journal.corps as { horodatage: string }[];
+    if (lignes.length !== 1) {
+      throw new Error(
+        `Préparation du banc : ${lignes.length} ligne(s) 'verifiee' journalisée(s), 1 attendue`,
+      );
+    }
+    horodatageAttendu = lignes[0].horodatage;
+  }, 30_000);
+
+  afterAll(async () => {
+    // coachVerifie d'abord : ON DELETE CASCADE (profils_coach -> decisions_verification, 0015)
+    // retire la ligne de décision AVANT que la suppression d'examinateurDate ne rencontre sa
+    // propre clef étrangère (examinateur références comptes) — même ordre que
+    // describe('decider_verification_coach') juste au-dessus, même raison.
+    if (coachVerifie) await supprimerCompteReel(coachVerifie.compteId);
+    if (examinateurDate) await supprimerCompteReel(examinateurDate.compteId);
+  });
+
+  it('anon lit la date de vérification d’un coach vérifié : la bonne date, exacte', async () => {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/date_verification_coach', {
+      methode: 'POST',
+      session: 'anon',
+      corps: { p_coach_id: profilCoachVerifieId },
+    });
+    expect(statut).toBe(200);
+    expect(new Date(corps as string).toISOString()).toBe(new Date(horodatageAttendu).toISOString());
+  });
+
+  it('un compte authenticated ordinaire (A) lit la même date : accordé, pas réservé à anon', async () => {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/date_verification_coach', {
+      methode: 'POST',
+      session: A,
+      corps: { p_coach_id: profilCoachVerifieId },
+    });
+    expect(statut).toBe(200);
+    expect(new Date(corps as string).toISOString()).toBe(new Date(horodatageAttendu).toISOString());
+  });
+
+  it('coach jamais vérifié (D, statut_verification = absente) : null, pas une erreur', async () => {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/date_verification_coach', {
+      methode: 'POST',
+      session: 'anon',
+      corps: { p_coach_id: profilCoachIdD },
+    });
+    expect(statut).toBe(200);
+    expect(corps).toBeNull();
+  });
+
+  it('coach vérifié puis révoqué : null malgré la ligne "verifiee" passée — le statut courant décide, pas l’historique', async () => {
+    const revocation = await appelRest('/rest/v1/rpc/decider_verification_coach', {
+      methode: 'POST',
+      session: examinateurDate,
+      corps: {
+        p_coach_id: profilCoachVerifieId,
+        p_decision: 'revoquee',
+        p_motif: 'Préparation du banc — révocation pour test',
+      },
+    });
+    expect(revocation.statut).toBe(204);
+
+    const { statut, corps } = await appelRest('/rest/v1/rpc/date_verification_coach', {
+      methode: 'POST',
+      session: 'anon',
+      corps: { p_coach_id: profilCoachVerifieId },
+    });
+    expect(statut).toBe(200);
+    expect(corps).toBeNull();
+  });
+
+  it('la table decisions_verification reste directement illisible pour anon — la fonction reste le SEUL chemin', async () => {
+    const { statut } = await appelRest(
+      `/rest/v1/decisions_verification?dossier=eq.${profilCoachVerifieId}`,
+      { session: 'anon' },
+    );
+    expect(statut).toBeGreaterThanOrEqual(400);
+  });
+});

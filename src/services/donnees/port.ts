@@ -131,6 +131,13 @@ export type ProfilCoachPublic = {
   titreCourt: string | null;
   bio: string | null;
   verifiee: boolean;
+  // Date à laquelle statutVerification est PASSÉ à 'verifiee' pour la dernière fois — jamais
+  // le premier dépôt de dossier (docs/domaine.md §5.1, révisé le 12 septembre 2026 : affiché à
+  // la place de la note pour un coach sans avis). `null` si `verifiee` est faux. Source :
+  // date_verification_coach() (0019_creer_date_verification_publique.sql), une fonction
+  // SECURITY DEFINER étroite — decisions_verification reste par ailleurs verrouillée à
+  // l'examinateur (0015), jamais une lecture directe de la table.
+  verifieeDepuisLe: string | null;
   parcoursTexte: string | null;
   langues: string[];
 };

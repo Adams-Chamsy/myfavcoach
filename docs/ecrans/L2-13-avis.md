@@ -11,8 +11,11 @@ onglet Avis », `data-screen-label="27 Avis"`.
 
 En-tête : retour, avatar + nom du coach, onglets Offres/Avis/Parcours (Avis actif).
 
-Bloc note : moyenne (`docs/domaine.md` §5.1, arrondie au dixième, affichée à partir de 5 avis),
-étoiles, nombre d'avis, distribution par étoile (comptage simple par valeur).
+Bloc note : moyenne (`docs/domaine.md` §5.1, arrondie au dixième, affichée à partir de 5 avis
+publiés seulement), étoiles, nombre d'avis, distribution par étoile (comptage simple par
+valeur). En dessous de 5 avis, jamais de moyenne ni de badge « Nouveau » — à 1-4 avis, la liste
+d'avis en dessous s'affiche telle quelle sans bloc note ; à 0 avis, l'onglet entier devient un
+état vide honnête (révisé le 12 septembre 2026).
 
 Filtres par étiquette : « Tous » + les étiquettes réellement portées par au moins un avis publié
 de ce coach (0 à 3 par avis, liste figée de 8, `docs/domaine.md` §3.11, arbitrage #16).
@@ -27,8 +30,9 @@ souscrite, étoiles, texte, réponse du coach le cas échéant.
 - **Lecture inter-comptes** (`docs/backend.md` §8), même famille que `L2-12` : seuls les avis
   `statut = publie` sont lisibles ici — jamais un avis `signale` ou `masque`, pour aucun
   lecteur, propriétaire de l'avis excepté.
-- Sous 5 avis publiés : badge « Nouveau », aucune moyenne ni tri par note (`docs/domaine.md`
-  §5.1) — l'onglet reste accessible, il affiche simplement moins.
+- Sous 5 avis publiés : jamais de badge « Nouveau », aucune moyenne ni tri par note
+  (`docs/domaine.md` §5.1, révisé le 12 septembre 2026) — l'onglet reste accessible, il affiche
+  simplement moins : les avis un par un entre 1 et 4, un état vide honnête à 0.
 - Aucune extraction automatique de thème : les étiquettes sont celles que l'auteur a lui-même
   cochées au dépôt, jamais recalculées ou devinées côté serveur (arbitrage #16).
 
@@ -47,7 +51,9 @@ souscrite, étoiles, texte, réponse du coach le cas échéant.
 
 1. Un avis `signale` ou `masque` n'apparaît jamais, quel que soit le compte qui consulte —
    testé pour `anon` et pour un autre client.
-2. Sous 5 avis, badge « Nouveau », aucune moyenne affichée.
+2. Sous 5 avis, jamais de badge « Nouveau », aucune moyenne affichée — à 0 avis (le seul cas
+   atteignable au jalon 1, la table `avis` n'existe pas encore : `docs/dette.md`), un état vide
+   honnête.
 3. Le filtre par étiquette ne montre que les étiquettes réellement portées par un avis publié.
 4. Accessible sans session (`anon`).
 5. Galerie, deux thèmes.

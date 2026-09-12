@@ -20,8 +20,10 @@ visible à n'importe qui.
 
 Bandeau plein cadre (vidéo ou photo de présentation, `taille.pleinCadre`, 400 pt) : bouton
 retour, favori, partage ; disque de lecture au centre si vidéo ; en pied du bandeau : badge
-discipline, nom, note (« 4,9 · 214 avis », `docs/domaine.md` §5.1 — badge « Nouveau » sous 5
-avis), commune ou « visio ».
+discipline, nom, note **à partir de 5 avis publiés seulement** (« 4,9 · 214 avis ») ; en dessous
+de 5, jamais de badge « Nouveau » (révisé le 12 septembre 2026, `docs/domaine.md` §5.1) — à 0
+avis, la date de vérification du coach à la place de la note ; à 1-4 avis, un compteur simple
+(« 3 avis », sans moyenne) ; commune ou « visio ».
 
 Corps : bio, badges de certification (repris de `docs/domaine.md` §3.2, affichés seulement si
 `statutVerification = verifiee` — voir Règles), onglets **Offres / Avis / Parcours** (cet écran
@@ -51,6 +53,13 @@ Pied fixe : bouton message (ouvre une conversation, hors périmètre L2) + bouto
   seules les offres publiées sont lisibles, jamais un brouillon, jamais une offre retirée d'un
   autre coach par confusion d'identifiant. La fiche `docs/backend.md` §8 exige que ces refus
   soient testés, pas seulement l'accès légitime.
+- **Date de vérification, exposée par une fonction, jamais par une lecture de table** : la
+  ligne « Vérifié depuis le… » vient de `date_verification_coach()`
+  (`supabase/migrations/0019_creer_date_verification_publique.sql`), SECURITY DEFINER, qui ne
+  renvoie qu'une date — `decisions_verification` (`docs/domaine.md` §3.14) reste verrouillée à
+  l'examinateur pour tout le reste (motif, identité de l'examinateur), comme depuis sa création
+  (0015). `null` pour un coach jamais vérifié ou `revoquee` : une date de vérification passée
+  affichée à un visiteur mentirait sur le statut courant.
 - Les badges de certification ne s'affichent que pour un coach `verifiee` (`docs/domaine.md`
   §4.2 : « Le badge public "vérifié" n'apparaît qu'en `verifiee` ») — un coach en `en_examen`
   reste consultable (il peut préparer son profil, §4.2), mais sans le badge.
@@ -76,7 +85,9 @@ Pied fixe : bouton message (ouvre une conversation, hors périmètre L2) + bouto
 1. Un brouillon ou une offre retirée n'apparaît jamais, quel que soit le compte qui consulte —
    testé pour `anon`, pour un autre client, et pour un autre coach.
 2. Le badge « vérifié » n'apparaît que si `statutVerification = verifiee`.
-3. Sous 5 avis, badge « Nouveau », aucune note affichée (`docs/domaine.md` §5.1).
+3. Sous 5 avis, aucune note calculée et jamais de badge « Nouveau » — à 0 avis, ni note ni
+   compteur, la date de vérification du coach à la place (« Vérifié depuis le… »,
+   `docs/domaine.md` §5.1, `date_verification_coach()`, 0019).
 4. Aucune carte « Programme seul » ni aucune offre autre qu'un abonnement.
 5. Accessible sans session (`anon`).
 6. Galerie, deux thèmes.
