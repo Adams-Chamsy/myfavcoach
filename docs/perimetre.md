@@ -198,6 +198,17 @@ Le jalon 1 est terminé quand, sur deux appareils physiques (un iPhone, un Andro
     lecture directe, URL construite, relation imbriquée, journal, rapport d'erreur.
 11. Un client répond au questionnaire santé avant sa première séance, et ses réponses ne sont
     lisibles que par son coach.
+12. L'export de données (`app/(compte)/export.tsx`) atteint réellement l'état « prêt » : une
+    fonction distante rassemble les données du compte, dépose le fichier et remplit
+    `demandes_export` (`pret_le`, `url_signee`, `expire_le`, `taille_octets`) — pas seulement les
+    trois états d'interface déjà livrés. Obligation légale de portabilité, pas un confort : un
+    écran qui promet un fichier qui n'arrive jamais est pire qu'un écran absent. Détail :
+    `docs/dette.md`.
+13. Le back-office (`app/(admin)/`) n'appelle plus Supabase directement depuis le client : les
+    appels passent par des routes API serveur d'expo-router, et
+    `EXPO_PUBLIC_SUPABASE_ADMIN_ANON_KEY` a disparu du bundle mobile — pas seulement absent du
+    bundle de production comme aujourd'hui, mais absent du code client lui-même. Détail :
+    `docs/dette.md`.
 
 ---
 
