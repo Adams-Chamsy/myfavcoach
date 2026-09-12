@@ -1,0 +1,13 @@
+-- Meme trou que 0009, meme cause, sur profils_coach.statut_verification : le banc de P2.4
+-- (src/test/rls.banc.ts) a besoin de placer un coach en 'verifiee' pour tester la lecture
+-- publique des offres, AVANT que la vraie fonction de passage en verifiee (P2.6) n'existe.
+-- Cette fonction, quand elle sera ecrite, sera SECURITY DEFINER et n'aura besoin d'aucun grant
+-- service_role -- elle s'executera avec les privileges de son propre proprietaire, exactement
+-- comme basculer_profil/creer_profil_coach le font deja pour comptes.profil_actif et
+-- profils_coach elle-meme.
+--
+-- Perimetre volontairement etroit : UNE seule colonne, pour la fixture du banc uniquement --
+-- aucun chemin applicatif n'ecrit statut_verification via service_role. A reconsiderer une fois
+-- P2.6 ecrit et son propre banc en place : ce grant restera peut-etre inutile des que la
+-- vraie fonction existe, mais le retirer n'est pas ce lot-ci.
+grant update (statut_verification) on public.profils_coach to service_role;

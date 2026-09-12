@@ -82,7 +82,11 @@ Conversation ── Message        Signalement    Blocage    Consentement
   différentes dans le même schéma : mélanger v4 et v7 sans bénéfice réel coûterait plus en
   confusion qu'il ne rapporterait en tri chronologique. Jamais d'entier auto-incrémenté exposé.
 - **Suppression** : aucune suppression physique immédiate. `supprimeLe` horodaté, purge réelle
-  à 30 jours, sauf obligation comptable (factures : 10 ans).
+  à 30 jours, sauf obligation comptable (factures : 10 ans). Une troisième fenêtre, distincte
+  des deux précédentes parce qu'elle n'est pas une conservation : tant que le compte existe, son
+  titulaire peut exporter ses données (C-07, `docs/api.md` §14) — au-delà de la suppression, ce
+  n'est plus possible. Ce n'est pas une durée de rétention de plus, c'est la dernière occasion
+  de récupérer ce qui va être détruit.
 - **Historique d'argent** : les entités `Facture`, `Versement` et `LigneCommission` sont
   **immuables**. Une correction crée une nouvelle ligne, jamais une modification.
 - **Autorisation** : chaque requête porte le profil actif. Une donnée du profil client est
@@ -136,14 +140,22 @@ appartiennent au même `Compte` est refusé (erreur `auto_abonnement_interdit`).
 
 ### 3.3 Offre
 
+**Nature unique au jalon 1 : abonnement.** L'arbitrage #9 (§0) a supprimé « Programme seul » ;
+`docs/perimetre.md` (écran 04a) limite le tunnel à une seule nature d'offre. Une offre n'est
+**jamais** autre chose qu'un abonnement mensuel à ce jalon — pas d'appel découverte, pas de
+séance à l'unité, pas de pack. Ne pas préparer de champ ni de colonne pour ces natures : elles
+sont hors périmètre, pas « pour plus tard » (`docs/perimetre.md` §3, règle pour Claude Code).
+
 | Champ | Règle |
 |---|---|
+| `profilCoach` | L'offre **appartient** à un `ProfilCoach`. Elle peut exister en `brouillon` avant que ce coach soit `verifiee` (§4.2) ; elle ne peut être **publiée** que si son coach l'est (409 `coach_non_verifie`, `docs/api.md` §5) |
 | `titre`, `description` | |
-| `prixMensuelCentimes` | 1 000 à 50 000 (10 € à 500 €) |
+| `prixMensuelCentimes` | 1 000 à 50 000 (10 € à 500 €). Borne basse : éviter les offres d'appel qui dévalorisent le travail des coachs et attirent des abonnements jetables. Borne haute : au-delà de 500 €/mois on sort du modèle d'abonnement mensuel grand public, et le risque de litige et d'opposition bancaire change de nature. Décision, pas une mesure du marché — à revoir si le marché la contredit |
+| `recurrence` | **fixe, mensuelle** — pas un champ éditable : une seule valeur possible tant qu'une seule nature d'offre existe. Un futur type d'offre ré-ouvrirait cette question, pas ce jalon |
 | `benefices` | 3 à 5 lignes |
 | `engagementHumain` | **obligatoire**, non nul : au moins un élément parmi {ajustement hebdomadaire, visio mensuelle, messagerie avec délai de réponse annoncé} |
 | `estMiseEnAvant` | une seule par coach — étiquette « LE PLUS CHOISI » |
-| `statut` | `brouillon` \| `publiee` \| `retiree` |
+| `publieeLe`, `retireeLe` | dates, toutes deux nullables. `brouillon` = les deux `null` ; `publiee` = `publieeLe` posée, `retireeLe` `null` ; `retiree` = `retireeLe` posée. Pas de colonne `statut` séparée : ces trois libellés sont une lecture, pas une troisième source de vérité (même logique que `Compte` §4.1, dont la machine à états ne correspond à aucune colonne littérale) |
 
 **Une offre sans engagement humain est refusée à la publication.** C'est la règle qui tient tout
 le modèle économique : elle évite que l'offre soit qualifiée de contenu numérique, ce qui
@@ -152,6 +164,11 @@ imposerait l'achat in-app.
 Une offre `retiree` reste facturée aux abonnés existants jusqu'à leur résiliation, mais
 n'apparaît plus à la vente. Le prix d'un abonnement est **figé au moment de la souscription** :
 un changement de prix ne s'applique qu'aux nouveaux abonnés.
+
+**Pas de suppression.** Le dépôt n'a aucune politique `DELETE` et n'en gagne pas pour `Offre` :
+retirer une offre pose `retireeLe`, ne supprime aucune ligne. `docs/api.md` §5 documente un
+verbe `DELETE /coach/offres/{id}` — c'est un nom d'action HTTP, pas un `DELETE` SQL : le serveur
+y répond par la même écriture (`retireeLe`), jamais par une suppression de ligne.
 
 ### 3.4 Abonnement
 
@@ -371,6 +388,18 @@ signale --(examen : sans suite)--> publie
 signale --(examen : fondé)--> masque
 publie --(modification ≤ 14 j)--> publie
 ```
+
+### 4.10 Offre
+
+```
+brouillon --(publication, coach vérifié + engagement humain requis)--> publiee
+publiee --(retrait)--> retiree
+```
+
+Lecture, pas une colonne littérale (§3.3) : `brouillon` = `publieeLe` et `retireeLe` tous deux
+`null` ; `publiee` = `publieeLe` posée ; `retiree` = `retireeLe` posée. Aucun retour en arrière
+écrit ici (`retiree` → `brouillon`, ou re-publication) : ni demandé ni observé dans le dossier de
+design, laissé ouvert plutôt qu'inventé.
 
 ---
 

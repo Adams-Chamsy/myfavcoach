@@ -172,3 +172,43 @@ qui la contourne.** Chaque fonction `SECURITY DEFINER` a besoin de ses propres t
 politique de la table qu'elle écrit. Conséquence concrète pour le lot L2 : `creer_profil_coach`
 devra avoir ses propres tests de refus (par exemple : refus si un profil coach existe déjà pour
 ce compte), indépendants du banc RLS de `profils_client`/`profils_coach`.
+
+---
+
+## 8. Lectures inter-comptes
+
+Les dix politiques posées jusqu'ici (`0002_politiques.sql`) disent toutes la même chose : le
+propriétaire, et personne d'autre — y compris la lecture croisée `profils_client`/`profils_coach`,
+qui reste bornée au compte appelant (`compte_id = auth.uid()`), jamais ouverte à un tiers.
+`Offre` (lot L2, `docs/domaine.md` §3.3) est la **première** table dont une politique `SELECT`
+doit s'ouvrir au-delà de son propriétaire : une offre publiée doit être lisible par n'importe quel
+compte, et probablement par `anon` (profil coach consulté sans session, référencement).
+
+**Règle du lot** : toute politique qui ouvre une lecture au-delà du propriétaire doit être
+accompagnée des tests de ce qu'elle **NE** laisse **PAS** passer, et la liste de ces tests fait
+partie de la fiche d'écran — pas seulement du banc RLS. Une politique qui élargit un `SELECT`
+change deux choses à la fois (qui peut lire, et ce qui devient lisible en creux par une jointure)
+et les deux s'oublient séparément :
+
+- **Ce qui doit rester fermé malgré l'ouverture.** Une offre porte un `coach_id` : publier une
+  offre publie l'existence d'un profil coach, mais ne doit publier ni les colonnes non destinées
+  au public de `profils_coach`, ni une offre `brouillon` ou `retiree` du même coach, ni les offres
+  d'un autre coach par une jointure. Chaque table déjà fermée (`profils_coach`, `comptes`) doit
+  être vérifiée à nouveau une fois qu'une table voisine s'ouvre : une politique qui protège une
+  table seule ne dit rien de ce qui devient atteignable par une table qui référence cette même
+  ligne.
+- **Le rôle `anon` change la nature de la preuve.** Jusqu'ici, `service_role` mis à part
+  (`0003_accorder_service_role.sql`), aucune politique n'accorde `anon` (`0001_creer_identite.sql` :
+  « aucun grant à anon »). La première politique qui le fait doit prouver, au banc, qu'`anon` ne
+  lit **que** ce que la politique autorise explicitement — pas seulement qu'un compte
+  authentifié tiers est bloqué. Un test qui ne couvre que le cas authentifié laisse `anon` non
+  éprouvé alors qu'il porte la surface d'attaque la plus large (aucune clé, aucun compte requis).
+
+**Ce que la fiche d'écran doit lister, pas seulement le banc :** pour chaque politique de lecture
+inter-comptes qu'un écran expose, la fiche nomme le ou les scénarios de refus attendus (qui ne
+doit rien voir, et de quoi précisément), au même titre que ses critères d'acceptation positifs.
+Une politique dont la fiche ne dit pas ce qu'elle refuse est une politique dont personne n'a
+encore posé la question — le même défaut que « une liste d'exclusion qui ne protégeait rien »
+(`docs/prompts/L1.md`, tableau des faux verts, 3ᵉ ligne), appliqué à la lecture plutôt qu'à
+l'écriture.
+

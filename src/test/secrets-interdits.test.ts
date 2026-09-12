@@ -123,9 +123,12 @@ describe('secrets interdits côté application', () => {
   //   - CLAUDE.md                                     : §2, la règle elle-même
   //   - docs/backend.md                               : §6, "ce qui ne quitte jamais le serveur"
   //   - docs/prompts/L1.md                            : historique du prompt qui a posé cette règle
+  //   - docs/prompts/L2.md                            : règle 5, la cause concrète des rouges en cascade de P2.4 (fixtures créées par service_role, pas par la session testée)
   //   - eslint.config.js                              : le motif de la règle ESLint qui interdit la chaîne dans le code
   //   - supabase/migrations/0001_creer_identite.sql   : commentaires expliquant pourquoi aucun grant n'est posé pour ce rôle
   //   - supabase/migrations/0003_accorder_service_role.sql : corrige cette hypothèse — les GRANT que ce rôle nécessite réellement sur ce projet, justifiés ligne à ligne
+  //   - supabase/migrations/0009_accorder_service_role_offres.sql : même correction, pour offres (P2.2 avait oublié service_role, trouvé par le banc de P2.4)
+  //   - supabase/migrations/0010_accorder_service_role_verification_banc.sql : grant étroit pour la seule fixture du banc (statut_verification), en attendant la vraie fonction de P2.6
   //   - supabase/config.toml                          : commentaire généré par `supabase init`, décrivant les rôles de la Data API
   //   - src/test/rls.banc.ts                          : le nom de variable (SERVICE_ROLE_KEY) apparaît pour préparer le banc ; sa valeur, jamais écrite ici, est lue depuis .secrets-rls.local (ignoré par git) — jamais dans l'application
   //   - .github/workflows/banc-rls.yml                : le nom de variable shell issu de `supabase status -o env` (pile locale du runner) ; sa valeur, une clé de démo FIXE du CLI Supabase, n'est jamais écrite ici — lue puis passée à .secrets-rls.local, ignoré par git
@@ -135,9 +138,12 @@ describe('secrets interdits côté application', () => {
       'CLAUDE.md',
       'docs/backend.md',
       'docs/prompts/L1.md',
+      'docs/prompts/L2.md',
       'eslint.config.js',
       'supabase/migrations/0001_creer_identite.sql',
       'supabase/migrations/0003_accorder_service_role.sql',
+      'supabase/migrations/0009_accorder_service_role_offres.sql',
+      'supabase/migrations/0010_accorder_service_role_verification_banc.sql',
       'supabase/config.toml',
       'src/test/rls.banc.ts',
       '.github/workflows/banc-rls.yml',

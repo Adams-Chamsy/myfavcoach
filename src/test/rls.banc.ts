@@ -162,9 +162,10 @@ async function appelRest(
     methode?: string;
     session?: Appelant;
     corps?: unknown;
+    prefer?: string;
   } = {},
 ): Promise<{ statut: number; corps: unknown }> {
-  const { methode = 'GET', session = 'anon', corps } = options;
+  const { methode = 'GET', session = 'anon', corps, prefer = 'return=representation' } = options;
   const jeton =
     session === 'anon' ? ANON_KEY : session === 'admin' ? SERVICE_ROLE_KEY : session.jwt;
 
@@ -174,7 +175,7 @@ async function appelRest(
       apikey: ANON_KEY,
       Authorization: `Bearer ${jeton}`,
       'Content-Type': 'application/json',
-      Prefer: 'return=representation',
+      Prefer: prefer,
     },
     body: corps === undefined ? undefined : JSON.stringify(corps),
   });
@@ -243,6 +244,26 @@ async function supprimerCompteReel(compteId: string): Promise<void> {
 let A: Session;
 let B: Session;
 let C: Session;
+let D: Session;
+// Depuis 0008_politiques_offres.sql : profils_coach.compte_id n'est plus accordée en SELECT à
+// authenticated, pour aucun compte, y compris son propriétaire — un GRANT est global au rôle,
+// il ne peut pas distinguer "sa propre ligne" de "celle d'un autre" maintenant que ce rôle voit
+// aussi les profils vérifiés d'autrui (profils_coach_select_verifiee). Filtrer ou relire par
+// compte_id échoue donc désormais pour B comme pour n'importe qui — id (accordée, publique une
+// fois le profil vérifié) est le seul filtre qui reste valide pour un appel en tant que B ou A.
+let profilCoachIdB: string;
+// Hissée au niveau du module (initialement locale au describe('offres')) : describe('pieces_verification'),
+// plus bas, réutilise le profil coach de D (jamais vérifié) comme "coach_id d'un autre" — un
+// vrai profil existant, pour que le refus observé vienne de la politique et non d'une violation
+// de clef étrangère sur un identifiant inventé.
+let profilCoachIdD: string;
+// Liste exacte du GRANT SELECT de 0008_politiques_offres.sql sur profils_coach — compte_id en
+// est absente, volontairement. PostgREST demande "toutes les colonnes" par défaut quand aucun
+// `select=` n'est fourni (GET comme le corps représentatif d'un PATCH) : sans cette liste
+// explicite, tout appel authenticated/anon échoue en 403 "permission denied for table", que la
+// ligne visée existe ou non — ce n'est pas la politique RLS qui répond, c'est le grant.
+const COLONNES_PROFIL_COACH_ACCORDEES =
+  'id,prenom,nom,photo_url,discipline,titre_court,bio,commune_base_insee,statut_verification,cree_le';
 
 beforeAll(async () => {
   const configuration = chargerConfigurationBanc();
@@ -264,12 +285,25 @@ beforeAll(async () => {
     date_naissance: '1990-01-01',
     cgu_version_acceptee: '2026-08-01',
   });
+  // D : coach jamais vérifié (statut_verification reste 'absente'), avec une offre marquée
+  // publiée par service_role directement (docs/domaine.md §4.2, P2.4) — une fixture
+  // délibérément incohérente : aucun chemin applicatif ne la produit, publier_offre refuserait
+  // (coach_non_verifie). Elle prouve que offres_select_publiees revérifie le statut du coach à
+  // CHAQUE lecture, pas seulement au moment où publiee_le a été posée.
+  // "-f", pas "-d" : "-d" est déjà pris par le compte jetable du describe "changement de mot de
+  // passe" plus bas (même SUFFIXE_COMPTE partagé sur tout le fichier — une collision d'e-mail
+  // fait échouer la création avec 422 email_exists, trouvé en exécutant ce banc).
+  D = await creerCompteReel(`${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-f@${DOMAINE_EMAIL}`, {
+    date_naissance: '1985-01-01',
+    cgu_version_acceptee: '2026-08-01',
+  });
 }, 30_000);
 
 afterAll(async () => {
   if (A) await supprimerCompteReel(A.compteId);
   if (B) await supprimerCompteReel(B.compteId);
   if (C) await supprimerCompteReel(C.compteId);
+  if (D) await supprimerCompteReel(D.compteId);
 });
 
 describe('profils_client', () => {
@@ -509,6 +543,7 @@ describe('profils_coach', () => {
           'est bien appliqué sur ce projet.',
       );
     }
+    profilCoachIdB = (profilCoachB.corps as { id: string }[])[0].id;
 
     // Précondition réelle et indépendante de describe('profils_client') : basculer_profil('client')
     // exige qu'un profil client existe déjà (0002_politiques.sql) — sans ça, le retour "coach ->
@@ -540,20 +575,25 @@ describe('profils_coach', () => {
   }, 30_000);
 
   it('B, en espace client, lit son profil coach : une ligne', async () => {
-    const { statut, corps } = await appelRest(`/rest/v1/profils_coach?compte_id=eq.${B.compteId}`, {
-      session: B,
-    });
+    const { statut, corps } = await appelRest(
+      `/rest/v1/profils_coach?id=eq.${profilCoachIdB}&select=${COLONNES_PROFIL_COACH_ACCORDEES}`,
+      { session: B },
+    );
     expect(statut).toBe(200);
     expect(corps).toHaveLength(1);
   });
 
   // Sens illégitime de profils_coach_select_proprietaire : A (session authentifiée) lit le
   // profil coach de B → zéro ligne. Miroir exact de « A lit le profil client de B » (describe
-  // profils_client) : le rouge/vert de ce chemin précis n'était pas prouvé côté coach.
+  // profils_client) : le rouge/vert de ce chemin précis n'était pas prouvé côté coach. Filtre
+  // par id, pas compte_id (voir la note sur profilCoachIdB) : le profil de B n'étant pas
+  // 'verifiee' dans ce describe, ni profils_coach_select_proprietaire (A n'est pas B) ni
+  // profils_coach_select_verifiee (pas vérifié) ne l'admettent pour A.
   it('A lit le profil coach de B : zéro ligne', async () => {
-    const { statut, corps } = await appelRest(`/rest/v1/profils_coach?compte_id=eq.${B.compteId}`, {
-      session: A,
-    });
+    const { statut, corps } = await appelRest(
+      `/rest/v1/profils_coach?id=eq.${profilCoachIdB}&select=${COLONNES_PROFIL_COACH_ACCORDEES}`,
+      { session: A },
+    );
     expect(statut).toBe(200);
     expect(corps).toEqual([]);
   });
@@ -575,11 +615,14 @@ describe('profils_coach', () => {
   });
 
   it('B, en espace client, modifie son profil coach : refusé', async () => {
-    const { corps } = await appelRest(`/rest/v1/profils_coach?compte_id=eq.${B.compteId}`, {
-      methode: 'PATCH',
-      session: B,
-      corps: { discipline: 'cybersecurite' },
-    });
+    const { corps } = await appelRest(
+      `/rest/v1/profils_coach?id=eq.${profilCoachIdB}&select=${COLONNES_PROFIL_COACH_ACCORDEES}`,
+      {
+        methode: 'PATCH',
+        session: B,
+        corps: { discipline: 'cybersecurite' },
+      },
+    );
     expect(corps).toEqual([]);
   });
 
@@ -601,7 +644,7 @@ describe('profils_coach', () => {
       expect(bascule.corps).toBe('coach');
 
       const { statut, corps } = await appelRest(
-        `/rest/v1/profils_coach?compte_id=eq.${B.compteId}`,
+        `/rest/v1/profils_coach?id=eq.${profilCoachIdB}&select=${COLONNES_PROFIL_COACH_ACCORDEES}`,
         {
           methode: 'PATCH',
           session: B,
@@ -652,8 +695,13 @@ describe('profils_coach', () => {
   // Imbriqué (pas un describe voisin) : hérite du beforeAll ci-dessus (profil coach de B),
   // dont ces tests ont eux aussi besoin.
   describe('colonnes protégées', () => {
+    // Filtre par id, pas compte_id : depuis 0008, compte_id n'est plus lisible par authenticated
+    // (voir la note sur profilCoachIdB) — filtrer par compte_id ferait échouer cet appel avec
+    // "permission denied" avant même d'atteindre la colonne statut_verification, ce qui ferait
+    // passer ce test pour la MAUVAISE raison (faux vert : la protection qu'il prétend prouver
+    // ne serait plus celle réellement exercée).
     it('une mise à jour directe de profils_coach.statut_verification (hors examen humain) est refusée', async () => {
-      const { statut } = await appelRest(`/rest/v1/profils_coach?compte_id=eq.${B.compteId}`, {
+      const { statut } = await appelRest(`/rest/v1/profils_coach?id=eq.${profilCoachIdB}`, {
         methode: 'PATCH',
         session: B,
         corps: { statut_verification: 'verifiee' },
@@ -1279,6 +1327,372 @@ describe('creer_profil_coach (0005_creer_profil_coach.sql)', () => {
     } finally {
       await supprimerCompteReel(G.compteId);
       await supprimerCompteReel(H.compteId);
+    }
+  });
+});
+
+// Première famille d'ouvertures du dépôt (docs/prompts/L2.md, P2.4 ; docs/backend.md §8) : une
+// politique trop permissive ici ne produit plus une liste vide, elle produit une fuite. Les cas
+// illégitimes comptent au moins autant que les cas légitimes — voir le groupe dédié plus bas.
+describe('offres', () => {
+  let offreIdBrouillonB: string;
+  let offreIdPublieeB: string;
+  let offreIdRetireeB: string;
+  let offreIdPublieeD: string;
+
+  beforeAll(async () => {
+    // D : profil coach jamais vérifié (statut_verification reste 'absente').
+    const creationD = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { compte_id: D.compteId, prenom: 'D', nom: 'Coach', discipline: 'yoga' },
+    });
+    if (creationD.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : création du profil coach de D refusée (${creationD.statut}) : ` +
+          `${JSON.stringify(creationD.corps)}`,
+      );
+    }
+    profilCoachIdD = (creationD.corps as { id: string }[])[0].id;
+
+    // Offre de D marquée publiée DIRECTEMENT par service_role — fixture délibérément
+    // incohérente : aucun chemin applicatif ne la produit (publier_offre refuserait avec
+    // coach_non_verifie). Elle prouve que offres_select_publiees revérifie le statut du coach à
+    // CHAQUE lecture, pas seulement au moment où publiee_le a été posée une fois pour toutes.
+    const offreD = await appelRest('/rest/v1/offres', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        coach_id: profilCoachIdD,
+        titre: 'Offre de D',
+        prix_centimes: 4900,
+        publiee_le: new Date().toISOString(),
+      },
+    });
+    if (offreD.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : création de l'offre de D refusée (${offreD.statut}) : ` +
+          `${JSON.stringify(offreD.corps)}`,
+      );
+    }
+    offreIdPublieeD = (offreD.corps as { id: string }[])[0].id;
+
+    // B passe en 'verifiee' par service_role DIRECTEMENT, pas par la fonction de P2.6 (pas
+    // encore écrite à ce lot — P2.4 précède P2.6 dans l'ordre du fichier). Ce describe ne teste
+    // pas cette transition elle-même (ses propres règles et son propre banc arriveront avec
+    // P2.6) : un coach déjà vérifié n'est ici qu'un état de départ nécessaire pour tester la
+    // lecture publique des offres et de profils_coach.
+    const verification = await appelRest(`/rest/v1/profils_coach?id=eq.${profilCoachIdB}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { statut_verification: 'verifiee' },
+    });
+    if (verification.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : passage de B en 'verifiee' refusé (${verification.statut}) : ` +
+          `${JSON.stringify(verification.corps)}`,
+      );
+    }
+
+    // B bascule en espace coach pour le reste du describe.
+    const bascule = await appelRest('/rest/v1/rpc/basculer_profil', {
+      methode: 'POST',
+      session: B,
+      corps: { profil: 'coach' },
+    });
+    if (bascule.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : bascule de B en coach refusée (${bascule.statut}) : ` +
+          `${JSON.stringify(bascule.corps)}`,
+      );
+    }
+
+    // Les deux offres de B ci-dessous sont créées par service_role, PAS par la session de B —
+    // trouvé en refaisant le cycle rouge/vert de offres_select_proprietaire : les créer via B
+    // avec la représentation par défaut (Prefer: return=representation) fait dépendre la
+    // PRÉPARATION elle-même de cette politique (Postgres refuse la ligne insérée en RETURNING
+    // si aucune politique SELECT ne l'admet, « new row violates row-level security policy » —
+    // pas une erreur de grant, une contrainte du RETURNING lui-même). Résultat : tout le
+    // describe s'effondrait dès que offres_select_proprietaire disparaissait, y compris des
+    // tests qui n'ont rien à voir avec elle — masquant que ces 17 rouges ne visaient RIEN
+    // directement. Même trou que celui déjà trouvé sur offres_update_espace_coach, juste plus
+    // large. Ici, la préparation est neutre ; les tests eux-mêmes (plus bas) exercent
+    // spécifiquement offres_select_proprietaire et offres_insert_espace_coach.
+    const brouillon = await appelRest('/rest/v1/offres', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { coach_id: profilCoachIdB, titre: 'Brouillon de B', prix_centimes: 4900 },
+    });
+    if (brouillon.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : brouillon de B refusé (${brouillon.statut}) : ` +
+          `${JSON.stringify(brouillon.corps)}`,
+      );
+    }
+    offreIdBrouillonB = (brouillon.corps as { id: string }[])[0].id;
+
+    // Une deuxième offre pour B, destinée à être publiée puis retirée par les tests eux-mêmes
+    // (pas ici) : « B publie une offre » et « B retire une offre » appellent publier_offre/
+    // retirer_offre, SECURITY DEFINER — elles ne dépendent d'aucune politique select/insert sur
+    // offres, la création par service_role ne change donc rien à ce que ces deux tests prouvent.
+    const aPublier = await appelRest('/rest/v1/offres', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        coach_id: profilCoachIdB,
+        titre: 'Suivi complet',
+        prix_centimes: 4900,
+        benefices: ['Programme réécrit chaque semaine'],
+        engagement_humain: ['ajustement hebdomadaire'],
+      },
+    });
+    if (aPublier.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : offre à publier de B refusée (${aPublier.statut}) : ` +
+          `${JSON.stringify(aPublier.corps)}`,
+      );
+    }
+    offreIdPublieeB = (aPublier.corps as { id: string }[])[0].id;
+  }, 30_000);
+
+  afterAll(async () => {
+    // Retour en espace client : même précaution que describe('profils_coach'). Ce describe
+    // n'est plus le dernier du fichier depuis P2.5 (describe('pieces_verification') suit et
+    // rebascule B en coach dans son propre beforeAll) — exactement la raison de ne jamais
+    // supposer un ordre de fichier plutôt que de le garantir ici.
+    await appelRest('/rest/v1/rpc/basculer_profil', {
+      methode: 'POST',
+      session: B,
+      corps: { profil: 'client' },
+    });
+  });
+
+  // --- Séquence de publication/retrait, séquentielle par nature (comme la bascule de rôle
+  // plus haut) : chaque test dépend de l'état laissé par le précédent. ---
+
+  it('B publie une offre : accepté', async () => {
+    // 204, pas 200 : publier_offre rend void, PostgREST répond "No Content" pour une fonction
+    // sans valeur de retour — pas une erreur, la représentation par défaut d'un succès sans
+    // corps.
+    const { statut, corps } = await appelRest('/rest/v1/rpc/publier_offre', {
+      methode: 'POST',
+      session: B,
+      corps: { offre_id: offreIdPublieeB },
+    });
+    expect(statut).toBe(204);
+    expect(corps).toBeNull();
+  });
+
+  it("anon lit une offre publiée d'un coach vérifié : une ligne", async () => {
+    const { statut, corps } = await appelRest(`/rest/v1/offres?id=eq.${offreIdPublieeB}`, {
+      session: 'anon',
+    });
+    expect(statut).toBe(200);
+    expect(corps).toHaveLength(1);
+  });
+
+  it('A (client) lit une offre publiée : une ligne', async () => {
+    const { statut, corps } = await appelRest(`/rest/v1/offres?id=eq.${offreIdPublieeB}`, {
+      session: A,
+    });
+    expect(statut).toBe(200);
+    expect(corps).toHaveLength(1);
+  });
+
+  it('B retire une offre : accepté', async () => {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/retirer_offre', {
+      methode: 'POST',
+      session: B,
+      corps: { offre_id: offreIdPublieeB },
+    });
+    expect(statut).toBe(204);
+    expect(corps).toBeNull();
+    offreIdRetireeB = offreIdPublieeB;
+  });
+
+  it('anon lit une offre retirée : zéro ligne', async () => {
+    const { statut, corps } = await appelRest(`/rest/v1/offres?id=eq.${offreIdRetireeB}`, {
+      session: 'anon',
+    });
+    expect(statut).toBe(200);
+    expect(corps).toEqual([]);
+  });
+
+  // --- Sens légitimes restants ---
+
+  // Cas légitime d'offres_select_proprietaire, maintenant isolé : la fixture est créée par
+  // service_role (voir beforeAll) — B ne fait ici qu'un SELECT par son propre chemin, sans
+  // aucune dépendance à offres_insert_espace_coach. Vérifié rouge/vert seul (2026-09-13).
+  it('B lit ses propres brouillons : au moins une ligne', async () => {
+    const { statut, corps } = await appelRest(`/rest/v1/offres?id=eq.${offreIdBrouillonB}`, {
+      session: B,
+    });
+    expect(statut).toBe(200);
+    expect((corps as unknown[]).length).toBeGreaterThanOrEqual(1);
+  });
+
+  // Cas légitime d'offres_insert_espace_coach, jusque-là absent — comme pour
+  // offres_select_proprietaire, seul un effondrement du beforeAll le « couvrait ». Prefer:
+  // return=minimal, exprès : ce test ne doit dépendre QUE de l'INSERT (with check), jamais de
+  // offres_select_proprietaire (qui gouvernerait sinon la représentation retournée). La preuve
+  // de création passe par une relecture admin, indépendante des deux politiques.
+  it('B insère sa propre offre, par son propre chemin : accepté', async () => {
+    const titre = `Inseree-par-B-${Date.now()}`;
+    const insertion = await appelRest('/rest/v1/offres', {
+      methode: 'POST',
+      session: B,
+      prefer: 'return=minimal',
+      corps: { coach_id: profilCoachIdB, titre, prix_centimes: 3900 },
+    });
+    expect(insertion.statut).toBe(201);
+
+    const { corps: relecture } = await appelRest(
+      `/rest/v1/offres?coach_id=eq.${profilCoachIdB}&titre=eq.${encodeURIComponent(titre)}`,
+      { session: 'admin' },
+    );
+    expect((relecture as unknown[]).length).toBe(1);
+  });
+
+  // --- Sens illégitimes : c'est ici que se joue le lot. ---
+
+  it('anon lit un brouillon : zéro ligne', async () => {
+    const { statut, corps } = await appelRest(`/rest/v1/offres?id=eq.${offreIdBrouillonB}`, {
+      session: 'anon',
+    });
+    expect(statut).toBe(200);
+    expect(corps).toEqual([]);
+  });
+
+  it("anon lit l'offre publiée de D, coach non vérifié : zéro ligne", async () => {
+    const { statut, corps } = await appelRest(`/rest/v1/offres?id=eq.${offreIdPublieeD}`, {
+      session: 'anon',
+    });
+    expect(statut).toBe(200);
+    expect(corps).toEqual([]);
+  });
+
+  it('A lit les brouillons de B : zéro ligne', async () => {
+    const { statut, corps } = await appelRest(`/rest/v1/offres?id=eq.${offreIdBrouillonB}`, {
+      session: A,
+    });
+    expect(statut).toBe(200);
+    expect(corps).toEqual([]);
+  });
+
+  it('A modifie une offre de B : refusé', async () => {
+    const { corps } = await appelRest(`/rest/v1/offres?id=eq.${offreIdBrouillonB}`, {
+      methode: 'PATCH',
+      session: A,
+      corps: { titre: 'PIRATE' },
+    });
+    expect(corps).toEqual([]);
+  });
+
+  // Cas légitime d'offres_update_espace_coach, jusque-là absent : publier_offre/retirer_offre
+  // sont SECURITY DEFINER et contournent RLS pour leur propre écriture (publiee_le/retiree_le) —
+  // aucun des deux ne prouve donc que cette politique autorise quoi que ce soit. Sans ce test,
+  // la retirer ne fait rougir personne (vérifié : cycle rouge/vert de P2.4) — exactement le
+  // défaut « politique fonctionnellement inerte » déjà trouvé en L1 sur
+  // profils_coach_insert_espace_coach (docs/dette.md), ici sur le sens légitime plutôt
+  // qu'illégitime.
+  it('B modifie directement sa propre offre (titre) : accepté', async () => {
+    const { statut, corps } = await appelRest(`/rest/v1/offres?id=eq.${offreIdBrouillonB}`, {
+      methode: 'PATCH',
+      session: B,
+      corps: { titre: 'Brouillon renommé' },
+    });
+    expect(statut).toBe(200);
+    expect((corps as { titre: string }[])[0].titre).toBe('Brouillon renommé');
+  });
+
+  it('B, en espace CLIENT, insère une offre : refusé', async () => {
+    try {
+      await appelRest('/rest/v1/rpc/basculer_profil', {
+        methode: 'POST',
+        session: B,
+        corps: { profil: 'client' },
+      });
+      const { statut } = await appelRest('/rest/v1/offres', {
+        methode: 'POST',
+        session: B,
+        corps: { coach_id: profilCoachIdB, titre: 'Depuis le mauvais espace', prix_centimes: 4900 },
+      });
+      expect(statut).toBeGreaterThanOrEqual(400);
+    } finally {
+      // Remet B en coach : les tests suivants du describe en ont besoin.
+      await appelRest('/rest/v1/rpc/basculer_profil', {
+        methode: 'POST',
+        session: B,
+        corps: { profil: 'coach' },
+      });
+    }
+  });
+
+  it("B insère une offre avec le coach_id d'un autre coach : refusé", async () => {
+    const { statut } = await appelRest('/rest/v1/offres', {
+      methode: 'POST',
+      session: B,
+      corps: { coach_id: profilCoachIdD, titre: 'Vol de coach_id', prix_centimes: 4900 },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+  });
+
+  it('un DELETE sur offres, par le propriétaire lui-même : refusé', async () => {
+    const { statut } = await appelRest(`/rest/v1/offres?id=eq.${offreIdBrouillonB}`, {
+      methode: 'DELETE',
+      session: B,
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+  });
+
+  // --- profils_coach : la même prudence que pour offres, colonne par colonne. ---
+
+  it('anon lit profils_coach de D (non vérifié) directement : zéro ligne', async () => {
+    const { statut, corps } = await appelRest(
+      `/rest/v1/profils_coach?id=eq.${profilCoachIdD}&select=${COLONNES_PROFIL_COACH_ACCORDEES}`,
+      { session: 'anon' },
+    );
+    expect(statut).toBe(200);
+    expect(corps).toEqual([]);
+  });
+
+  it('anon lit profils_coach de B (vérifié) directement : une ligne, sans compte_id', async () => {
+    const { statut, corps } = await appelRest(
+      `/rest/v1/profils_coach?id=eq.${profilCoachIdB}&select=${COLONNES_PROFIL_COACH_ACCORDEES}`,
+      { session: 'anon' },
+    );
+    expect(statut).toBe(200);
+    expect(corps).toHaveLength(1);
+    expect(corps).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ compte_id: expect.anything() })]),
+    );
+  });
+
+  // Précision explicite (pas déduite d'un select=* qui omettrait silencieusement la colonne) :
+  // une demande EXPLICITE de compte_id sur un profil vérifié doit produire une vraie erreur
+  // PostgREST (permission refusée), jamais un 200 avec la colonne absente ou nulle — les deux
+  // ne prouvent pas la même chose, et c'est la première qu'on veut voir ici.
+  it("anon lit le compte_id d'un coach vérifié, par une demande explicite : refusé (pas silencieux)", async () => {
+    const { statut, corps } = await appelRest(
+      `/rest/v1/profils_coach?id=eq.${profilCoachIdB}&select=compte_id`,
+      { session: 'anon' },
+    );
+    expect(statut).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(corps)).toMatch(/permission denied/i);
+  });
+
+  it('anon atteint profils_coach par relation imbriquée PostgREST depuis offres : refusé ou sans les colonnes fermées', async () => {
+    const { statut, corps } = await appelRest(
+      `/rest/v1/offres?id=eq.${offreIdBrouillonB}&select=*,profils_coach(*)`,
+      { session: 'anon' },
+    );
+    // Deux issues sûres, une seule dangereuse. Sûres : la requête échoue entièrement (le grant
+    // colonne par colonne de profils_coach refuse "*"), ou elle réussit sans exposer compte_id.
+    // Dangereuse, et c'est ce qui ferait échouer cette assertion : compte_id présent quelque
+    // part dans la réponse.
+    expect(JSON.stringify(corps)).not.toMatch(/compte_id/);
+    if (statut < 400) {
+      expect(corps).toEqual([]);
     }
   });
 });

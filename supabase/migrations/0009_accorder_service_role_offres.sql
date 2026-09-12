@@ -1,0 +1,12 @@
+-- Corrige la meme hypothese que 0003_accorder_service_role.sql avait deja corrigee pour
+-- comptes/profils_client/profils_coach/consentements, oubliee ici pour offres : l'exposition
+-- automatique etant desactivee sur ce projet, service_role a lui aussi besoin d'un grant
+-- explicite -- contourner RLS (ce que service_role fait deja) et avoir le droit d'utiliser une
+-- table via PostgREST sont deux mecanismes distincts. Trouvee en verifiant le banc de P2.4
+-- (src/test/rls.banc.ts) : la preparation de la fixture "D, coach non verifie, offre marquee
+-- publiee par service_role" echouait en 42501 avant cette migration.
+--
+-- Perimetre du grant : exactement ce dont src/test/rls.banc.ts a besoin -- preparer une offre
+-- (INSERT) et la relire au besoin (SELECT). Ni UPDATE ni DELETE : aucun appelant service_role
+-- legitime n'en a besoin a ce lot, meme raisonnement que 0003.
+grant select, insert on public.offres to service_role;
