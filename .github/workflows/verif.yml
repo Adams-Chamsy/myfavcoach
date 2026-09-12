@@ -40,6 +40,11 @@ jobs:
       # distinctes : verifier-bundle-production.mjs échoue si elles sont identiques (voir son
       # propre garde-fou), pour ne jamais confondre "la clef mobile légitimement présente" et
       # "la clef admin qui ne devrait jamais l'être".
+      # chmod 444 après l'écriture : src/test/env-protege.test.ts (CLAUDE.md §4) exige qu'un
+      # .env existant soit toujours en lecture seule, sans distinguer un vrai poste local d'un
+      # runner CI — un .env de substitution laissé inscriptible aurait fait échouer ce test à
+      # chaque exécution, trouvé en reproduisant l'échec réel de CI dans un worktree propre.
+      # Rien en aval n'écrit .env de nouveau : aucune étape suivante n'en a besoin.
       - name: .env de substitution (CI)
         run: |
           {
@@ -47,6 +52,7 @@ jobs:
             echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=cle-anon-de-substitution-ci"
             echo "EXPO_PUBLIC_SUPABASE_ADMIN_ANON_KEY=cle-admin-de-substitution-ci"
           } > .env
+          chmod 444 .env
       - name: Tokens
         run: npm run tokens
       - name: Lint

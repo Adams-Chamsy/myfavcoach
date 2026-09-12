@@ -1,12 +1,14 @@
+import { VERSION_CGU_ACCEPTEE as versionEcriteAInscription } from '@/services/auth/supabase';
+import { VERSION_CGU_ACCEPTEE as versionAffichee } from '@/fonctionnalites/identite/documents-legaux';
+
 // Doublure du client réel (même mock que src/services/auth/supabase.test.ts) : ce fichier ne
 // veut lire qu'une constante, jamais appeler le vrai client — sans ce mock, charger le module
-// exigerait un .env rempli (src/services/supabase/client.ts).
+// exigerait un .env rempli (src/services/supabase/client.ts). babel-jest hisse jest.mock()
+// au-dessus des imports à la compilation, quel que soit l'ordre écrit ici (même convention que
+// supabase.test.ts) : le mock est déjà en place avant que ./supabase ne soit chargé plus haut.
 jest.mock('@/services/supabase/client', () => ({
   supabase: { auth: {} },
 }));
-
-import { VERSION_CGU_ACCEPTEE as versionEcriteAInscription } from '@/services/auth/supabase';
-import { VERSION_CGU_ACCEPTEE as versionAffichee } from '@/fonctionnalites/identite/documents-legaux';
 
 // docs/dette.md : VERSION_CGU_ACCEPTEE existe volontairement en deux copies — celle que
 // src/services/auth/supabase.ts écrit réellement dans comptes.cgu_version_acceptee à
