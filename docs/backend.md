@@ -261,3 +261,49 @@ des pièces d'identité et décide qui peut encaisser. Trois règles, aucune né
 Attribuer `est_examinateur = true` à un compte reste une opération manuelle, hors application
 (`service_role`, directement en base) — aucun écran de ce dépôt ne doit permettre à un compte de
 se l'attribuer, ni à un examinateur d'en promouvoir un autre.
+
+---
+
+## 10. Lecture inter-comptes à grande échelle
+
+Règle durable, pas une note propre au lot qui l'a fait apparaître (L3, recherche et classement) :
+une surface qui rend **plusieurs lignes à la fois**, à un appelant qui n'a fourni aucun
+identifiant précis, porte un risque d'une autre nature qu'une lecture unitaire (§8).
+
+**Une fuite par recherche est une fuite d'annuaire, pas une fuite de ligne.** §8 établit déjà
+qu'une politique d'ouverture doit se tester par ce qu'elle ne laisse pas passer — vrai ici aussi,
+mais la conséquence d'un oubli change d'échelle : une politique de `L2-12` mal écrite expose au
+pire le profil qu'un attaquant a déjà visé ; une fonction de recherche mal écrite expose
+l'intégralité du dépôt en une seule requête, sans qu'aucune ligne n'ait été visée par son
+identifiant.
+
+- **Chaque colonne rendue se justifie nommément**, comme pour une lecture unitaire — mais la
+  revue doit en plus considérer le volume : une colonne acceptable à l'unité (parce que rendue
+  publique par ailleurs, un `coach/[id]` par exemple) reste à réévaluer quand elle devient
+  listable en masse, triable, filtrable.
+- **`security invoker`, pas `security definer`, par défaut.** Une fonction `security definer`
+  contourne RLS par construction : c'est alors son corps, écrit une fois, qui devient la seule
+  vérité — les politiques existantes (`offres_select_publiees`, `profils_coach_select_verifiee`,
+  0008) ne s'appliquent plus à travers elle, et peuvent diverger d'elle sans qu'aucun test ne le
+  remarque. En `security invoker`, les politiques déjà éprouvées au banc s'appliquent réellement,
+  quel que soit le chemin d'accès. Un écart vers `security definer` (typiquement : la fonction a
+  besoin d'un privilège que l'appelant n'a pas, comme un référentiel non public) s'écrit noir sur
+  blanc dans la fiche d'écran concernée, avec la preuve au banc que la fonction refuse exactement
+  ce que les politiques refusent — pas approximativement.
+
+**Un bruit de départage rejouable est un canal d'observation.** Répartir l'exposition entre
+lignes ex-æquo (`docs/domaine.md` §5.6) est une fonctionnalité légitime — mais si le bruit est
+mémorisé, transmis par le client, ou dérivable d'une valeur que l'appelant contrôle, il devient
+annulable : un appelant qui répète la requête soustrait le bruit et reconstruit l'ordre stable
+sous-jacent, c'est-à-dire l'annuaire complet dans un ordre fixe. Le bruit doit être tiré à
+l'exécution, côté serveur, à chaque requête — jamais reçu en paramètre, jamais reproductible à
+la demande de l'appelant. Et il ne suffit pas que le bruit lui-même soit irreproductible : la
+réponse dans son ensemble (pagination, total de résultats) ne doit rien révéler de plus, d'une
+requête à l'autre, que ce que la fiche d'écran a explicitement décidé d'exposer.
+
+**Un plafond dur, dans la fonction elle-même, indépendant de ce que l'écran demande.** Le bruit
+protège l'ordre ; rien d'autre ne protège le volume. Une taille de page fixée uniquement côté
+client (« l'écran ne demande jamais plus de 20 ») ne protège rien : tout appel direct à la
+fonction — un outil, un script, un futur écran qui oublie la même limite — la contourne. La
+fonction borne elle-même ce qu'elle rend (`least(p_limite, PLAFOND)`), quelle que soit la valeur
+demandée.

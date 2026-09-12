@@ -48,8 +48,8 @@ Numérotation du dossier de design. « Fiche » = fiche d'écran à rédiger dan
 
 | # | Écran | Lot | Remarque |
 |---|---|---|---|
-| 01 | Accueil / découverte | L3 | |
-| 02 | Recherche + filtres | L3 | filtre « Asynchrone » retiré |
+| 01 | Accueil / découverte | L3 | pas de note/avis (`docs/domaine.md` §5.1) ; pas de bloc « séance du jour »/« reprendre un programme » (dépend de `Programme`, L6). Détail : `docs/ecrans/L3-01-accueil-decouverte.md` |
+| 02 | Recherche + filtres | L3 | filtre « Asynchrone » retiré ; pas de note/tri par note, pas de badge de certification nommé, pas de tag de capacité (inventions de la maquette, sans appui dans `docs/domaine.md`). Référentiel géographique (proximité, §5.7) **manquant du dépôt**, à trancher avant la migration de recherche. Détail : `docs/ecrans/L3-02-recherche-filtres.md` |
 | 03 | Profil coach — offres | L2 | offre « Programme seul » retirée |
 | 27 | Profil coach — avis | L4 | thèmes = étiquettes figées, pas d'extraction. **Replanifié depuis L2 le 12 septembre 2026** : la condition de dépôt (`docs/domaine.md` §3.11 — abonnement actif ≥ 30 jours ou résilié ≤ 60 jours) ne peut être vérifiée avant que `Abonnement` existe (L4) — aucune insertion légitime n'est possible plus tôt, pas seulement « pas encore construite ». Jusque-là, l'état vide honnête de L2-13 (`docs/domaine.md` §5.1) est l'état normal de **tous** les profils, pas une exception à corriger |
 | 28 | Profil coach — parcours | L2 | |
@@ -61,7 +61,7 @@ Numérotation du dossier de design. « Fiche » = fiche d'écran à rédiger dan
 | 05a | Questionnaire santé avant la première séance | L6 | **à concevoir.** Contre-indications, blessures, traitements. Portée verrouillée au coach, consentement explicite. Dépend de C-04 |
 | 06 | Suivi chiffré | L7 | sans photos corporelles |
 | 07 | Messagerie client | L8 | texte seul |
-| 14 | Recherche — aucun résultat | L3 | bouton « Me prévenir » retiré |
+| 14 | Recherche — aucun résultat | L3 | bouton « Me prévenir » retiré ; pas de filtre « note » (n'existe pas dans l'écran 02). Détail : `docs/ecrans/L3-03-recherche-aucun-resultat.md` |
 | 15 | Chargement | L0/L3 | motif générique posé en L0 |
 | 21 | Inscription | L1 | ✅ livré |
 | 22 | Onboarding | L1 | ✅ livré |
