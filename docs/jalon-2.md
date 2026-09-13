@@ -16,7 +16,13 @@ sections ci-dessous en ont été conservées ; le reste de ce document (correcti
 
 ---
 
-## Les vingt-trois fonctionnalités
+## Les vingt-deux fonctionnalités
+
+**La 6, « Import des clients existants du coach » (écran 54), est retirée de cette liste le
+13 septembre 2026** : promue au jalon 1, lot L3bis (`docs/perimetre.md` §2/§4, écrans I-01/I-02)
+— le report d'août supposait que les avis nourriraient la découverte, ce qui n'est plus le cas
+(`docs/domaine.md` §5.6). Numéro laissé vacant plutôt que renuméroter les dix-sept fonctionnalités
+suivantes et leurs dépendances croisées (« Dépend de » y référence des numéros, pas des noms).
 
 ### Convertir
 
@@ -27,7 +33,6 @@ sections ci-dessous en ont été conservées ; le reste de ce document (correcti
 | 3 | Mes rendez-vous — 2ᵉ onglet de « Séance », la barre reste à 5 | 40 | 2 |
 | 4 | Extrait vidéo public de 45 s sur le profil | 52 | modèle média |
 | 5 | Alerte de disponibilité sur recherche vide | 53 | — |
-| 6 | Import des clients existants du coach | 54 | — |
 
 Sur la 5 : la valeur n'est pas le client retenu, c'est la carte de la demande non servie. Prévoir
 l'export de cette table dès le départ, c'est elle qui pilote le recrutement de coachs.

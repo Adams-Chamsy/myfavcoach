@@ -16,7 +16,22 @@ Révisé le 12 septembre 2026, après la clôture de L1. Ce qui a changé, et ri
 - **Section 3 étoffée** : six reports décidés en conversation y sont désormais écrits, avec leur
   raison. Ils n'étaient nulle part.
 
-Le reste est inchangé. En particulier, aucun des reports du 20 août n'est levé.
+Le reste est inchangé.
+
+**Révisé le 13 septembre 2026 : un report du 20 août est levé, pour la première fois.**
+L'import des clients existants du coach (`docs/jalon-2.md`, fonctionnalité 6, écran 54) quitte
+le jalon 2 et entre au jalon 1 comme lot **L3bis** (§2, §4) — deux écrans, I-01 (coach invite)
+et I-02 (client arrive par le lien, sans session), maquettés dans
+`maquettes/MyFavCoach-Import_dc.html`.
+
+Raison du changement : le report d'août supposait que les avis nourriraient la découverte.
+Depuis, le classement ne trie plus sur la note (`docs/domaine.md` §5.6, révisé le 12 septembre)
+et les avis sont replanifiés à L4 (§2, écran 27). Au lancement, un client trouverait donc des
+profils sans note, sans avis, sans preuve d'usage. L'import est le seul mécanisme qui amène des
+clients réels — et, à L4, des avis sincères, écrits par des gens qui ont vraiment travaillé avec
+le coach.
+
+Tous les autres reports du 20 août et du 12 septembre restent en l'état — voir §3.
 
 ---
 
@@ -79,6 +94,8 @@ Numérotation du dossier de design. « Fiche » = fiche d'écran à rédiger dan
 | 23c | En attente de vérification | L2 | **à concevoir.** Ce que voit un coach entre le dépôt et la décision. Aujourd'hui il ne voit rien |
 | 03a | Créer et publier une offre (coach) | L2 | **Ajouté le 12 septembre, absent du dossier.** Marqué L2 depuis L0 par la coquille `app/(coach)/creer/[type].tsx`, jamais nommé comme écran avant cette ligne. Brouillon possible sans coach vérifié, publication refusée sinon (`docs/api.md` §5) |
 | 19 | Premier lancement coach (état à zéro) | L2 | |
+| I-01 | Inviter mes clients (coach) | L3bis | Lien unique partageable, liste des invitations avec leur état, relance. Maquette : `maquettes/MyFavCoach-Import_dc.html` |
+| I-02 | Arrivée par invitation (client) | L3bis | Page d'accueil du lien, sans session. Maquette : `maquettes/MyFavCoach-Import_dc.html` |
 | 08 | Pilotage coach | L7 | |
 | 09 | Liste clients | L7 | |
 | 10 | Fiche client | L7 | |
@@ -164,6 +181,7 @@ dis-le. Ne propose pas d'« ajouter juste le socle pour plus tard ».
 | **L1** | Identité, comptes, deux profils, bascule de rôle, onboarding, réglages | L0 |
 | **L2** | Profil coach, offres, pièces et vérification, back-office, conformité de base (C-03, C-04, C-06) | L1 |
 | **L3** | Découverte : accueil, recherche, filtres, classement | L2 |
+| **L3bis** | Import des clients existants du coach : invitation (I-01), arrivée par lien (I-02) | L2 |
 | **L4** | Abonnement, paiement, facturation, échecs et relances, **table `avis` et écran L2-13** (§2, remarque de l'écran 27 : replanifiés depuis L2, aucun dépôt légitime possible avant que l'abonnement existe) | L3 |
 | **L5** | Commission, soldes, versements, écran revenus, factures et reçus (C-05) | L4 |
 | **L6** | Contenu : studio, programmes, séances, séance du jour, questionnaire santé | L2 |
@@ -175,6 +193,12 @@ dis-le. Ne propose pas d'« ajouter juste le socle pour plus tard ».
 
 L0 à L2 précèdent tout paiement : il faut des coachs vérifiés et des profils avant de pouvoir
 vendre quoi que ce soit.
+
+**L3bis se place après L3, pas avant, pas fondu dedans.** Après, parce qu'interrompre un lot en
+cours pour en insérer un autre coûte cher — L3 se termine avant que L3bis ne commence. Avant
+L4, pas après : le paiement doit être éprouvé avec de vraies personnes qui utilisent réellement
+le produit, pas avec cinq comptes de banc — l'import est le seul mécanisme qui amène des clients
+réels avant que l'abonnement n'existe.
 
 Le lot L11 disparaît : son contenu est réparti selon les dépendances réelles de chaque écran.
 Un travail qui ne dépend de rien et qui bloque la publication n'a pas sa place en fin de projet.
