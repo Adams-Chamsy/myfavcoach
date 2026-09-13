@@ -1,4 +1,5 @@
 import type {
+  CommuneReference,
   Discipline,
   DossierVerification,
   EtatProfils,
@@ -6,11 +7,13 @@ import type {
   ModificationsInformations,
   ModificationsOffre,
   Offre,
+  ParametresRecherche,
   PieceDeposee,
   PortDonnees,
   ProfilCoachPublic,
   ProfilOnboarding,
   ResultatEcriture,
+  ResultatRecherche,
   TypePiece,
 } from './port';
 
@@ -26,6 +29,17 @@ export const DISCIPLINES_FIGEES: Discipline[] = [
   { cle: 'cybersécurité', libelle: 'Cybersécurité' },
   { cle: 'RGPD', libelle: 'RGPD et protection des données' },
   { cle: 'développement professionnel', libelle: 'Développement professionnel' },
+];
+
+// Mêmes six villes que la migration 0023 (communes_reference) — même motif que
+// DISCIPLINES_FIGEES ci-dessus : un catalogue, pas un état de test à faire varier.
+export const COMMUNES_FIGEES: CommuneReference[] = [
+  { codeInsee: '33063', nom: 'Bordeaux' },
+  { codeInsee: '59350', nom: 'Lille' },
+  { codeInsee: '69123', nom: 'Lyon' },
+  { codeInsee: '44109', nom: 'Nantes' },
+  { codeInsee: '75056', nom: 'Paris' },
+  { codeInsee: '31555', nom: 'Toulouse' },
 ];
 
 export type FauxPortDonnees = PortDonnees & {
@@ -57,6 +71,12 @@ export type FauxPortDonnees = PortDonnees & {
   echouerProchainePublicationPourTest(code: string): void;
   definirProfilsCoachPublicsPourTest(profils: Record<string, ProfilCoachPublic>): void;
   definirOffresPubliquesPourTest(offres: Record<string, Offre[]>): void;
+  // L3-01/L3-02 : rechercherCoachs prend une FONCTION, pas un tableau fixe — un test d'écran a
+  // besoin de résultats différents selon les paramètres reçus (nouveau filtre, second appel
+  // « Ouvrir aux visio » de L3-03 avec un format relâché). Par défaut : ensemble vide, total 0.
+  definirRechercheCoachsPourTest(
+    gestionnaire: (parametres: ParametresRecherche) => ResultatRecherche,
+  ): void;
 
   definirConsentementCommunicationsPourTest(etat: {
     accorde: boolean;
@@ -137,6 +157,10 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
   let prochainePublicationEchoue: string | null = null;
   let profilsCoachPublics: Record<string, ProfilCoachPublic> = {};
   let offresPubliques: Record<string, Offre[]> = {};
+  let gestionnaireRecherche: (parametres: ParametresRecherche) => ResultatRecherche = () => ({
+    resultats: [],
+    totalResultats: 0,
+  });
   let consentementCommunications: { accorde: boolean; version: string | null } = {
     accorde: false,
     version: null,
@@ -437,6 +461,17 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
 
     async lireDisciplines() {
       return DISCIPLINES_FIGEES;
+    },
+
+    async lireCommunesReference() {
+      return COMMUNES_FIGEES;
+    },
+
+    definirRechercheCoachsPourTest(gestionnaire) {
+      gestionnaireRecherche = gestionnaire;
+    },
+    async rechercherCoachs(parametres) {
+      return gestionnaireRecherche(parametres);
     },
 
     definirOffresPubliquesPourTest(nouvellesOffresPubliques) {

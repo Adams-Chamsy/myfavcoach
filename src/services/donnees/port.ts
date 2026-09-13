@@ -106,6 +106,55 @@ export type PieceDeposee = { type: TypePiece; deposeLe: string };
 // SQL figée.
 export type Discipline = { cle: string; libelle: string };
 
+// Référentiel géographique réduit (docs/ecrans/L3-02-recherche-filtres.md, « Référentiel
+// géographique ») : six communes, pas le référentiel INSEE national — le filtre de commune de
+// L3-02 est donc un choix fermé parmi ces lignes, jamais un champ texte libre. Table
+// `communes_reference` (0023_creer_recherche_coachs.sql), coordonnées non exposées ici : le
+// calcul de proximité vit entièrement côté serveur (`rechercher_coachs`), l'application n'a
+// besoin que de la liste des choix proposables.
+export type CommuneReference = { codeInsee: string; nom: string };
+
+// L3-02 : ce qu'une carte de résultat affiche, une ligne par OFFRE publiée (jamais par coach —
+// un coach avec deux offres publiées apparaît deux fois, docs/domaine.md §3.3). Jamais de note,
+// jamais d'avis (docs/domaine.md §5.1/§5.6) : rechercher_coachs() ne les rend pas, il n'y a rien
+// à retirer ici.
+export type ResultatCoachRecherche = {
+  offreId: string;
+  coachId: string;
+  prenom: string;
+  nom: string;
+  photoUrl: string | null;
+  discipline: string;
+  titreCourt: string | null;
+  communeBaseInsee: string | null;
+  formats: string[];
+  titre: string;
+  prixCentimes: number;
+};
+
+// Paramètres de rechercher_coachs() (0023_creer_recherche_coachs.sql) — un à un les mêmes que la
+// fonction SQL, jamais un sous-ensemble deviné. `discipline` ET `texte` s'excluent en pratique
+// (docs/ecrans/L3-02.md, Règles : discipline choisie = filtre exact ; texte seul = recherche
+// libre) mais le port ne l'impose pas, c'est à l'écran de ne jamais envoyer les deux à la fois.
+export type ParametresRecherche = {
+  discipline?: string | null;
+  texte?: string | null;
+  communeInsee?: string | null;
+  format?: 'visio' | 'presentiel' | null;
+  prixMinCentimes?: number | null;
+  prixMaxCentimes?: number | null;
+  limite?: number;
+  decalage?: number;
+};
+
+// `totalResultats` vient du champ que la fonction rend (count(*) over(), déjà calculé sur
+// l'ensemble complet avant que le plafond ne tronque) — jamais reconstruit côté client par
+// comptage de pages (docs/backend.md §10, décision validée de L3-02).
+export type ResultatRecherche = {
+  resultats: ResultatCoachRecherche[];
+  totalResultats: number;
+};
+
 // L2-15/L2-10 : docs/domaine.md §3.3. Une seule nature d'offre au jalon 1 — pas de champ type.
 export type Offre = {
   id: string;
@@ -271,6 +320,14 @@ export type PortDonnees = {
   // l'import direct de `disciplinesCoach` (`src/fixtures/demonstration.ts`, retiré le 13
   // septembre 2026 : une règle métier n'a rien à faire dans un jeu de démonstration figé).
   lireDisciplines(): Promise<Discipline[]>;
+
+  // L3-02 : le référentiel de communes réduit (voir `CommuneReference`). Lecture publique.
+  lireCommunesReference(): Promise<CommuneReference[]>;
+
+  // L3-01/L3-02 : rechercher_coachs() (0023_creer_recherche_coachs.sql), security invoker,
+  // douze cycles casser/restaurer (docs/prompts/L3.md, P3.3). Lecture publique (anon compris) —
+  // jamais authentifiée, jamais personnalisée à ce lot.
+  rechercherCoachs(parametres: ParametresRecherche): Promise<ResultatRecherche>;
 
   // L2-01 (C-03) : appelle supprimer_mon_compte() (0018, SECURITY DEFINER) — comptes.supprime_le
   // n'a aucun GRANT UPDATE, comme profil_actif/statut_verification. L'écran vide ensuite la

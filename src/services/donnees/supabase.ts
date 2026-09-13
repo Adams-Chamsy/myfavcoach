@@ -1,16 +1,20 @@
 import { supabase } from '@/services/supabase/client';
 import type {
+  CommuneReference,
   Discipline,
   DossierVerification,
   EtatProfils,
   InformationsCompte,
   Offre,
+  ParametresRecherche,
   PieceDeposee,
   PortDonnees,
   ProfilActif,
   ProfilCoachPublic,
   ProfilOnboarding,
+  ResultatCoachRecherche,
   ResultatEcriture,
+  ResultatRecherche,
   TypePiece,
 } from './port';
 
@@ -598,6 +602,66 @@ export const portDonneesSupabase: PortDonnees = {
       .order('ordre_affichage', { ascending: true });
     if (error) throw error;
     return (data ?? []) as Discipline[];
+  },
+
+  async lireCommunesReference() {
+    const { data, error } = await supabase
+      .from('communes_reference')
+      .select('code_insee, nom')
+      .order('nom', { ascending: true });
+    if (error) throw error;
+    return (data ?? []).map((ligne) => ({
+      codeInsee: ligne.code_insee as string,
+      nom: ligne.nom as string,
+    })) satisfies CommuneReference[];
+  },
+
+  async rechercherCoachs(parametres: ParametresRecherche) {
+    const { data, error } = await supabase.rpc('rechercher_coachs', {
+      p_discipline: parametres.discipline ?? null,
+      p_texte: parametres.texte ?? null,
+      p_commune_insee: parametres.communeInsee ?? null,
+      p_format: parametres.format ?? null,
+      p_prix_min: parametres.prixMinCentimes ?? null,
+      p_prix_max: parametres.prixMaxCentimes ?? null,
+      p_limite: parametres.limite ?? undefined,
+      p_decalage: parametres.decalage ?? undefined,
+    });
+    if (error) throw error;
+    type LigneRecherche = {
+      offre_id: string;
+      coach_id: string;
+      prenom: string;
+      nom: string;
+      photo_url: string | null;
+      discipline: string;
+      titre_court: string | null;
+      commune_base_insee: string | null;
+      formats: string[];
+      titre: string;
+      prix_centimes: number;
+      total_resultats: number;
+    };
+    const lignes = (data ?? []) as LigneRecherche[];
+    const resultats: ResultatCoachRecherche[] = lignes.map((l) => ({
+      offreId: l.offre_id,
+      coachId: l.coach_id,
+      prenom: l.prenom,
+      nom: l.nom,
+      photoUrl: l.photo_url,
+      discipline: l.discipline,
+      titreCourt: l.titre_court,
+      communeBaseInsee: l.commune_base_insee,
+      formats: l.formats,
+      titre: l.titre,
+      prixCentimes: l.prix_centimes,
+    }));
+    // total_resultats est identique sur chaque ligne (count(*) over()) — 0 candidat rendu ne
+    // veut pas dire 0 résultat total ailleurs, mais ici l'ensemble est vide par construction.
+    return {
+      resultats,
+      totalResultats: lignes[0]?.total_resultats ?? 0,
+    } satisfies ResultatRecherche;
   },
 
   async lireOffresPublieesDeCoach(coachId) {

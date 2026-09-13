@@ -72,10 +72,15 @@ Basculement vers `L3-03` quand la fonction de recherche rend un ensemble vide.
 
   Aucune colonne nouvelle sur les tables existantes. `compte_id`, la bio complète, le parcours,
   les pièces d'identité : jamais rendus ici, comme sur `L2-12`.
-- **Pagination : défilement infini, plafond dur de 30 lignes par appel.** `p_limite` est borné à
+- **Pagination : bouton « Voir plus », pas un défilement infini — décidé le 13 septembre 2026,
+  construit ainsi. Plafond dur de 30 lignes par appel.** `p_limite` est borné à
   `least(p_limite, 30)` dans la fonction elle-même (`docs/backend.md` §10) — 30 correspond à
   plusieurs écrans de résultats avant un nouvel appel, un ordre de grandeur choisi pour limiter
-  les allers-retours réseau sans jamais approcher un volume qui vide l'annuaire d'un coup.
+  les allers-retours réseau sans jamais approcher un volume qui vide l'annuaire d'un coup. Un
+  bouton explicite plutôt qu'un scroll-listener : vérifiable en test (chaque appui déclenche un
+  appel `rechercherCoachs` précis, avec le `decalage` attendu), là où un déclenchement au
+  défilement ne l'est pas — CLAUDE.md n'a pas de suite de test de mise en page réelle
+  (`react-test-renderer` ne fait aucun calcul de scroll) pour le prouver.
 - **L'énumération complète par pages successives est assumée, et le total est exposé.** Une
   marketplace publique est faite pour être parcourue (`docs/prompts/L3.md`, tête de fichier) ; le
   nombre total de coachs par discipline n'est pas une donnée personnelle. La fonction rend donc
@@ -164,8 +169,9 @@ ouvre au-delà de ces six villes, cette table doit grandir (import réel ou ajou
 
 ## Décisions validées le 13 septembre 2026
 
-Plus des inventions à confirmer : le plafond dur (30 lignes), le défilement infini, et
-l'exposition du total exact de résultats sont des décisions, prises et closes.
+Plus des inventions à confirmer : le plafond dur (30 lignes), la pagination par bouton
+« Voir plus » (pas un défilement infini, précisé ci-dessus), et l'exposition du total exact de
+résultats sont des décisions, prises et closes.
 
 ## Discipline — défaut de modèle corrigé le 13 septembre 2026
 
