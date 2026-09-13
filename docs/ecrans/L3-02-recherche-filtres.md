@@ -23,7 +23,10 @@ exposer une lecture inter-comptes, et le premier à en exposer **plusieurs ligne
 En-tête : retour, champ de recherche texte (discipline ou mot-clé), bouton filtres (badge = nombre
 de filtres actifs).
 
-Puces de filtres actifs (retrait individuel par appui).
+Puces de filtres actifs (retrait individuel par appui), et un lien « Tout effacer » qui les
+retire toutes d'un coup (visible seulement si au moins un filtre est actif) — pur retrait d'état
+local suivi d'une nouvelle recherche sans filtre, aucune conséquence sur le modèle ni sur la
+fonction de recherche elle-même.
 
 Ligne de compte + tri : « N coachs · [commune ou "visio"] », sélecteur « Pertinence » (seule
 option au jalon 1, voir Règles).
@@ -127,19 +130,24 @@ cet écran n'est pas un champ texte libre avec recherche d'adresse, c'est un cho
 six villes plus « Visio »** — comme il n'existe aucune coordonnée en dehors de cet ensemble, il
 n'y a littéralement rien d'autre à proposer, et donc aucun cas « commune inconnue » à traiter.
 
-| Commune | Code INSEE (à vérifier à la migration) | Latitude | Longitude |
+**Source : `geo.api.gouv.fr` (API officielle, IGN/INSEE, écosystème data.gouv.fr/Etalab),
+interrogée le 13 septembre 2026** — jamais saisie de mémoire (voir la validation du même jour).
+`centre` de chaque commune, un point par ville :
+
+| Commune | Code INSEE | Latitude | Longitude |
 |---|---|---|---|
-| Lyon | 69123 | 45,7640 | 4,8357 |
-| Paris | 75056 | 48,8566 | 2,3522 |
-| Bordeaux | 33063 | 44,8378 | −0,5792 |
-| Nantes | 44109 | 47,2184 | −1,5536 |
-| Lille | 59350 | 50,6292 | 3,0573 |
-| Toulouse | 31555 | 43,6047 | 1,4442 |
+| Lyon | 69123 | 45,7580 | 4,8351 |
+| Paris | 75056 | 48,8589 | 2,3470 |
+| Bordeaux | 33063 | 44,8624 | −0,5848 |
+| Nantes | 44109 | 47,2382 | −1,5603 |
+| Lille | 59350 | 50,6311 | 3,0468 |
+| Toulouse | 31555 | 43,6007 | 1,4328 |
 
 Table `communes_reference` (nom à confirmer à la migration) : `code_insee` (clé), `nom`,
 `latitude`, `longitude` — donnée publique, aucune sensibilité, `select` accordé à `anon` et
 `authenticated` sans réserve, cohérent avec `security invoker` (aucun besoin de contourner RLS
-pour la lire). Seedée par la migration elle-même (six lignes), pas par un script séparé.
+pour la lire). Seedée par la migration elle-même (six lignes, valeurs ci-dessus), pas par un
+script séparé.
 
 **Limite acceptée, à écrire dans `docs/dette.md` à la clôture du lot** : au jour où le produit
 ouvre au-delà de ces six villes, cette table doit grandir (import réel ou ajout au coup par coup)
@@ -147,13 +155,23 @@ ouvre au-delà de ces six villes, cette table doit grandir (import réel ou ajou
 
 ---
 
-## Ce qui a été inventé pour cette fiche
+## Décisions validées le 13 septembre 2026
 
-- La valeur du plafond dur (30) : ordre de grandeur choisi, pas mesuré sur un usage réel.
-- Le choix du défilement infini plutôt que des pages numérotées : cohérent avec le reste du
-  dépôt (aucun autre écran ne pagine par numéro), non explicitement demandé par une maquette.
-- L'exposition du total exact plutôt qu'une approximation : la maquette montre un total exact
-  (« 7 coachs »), suivi tel quel plutôt que réinterprété.
+Plus des inventions à confirmer : le plafond dur (30 lignes), le défilement infini, et
+l'exposition du total exact de résultats sont des décisions, prises et closes.
+
+## Ce qui reste ouvert
+
+- **Le filtre discipline dépend de la résolution d'un défaut de modèle**, pas d'une décision de
+  cette fiche : `profils_coach.discipline` est un `text` libre depuis 0001, sans contrainte
+  d'aucune sorte au niveau de la base. Dans les faits, le seul écran qui écrit cette colonne
+  (`app/(onboarding)/devenir-coach.tsx`) choisit déjà parmi une liste fermée de sept clés
+  (`disciplinesCoach`, `src/fixtures/demonstration.ts`) — mais cette liste vit dans les
+  *fixtures* (donnée de démonstration, `CLAUDE.md` §3), pas dans une contrainte réelle : rien
+  n'empêche un autre chemin d'écriture (test, script, futur écran) d'y mettre autre chose. Trois
+  sorties proposées (énumération SQL, table de référence, normalisation à l'écriture), point
+  d'arrêt en cours avant d'écrire la migration de P3.2 — voir la discussion dédiée, hors de cette
+  fiche.
 
 ---
 
@@ -168,6 +186,8 @@ ouvre au-delà de ces six villes, cette table doit grandir (import réel ou ajou
    différent.
 6. Le retour depuis `L2-12` réaffiche la liste déjà obtenue, sans réordonnancement perceptible.
 7. Ensemble vide → bascule vers `L3-03`.
-8. Accessible sans session (`anon`).
-9. Galerie, deux thèmes.
-10. `npm run verif` passe.
+8. « Tout effacer » retire tous les filtres actifs et relance une recherche sans filtre ; absent
+   de l'écran quand aucun filtre n'est actif.
+9. Accessible sans session (`anon`).
+10. Galerie, deux thèmes.
+11. `npm run verif` passe.

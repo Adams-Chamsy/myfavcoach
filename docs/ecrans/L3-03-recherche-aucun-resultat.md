@@ -3,7 +3,8 @@
 **Lot** L3 · **Rôle** client, et visiteur non connecté (`anon`) · **Route** état de
 `app/(client)/explorer.tsx` (`L3-02`), pas une route séparée — voir Règles.
 **Référence visuelle** `maquettes/MyFavCoach-Etats_dc.html`, bloc « 14 · Recherche vide »,
-`data-screen-label="14 Recherche vide"`. **Deux corrections, lues en Règles.**
+`data-screen-label="14 Recherche vide"`. **Deux corrections et une construction validée le
+13 septembre 2026, lues en Règles.**
 
 ---
 
@@ -36,12 +37,14 @@ une seconde fois avec un filtre relâché (voir Règles).
   (`docs/domaine.md` §5.1) — un tel filtre viderait systématiquement tout résultat, ce qui rend
   cet écran presque impossible à quitter. Ce filtre n'existe pas dans `L3-02`, donc il ne peut
   pas apparaître ici comme puce active.
-- **« Ouvrir aux coachs en visio · N résultats » (ou équivalent) : un second appel réel, pas un
-  nombre inventé.** Si un tel bouton de relâchement de filtre est construit, le nombre affiché
-  vient d'un second appel à la fonction de recherche avec ce filtre précis relâché — jamais un
-  chiffre approché ou mis en cache. Si ce second appel n'est pas construit à ce lot (P3.6 peut le
-  reporter, dis-le explicitement plutôt que d'improviser un nombre), le bouton n'affiche aucun
-  nombre, ou n'existe pas du tout.
+- **« Ouvrir aux coachs en visio · N résultats » : construit, validé le 13 septembre 2026.** Un
+  second appel réel à la fonction de recherche de `L3-02`, avec le filtre de format relâché à
+  « visio ou présentiel » (c'est le seul relâchement illustré par la maquette — les autres
+  filtres restent inchangés). Le nombre affiché est le total exact rendu par ce second appel,
+  jamais un chiffre approché, mis en cache au-delà de la session d'affichage, ou improvisé : un
+  bouton qui annonce un nombre faux est pire qu'un bouton absent. N'apparaît pas du tout si le
+  format « présentiel » n'est pas le filtre actif (rien à relâcher), ou si le second appel rend
+  lui aussi un ensemble vide.
 - **Pas une route séparée.** Contrairement à `L2-13`/`L2-14` (routes distinctes pour une même
   fiche visuelle), cet écran est un état de `L3-02` — la fonction de recherche a déjà été
   appelée, il n'y a rien à réinterroger au montage d'une route dédiée.
@@ -49,12 +52,12 @@ une seconde fois avec un filtre relâché (voir Règles).
 
 ---
 
-## Ce qui a été inventé pour cette fiche
+## Décision validée le 13 septembre 2026
 
-- Le mécanisme exact de la suggestion « proches de ta recherche » (quel filtre relâcher en
-  premier — format, puis budget, puis discipline élargie ?) : non spécifié ailleurs. Proposition
-  à valider avant P3.6 : relâcher le filtre de format en premier (visio quand présentiel ne rend
-  rien), c'est le seul cas illustré par la maquette.
+Le relâchement du filtre de format (présentiel → visio ou présentiel) est le seul relâchement
+construit à ce lot — c'est le seul cas illustré par la maquette. Un relâchement de budget ou de
+discipline n'est pas construit ici, faute de cas de référence ; à ajouter si un besoin réel
+apparaît, pas à deviner maintenant.
 
 ---
 
@@ -62,8 +65,9 @@ une seconde fois avec un filtre relâché (voir Règles).
 
 1. Jamais de bouton « Me prévenir », sous aucune forme.
 2. Jamais de puce de filtre « note » active (le filtre n'existe pas dans `L3-02`).
-3. Si un bouton de relâchement de filtre affiche un nombre, ce nombre vient d'un appel réel à la
-   fonction de recherche.
+3. Le bouton « Ouvrir aux coachs en visio » affiche un nombre venu d'un appel réel à la fonction
+   de recherche (filtre de format relâché), jamais approché ni improvisé — et n'apparaît pas
+   quand ce relâchement n'a rien à offrir (présentiel non filtré, ou second appel vide aussi).
 4. Accessible sans session (`anon`).
 5. Galerie, deux thèmes.
 6. `npm run verif` passe.
