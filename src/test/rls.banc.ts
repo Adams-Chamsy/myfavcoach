@@ -3048,4 +3048,20 @@ describe('rechercher_coachs', () => {
     }
     expect(resultats.size).toBeGreaterThan(1);
   });
+
+  // Règle 8 (docs/prompts/L2.md, reprise docs/prompts/L3.md) : un test qui deviendra faux plus
+  // tard porte son intention dans le fichier. Décision du 13 septembre 2026
+  // (0024_documenter_defense_profondeur_recherche.sql) : les filtres statut_verification et
+  // publiee_le/retiree_le du corps de la fonction sont gardés comme défense en profondeur,
+  // redondants avec les politiques tant que security invoker tient — mais AUCUN cycle de
+  // cassage ne les fait rougir (P3.3), donc rien d'autre ne signale une bascule vers security
+  // definer. Ce test-ci exerce précisément ce qui les rendrait à nouveau la SEULE protection.
+  it('rechercher_coachs reste security invoker — sinon les deux filtres redondants deviennent la seule protection', async () => {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/rechercher_coachs_est_invoker', {
+      methode: 'POST',
+      session: 'anon',
+    });
+    expect(statut).toBe(200);
+    expect(corps).toBe(true);
+  });
 });
