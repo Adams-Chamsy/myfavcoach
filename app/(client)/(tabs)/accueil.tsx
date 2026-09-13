@@ -62,8 +62,8 @@ export default function Accueil() {
   function ouvrirRecherche(disciplineCle?: string) {
     router.push(
       disciplineCle
-        ? { pathname: '/(client)/explorer', params: { discipline: disciplineCle } }
-        : '/(client)/explorer',
+        ? { pathname: '/(client)/(tabs)/explorer', params: { discipline: disciplineCle } }
+        : '/(client)/(tabs)/explorer',
     );
   }
 

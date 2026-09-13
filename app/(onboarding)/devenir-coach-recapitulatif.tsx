@@ -84,7 +84,7 @@ export default function DevenirCoachRecapitulatif() {
         <Bouton
           libelle="Aller à mon espace coach"
           variante="primaire"
-          onPress={() => router.replace('/(coach)/pilotage')}
+          onPress={() => router.replace('/(coach)/(tabs)/pilotage')}
         />
       </View>
     </View>

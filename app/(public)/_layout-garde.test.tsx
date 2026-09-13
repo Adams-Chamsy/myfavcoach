@@ -74,7 +74,7 @@ describe('app/(public)/_layout.tsx — règle 7 (docs/prompts/L1.md, P1.10)', ()
 
     await rendre(portAuth, portDonnees);
 
-    expect(mockRemplacer).toHaveBeenCalledWith('/(client)/accueil');
+    expect(mockRemplacer).toHaveBeenCalledWith('/(client)/(tabs)/accueil');
     expect(screen.queryByText('écran public affiché')).toBeNull();
   });
 

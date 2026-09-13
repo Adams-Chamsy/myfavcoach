@@ -76,7 +76,7 @@ describe('FeuilleBascule (docs/ecrans/L1-06-bascule-espace.md)', () => {
 
     await fireEvent.press(screen.getByLabelText('Espace coach'));
 
-    await waitFor(() => expect(mockRemplacer).toHaveBeenCalledWith('/(coach)/pilotage'));
+    await waitFor(() => expect(mockRemplacer).toHaveBeenCalledWith('/(coach)/(tabs)/pilotage'));
     await waitFor(() => expect(screen.getByLabelText('Espace coach, espace actif')).toBeTruthy());
     expect(screen.queryByLabelText('Espace client, espace actif')).toBeNull();
   });
@@ -92,7 +92,7 @@ describe('FeuilleBascule (docs/ecrans/L1-06-bascule-espace.md)', () => {
 
     await fireEvent.press(screen.getByLabelText('Espace client'));
 
-    await waitFor(() => expect(mockRemplacer).toHaveBeenCalledWith('/(client)/accueil'));
+    await waitFor(() => expect(mockRemplacer).toHaveBeenCalledWith('/(client)/(tabs)/accueil'));
     await waitFor(() => expect(screen.getByLabelText('Espace client, espace actif')).toBeTruthy());
     expect(screen.queryByLabelText('Espace coach, espace actif')).toBeNull();
   });

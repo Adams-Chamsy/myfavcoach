@@ -56,7 +56,7 @@ function AccueilBasculeVersCoach() {
   const { basculerProfil } = useDonnees();
   const routeur = useRouter();
   useEffect(() => {
-    basculerProfil('coach').then(() => routeur.replace('/(coach)/pilotage'));
+    basculerProfil('coach').then(() => routeur.replace('/(coach)/(tabs)/pilotage'));
   }, [basculerProfil, routeur]);
   return null;
 }
@@ -92,10 +92,10 @@ it('la bascule client → coach réinitialise la pile client : elle disparaît d
       appDir: './app',
       overrides: {
         _layout: creerRacineFaux(portAuth, portDonnees),
-        '(client)/accueil': AccueilBasculeVersCoach,
+        '(client)/(tabs)/accueil': AccueilBasculeVersCoach,
       },
     },
-    { initialUrl: '/(client)/accueil' },
+    { initialUrl: '/(client)/(tabs)/accueil' },
   );
 
   // Flush le useEffect ci-dessus, bloqué sous les minuteurs factices de renderRouter — même

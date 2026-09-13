@@ -4,16 +4,16 @@ import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 import type { ReactTestRendererJSON } from 'react-test-renderer';
 
 import Galerie from '../../app/_galerie';
-import Accueil from '../../app/(client)/accueil';
-import { CorpsExplorer } from '../../app/(client)/explorer';
-import Seance from '../../app/(client)/seance';
-import Messages from '../../app/(client)/messages';
-import Moi from '../../app/(client)/moi';
-import MoiCoach from '../../app/(coach)/moi';
-import Pilotage from '../../app/(coach)/pilotage';
-import Clients from '../../app/(coach)/clients';
-import Agenda from '../../app/(coach)/agenda';
-import Revenus from '../../app/(coach)/revenus';
+import Accueil from '../../app/(client)/(tabs)/accueil';
+import { CorpsExplorer } from '../../app/(client)/(tabs)/explorer';
+import Seance from '../../app/(client)/(tabs)/seance';
+import Messages from '../../app/(client)/(tabs)/messages';
+import Moi from '../../app/(client)/(tabs)/moi';
+import MoiCoach from '../../app/(coach)/(tabs)/moi';
+import Pilotage from '../../app/(coach)/(tabs)/pilotage';
+import Clients from '../../app/(coach)/(tabs)/clients';
+import Agenda from '../../app/(coach)/(tabs)/agenda';
+import Revenus from '../../app/(coach)/(tabs)/revenus';
 import Bienvenue from '../../app/(public)/index';
 import Inscription from '../../app/(public)/inscription';
 import Verification from '../../app/(public)/verification';
@@ -115,13 +115,13 @@ function contientTexte(noeud: Noeud): boolean {
 // Portée assumée : ce contrôle ne prouve PAS la géométrie réelle (débordement, inset bas, barre
 // Android à 3 boutons) — voir docs/dette.md, il reste un angle mort manuel sur appareil.
 const ECRANS_CHROME_HAUT = new Set([
-  'app/(client)/accueil.tsx',
+  'app/(client)/(tabs)/accueil.tsx',
   // L3-02 : en-tête (retour, recherche, filtres) posé contre insets.top, même motif
   // qu'accueil.tsx (règle de conduite CLAUDE.md §8, trouvée deux fois avant ce lot).
-  'app/(client)/explorer.tsx',
-  'app/(coach)/pilotage.tsx',
-  'app/(client)/moi.tsx',
-  'app/(coach)/moi.tsx',
+  'app/(client)/(tabs)/explorer.tsx',
+  'app/(coach)/(tabs)/pilotage.tsx',
+  'app/(client)/(tabs)/moi.tsx',
+  'app/(coach)/(tabs)/moi.tsx',
   'app/(compte)/informations.tsx',
   'app/(compte)/identifiants.tsx',
   'app/(compte)/confidentialite.tsx',
@@ -424,7 +424,7 @@ const CORPUS: EntreeCorpus[] = [
     // ports que les écrans d'onboarding ci-dessous (préparés une fois, beforeAll) : la feuille
     // reste fermée par défaut ici, seul l'avatar-déclencheur est exercé (le contenu de la
     // feuille elle-même est exercé par la section 13 de la galerie, toujours ouverte).
-    nom: 'app/(client)/accueil.tsx',
+    nom: 'app/(client)/(tabs)/accueil.tsx',
     creerElement: () => (
       <FournisseurSession key="accueil" port={portAuthOnboarding}>
         <FournisseurDonnees port={portDonneesOnboarding}>
@@ -437,7 +437,7 @@ const CORPUS: EntreeCorpus[] = [
     // Même besoin que accueil.tsx ci-dessus : CorpsExplorer appelle useDonnees(). Rendu directement
     // (pas le défaut Explorer, qui lit useLocalSearchParams — ne se résout pas hors vraie route,
     // même motif que CorpsProfilCoachPublic).
-    nom: 'app/(client)/explorer.tsx',
+    nom: 'app/(client)/(tabs)/explorer.tsx',
     creerElement: () => (
       <FournisseurSession key="explorer" port={portAuthOnboarding}>
         <FournisseurDonnees port={portDonneesOnboarding}>
@@ -446,11 +446,11 @@ const CORPUS: EntreeCorpus[] = [
       </FournisseurSession>
     ),
   },
-  { nom: 'app/(client)/seance.tsx', creerElement: () => <Seance key="seance" /> },
-  { nom: 'app/(client)/messages.tsx', creerElement: () => <Messages key="messages" /> },
+  { nom: 'app/(client)/(tabs)/seance.tsx', creerElement: () => <Seance key="seance" /> },
+  { nom: 'app/(client)/(tabs)/messages.tsx', creerElement: () => <Messages key="messages" /> },
   {
     // Même besoin que accueil.tsx ci-dessus : EcranCompte appelle useDonnees() et useSession().
-    nom: 'app/(client)/moi.tsx',
+    nom: 'app/(client)/(tabs)/moi.tsx',
     creerElement: () => (
       <FournisseurSession key="moi" port={portAuthOnboarding}>
         <FournisseurDonnees port={portDonneesOnboarding}>
@@ -461,7 +461,7 @@ const CORPUS: EntreeCorpus[] = [
   },
   {
     // Même écran partagé que (client)/moi, réexporté côté coach (L1-07 : même route relative).
-    nom: 'app/(coach)/moi.tsx',
+    nom: 'app/(coach)/(tabs)/moi.tsx',
     creerElement: () => (
       <FournisseurSession key="moi-coach" port={portAuthOnboarding}>
         <FournisseurDonnees port={portDonneesOnboarding}>
@@ -472,7 +472,7 @@ const CORPUS: EntreeCorpus[] = [
   },
   {
     // Même besoin : l'avatar de pilotage.tsx appelle useDonnees() lui aussi.
-    nom: 'app/(coach)/pilotage.tsx',
+    nom: 'app/(coach)/(tabs)/pilotage.tsx',
     creerElement: () => (
       <FournisseurSession key="pilotage" port={portAuthOnboarding}>
         <FournisseurDonnees port={portDonneesOnboarding}>
@@ -481,9 +481,9 @@ const CORPUS: EntreeCorpus[] = [
       </FournisseurSession>
     ),
   },
-  { nom: 'app/(coach)/clients.tsx', creerElement: () => <Clients key="clients" /> },
-  { nom: 'app/(coach)/agenda.tsx', creerElement: () => <Agenda key="agenda" /> },
-  { nom: 'app/(coach)/revenus.tsx', creerElement: () => <Revenus key="revenus" /> },
+  { nom: 'app/(coach)/(tabs)/clients.tsx', creerElement: () => <Clients key="clients" /> },
+  { nom: 'app/(coach)/(tabs)/agenda.tsx', creerElement: () => <Agenda key="agenda" /> },
+  { nom: 'app/(coach)/(tabs)/revenus.tsx', creerElement: () => <Revenus key="revenus" /> },
   {
     // Écran L1-09 « Mes informations » : lit le profil actif via useDonnees(). Le faux partagé
     // n'a pas d'informations posées → variante client, champs vides — suffisant pour vérifier

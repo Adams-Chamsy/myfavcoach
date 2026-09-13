@@ -102,7 +102,7 @@ describe('Accueil (docs/ecrans/L3-01-accueil-decouverte.md)', () => {
   it('un appui sur la barre de recherche ouvre l’explorateur sans filtre', async () => {
     await rendre();
     await fireEvent.press(screen.getByLabelText('Rechercher un coach'));
-    expect(mockPousser).toHaveBeenCalledWith('/(client)/explorer');
+    expect(mockPousser).toHaveBeenCalledWith('/(client)/(tabs)/explorer');
   });
 
   // Critère 3 : un appui sur une puce de discipline ouvre L3-02 pré-filtrée.
@@ -111,7 +111,7 @@ describe('Accueil (docs/ecrans/L3-01-accueil-decouverte.md)', () => {
     await waitFor(() => expect(screen.queryByText('Yoga')).toBeTruthy());
     await fireEvent.press(screen.getByText('Yoga'));
     expect(mockPousser).toHaveBeenCalledWith({
-      pathname: '/(client)/explorer',
+      pathname: '/(client)/(tabs)/explorer',
       params: { discipline: 'yoga' },
     });
   });

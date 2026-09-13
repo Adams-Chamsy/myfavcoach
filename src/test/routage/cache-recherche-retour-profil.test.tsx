@@ -18,22 +18,19 @@ import { FournisseurTheme } from '@/theme/fournisseur';
 // seul expo-router/testing-library rend la VRAIE pile.
 //
 // Écrit en supposant que app/(client)/explorer.tsx n'avait besoin d'aucun cache explicite (le
-// Stack racine ne démonte jamais un écran recouvert par un push) : FAUX. Ce test, une fois écrit
-// pour de vrai, rougit — et révèle un défaut plus profond que celui redouté : ce n'est pas
-// Explorer qui rejoue le bruit, c'est le retour arrière qui n'atterrit même pas sur Explorer.
-// `app/(client)/_layout.tsx` (Tabs, expo-router/js-tabs) ne retient que DEUX emplacements dans
-// son historique — le tout premier onglet visité et l'entrée courante, jamais une vraie pile —
-// donc pousser `coach/[id]` depuis l'onglet Explorer, puis revenir en arrière, atterrit sur le
-// premier onglet (Accueil), jamais sur Explorer. Déclarer `coach/[id]` comme
-// `<Tabs.Screen options={{ href: null }} />` (même motif que `creer`/`moi` dans
-// app/(coach)/_layout.tsx) ne suffit PAS à corriger ça — vérifié, pas supposé : le défaut
-// persiste identique une fois la route déclarée (seule sa présence dans routeNames change).
+// Stack racine ne démonte jamais un écran recouvert par un push) : FAUX à la première écriture
+// de ce test — il rougissait, et révélait un défaut plus profond que celui redouté : ce n'était
+// pas Explorer qui rejouait le bruit, c'était le retour arrière qui n'atterrissait même pas sur
+// Explorer. app/(client)/_layout.tsx portait directement le Tabs (expo-router/js-tabs) ET
+// coach/[id] au même niveau — Tabs ne retient que DEUX emplacements dans son historique (le tout
+// premier onglet visité et l'entrée courante), jamais une vraie pile, donc pousser coach/[id]
+// depuis un onglet remplaçait l'onglet actif au lieu de s'empiler dessus.
 //
-// La vraie correction (envelopper le groupe de Tabs dans un Stack, `coach/[id]` en écran FRÈRE
-// de ce groupe plutôt qu'un de ses écrans) touche plus de cinq fichiers de route — point d'arrêt
-// CLAUDE.md §7, pas une correction en passant. Documenté dans docs/dette.md. Ce test reste écrit
-// et rouge, désactivé explicitement le temps de la décision — jamais réécrit pour qu'il passe
-// (CLAUDE.md §4) : à retirer le `.skip` une fois la restructuration faite.
+// Corrigé le 13 septembre 2026 : app/(client)/_layout.tsx est maintenant un Stack nu, les cinq
+// onglets vivent dans app/(client)/(tabs)/_layout.tsx (groupe invisible dans l'URL), coach/[id]
+// reste ici en écran FRÈRE de ce groupe — un push vers coach/[id] s'empile donc par-dessus
+// l'ENTIER groupe de Tabs, jamais à travers lui. Ce test est désormais vert pour de vrai, jamais
+// réécrit pour qu'il passe : la structure de route a changé, pas les assertions.
 const METRIQUES_ZONES_SURES: Metrics = {
   insets: { top: 59, right: 0, bottom: 34, left: 0 },
   frame: { x: 0, y: 0, width: 393, height: 852 },
@@ -89,7 +86,7 @@ function coach(nom: string): ResultatCoachRecherche {
 function AccueilPousseVersExplorer() {
   const routeur = useRouter();
   useEffect(() => {
-    routeur.push('/(client)/explorer');
+    routeur.push('/(client)/(tabs)/explorer');
   }, [routeur]);
   return null;
 }
@@ -101,9 +98,7 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-// docs/dette.md (P3.4-P3.6) : rouge pour une vraie raison, désactivé le temps de la décision de
-// restructuration de app/(client)/_layout.tsx — pas un test contourné pour cacher un échec.
-it.skip('retour depuis un profil coach : aucun nouvel appel à rechercherCoachs, la liste affichée ne bouge pas', async () => {
+it('retour depuis un profil coach : aucun nouvel appel à rechercherCoachs, la liste affichée ne bouge pas', async () => {
   const portAuth = creerFauxPortAuth();
   await compteConnecteEtVerifie(portAuth);
 
@@ -121,19 +116,18 @@ it.skip('retour depuis un profil coach : aucun nouvel appel à rechercherCoachs,
   portDonnees.definirRechercheCoachsPourTest(gestionnaire);
 
   // Entre par l'accueil (comme toute session réelle — même point de départ que les tests de
-  // bascule d'espace), puis rejoint Explorer par un vrai push : partir directement de
-  // initialUrl: '/(client)/explorer' construit un historique de pile différent de celui d'un
-  // vrai parcours (trouvé en écrivant ce test — le retour arrière atterrissait sur `accueil`,
-  // jamais visité, au lieu d'`explorer`) — jamais représentatif de ce qu'un utilisateur vit.
+  // bascule d'espace), puis rejoint Explorer par un vrai push : partir directement sur Explorer
+  // construit un historique de pile différent de celui d'un vrai parcours (trouvé en écrivant ce
+  // test) — jamais représentatif de ce qu'un utilisateur vit.
   const rendu = renderRouter(
     {
       appDir: './app',
       overrides: {
         _layout: creerRacineFaux(portAuth, portDonnees),
-        '(client)/accueil': AccueilPousseVersExplorer,
+        '(client)/(tabs)/accueil': AccueilPousseVersExplorer,
       },
     },
-    { initialUrl: '/(client)/accueil' },
+    { initialUrl: '/(client)/(tabs)/accueil' },
   );
 
   await act(() => jest.runAllTimersAsync());

@@ -101,7 +101,7 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);
 
       await waitFor(() => {
-        expect(screen.getByTestId('redirection').props.children).toBe('/(client)/accueil');
+        expect(screen.getByTestId('redirection').props.children).toBe('/(client)/(tabs)/accueil');
       });
     });
 
@@ -122,7 +122,7 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);
 
       await waitFor(() => {
-        expect(screen.getByTestId('redirection').props.children).toBe('/(coach)/pilotage');
+        expect(screen.getByTestId('redirection').props.children).toBe('/(coach)/(tabs)/pilotage');
       });
     });
 
@@ -199,7 +199,7 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('redirection').props.children).toBe('/(coach)/pilotage');
+      expect(screen.getByTestId('redirection').props.children).toBe('/(coach)/(tabs)/pilotage');
     });
   });
 

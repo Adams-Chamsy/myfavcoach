@@ -47,7 +47,7 @@ function PilotageBasculeVersClient() {
   const { basculerProfil } = useDonnees();
   const routeur = useRouter();
   useEffect(() => {
-    basculerProfil('client').then(() => routeur.replace('/(client)/accueil'));
+    basculerProfil('client').then(() => routeur.replace('/(client)/(tabs)/accueil'));
   }, [basculerProfil, routeur]);
   return null;
 }
@@ -80,10 +80,10 @@ it('la bascule coach → client réinitialise la pile coach : elle disparaît de
       appDir: './app',
       overrides: {
         _layout: creerRacineFaux(portAuth, portDonnees),
-        '(coach)/pilotage': PilotageBasculeVersClient,
+        '(coach)/(tabs)/pilotage': PilotageBasculeVersClient,
       },
     },
-    { initialUrl: '/(coach)/pilotage' },
+    { initialUrl: '/(coach)/(tabs)/pilotage' },
   );
 
   act(() => jest.runOnlyPendingTimers());

@@ -7,8 +7,8 @@ import { creerFauxPortAuth } from '@/services/auth/faux';
 import { creerFauxPortDonnees, etatProfilsParDefaut } from '@/services/donnees/faux';
 import type { EtatProfils } from '@/services/donnees/port';
 import { FournisseurTheme } from '@/theme/fournisseur';
-import MoiClient from '../../../app/(client)/moi';
-import MoiCoach from '../../../app/(coach)/moi';
+import MoiClient from '../../../app/(client)/(tabs)/moi';
+import MoiCoach from '../../../app/(coach)/(tabs)/moi';
 import { EcranCompte } from './ecran-compte';
 
 const mockPousser = jest.fn();

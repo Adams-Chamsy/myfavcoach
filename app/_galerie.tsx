@@ -61,8 +61,8 @@ import Documents from './(compte)/documents';
 import Export from './(compte)/export';
 import { CorpsDocumentLegal } from './(public)/documents/[type]';
 import { CorpsProfilCoachPublic } from './(client)/coach/[id]';
-import Accueil from './(client)/accueil';
-import { CorpsExplorer } from './(client)/explorer';
+import Accueil from './(client)/(tabs)/accueil';
+import { CorpsExplorer } from './(client)/(tabs)/explorer';
 import type { ResultatRecherche } from '@/services/donnees/port';
 import {
   FournisseurMouvementReduit,
@@ -1449,7 +1449,7 @@ function ExplorerAvecResultatsFixture() {
 // L3-03, état normal du jalon 1 (docs/ecrans/L3-03-recherche-aucun-resultat.md) : aucun filtre
 // posé par défaut dans ce rendu de galerie, donc l'état vide honnête montré ici est le premier
 // niveau seul — le relâchement de format (« Ouvrir aux coachs en visio ») dépend d'un filtre
-// posé via la feuille (exercé par app/(client)/explorer.test.tsx), pas rejoué ici à la main.
+// posé via la feuille (exercé par app/(client)/(tabs)/explorer.test.tsx), pas rejoué ici à la main.
 function ExplorerAucunResultatFixture() {
   const [port] = useState(() => {
     const p = creerFauxPortDonnees();

@@ -120,7 +120,7 @@ describe('OnboardingCestParti (docs/ecrans/L1-05-onboarding-client.md, étape 4/
 
     await fireEvent.press(screen.getByText('Découvrir des coachs'));
 
-    await waitFor(() => expect(mockRemplacer).toHaveBeenCalledWith('/(client)/accueil'));
+    await waitFor(() => expect(mockRemplacer).toHaveBeenCalledWith('/(client)/(tabs)/accueil'));
     expect((await port.lireEtatProfils()).clientOnboardingEtape).toBe(5);
   });
 

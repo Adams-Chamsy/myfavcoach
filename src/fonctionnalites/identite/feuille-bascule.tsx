@@ -89,7 +89,9 @@ export function FeuilleBascule({ ouverte, onFermer, children }: ProprietesFeuill
     AccessibilityInfo.announceForAccessibility(
       profil === 'coach' ? 'Espace coach' : 'Espace client',
     );
-    router.replace((profil === 'coach' ? '/(coach)/pilotage' : '/(client)/accueil') as Href);
+    router.replace(
+      (profil === 'coach' ? '/(coach)/(tabs)/pilotage' : '/(client)/(tabs)/accueil') as Href,
+    );
   }
 
   function reessayer() {
@@ -109,7 +111,9 @@ export function FeuilleBascule({ ouverte, onFermer, children }: ProprietesFeuill
     // app/(client)/moi.tsx et app/(coach)/moi.tsx, même écran (EcranCompte), déclarées
     // href:null dans leur _layout respectif — atteintes seulement par l'avatar et cette
     // feuille, jamais un onglet.
-    router.push((profils!.profilActif === 'coach' ? '/(coach)/moi' : '/(client)/moi') as Href);
+    router.push(
+      (profils!.profilActif === 'coach' ? '/(coach)/(tabs)/moi' : '/(client)/(tabs)/moi') as Href,
+    );
   }
 
   const actifClient = profils.profilActif === 'client';

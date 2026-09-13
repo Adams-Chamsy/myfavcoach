@@ -1,0 +1,99 @@
+import { useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { router, type Href } from 'expo-router';
+import { Tabs } from 'expo-router/js-tabs';
+
+import { FeuilleBasse } from '@/composants/feuille-basse';
+import { BarreOngletsRoute, type EntreeOnglet } from '@/fonctionnalites/navigation/barre-onglets';
+import { useTheme } from '@/theme/fournisseur';
+
+// Ordre et libelles de docs/ecrans/L0-02-coquille-coach.md. "Créer" n'y figure pas : ce n'est
+// pas un onglet mais une action, ajoutee via actionCentrale ci-dessous.
+const ONGLETS: EntreeOnglet[] = [
+  { nomRoute: 'pilotage', icone: 'pilotage', libelle: 'Pilotage' },
+  { nomRoute: 'clients', icone: 'clients', libelle: 'Clients' },
+  { nomRoute: 'agenda', icone: 'agenda', libelle: 'Agenda' },
+  { nomRoute: 'revenus', icone: 'virement', libelle: 'Revenus' },
+];
+
+const OPTIONS_CREER: { type: 'programme' | 'seance' | 'offre'; libelle: string }[] = [
+  { type: 'programme', libelle: 'Nouveau programme' },
+  { type: 'seance', libelle: 'Nouvelle séance' },
+  { type: 'offre', libelle: 'Nouvelle offre' },
+];
+
+// docs/ecrans/L0-02-coquille-coach.md. La bascule vers l'espace client n'existe pas encore
+// (elle arrive en L1, par l'avatar) : ne pas la preparer ici.
+//
+// Ce groupe (tabs) ne contient QUE les quatre vrais onglets — creer/ et moi vivent un niveau
+// au-dessus (app/(coach)/_layout.tsx), en écrans frères de ce groupe, jamais parmi ces
+// Tabs.Screen. Même raison structurelle que app/(client)/(tabs)/_layout.tsx : l'historique
+// interne d'un Tabs (expo-router/js-tabs) ne retient que deux emplacements, jamais une vraie
+// pile — un troisième saut DANS ce Tabs perd l'entrée du milieu. Vérifié pour "creer" par
+// src/test/routage/cache-navigation-creer-coach.test.tsx (rouge avant cette restructuration :
+// un push vers creer/offre depuis l'onglet Clients, puis un retour arrière, atterrissait sur
+// Pilotage, jamais sur Clients).
+export default function LayoutTabsCoach() {
+  const theme = useTheme();
+  const [feuilleOuverte, setFeuilleOuverte] = useState(false);
+
+  function creer(type: 'programme' | 'seance' | 'offre') {
+    setFeuilleOuverte(false);
+    // `as Href` : voir le commentaire equivalent dans app/index.tsx — route reelle, type de
+    // .expo/types/router.d.ts trop generique hors serveur de developpement.
+    router.push(`/(coach)/creer/${type}` as Href);
+  }
+
+  return (
+    <FeuilleBasse
+      ouverte={feuilleOuverte}
+      onFermer={() => setFeuilleOuverte(false)}
+      enfants={
+        <View style={{ gap: theme.espace[1] }}>
+          {OPTIONS_CREER.map((option) => (
+            <Pressable
+              key={option.type}
+              onPress={() => creer(option.type)}
+              accessibilityRole="button"
+              style={{ minHeight: theme.taille.tapMin, justifyContent: 'center' }}
+            >
+              <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}>
+                {option.libelle}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      }
+    >
+      <Tabs
+        screenOptions={{ headerShown: false }}
+        tabBar={(props) => (
+          <BarreOngletsRoute
+            variante="coach"
+            entrees={ONGLETS}
+            actionCentrale={{
+              position: 2,
+              icone: 'ajouter',
+              libelle: 'Créer',
+              onPress: () => setFeuilleOuverte(true),
+            }}
+            {...props}
+          />
+        )}
+      >
+        <Tabs.Screen name="pilotage" />
+        <Tabs.Screen name="clients" />
+        <Tabs.Screen name="agenda" />
+        <Tabs.Screen name="revenus" />
+        {/* moi : écran 24 « Mon compte », même route relative que (client)/(tabs)/moi (L1-07).
+            Pas un onglet coach — atteint par l'avatar et la feuille de bascule, href:null comme
+            avant la restructuration. Reste À L'INTÉRIEUR de ce Tabs (contrairement à creer,
+            sorti au niveau du dessus) : hors du périmètre demandé pour cette correction — un
+            push vers /(coach)/moi depuis un onglet autre que Pilotage garde la même limite que
+            creer avait (retour arrière = Pilotage, jamais l'onglet quitté), non corrigée ici,
+            à signaler. */}
+        <Tabs.Screen name="moi" options={{ href: null }} />
+      </Tabs>
+    </FeuilleBasse>
+  );
+}

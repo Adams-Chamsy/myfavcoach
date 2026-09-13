@@ -17,7 +17,7 @@ import { FournisseurTheme } from '@/theme/fournisseur';
 // fireEvent ne déclenche aucun rendu fiable sous les minuteurs factices de renderRouter (leçon
 // des autres fichiers de src/test/routage/) : on remplace donc devenir-coach.tsx par un double
 // minimal qui rejoue EXACTEMENT ce que fait surValider après succès — creerProfilCoach (du
-// fournisseur, qui relit EtatProfils lui-même) PUIS router.replace('/(coach)/pilotage'). Le
+// fournisseur, qui relit EtatProfils lui-même) PUIS router.replace('/(coach)/(tabs)/pilotage'). Le
 // suivi du formulaire lui-même est couvert par app/(onboarding)/devenir-coach.test.tsx.
 const METRIQUES_ZONES_SURES: Metrics = {
   insets: { top: 59, right: 0, bottom: 34, left: 0 },
@@ -52,7 +52,7 @@ function DevenirCoachValideAuMontage() {
       telephone: '0612345678',
       prenom: 'Camille',
       nom: 'Dupré',
-    }).then(() => routeur.replace('/(coach)/pilotage'));
+    }).then(() => routeur.replace('/(coach)/(tabs)/pilotage'));
   }, [creerProfilCoach, routeur]);
   return null;
 }

@@ -72,7 +72,7 @@ export default function OnboardingCestParti() {
     }
     // Fixe, pas determinerDestination() : L1-05 ne connaît qu'une seule sortie possible
     // (garde.ts est pour le ROUTAGE au démarrage, pas pour la navigation intra-onboarding).
-    router.replace('/(client)/accueil' as Href);
+    router.replace('/(client)/(tabs)/accueil' as Href);
   }
 
   return (

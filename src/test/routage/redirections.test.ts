@@ -41,7 +41,7 @@ describe('determinerDestination (docs/prompts/L1.md, P1.10 + P1.11)', () => {
   });
 
   it('session vérifiée, profils jamais chargés (null) : même repli que "aucun profil du tout", jamais un espace accordé sans preuve', () => {
-    expect(determinerDestination(sessionVerifiee(), null)).toBe('/(client)/accueil');
+    expect(determinerDestination(sessionVerifiee(), null)).toBe('/(client)/(tabs)/accueil');
   });
 
   // Règle 4 : un profil client existe, mais onboarding_etape n'a pas dépassé 4 — une valeur
@@ -70,7 +70,7 @@ describe('determinerDestination (docs/prompts/L1.md, P1.10 + P1.11)', () => {
       clientOnboardingEtape: 5,
       coachExiste: false,
     });
-    expect(determinerDestination(sessionVerifiee(), profils)).toBe('/(client)/accueil');
+    expect(determinerDestination(sessionVerifiee(), profils)).toBe('/(client)/(tabs)/accueil');
   });
 
   // Règle 6.
@@ -81,7 +81,7 @@ describe('determinerDestination (docs/prompts/L1.md, P1.10 + P1.11)', () => {
       clientOnboardingEtape: null,
       coachExiste: true,
     });
-    expect(determinerDestination(sessionVerifiee(), profils)).toBe('/(coach)/pilotage');
+    expect(determinerDestination(sessionVerifiee(), profils)).toBe('/(coach)/(tabs)/pilotage');
   });
 
   // profilActif='coach' sans profil coach réel ne devrait jamais arriver en pratique
@@ -96,7 +96,7 @@ describe('determinerDestination (docs/prompts/L1.md, P1.10 + P1.11)', () => {
       clientOnboardingEtape: null,
       coachExiste: false,
     });
-    expect(determinerDestination(sessionVerifiee(), profils)).toBe('/(client)/accueil');
+    expect(determinerDestination(sessionVerifiee(), profils)).toBe('/(client)/(tabs)/accueil');
   });
 
   // Règle 7 (une route de (public) atteinte avec une session valide → renvoi vers l'espace

@@ -33,12 +33,12 @@ export function determinerDestination(
   if (profils?.profilActif === 'client') {
     if (!profils.clientExiste) return ROUTE_PAR_ETAPE[1]; // règle 3 : aucun profil du tout
     const etape = profils.clientOnboardingEtape ?? 1;
-    if (etape > 4) return '/(client)/accueil' as Href; // onboarding terminé → règle 5
+    if (etape > 4) return '/(client)/(tabs)/accueil' as Href; // onboarding terminé → règle 5
     return ROUTE_PAR_ETAPE[etape] ?? ROUTE_PAR_ETAPE[1]; // règle 4 : étape non terminée
   }
 
   if (profils?.profilActif === 'coach' && profils.coachExiste) {
-    return '/(coach)/pilotage' as Href; // règle 6
+    return '/(coach)/(tabs)/pilotage' as Href; // règle 6
   }
 
   // Repli, deux cas distincts qui restent fusionnés (aucun des deux n'est une des sept
@@ -51,5 +51,5 @@ export function determinerDestination(
   //   ce cas, et il n'entre dans aucune des sept règles de P1.10 (qui ne couvrent que le côté
   //   client de cette situation). `(client)/accueil` reste ici la même destination
   //   provisoire qu'avant P1.11, pas une invention.
-  return '/(client)/accueil' as Href;
+  return '/(client)/(tabs)/accueil' as Href;
 }

@@ -59,6 +59,6 @@ describe('L2-07 · Devenir coach — étape 4/4 (c’est parti)', () => {
     expect(texteEcran).not.toMatch(/coordonnées bancaires/i);
 
     await fireEvent.press(screen.getByRole('button', { name: 'Aller à mon espace coach' }));
-    expect(mockRemplacer).toHaveBeenCalledWith('/(coach)/pilotage');
+    expect(mockRemplacer).toHaveBeenCalledWith('/(coach)/(tabs)/pilotage');
   });
 });
