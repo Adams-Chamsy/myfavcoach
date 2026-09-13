@@ -2599,10 +2599,17 @@ describe('rechercher_coachs', () => {
   // même motif que 'natation' pour decider_verification_coach.
   const DISCIPLINE_RECHERCHE = 'discipline-recherche-banc';
   const DISCIPLINE_PLAFOND = 'discipline-plafond-banc';
+  // Sert aussi de texte recherché tel quel dans le test de correspondance textuelle : une
+  // discipline dont la CLÉ est le mot recherché exerce la branche "correspondance exacte"
+  // (case 3) sans dépendre d'une coïncidence avec une vraie discipline.
+  const DISCIPLINE_TEXTE = 'discipline-texte-banc';
 
   let coachLyon: Session;
   let coachParis: Session;
   let coachVisio: Session;
+  let coachVisioComplet: Session;
+  let coachTexteDiscipline: Session;
+  let coachTexteBio: Session;
   let coachSansOffrePubliee: Session;
   let coachPlafond: Session;
   const profilsCrees: string[] = [];
@@ -2685,14 +2692,16 @@ describe('rechercher_coachs', () => {
 
   let referenceDisciplineRecherche: string;
   let referenceDisciplinePlafond: string;
+  let referenceDisciplineTexte: string;
 
   beforeAll(async () => {
-    // Deux lignes de référence éphémères — même motif que 'natation' plus haut : ce describe
+    // Trois lignes de référence éphémères — même motif que 'natation' plus haut : ce describe
     // teste rechercher_coachs(), pas la table disciplines elle-même, une discipline dédiée
     // évite de coupler ce test à une clé réelle qui pourrait changer.
     for (const [cle, ordre] of [
       [DISCIPLINE_RECHERCHE, 90],
       [DISCIPLINE_PLAFOND, 91],
+      [DISCIPLINE_TEXTE, 92],
     ] as const) {
       const ref = await appelRest('/rest/v1/disciplines', {
         methode: 'POST',
@@ -2708,6 +2717,7 @@ describe('rechercher_coachs', () => {
     }
     referenceDisciplineRecherche = DISCIPLINE_RECHERCHE;
     referenceDisciplinePlafond = DISCIPLINE_PLAFOND;
+    referenceDisciplineTexte = DISCIPLINE_TEXTE;
 
     // Lyon (69123), présentiel, bonne complétude (bio + parcours ≥ 80 caractères, photo).
     const lyon = await creerCoachVerifie({
@@ -2723,7 +2733,9 @@ describe('rechercher_coachs', () => {
     await publierOffreAdmin(lyon.profilId, 'Offre Lyon', 3000);
 
     // Paris (75056), présentiel, complétude nulle (rien renseigné) — plus loin de Lyon et moins
-    // complet : doit apparaître APRÈS le coach de Lyon dans une recherche centrée sur Lyon.
+    // complet : doit apparaître APRÈS le coach de Lyon dans une recherche centrée sur Lyon. Prix
+    // délibérément différent des autres (9000, contre 3000 ailleurs) : seul candidat du groupe à
+    // exclure par un filtre de budget, sans toucher aux autres tests de ce describe.
     const paris = await creerCoachVerifie({
       suffixe: 'recherche-paris',
       discipline: DISCIPLINE_RECHERCHE,
@@ -2731,11 +2743,13 @@ describe('rechercher_coachs', () => {
       formats: ['presentiel'],
     });
     coachParis = paris.session;
-    await publierOffreAdmin(paris.profilId, 'Offre Paris', 3000);
+    await publierOffreAdmin(paris.profilId, 'Offre Paris', 9000);
 
     // Visio : proximité fixe à 0,6 quelle que soit la commune demandée (docs/domaine.md §5.7) —
     // doit passer devant Paris (loin) mais reste derrière Lyon (0 km, proximité 1,0) dans une
-    // recherche centrée sur Lyon.
+    // recherche centrée sur Lyon. Complétude nulle : isole la proximité de la complétude dans le
+    // test d'ordonnancement (Lyon a AUSSI la meilleure complétude — ce coach-ci n'a que la
+    // proximité pour se distinguer de Paris).
     const visio = await creerCoachVerifie({
       suffixe: 'recherche-visio',
       discipline: DISCIPLINE_RECHERCHE,
@@ -2743,6 +2757,44 @@ describe('rechercher_coachs', () => {
     });
     coachVisio = visio.session;
     await publierOffreAdmin(visio.profilId, 'Offre Visio', 3000);
+
+    // Même proximité que le précédent (visio, 0,6 fixe), mais bonne complétude — isole la
+    // complétude de la proximité : à proximité strictement égale, seule la complétude doit
+    // départager les deux.
+    const visioComplet = await creerCoachVerifie({
+      suffixe: 'recherche-visio-complet',
+      discipline: DISCIPLINE_RECHERCHE,
+      formats: ['visio'],
+      bio: BIO_LONGUE,
+      parcoursTexte: BIO_LONGUE,
+      photoUrl: 'https://exemple.test/photo.jpg',
+    });
+    coachVisioComplet = visioComplet.session;
+    await publierOffreAdmin(visioComplet.profilId, 'Offre Visio complet', 3000);
+
+    // Correspondance textuelle (docs/domaine.md §5.6) : deux coachs à proximité et complétude
+    // STRICTEMENT égales (visio, rien renseigné), qui ne diffèrent que par où le texte recherché
+    // apparaît — la discipline elle-même (correspondance exacte, cas 3) pour l'un, la bio
+    // seulement (cas 1) pour l'autre. DISCIPLINE_TEXTE sert de mot recherché ET de discipline :
+    // sa propre ligne de référence (voir plus haut) en fait une clé valide pour la contrainte.
+    const texteDiscipline = await creerCoachVerifie({
+      suffixe: 'recherche-texte-discipline',
+      discipline: DISCIPLINE_TEXTE,
+      formats: ['visio'],
+    });
+    coachTexteDiscipline = texteDiscipline.session;
+    await publierOffreAdmin(texteDiscipline.profilId, 'Offre texte discipline', 3000);
+
+    const texteBio = await creerCoachVerifie({
+      suffixe: 'recherche-texte-bio',
+      discipline: DISCIPLINE_RECHERCHE,
+      formats: ['visio'],
+      // Sous 80 caractères : ne compte pas dans la complétude (docs/domaine.md §5.6), pour
+      // rester à égalité stricte avec coachTexteDiscipline (bio nulle) sur cette dimension.
+      bio: `Spécialiste ${DISCIPLINE_TEXTE}.`,
+    });
+    coachTexteBio = texteBio.session;
+    await publierOffreAdmin(texteBio.profilId, 'Offre texte bio', 3000);
 
     // Vérifié, mais AUCUNE offre publiée (seulement un brouillon) — ne doit jamais apparaître.
     const sansOffre = await creerCoachVerifie({
@@ -2782,19 +2834,24 @@ describe('rechercher_coachs', () => {
       coachLyon,
       coachParis,
       coachVisio,
+      coachVisioComplet,
+      coachTexteDiscipline,
+      coachTexteBio,
       coachSansOffrePubliee,
       coachPlafond,
     ]) {
       if (session) await supprimerCompteReel(session.compteId);
     }
-    await appelRest(`/rest/v1/disciplines?cle=eq.${referenceDisciplineRecherche}`, {
-      methode: 'DELETE',
-      session: 'admin',
-    });
-    await appelRest(`/rest/v1/disciplines?cle=eq.${referenceDisciplinePlafond}`, {
-      methode: 'DELETE',
-      session: 'admin',
-    });
+    for (const cle of [
+      referenceDisciplineRecherche,
+      referenceDisciplinePlafond,
+      referenceDisciplineTexte,
+    ]) {
+      await appelRest(`/rest/v1/disciplines?cle=eq.${cle}`, {
+        methode: 'DELETE',
+        session: 'admin',
+      });
+    }
   }, 30_000);
 
   it('anon cherche par discipline : ne rend que des coachs vérifiés avec une offre publiée dans cette discipline', async () => {
@@ -2805,7 +2862,10 @@ describe('rechercher_coachs', () => {
     });
     expect(statut).toBe(200);
     const lignes = corps as LigneRecherche[];
-    expect(lignes).toHaveLength(3);
+    // Lyon, Paris, Visio, Visio complet, Texte bio — cinq candidats de DISCIPLINE_RECHERCHE avec
+    // une offre publiée. Texte discipline en est exclu : sa discipline est DISCIPLINE_TEXTE, pas
+    // celle-ci.
+    expect(lignes).toHaveLength(5);
     expect(new Set(lignes.map((l) => l.discipline))).toEqual(new Set([DISCIPLINE_RECHERCHE]));
     // Illégitime, au même endroit que le légitime (règle 6) : ni D (coach non vérifié, offre
     // publiée en 'yoga'), ni le coach sans offre publiée n'apparaissent.
@@ -2840,6 +2900,80 @@ describe('rechercher_coachs', () => {
     const prenoms = (corps as LigneRecherche[]).map((l) => l.prenom);
     expect(prenoms.indexOf('recherche-lyon')).toBeLessThan(prenoms.indexOf('recherche-visio'));
     expect(prenoms.indexOf('recherche-visio')).toBeLessThan(prenoms.indexOf('recherche-paris'));
+  });
+
+  it('la complétude ordonne correctement, à proximité STRICTEMENT égale (deux coachs visio)', async () => {
+    // Sans commune demandée : les deux presentiel (Lyon, Paris) tombent à proximité 0, les deux
+    // visio restent à 0,6 — seule la complétude peut alors les départager entre eux.
+    const { corps } = await appelRest('/rest/v1/rpc/rechercher_coachs', {
+      methode: 'POST',
+      session: 'anon',
+      corps: { p_discipline: DISCIPLINE_RECHERCHE, p_limite: 30 },
+    });
+    const prenoms = (corps as LigneRecherche[]).map((l) => l.prenom);
+    expect(prenoms.indexOf('recherche-visio-complet')).toBeLessThan(
+      prenoms.indexOf('recherche-visio'),
+    );
+  });
+
+  it('la correspondance textuelle ordonne correctement : discipline exacte devant bio seule, à proximité et complétude égales', async () => {
+    const { corps } = await appelRest('/rest/v1/rpc/rechercher_coachs', {
+      methode: 'POST',
+      session: 'anon',
+      corps: { p_texte: DISCIPLINE_TEXTE, p_limite: 30 },
+    });
+    const lignes = corps as LigneRecherche[];
+    const prenoms = lignes.map((l) => l.prenom);
+    expect(prenoms).toContain('recherche-texte-discipline');
+    expect(prenoms).toContain('recherche-texte-bio');
+    expect(prenoms.indexOf('recherche-texte-discipline')).toBeLessThan(
+      prenoms.indexOf('recherche-texte-bio'),
+    );
+    // Aucun des autres candidats du describe n'a de raison de matcher ce texte (ni leur
+    // discipline, ni leur titre, ni leur bio ne le contiennent).
+    expect(prenoms).not.toContain('recherche-lyon');
+    expect(prenoms).not.toContain('recherche-paris');
+  });
+
+  it('le filtre de budget exclut une offre hors bornes, sans toucher aux autres', async () => {
+    const { corps } = await appelRest('/rest/v1/rpc/rechercher_coachs', {
+      methode: 'POST',
+      session: 'anon',
+      corps: { p_discipline: DISCIPLINE_RECHERCHE, p_prix_max: 5000 },
+    });
+    const prenoms = (corps as LigneRecherche[]).map((l) => l.prenom);
+    // Paris (9000) est le seul candidat du groupe au-dessus de la borne.
+    expect(prenoms).not.toContain('recherche-paris');
+    expect(prenoms).toContain('recherche-lyon');
+  });
+
+  it('le filtre de format exclut les coachs présentiel quand seul « visio » est demandé', async () => {
+    const { corps } = await appelRest('/rest/v1/rpc/rechercher_coachs', {
+      methode: 'POST',
+      session: 'anon',
+      corps: { p_discipline: DISCIPLINE_RECHERCHE, p_format: 'visio', p_limite: 30 },
+    });
+    const prenoms = (corps as LigneRecherche[]).map((l) => l.prenom);
+    expect(new Set(prenoms)).toEqual(
+      new Set(['recherche-visio', 'recherche-visio-complet', 'recherche-texte-bio']),
+    );
+  });
+
+  it('un coach non vérifié (D) n’apparaît jamais, même en filtrant sur sa propre discipline', async () => {
+    // D (module-level, describe('offres')) est en 'yoga', jamais vérifié, avec une offre
+    // publiée directement par service_role (fixture délibérément incohérente, même famille que
+    // le test équivalent de describe('offres')) — persiste pour tout le fichier (afterAll
+    // global). Filtrer explicitement sur SA discipline exerce vraiment le filtre
+    // statut_verification, contrairement à une recherche sur DISCIPLINE_RECHERCHE où D serait de
+    // toute façon absent par discipline seule, sans que ce test ne prouve rien sur la
+    // vérification.
+    const { corps } = await appelRest('/rest/v1/rpc/rechercher_coachs', {
+      methode: 'POST',
+      session: 'anon',
+      corps: { p_discipline: 'yoga', p_limite: 30 },
+    });
+    const lignes = corps as LigneRecherche[];
+    expect(lignes.some((l) => l.coach_id === profilCoachIdD)).toBe(false);
   });
 
   it('un coach « visio » ressort quelle que soit la commune demandée (docs/domaine.md §5.7)', async () => {
