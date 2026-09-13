@@ -5,7 +5,7 @@ import type { ReactTestRendererJSON } from 'react-test-renderer';
 
 import Galerie from '../../app/_galerie';
 import Accueil from '../../app/(client)/accueil';
-import Explorer from '../../app/(client)/explorer';
+import { CorpsExplorer } from '../../app/(client)/explorer';
 import Seance from '../../app/(client)/seance';
 import Messages from '../../app/(client)/messages';
 import Moi from '../../app/(client)/moi';
@@ -116,6 +116,9 @@ function contientTexte(noeud: Noeud): boolean {
 // Android à 3 boutons) — voir docs/dette.md, il reste un angle mort manuel sur appareil.
 const ECRANS_CHROME_HAUT = new Set([
   'app/(client)/accueil.tsx',
+  // L3-02 : en-tête (retour, recherche, filtres) posé contre insets.top, même motif
+  // qu'accueil.tsx (règle de conduite CLAUDE.md §8, trouvée deux fois avant ce lot).
+  'app/(client)/explorer.tsx',
   'app/(coach)/pilotage.tsx',
   'app/(client)/moi.tsx',
   'app/(coach)/moi.tsx',
@@ -430,7 +433,19 @@ const CORPUS: EntreeCorpus[] = [
       </FournisseurSession>
     ),
   },
-  { nom: 'app/(client)/explorer.tsx', creerElement: () => <Explorer key="explorer" /> },
+  {
+    // Même besoin que accueil.tsx ci-dessus : CorpsExplorer appelle useDonnees(). Rendu directement
+    // (pas le défaut Explorer, qui lit useLocalSearchParams — ne se résout pas hors vraie route,
+    // même motif que CorpsProfilCoachPublic).
+    nom: 'app/(client)/explorer.tsx',
+    creerElement: () => (
+      <FournisseurSession key="explorer" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <CorpsExplorer />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
   { nom: 'app/(client)/seance.tsx', creerElement: () => <Seance key="seance" /> },
   { nom: 'app/(client)/messages.tsx', creerElement: () => <Messages key="messages" /> },
   {

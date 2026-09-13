@@ -61,6 +61,9 @@ import Documents from './(compte)/documents';
 import Export from './(compte)/export';
 import { CorpsDocumentLegal } from './(public)/documents/[type]';
 import { CorpsProfilCoachPublic } from './(client)/coach/[id]';
+import Accueil from './(client)/accueil';
+import { CorpsExplorer } from './(client)/explorer';
+import type { ResultatRecherche } from '@/services/donnees/port';
 import {
   FournisseurMouvementReduit,
   FournisseurTheme,
@@ -129,6 +132,7 @@ function Corps({
       <SectionFeuilleBascule />
       <SectionEcransL1 />
       <SectionEcransL2 />
+      <SectionEcransL3 />
       <PiedGalerie
         themeClair={themeClair}
         onChangeThemeClair={onChangeThemeClair}
@@ -1346,6 +1350,169 @@ const ECRANS_L2: { titre: string; rendu: () => ReactNode }[] = [
     rendu: () => <ProfilCoachPublicAvecFixture />,
   },
 ];
+
+// L3-01/L3-02 ont besoin de résultats de recherche réels (rechercher_coachs, docs/prompts/
+// L3.md) — le faux port par défaut n'en renvoie aucun (definirRechercheCoachsPourTest n'est pas
+// personnalisée par creerSessionDemonstration). Même motif que DocumentsAvecFixture/
+// ExportAvecFixture ci-dessus : chacun construit son propre port de données, monté dans son
+// propre FournisseurDonnees qui masque celui de SectionEcransL3 pour ce seul rendu.
+function coachDemonstrationRecherche(
+  surcharges: {
+    offreId?: string;
+    coachId?: string;
+    prenom?: string;
+    nom?: string;
+    discipline?: string;
+    titreCourt?: string | null;
+    formats?: string[];
+    prixCentimes?: number;
+  } = {},
+) {
+  return {
+    offreId: surcharges.offreId ?? 'offre-galerie-1',
+    coachId: surcharges.coachId ?? 'coach-galerie-1',
+    prenom: surcharges.prenom ?? 'Nadia',
+    nom: surcharges.nom ?? 'Belkacem',
+    photoUrl: null,
+    discipline: surcharges.discipline ?? 'cybersécurité',
+    titreCourt: surcharges.titreCourt ?? 'Sécurité offensive',
+    communeBaseInsee: null,
+    formats: surcharges.formats ?? ['visio'],
+    titre: 'Suivi mensuel',
+    prixCentimes: surcharges.prixCentimes ?? 3900,
+  };
+}
+
+function AccueilAvecFixture() {
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    p.definirEtatProfilsPourTest(
+      etatProfilsParDefaut({
+        profilActif: 'client',
+        clientExiste: true,
+        identiteActive: { prenom: 'Camille', nom: 'Dupont' },
+      }),
+    );
+    p.definirRechercheCoachsPourTest(() => ({
+      resultats: [
+        coachDemonstrationRecherche({}),
+        coachDemonstrationRecherche({
+          offreId: 'offre-galerie-2',
+          coachId: 'coach-galerie-2',
+          prenom: 'Farid',
+          nom: 'Aziz',
+          discipline: 'préparation physique',
+          titreCourt: 'Remise en forme',
+          formats: ['presentiel'],
+          prixCentimes: 5500,
+        }),
+      ],
+      totalResultats: 2,
+    }));
+    return p;
+  });
+  return (
+    <FournisseurDonnees port={port}>
+      <Accueil />
+    </FournisseurDonnees>
+  );
+}
+
+function ExplorerAvecResultatsFixture() {
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    p.definirRechercheCoachsPourTest(() => ({
+      resultats: [
+        coachDemonstrationRecherche({}),
+        coachDemonstrationRecherche({
+          offreId: 'offre-galerie-2',
+          coachId: 'coach-galerie-2',
+          prenom: 'Farid',
+          nom: 'Aziz',
+          discipline: 'préparation physique',
+          titreCourt: 'Remise en forme',
+          formats: ['presentiel'],
+          prixCentimes: 5500,
+        }),
+      ],
+      totalResultats: 2,
+    }));
+    return p;
+  });
+  return (
+    <FournisseurDonnees port={port}>
+      <CorpsExplorer />
+    </FournisseurDonnees>
+  );
+}
+
+// L3-03, état normal du jalon 1 (docs/ecrans/L3-03-recherche-aucun-resultat.md) : aucun filtre
+// posé par défaut dans ce rendu de galerie, donc l'état vide honnête montré ici est le premier
+// niveau seul — le relâchement de format (« Ouvrir aux coachs en visio ») dépend d'un filtre
+// posé via la feuille (exercé par app/(client)/explorer.test.tsx), pas rejoué ici à la main.
+function ExplorerAucunResultatFixture() {
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    p.definirRechercheCoachsPourTest((): ResultatRecherche => ({
+      resultats: [],
+      totalResultats: 0,
+    }));
+    return p;
+  });
+  return (
+    <FournisseurDonnees port={port}>
+      <CorpsExplorer />
+    </FournisseurDonnees>
+  );
+}
+
+const ECRANS_L3: { titre: string; rendu: () => ReactNode }[] = [
+  { titre: 'L3-01 · Accueil / découverte', rendu: () => <AccueilAvecFixture /> },
+  { titre: 'L3-02 · Recherche et filtres', rendu: () => <ExplorerAvecResultatsFixture /> },
+  { titre: 'L3-03 · Recherche, aucun résultat', rendu: () => <ExplorerAucunResultatFixture /> },
+];
+
+function SectionEcransL3() {
+  const theme = useTheme();
+  const [session, setSession] = useState<Awaited<
+    ReturnType<typeof creerSessionDemonstration>
+  > | null>(null);
+
+  useEffect(() => {
+    let monte = true;
+    void creerSessionDemonstration().then((s) => {
+      if (monte) setSession(s);
+    });
+    return () => {
+      monte = false;
+    };
+  }, []);
+
+  if (!session) return null;
+
+  return (
+    <Section titre="16 · Écrans du lot L3">
+      {ECRANS_L3.map(({ titre, rendu }) => (
+        <View key={titre} style={{ gap: theme.espace[2] }}>
+          <SousTitre texte={titre} />
+          <View
+            style={{
+              height: 520,
+              overflow: 'hidden',
+              borderRadius: theme.rayon.saisie,
+              borderWidth: 1,
+              borderColor: theme.couleur.bordure.discrete,
+            }}
+          >
+            <FournisseurSession port={session.portAuth}>
+              <FournisseurDonnees port={session.portDonnees}>{rendu()}</FournisseurDonnees>
+            </FournisseurSession>
+          </View>
+        </View>
+      ))}
+    </Section>
+  );
+}
 
 function SectionEcransL1() {
   const theme = useTheme();
