@@ -1,5 +1,6 @@
 import { supabase } from '@/services/supabase/client';
 import type {
+  Discipline,
   DossierVerification,
   EtatProfils,
   InformationsCompte,
@@ -587,6 +588,16 @@ export const portDonneesSupabase: PortDonnees = {
       parcoursTexte: ligne.parcours_texte,
       langues: ligne.langues,
     } satisfies ProfilCoachPublic;
+  },
+
+  async lireDisciplines() {
+    const { data, error } = await supabase
+      .from('disciplines')
+      .select('cle, libelle')
+      .eq('active', true)
+      .order('ordre_affichage', { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as Discipline[];
   },
 
   async lireOffresPublieesDeCoach(coachId) {

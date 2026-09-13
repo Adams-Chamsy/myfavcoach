@@ -116,7 +116,8 @@ describe('secrets interdits côté application', () => {
   //
   // Chaque exception est nommée une par une : ajouter une clé ici est un choix humain, jamais
   // un motif générique qui laisserait passer un fichier de plus sans que personne le décide.
-  // Les dix ci-dessous nomment "service_role" pour avertir qu'elle est interdite, ou l'utilisent
+  // Les vingt ci-dessous (compte à jour au 13 septembre 2026, pas figé) nomment "service_role"
+  // pour avertir qu'elle est interdite, ou l'utilisent
   // légitimement côté outillage de test, de migration ou de CI (jamais dans l'application) — la
   // doc qui nomme le danger n'est pas le danger :
   //   - .env.exemple                                 : le commentaire qui explique le préfixe EXPO_PUBLIC_
@@ -124,6 +125,7 @@ describe('secrets interdits côté application', () => {
   //   - docs/backend.md                               : §6, "ce qui ne quitte jamais le serveur"
   //   - docs/prompts/L1.md                            : historique du prompt qui a posé cette règle
   //   - docs/prompts/L2.md                            : règle 5, la cause concrète des rouges en cascade de P2.4 (fixtures créées par service_role, pas par la session testée)
+  //   - docs/prompts/L3.md                            : même règle 5, reprise pour ce lot (préparation des tests par service_role, jamais par la session dont le test mesure les droits)
   //   - eslint.config.js                              : le motif de la règle ESLint qui interdit la chaîne dans le code
   //   - supabase/migrations/0001_creer_identite.sql   : commentaires expliquant pourquoi aucun grant n'est posé pour ce rôle
   //   - supabase/migrations/0003_accorder_service_role.sql : corrige cette hypothèse — les GRANT que ce rôle nécessite réellement sur ce projet, justifiés ligne à ligne
@@ -133,6 +135,8 @@ describe('secrets interdits côté application', () => {
   //   - supabase/migrations/0013_creer_role_examinateur.sql : commentaires expliquant pourquoi la promotion est_examinateur reste une opération manuelle par service_role, jamais par l'application
   //   - supabase/migrations/0014_accorder_service_role_promotion_examinateur.sql : GRANT UPDATE étroit (une seule colonne) pour que service_role puisse réaliser cette opération manuelle, jamais un rôle client
   //   - supabase/migrations/0015_creer_decision_verification.sql : GRANT SELECT seul pour service_role, pour vérifier au banc qu'une décision a bien été journalisée
+  //   - supabase/migrations/0020_creer_disciplines_reference.sql : commentaire expliquant qu'ajouter une discipline reste une opération manuelle par service_role, jamais par l'application (même motif que 0013)
+  //   - supabase/migrations/0021_accorder_service_role_disciplines.sql : GRANT étroit (select/insert/delete) pour que service_role prépare ses propres lignes de référence au banc, même trou que 0009/0010/0014
   //   - app/(admin)/verification.tsx : commentaire expliquant que la consultation des pièces passe par le compte examinateur, jamais par service_role
   //   - supabase/config.toml                          : commentaire généré par `supabase init`, décrivant les rôles de la Data API
   //   - src/test/rls.banc.ts                          : le nom de variable (SERVICE_ROLE_KEY) apparaît pour préparer le banc ; sa valeur, jamais écrite ici, est lue depuis .secrets-rls.local (ignoré par git) — jamais dans l'application
@@ -144,6 +148,7 @@ describe('secrets interdits côté application', () => {
       'docs/backend.md',
       'docs/prompts/L1.md',
       'docs/prompts/L2.md',
+      'docs/prompts/L3.md',
       'eslint.config.js',
       'supabase/migrations/0001_creer_identite.sql',
       'supabase/migrations/0003_accorder_service_role.sql',
@@ -153,6 +158,8 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0013_creer_role_examinateur.sql',
       'supabase/migrations/0014_accorder_service_role_promotion_examinateur.sql',
       'supabase/migrations/0015_creer_decision_verification.sql',
+      'supabase/migrations/0020_creer_disciplines_reference.sql',
+      'supabase/migrations/0021_accorder_service_role_disciplines.sql',
       'app/(admin)/verification.tsx',
       'supabase/config.toml',
       'src/test/rls.banc.ts',

@@ -97,6 +97,15 @@ export type DossierVerification = {
 export type TypePiece = 'identite' | 'diplome_ou_certification' | 'assurance_rc_pro';
 export type PieceDeposee = { type: TypePiece; deposeLe: string };
 
+// Table de référence `disciplines` (0020_creer_disciplines_reference.sql, `docs/domaine.md`
+// §3.2bis) : `profils_coach.discipline` référence `cle` par clé étrangère depuis ce même lot —
+// « Préparation physique » et « préparation physique » ne peuvent plus être deux valeurs
+// distinctes. `cle` est la valeur stockée (et le filtre de recherche, L3), `libelle` est le
+// texte affiché — les deux sont volontairement séparés : renommer un libellé ne touche jamais
+// aux profils déjà écrits. Catalogue destiné à grandir (nouvelles lignes), jamais une énumération
+// SQL figée.
+export type Discipline = { cle: string; libelle: string };
+
 // L2-15/L2-10 : docs/domaine.md §3.3. Une seule nature d'offre au jalon 1 — pas de champ type.
 export type Offre = {
   id: string;
@@ -256,6 +265,12 @@ export type PortDonnees = {
   // n'existe pas ou si son compte est supprimé.
   lireProfilCoachPublic(coachId: string): Promise<ProfilCoachPublic | null>;
   lireOffresPublieesDeCoach(coachId: string): Promise<Offre[]>;
+
+  // L1-08/L3 : le catalogue de disciplines (voir `Discipline`). Lecture publique (anon compris,
+  // comme les communes de L3-02) — actives seulement, triées par ordre_affichage. Remplace
+  // l'import direct de `disciplinesCoach` (`src/fixtures/demonstration.ts`, retiré le 13
+  // septembre 2026 : une règle métier n'a rien à faire dans un jeu de démonstration figé).
+  lireDisciplines(): Promise<Discipline[]>;
 
   // L2-01 (C-03) : appelle supprimer_mon_compte() (0018, SECURITY DEFINER) — comptes.supprime_le
   // n'a aucun GRANT UPDATE, comme profil_actif/statut_verification. L'écran vide ensuite la

@@ -160,18 +160,19 @@ ouvre au-delà de ces six villes, cette table doit grandir (import réel ou ajou
 Plus des inventions à confirmer : le plafond dur (30 lignes), le défilement infini, et
 l'exposition du total exact de résultats sont des décisions, prises et closes.
 
-## Ce qui reste ouvert
+## Discipline — défaut de modèle corrigé le 13 septembre 2026
 
-- **Le filtre discipline dépend de la résolution d'un défaut de modèle**, pas d'une décision de
-  cette fiche : `profils_coach.discipline` est un `text` libre depuis 0001, sans contrainte
-  d'aucune sorte au niveau de la base. Dans les faits, le seul écran qui écrit cette colonne
-  (`app/(onboarding)/devenir-coach.tsx`) choisit déjà parmi une liste fermée de sept clés
-  (`disciplinesCoach`, `src/fixtures/demonstration.ts`) — mais cette liste vit dans les
-  *fixtures* (donnée de démonstration, `CLAUDE.md` §3), pas dans une contrainte réelle : rien
-  n'empêche un autre chemin d'écriture (test, script, futur écran) d'y mettre autre chose. Trois
-  sorties proposées (énumération SQL, table de référence, normalisation à l'écriture), point
-  d'arrêt en cours avant d'écrire la migration de P3.2 — voir la discussion dédiée, hors de cette
-  fiche.
+`profils_coach.discipline` était un `text` libre depuis 0001, sans contrainte : « Préparation
+physique » et « préparation physique » y auraient été deux valeurs distinctes, rendant ce filtre
+non fiable. Corrigé par une table de référence, pas une énumération SQL (le catalogue de
+disciplines est destiné à grandir) ni une simple normalisation de forme (qui ne protège pas
+contre un synonyme comme « prépa physique ») — `docs/domaine.md` §3.2bis,
+`supabase/migrations/0020_creer_disciplines_reference.sql`. Le filtre de cet écran travaille sur
+`disciplines.cle`, exactement la même colonne que `profils_coach.discipline` référence.
+
+L'ancienne liste fermée (`disciplinesCoach`, vivait dans `src/fixtures/demonstration.ts`) est
+retirée : une règle métier n'a rien à faire dans un jeu de démonstration figé — c'était le vrai
+défaut, plus que les graphies elles-mêmes.
 
 ---
 

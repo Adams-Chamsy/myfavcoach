@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,9 +9,9 @@ import { Chip } from '@/composants/chip';
 import { EtatErreur } from '@/composants/etats/etat-erreur';
 import { textesRepliErreur } from '@/composants/etats/textes';
 import { Icone, type NomIcone } from '@/composants/icones';
-import { disciplinesCoach } from '@/fixtures/demonstration';
 import { EnteteOnboarding } from '@/fonctionnalites/identite/entete-onboarding';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
+import type { Discipline } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
 
 // docs/ecrans/L1-08-activation-espace-coach.md. Remplace la coquille posée par P1.12. Crée le
@@ -51,13 +51,27 @@ export default function DevenirCoach() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { profils, creerProfilCoach } = useDonnees();
+  const { profils, port, creerProfilCoach } = useDonnees();
 
   // Repris du profil client s'il existe, sans redemander (fiche, Règles + critère 6). Le nom
   // du client est facultatif (docs/domaine.md §3.2) alors que celui du coach est requis : si le
   // client n'a pas de nom, on le demande quand même.
   const prenomReprise = profils?.identiteActive.prenom ?? '';
   const nomReprise = profils?.identiteActive.nom ?? '';
+
+  // Table disciplines (0020_creer_disciplines_reference.sql), plus l'import direct de
+  // disciplinesCoach (src/fixtures/demonstration.ts, retiré le 13 septembre 2026) : une règle
+  // métier n'a rien à faire dans un jeu de démonstration figé.
+  const [disciplines, setDisciplines] = useState<Discipline[]>([]);
+  useEffect(() => {
+    let monte = true;
+    void port.lireDisciplines().then((valeurs) => {
+      if (monte) setDisciplines(valeurs);
+    });
+    return () => {
+      monte = false;
+    };
+  }, [port]);
 
   const [disciplineChoisie, setDisciplineChoisie] = useState<string | null>(null);
   const [telephone, setTelephone] = useState('');
@@ -137,7 +151,7 @@ export default function DevenirCoach() {
             Discipline
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.espace[2] }}>
-            {disciplinesCoach.map((discipline) => (
+            {disciplines.map((discipline) => (
               <Chip
                 key={discipline.cle}
                 variante="selection"

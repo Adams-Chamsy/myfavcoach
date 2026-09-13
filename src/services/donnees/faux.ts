@@ -1,4 +1,5 @@
 import type {
+  Discipline,
   DossierVerification,
   EtatProfils,
   InformationsCompte,
@@ -12,6 +13,20 @@ import type {
   ResultatEcriture,
   TypePiece,
 } from './port';
+
+// Mêmes sept clés que la migration 0020 (disciplines) — dupliquées ici volontairement : le faux
+// port ne touche jamais Postgres, il ne peut donc pas les lire depuis la vraie table. Pas
+// personnalisable par un `definirXPourTest` comme le reste de ce fichier : c'est un catalogue,
+// pas un état de test à faire varier.
+export const DISCIPLINES_FIGEES: Discipline[] = [
+  { cle: 'préparation physique', libelle: 'Préparation physique' },
+  { cle: 'yoga', libelle: 'Yoga' },
+  { cle: 'nutrition', libelle: 'Nutrition et diététique' },
+  { cle: 'cuisine', libelle: 'Cuisine et alimentation du quotidien' },
+  { cle: 'cybersécurité', libelle: 'Cybersécurité' },
+  { cle: 'RGPD', libelle: 'RGPD et protection des données' },
+  { cle: 'développement professionnel', libelle: 'Développement professionnel' },
+];
 
 export type FauxPortDonnees = PortDonnees & {
   // Réservé aux tests d'écran, jamais dans PortDonnees ni appelé par un écran — même
@@ -418,6 +433,10 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     },
     async lireProfilCoachPublic(coachId: string) {
       return profilsCoachPublics[coachId] ?? null;
+    },
+
+    async lireDisciplines() {
+      return DISCIPLINES_FIGEES;
     },
 
     definirOffresPubliquesPourTest(nouvellesOffresPubliques) {

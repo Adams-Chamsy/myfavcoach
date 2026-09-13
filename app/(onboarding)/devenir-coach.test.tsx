@@ -3,11 +3,14 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 
-import { disciplinesCoach } from '@/fixtures/demonstration';
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
-import { creerFauxPortDonnees, etatProfilsParDefaut } from '@/services/donnees/faux';
+import {
+  DISCIPLINES_FIGEES,
+  creerFauxPortDonnees,
+  etatProfilsParDefaut,
+} from '@/services/donnees/faux';
 import { FournisseurTheme } from '@/theme/fournisseur';
 import DevenirCoach from './devenir-coach';
 
@@ -63,6 +66,10 @@ async function rendre(options: { avecProfilClient?: boolean } = {}) {
   );
 
   await waitFor(() => expect(screen.queryByText('Ouvre ton espace coach.')).toBeTruthy());
+  // Les disciplines viennent désormais de port.lireDisciplines() (0020), résolu de façon
+  // asynchrone même contre le faux port — attendre une puce avant d'interagir, sinon les tests
+  // qui pressent un libellé de discipline courent devant le rendu (CLAUDE.md §8).
+  await waitFor(() => expect(screen.queryByText('Yoga')).toBeTruthy());
   return { portDonnees };
 }
 
@@ -79,7 +86,7 @@ describe('DevenirCoach (docs/ecrans/L1-08-activation-espace-coach.md)', () => {
   it('affiche la discipline (liste figée), le téléphone et le bouton d’ouverture', async () => {
     await rendre();
 
-    for (const discipline of disciplinesCoach) {
+    for (const discipline of DISCIPLINES_FIGEES) {
       expect(screen.getByText(discipline.libelle)).toBeTruthy();
     }
     expect(screen.getByLabelText('Téléphone')).toBeTruthy();
@@ -188,9 +195,9 @@ describe('DevenirCoach (docs/ecrans/L1-08-activation-espace-coach.md)', () => {
       '@/composants/etats/etat-erreur',
       '@/composants/etats/textes',
       '@/composants/icones',
-      '@/fixtures/demonstration',
       '@/fonctionnalites/identite/entete-onboarding',
       '@/fonctionnalites/identite/fournisseur-donnees',
+      '@/services/donnees/port',
       '@/theme/fournisseur',
     ]);
     expect(modulesImportes.filter((nom) => !AUTORISES.has(nom))).toEqual([]);

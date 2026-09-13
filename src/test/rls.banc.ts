@@ -629,7 +629,7 @@ describe('profils_coach', () => {
       {
         methode: 'PATCH',
         session: B,
-        corps: { discipline: 'cybersecurite' },
+        corps: { discipline: 'cybersécurité' },
       },
     );
     expect(corps).toEqual([]);
@@ -657,11 +657,11 @@ describe('profils_coach', () => {
         {
           methode: 'PATCH',
           session: B,
-          corps: { discipline: 'cybersecurite' },
+          corps: { discipline: 'cybersécurité' },
         },
       );
       expect(statut).toBe(200);
-      expect((corps as { discipline: string }[])[0].discipline).toBe('cybersecurite');
+      expect((corps as { discipline: string }[])[0].discipline).toBe('cybersécurité');
     } finally {
       await appelRest('/rest/v1/rpc/basculer_profil', {
         methode: 'POST',
@@ -2160,6 +2160,45 @@ describe('pieces_verification', () => {
 });
 
 // ---------------------------------------------------------------------------------------------
+// disciplines (0020_creer_disciplines_reference.sql) — validation de L3, 13 septembre 2026
+// ---------------------------------------------------------------------------------------------
+
+describe('disciplines — clé étrangère depuis profils_coach.discipline', () => {
+  let compteSansDiscipline: Session;
+
+  beforeAll(async () => {
+    compteSansDiscipline = await creerCompteReel(
+      `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-discipline-inconnue@${DOMAINE_EMAIL}`,
+      { date_naissance: '1991-01-01', cgu_version_acceptee: '2026-08-01' },
+    );
+  });
+
+  afterAll(async () => {
+    if (compteSansDiscipline) await supprimerCompteReel(compteSansDiscipline.compteId);
+  });
+
+  // C'est la contrainte elle-même qu'il faut exercer (validation de L3, 13 septembre 2026), pas
+  // un mécanisme qui se trouve sur le chemin (règle 9) : ce test écrit directement dans
+  // profils_coach par admin (service_role, qui contourne RLS mais jamais une contrainte de
+  // table) — une discipline absente de la table de référence doit être refusée par la clé
+  // étrangère elle-même, indépendamment de toute politique RLS ou de tout rôle.
+  it('une discipline absente de la table de référence est refusée à l’écriture (clé étrangère)', async () => {
+    const { statut, corps } = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        compte_id: compteSansDiscipline.compteId,
+        prenom: 'Sans',
+        nom: 'Discipline',
+        discipline: 'discipline-qui-n-existe-pas',
+      },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(corps)).toMatch(/foreign key|profils_coach_discipline_fkey/i);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
 // decider_verification_coach (0015_creer_decision_verification.sql, P2.6)
 // ---------------------------------------------------------------------------------------------
 
@@ -2169,6 +2208,26 @@ describe('decider_verification_coach', () => {
   let EXX: Session;
 
   beforeAll(async () => {
+    // 'natation' n'est PAS une des sept clés de disciplines (0020_creer_disciplines_reference.sql)
+    // : profils_coach.discipline porte une clé étrangère depuis ce même lot. Sa propre ligne de
+    // référence, insérée et retirée par ce describe — jamais une clé existante réutilisée pour
+    // ne pas coupler ce test à une autre discipline. Un test qui écrivait une valeur qu'aucune
+    // contrainte n'autorisait a survécu tout L2 sans que rien ne le signale (trouvé à la
+    // validation de L3, 13 septembre 2026) : c'était un faux vert de la même famille que la
+    // règle 9 (docs/prompts/L3.md), la préparation du test contournait une contrainte qui
+    // n'existait pas encore.
+    const referenceDiscipline = await appelRest('/rest/v1/disciplines', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { cle: 'natation', libelle: 'Natation', ordre_affichage: 99 },
+    });
+    if (referenceDiscipline.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : ligne de référence 'natation' refusée (${referenceDiscipline.statut}) : ` +
+          `${JSON.stringify(referenceDiscipline.corps)}`,
+      );
+    }
+
     // Coach dédié, forcé à 'en_examen' par service_role : seul état de départ nécessaire pour
     // prouver la transition acceptée vers 'verifiee'. D (module-level, describe('offres')) sert
     // pour la transition illégale depuis 'absente'.
@@ -2229,6 +2288,13 @@ describe('decider_verification_coach', () => {
   afterAll(async () => {
     if (coachEnExamen) await supprimerCompteReel(coachEnExamen.compteId);
     if (EXX) await supprimerCompteReel(EXX.compteId);
+    // Après la suppression du compte (cascade jusqu'à profils_coach, qui retire la seule ligne
+    // référençant 'natation') : la ligne de référence peut à son tour être retirée sans violer
+    // la clé étrangère.
+    await appelRest('/rest/v1/disciplines?cle=eq.natation', {
+      methode: 'DELETE',
+      session: 'admin',
+    });
   });
 
   it('un compte authenticated ordinaire (A) appelle la fonction : refusé (examinateur_requis)', async () => {
@@ -2341,6 +2407,20 @@ describe('date_verification_coach', () => {
   let horodatageAttendu: string;
 
   beforeAll(async () => {
+    // Sa propre ligne de référence pour 'natation' — même motif que describe
+    // ('decider_verification_coach') juste au-dessus, pas une clé existante réutilisée.
+    const referenceDiscipline = await appelRest('/rest/v1/disciplines', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { cle: 'natation', libelle: 'Natation', ordre_affichage: 99 },
+    });
+    if (referenceDiscipline.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : ligne de référence 'natation' refusée (${referenceDiscipline.statut}) : ` +
+          `${JSON.stringify(referenceDiscipline.corps)}`,
+      );
+    }
+
     coachVerifie = await creerCompteReel(
       `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-coach-date-verif@${DOMAINE_EMAIL}`,
       { date_naissance: '1990-01-01', cgu_version_acceptee: '2026-08-01' },
@@ -2429,6 +2509,12 @@ describe('date_verification_coach', () => {
     // describe('decider_verification_coach') juste au-dessus, même raison.
     if (coachVerifie) await supprimerCompteReel(coachVerifie.compteId);
     if (examinateurDate) await supprimerCompteReel(examinateurDate.compteId);
+    // Après la suppression du compte (cascade jusqu'à profils_coach) : la ligne de référence
+    // 'natation' peut être retirée sans violer la clé étrangère.
+    await appelRest('/rest/v1/disciplines?cle=eq.natation', {
+      methode: 'DELETE',
+      session: 'admin',
+    });
   });
 
   it('anon lit la date de vérification d’un coach vérifié : la bonne date, exacte', async () => {

@@ -133,10 +133,32 @@ appartiennent au même `Compte` est refusé (erreur `auto_abonnement_interdit`).
 `ProfilClient` : `prenom`, `nom`, `photo?`, `commune?`, `objectifTexte?`, `poidsDepartGrammes?`,
 `poidsCibleGrammes?`, `consentementSante` (voir 3.12).
 
-`ProfilCoach` : `prenom`, `nom`, `photo?`, `discipline` (une seule, dans une liste figée),
-`titreCourt`, `bio`, `communeBase?`, `formats` ⊆ {visio, presentiel}, `langues`,
+`ProfilCoach` : `prenom`, `nom`, `photo?`, `discipline` (une seule, référence `Discipline` ci-
+dessous), `titreCourt`, `bio`, `communeBase?`, `formats` ⊆ {visio, presentiel}, `langues`,
 `statutVerification`, `delaiReponseHeures` (calculé), `note` (calculée), `nombreAvis` (calculé),
 `nombreAbonnes` (calculé), `commissionOfferteJusquLe?`.
+
+### 3.2bis Discipline (catalogue)
+
+**Règle métier, écrite le 13 septembre 2026** — trouvée en défaut pendant la validation de L3 :
+`profils_coach.discipline` était un texte libre depuis 0001, sans contrainte. « Préparation
+physique » et « préparation physique » y auraient été deux valeurs distinctes, ce qui aurait
+rendu le filtre de recherche de L3 non fiable — la donnée le permettait, rien ne l'empêchait.
+
+`Discipline` : `cle` (la valeur stockée par `ProfilCoach.discipline`, et le filtre de recherche
+du lot L3), `libelle` (le texte affiché), `ordreAffichage`, `active`. Table de référence
+(`disciplines`, `supabase/migrations/0020_creer_disciplines_reference.sql`), **pas une
+énumération figée dans le schéma** : le catalogue est destiné à grandir — le produit se veut
+« toutes disciplines » (`CLAUDE.md` §1, sport/nutrition/cuisine/cybersécurité/développement
+professionnel ne sont qu'un point de départ) — une nouvelle discipline s'ajoute en insérant une
+ligne, jamais en modifiant un type SQL. `active = false` retire une discipline du catalogue
+proposé (inscription, filtre de recherche) sans invalider les profils qui la portent déjà : la
+clé étrangère depuis `ProfilCoach.discipline` vérifie seulement que la ligne existe, jamais
+`active`. `cle` et `libelle` sont volontairement séparés : renommer un libellé affiché ne touche
+jamais aux profils déjà écrits.
+
+Sept disciplines à l'ouverture du lot L3 : préparation physique, yoga, nutrition, cuisine,
+cybersécurité, RGPD, développement professionnel.
 
 ### 3.3 Offre
 

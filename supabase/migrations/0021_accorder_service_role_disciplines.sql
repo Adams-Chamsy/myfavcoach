@@ -1,0 +1,12 @@
+-- Meme trou que 0009/0010/0014, meme cause : ce projet n'accorde jamais rien a service_role
+-- automatiquement (0001), aucun chemin applicatif ni migration precedente n'avait accorde
+-- select/insert/delete sur disciplines -- la migration 0020 elle-meme l'oubliait. Trouve au
+-- premier vrai push+banc (13 septembre 2026), pas devine : "permission denied for table
+-- disciplines", "GRANT the required privileges... TO service_role" (message Postgres exact).
+--
+-- Usage reel, aucun de plus : src/test/rls.banc.ts insere et retire ses propres lignes de
+-- reference ephemeres (ex. 'natation', absente des sept disciplines reelles) pour prouver que la
+-- cle etrangere de profils_coach.discipline (0020) se comporte correctement sans coupler un test
+-- a une discipline de production. select est necessaire pour que PostgREST renvoie la ligne
+-- creee (Prefer: return=representation, deja utilise partout ailleurs dans le banc).
+grant select, insert, delete on public.disciplines to service_role;

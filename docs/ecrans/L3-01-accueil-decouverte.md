@@ -49,13 +49,12 @@ discipline, prénom + nom, accroche courte (`titreCourt`), prix.
   donnée qui n'existe nulle part, et qui ne peut donc être ni affichée ni même son absence
   décidée avant que L6 ne construise `Programme`. Ces deux blocs n'apparaissent pas sur cet
   écran à ce lot ; `docs/dette.md` note leur ajout comme dépendant de L6/L7, pas comme un oubli.
-- **Correction à la maquette (3/3) — les puces de discipline listent des disciplines réelles.**
-  La maquette montre « Musculation », « Nutrition », « Cuisine » : trois valeurs choisies pour la
-  maquette, pas une liste figée de disciplines écrite dans `docs/domaine.md`. Aucune énumération
-  de disciplines n'existe dans le schéma (`profils_coach.discipline` est `text`, pas un type
-  énuméré) — la fiche ne peut donc pas fixer une liste ici. Proposition à valider avant P3.4 :
-  soit une poignée de disciplines les plus représentées dans le jeu de démonstration
-  (`docs/domaine.md` §6), soit « Tout » seul jusqu'à ce qu'un référentiel de disciplines existe.
+- **Correction à la maquette (3/3) — les puces de discipline viennent de la table `disciplines`,
+  résolu le 13 septembre 2026.** La maquette montre « Musculation », « Nutrition », « Cuisine » :
+  trois valeurs choisies pour la maquette, jamais reprises telles quelles. Depuis
+  `docs/domaine.md` §3.2bis (`supabase/migrations/0020_creer_disciplines_reference.sql`), un
+  vrai catalogue existe (`port.lireDisciplines()`, même méthode que `devenir-coach.tsx`) : « Tout »
+  suivi des disciplines actives, dans leur `ordreAffichage`.
 - **Lecture publique du carrousel, mais écran non accessible à `anon`.** Le bloc « Coachs pour
   toi » appelle la même fonction publique que `L3-02` (§10, `docs/backend.md`) — un `anon` qui y
   accéderait directement verrait la même chose qu'un client connecté, aucune personnalisation
@@ -71,8 +70,6 @@ discipline, prénom + nom, accroche courte (`titreCourt`), prix.
 - Le fait que le carrousel « Coachs pour toi » utilise la commune du profil client si elle
   existe : non spécifié ailleurs, choix qui suit la logique déjà posée par `docs/domaine.md`
   §5.7 (proximité), à confirmer avant P3.4.
-- La liste des disciplines proposées en puces (voir Règles, correction 3/3) : aucune source ne la
-  fixe, proposition à valider avant P3.4, pas une décision prise ici.
 
 ---
 
