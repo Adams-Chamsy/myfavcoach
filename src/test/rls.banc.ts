@@ -2576,3 +2576,342 @@ describe('date_verification_coach', () => {
     expect(statut).toBeGreaterThanOrEqual(400);
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+// rechercher_coachs (0023_creer_recherche_coachs.sql) — P3.3, banc des ouvertures à grande
+// échelle (docs/prompts/L3.md)
+// ---------------------------------------------------------------------------------------------
+
+type LigneRecherche = {
+  offre_id: string;
+  coach_id: string;
+  prenom: string;
+  discipline: string;
+  commune_base_insee: string | null;
+  formats: string[];
+  prix_centimes: number;
+  total_resultats: number;
+};
+
+describe('rechercher_coachs', () => {
+  // Discipline dédiée à ce describe, jamais 'yoga' (déjà utilisée ailleurs dans ce fichier avec
+  // un sens différent) ni l'une des sept clés réelles — une clé de référence éphémère à elle,
+  // même motif que 'natation' pour decider_verification_coach.
+  const DISCIPLINE_RECHERCHE = 'discipline-recherche-banc';
+  const DISCIPLINE_PLAFOND = 'discipline-plafond-banc';
+
+  let coachLyon: Session;
+  let coachParis: Session;
+  let coachVisio: Session;
+  let coachSansOffrePubliee: Session;
+  let coachPlafond: Session;
+  const profilsCrees: string[] = [];
+
+  const BIO_LONGUE =
+    'Dix ans d’expérience en préparation physique, spécialisée dans la reprise en douceur ' +
+    'après blessure ou arrêt prolongé, avec un accompagnement individualisé pas à pas.';
+
+  async function creerCoachVerifie(params: {
+    suffixe: string;
+    discipline: string;
+    communeInsee?: string;
+    formats?: string[];
+    bio?: string;
+    parcoursTexte?: string;
+    photoUrl?: string;
+  }): Promise<{ session: Session; profilId: string }> {
+    const session = await creerCompteReel(
+      `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-${params.suffixe}@${DOMAINE_EMAIL}`,
+      { date_naissance: '1990-01-01', cgu_version_acceptee: '2026-08-01' },
+    );
+    const creation = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        compte_id: session.compteId,
+        prenom: params.suffixe,
+        nom: 'Recherche',
+        discipline: params.discipline,
+        commune_base_insee: params.communeInsee ?? null,
+        formats: params.formats ?? [],
+        bio: params.bio ?? null,
+        parcours_texte: params.parcoursTexte ?? null,
+        photo_url: params.photoUrl ?? null,
+      },
+    });
+    if (creation.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : profil ${params.suffixe} refusé (${creation.statut}) : ` +
+          `${JSON.stringify(creation.corps)}`,
+      );
+    }
+    const profilId = (creation.corps as { id: string }[])[0].id;
+    // Créé 'absente' (défaut, 0001), passé en 'verifiee' par un second appel admin — même
+    // pattern que describe('offres') pour B : statut_verification est une colonne protégée
+    // (docs/backend.md §7), jamais posée directement à la création dans ce fichier.
+    const verification = await appelRest(`/rest/v1/profils_coach?id=eq.${profilId}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { statut_verification: 'verifiee' },
+    });
+    if (verification.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : passage en 'verifiee' refusé pour ${params.suffixe} (${verification.statut})`,
+      );
+    }
+    profilsCrees.push(profilId);
+    return { session, profilId };
+  }
+
+  async function publierOffreAdmin(coachId: string, titre: string, prixCentimes: number) {
+    const creation = await appelRest('/rest/v1/offres', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        coach_id: coachId,
+        titre,
+        prix_centimes: prixCentimes,
+        publiee_le: new Date().toISOString(),
+      },
+    });
+    if (creation.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : offre "${titre}" refusée (${creation.statut}) : ` +
+          `${JSON.stringify(creation.corps)}`,
+      );
+    }
+    return (creation.corps as { id: string }[])[0].id;
+  }
+
+  let referenceDisciplineRecherche: string;
+  let referenceDisciplinePlafond: string;
+
+  beforeAll(async () => {
+    // Deux lignes de référence éphémères — même motif que 'natation' plus haut : ce describe
+    // teste rechercher_coachs(), pas la table disciplines elle-même, une discipline dédiée
+    // évite de coupler ce test à une clé réelle qui pourrait changer.
+    for (const [cle, ordre] of [
+      [DISCIPLINE_RECHERCHE, 90],
+      [DISCIPLINE_PLAFOND, 91],
+    ] as const) {
+      const ref = await appelRest('/rest/v1/disciplines', {
+        methode: 'POST',
+        session: 'admin',
+        corps: { cle, libelle: cle, ordre_affichage: ordre },
+      });
+      if (ref.statut >= 400) {
+        throw new Error(
+          `Préparation du banc : ligne de référence '${cle}' refusée (${ref.statut}) : ` +
+            `${JSON.stringify(ref.corps)}`,
+        );
+      }
+    }
+    referenceDisciplineRecherche = DISCIPLINE_RECHERCHE;
+    referenceDisciplinePlafond = DISCIPLINE_PLAFOND;
+
+    // Lyon (69123), présentiel, bonne complétude (bio + parcours ≥ 80 caractères, photo).
+    const lyon = await creerCoachVerifie({
+      suffixe: 'recherche-lyon',
+      discipline: DISCIPLINE_RECHERCHE,
+      communeInsee: '69123',
+      formats: ['presentiel'],
+      bio: BIO_LONGUE,
+      parcoursTexte: BIO_LONGUE,
+      photoUrl: 'https://exemple.test/photo.jpg',
+    });
+    coachLyon = lyon.session;
+    await publierOffreAdmin(lyon.profilId, 'Offre Lyon', 3000);
+
+    // Paris (75056), présentiel, complétude nulle (rien renseigné) — plus loin de Lyon et moins
+    // complet : doit apparaître APRÈS le coach de Lyon dans une recherche centrée sur Lyon.
+    const paris = await creerCoachVerifie({
+      suffixe: 'recherche-paris',
+      discipline: DISCIPLINE_RECHERCHE,
+      communeInsee: '75056',
+      formats: ['presentiel'],
+    });
+    coachParis = paris.session;
+    await publierOffreAdmin(paris.profilId, 'Offre Paris', 3000);
+
+    // Visio : proximité fixe à 0,6 quelle que soit la commune demandée (docs/domaine.md §5.7) —
+    // doit passer devant Paris (loin) mais reste derrière Lyon (0 km, proximité 1,0) dans une
+    // recherche centrée sur Lyon.
+    const visio = await creerCoachVerifie({
+      suffixe: 'recherche-visio',
+      discipline: DISCIPLINE_RECHERCHE,
+      formats: ['visio'],
+    });
+    coachVisio = visio.session;
+    await publierOffreAdmin(visio.profilId, 'Offre Visio', 3000);
+
+    // Vérifié, mais AUCUNE offre publiée (seulement un brouillon) — ne doit jamais apparaître.
+    const sansOffre = await creerCoachVerifie({
+      suffixe: 'recherche-sans-offre',
+      discipline: DISCIPLINE_RECHERCHE,
+      formats: ['presentiel'],
+    });
+    coachSansOffrePubliee = sansOffre.session;
+    const brouillon = await appelRest('/rest/v1/offres', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { coach_id: sansOffre.profilId, titre: 'Brouillon', prix_centimes: 3000 },
+    });
+    if (brouillon.statut >= 400) {
+      throw new Error(`Préparation du banc : brouillon refusé (${brouillon.statut})`);
+    }
+
+    // Plafond : un seul coach vérifié, 35 offres publiées — largement au-delà du plafond de 30
+    // (docs/backend.md §10). Un coach avec plusieurs offres publiées est rare mais non exclu par
+    // docs/domaine.md §3.3 (voir docs/ecrans/L3-02, Contenu) : le plus simple pour dépasser le
+    // plafond sans créer 35 comptes.
+    const plafond = await creerCoachVerifie({
+      suffixe: 'recherche-plafond',
+      discipline: DISCIPLINE_PLAFOND,
+      formats: ['visio'],
+    });
+    coachPlafond = plafond.session;
+    await Promise.all(
+      Array.from({ length: 35 }, (_, i) => publierOffreAdmin(plafond.profilId, `Offre ${i}`, 2000)),
+    );
+  }, 60_000);
+
+  afterAll(async () => {
+    // Les comptes d'abord : ON DELETE CASCADE (profils_coach -> offres, 0007) retire les offres
+    // avant que les lignes de référence des disciplines ne soient retirées à leur tour.
+    for (const session of [
+      coachLyon,
+      coachParis,
+      coachVisio,
+      coachSansOffrePubliee,
+      coachPlafond,
+    ]) {
+      if (session) await supprimerCompteReel(session.compteId);
+    }
+    await appelRest(`/rest/v1/disciplines?cle=eq.${referenceDisciplineRecherche}`, {
+      methode: 'DELETE',
+      session: 'admin',
+    });
+    await appelRest(`/rest/v1/disciplines?cle=eq.${referenceDisciplinePlafond}`, {
+      methode: 'DELETE',
+      session: 'admin',
+    });
+  }, 30_000);
+
+  it('anon cherche par discipline : ne rend que des coachs vérifiés avec une offre publiée dans cette discipline', async () => {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/rechercher_coachs', {
+      methode: 'POST',
+      session: 'anon',
+      corps: { p_discipline: DISCIPLINE_RECHERCHE, p_commune_insee: '69123' },
+    });
+    expect(statut).toBe(200);
+    const lignes = corps as LigneRecherche[];
+    expect(lignes).toHaveLength(3);
+    expect(new Set(lignes.map((l) => l.discipline))).toEqual(new Set([DISCIPLINE_RECHERCHE]));
+    // Illégitime, au même endroit que le légitime (règle 6) : ni D (coach non vérifié, offre
+    // publiée en 'yoga'), ni le coach sans offre publiée n'apparaissent.
+    expect(lignes.some((l) => l.coach_id === profilCoachIdD)).toBe(false);
+    expect(lignes.every((l) => l.prenom !== 'recherche-sans-offre')).toBe(true);
+  });
+
+  it('un compte authenticated ordinaire obtient exactement le même résultat que anon, à discipline et commune égales', async () => {
+    const corps = { p_discipline: DISCIPLINE_RECHERCHE, p_commune_insee: '69123' };
+    const reponseAnon = await appelRest('/rest/v1/rpc/rechercher_coachs', {
+      methode: 'POST',
+      session: 'anon',
+      corps,
+    });
+    const reponseA = await appelRest('/rest/v1/rpc/rechercher_coachs', {
+      methode: 'POST',
+      session: A,
+      corps,
+    });
+    expect(reponseA.statut).toBe(200);
+    const idsAnon = (reponseAnon.corps as LigneRecherche[]).map((l) => l.offre_id).sort();
+    const idsA = (reponseA.corps as LigneRecherche[]).map((l) => l.offre_id).sort();
+    expect(idsA).toEqual(idsAnon);
+  });
+
+  it('la proximité ordonne correctement : Lyon (0 km) devant Visio (0,6 fixe) devant Paris (loin), à discipline égale', async () => {
+    const { corps } = await appelRest('/rest/v1/rpc/rechercher_coachs', {
+      methode: 'POST',
+      session: 'anon',
+      corps: { p_discipline: DISCIPLINE_RECHERCHE, p_commune_insee: '69123', p_limite: 30 },
+    });
+    const prenoms = (corps as LigneRecherche[]).map((l) => l.prenom);
+    expect(prenoms.indexOf('recherche-lyon')).toBeLessThan(prenoms.indexOf('recherche-visio'));
+    expect(prenoms.indexOf('recherche-visio')).toBeLessThan(prenoms.indexOf('recherche-paris'));
+  });
+
+  it('un coach « visio » ressort quelle que soit la commune demandée (docs/domaine.md §5.7)', async () => {
+    const { corps } = await appelRest('/rest/v1/rpc/rechercher_coachs', {
+      methode: 'POST',
+      session: 'anon',
+      // Une commune du référentiel où AUCUN de ces coachs n'est basé : seul le coach visio a
+      // une raison structurelle d'apparaître avec une proximité non nulle.
+      corps: { p_discipline: DISCIPLINE_RECHERCHE, p_commune_insee: '59350' },
+    });
+    const lignes = corps as LigneRecherche[];
+    expect(lignes.some((l) => l.prenom === 'recherche-visio')).toBe(true);
+  });
+
+  it('une discipline qui n’existe pour aucun coach vérifié rend un ensemble vide, jamais une erreur', async () => {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/rechercher_coachs', {
+      methode: 'POST',
+      session: 'anon',
+      corps: { p_discipline: 'discipline-totalement-absente-du-banc' },
+    });
+    expect(statut).toBe(200);
+    expect(corps).toEqual([]);
+  });
+
+  it('aucune colonne fermée de profils_coach ne sort par cette fonction', async () => {
+    const { corps } = await appelRest('/rest/v1/rpc/rechercher_coachs', {
+      methode: 'POST',
+      session: 'anon',
+      corps: { p_discipline: DISCIPLINE_RECHERCHE, p_commune_insee: '69123' },
+    });
+    const ligne = (corps as Record<string, unknown>[])[0];
+    expect(ligne).not.toHaveProperty('compte_id');
+  });
+
+  it('le plafond dur : une demande très au-delà du plafond ne reçoit jamais plus que 30 lignes', async () => {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/rechercher_coachs', {
+      methode: 'POST',
+      session: 'anon',
+      corps: { p_discipline: DISCIPLINE_PLAFOND, p_limite: 5000 },
+    });
+    expect(statut).toBe(200);
+    const lignes = corps as LigneRecherche[];
+    expect(lignes.length).toBe(30);
+    // Le total exact, lui, reflète les 35 lignes réelles — décision validée de L3-02 :
+    // l'énumération complète est assumée, le total est exposé, jamais tronqué par le plafond.
+    expect(lignes[0].total_resultats).toBe(35);
+  });
+
+  it('la pagination (décalage) atteint les lignes au-delà du plafond', async () => {
+    const { corps } = await appelRest('/rest/v1/rpc/rechercher_coachs', {
+      methode: 'POST',
+      session: 'anon',
+      corps: { p_discipline: DISCIPLINE_PLAFOND, p_limite: 30, p_decalage: 30 },
+    });
+    const lignes = corps as LigneRecherche[];
+    expect(lignes).toHaveLength(5);
+  });
+
+  it('le bruit de départage : deux appels identiques, à quelques secondes d’écart, peuvent rendre un ordre différent parmi des ex-æquo', async () => {
+    // Les 35 offres du coach du plafond sont strictement ex-æquo (même coach, donc même
+    // discipline/proximité/complétude) : si l'ordre ne varie JAMAIS entre deux appels, le bruit
+    // n'est pas tiré à l'exécution — c'est un rouge, pas une coïncidence à ignorer.
+    const corps = { p_discipline: DISCIPLINE_PLAFOND, p_limite: 30 };
+    const resultats = new Set<string>();
+    for (let essai = 0; essai < 5; essai++) {
+      const { corps: reponse } = await appelRest('/rest/v1/rpc/rechercher_coachs', {
+        methode: 'POST',
+        session: 'anon',
+        corps,
+      });
+      resultats.add((reponse as LigneRecherche[]).map((l) => l.offre_id).join(','));
+    }
+    expect(resultats.size).toBeGreaterThan(1);
+  });
+});

@@ -7,6 +7,13 @@
 actifs », `data-screen-label="02 Recherche"`. **Cinq corrections, lues en Règles, plus une
 décision de portée tranchée le 13 septembre 2026 — voir « Référentiel géographique ».**
 
+**Mécanisme livré (P3.2/P3.3, 13 septembre 2026)** : `rechercher_coachs()`
+(`supabase/migrations/0023_creer_recherche_coachs.sql`), `communes_reference`, et la colonne
+`profils_coach.formats` (`0022_ajouter_formats_profils_coach.sql`, absente jusque-là — voir
+`docs/dette.md`, aucun écran ne l'écrit encore). Banc RLS dédié dans `src/test/rls.banc.ts`
+(`describe('rechercher_coachs')`), 9 tests, 106/106 sur l'ensemble du fichier contre le vrai
+projet. **Reste à construire** : l'écran lui-même (P3.5).
+
 ---
 
 ## Raison d'être
