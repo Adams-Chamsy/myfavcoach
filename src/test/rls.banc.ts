@@ -2180,6 +2180,47 @@ describe('pieces_verification', () => {
 });
 
 // ---------------------------------------------------------------------------------------------
+// communes_reference (0023) et disciplines (0020) — lecture DIRECTE par anon, porte de sortie
+// du lot L3, point 2 : jusqu'ici ces deux politiques (communes_reference_select_public,
+// disciplines_select_actives) n'étaient exercées qu'à travers rechercher_coachs() — pour
+// disciplines, même pas ça : la fonction filtre `pc.discipline = p_discipline` en texte, sans
+// jamais joindre la table. Une politique atteinte seulement par une jointure interne à une
+// fonction SECURITY INVOKER n'est pas la même chose qu'une politique exercée par la lecture
+// directe que l'écran fait réellement (`lireCommunesReference`/`lireDisciplines`,
+// `GET /rest/v1/...`) : même famille que le `select=…(*)` que le grant colonne par colonne
+// refuse en L2 — une politique qui laisse passer la ligne n'est pas la preuve que le grant
+// laisse passer les colonnes qu'un vrai appel demande.
+// ---------------------------------------------------------------------------------------------
+
+describe('communes_reference et disciplines — lecture directe par anon (grants publics)', () => {
+  it('anon lit communes_reference directement : les six lignes du référentiel réduit, colonnes complètes', async () => {
+    const { statut, corps } = await appelRest(
+      '/rest/v1/communes_reference?select=code_insee,nom,latitude,longitude',
+      { session: 'anon' },
+    );
+    expect(statut).toBe(200);
+    const lignes = corps as { code_insee: string; nom: string; latitude: number }[];
+    expect(lignes).toHaveLength(6);
+    expect(lignes.map((l) => l.code_insee).sort()).toEqual(
+      ['31555', '33063', '44109', '59350', '69123', '75056'].sort(),
+    );
+    expect(lignes.every((l) => typeof l.latitude === 'number')).toBe(true);
+  });
+
+  it('anon lit disciplines directement : au moins les sept disciplines réelles, actives seulement', async () => {
+    const { statut, corps } = await appelRest(
+      '/rest/v1/disciplines?select=cle,libelle,ordre_affichage,active',
+      { session: 'anon' },
+    );
+    expect(statut).toBe(200);
+    const lignes = corps as { cle: string; active: boolean }[];
+    expect(lignes.length).toBeGreaterThanOrEqual(7);
+    expect(lignes.every((l) => l.active)).toBe(true);
+    expect(lignes.map((l) => l.cle)).toContain('yoga');
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
 // disciplines (0020_creer_disciplines_reference.sql) — validation de L3, 13 septembre 2026
 // ---------------------------------------------------------------------------------------------
 
@@ -3161,21 +3202,35 @@ describe('rechercher_coachs', () => {
     expect(lignes).toHaveLength(5);
   });
 
-  it('le bruit de départage : deux appels identiques, à quelques secondes d’écart, peuvent rendre un ordre différent parmi des ex-æquo', async () => {
+  it('le bruit de départage : deux appels identiques, à quelques secondes d’écart, peuvent rendre un ordre différent parmi des ex-æquo, jamais un total différent', async () => {
     // Les 35 offres du coach du plafond sont strictement ex-æquo (même coach, donc même
     // discipline/proximité/complétude) : si l'ordre ne varie JAMAIS entre deux appels, le bruit
     // n'est pas tiré à l'exécution — c'est un rouge, pas une coïncidence à ignorer.
+    //
+    // L3-02, critère 5 : « jamais un total différent ». Porte de sortie du lot L3, point 4 —
+    // le bruit ne doit être qu'un désordre, jamais un canal qui laisse fuiter une information
+    // supplémentaire. Prouver que l'ORDRE varie ne prouve pas encore que RIEN D'AUTRE ne varie :
+    // sans l'assertion sur total_resultats ci-dessous, rien n'empêchait par exemple qu'un appel
+    // recompte un total différent par accident (course, erreur de requête) sans qu'aucun test ne
+    // le voie — structurellement improbable à la lecture du SQL (count(*) over () sur le même
+    // ensemble WHERE, indépendant de l'ORDER BY), mais « improbable à la lecture du code » n'est
+    // pas ce que ce dépôt appelle une preuve ailleurs (CLAUDE.md §6, §8) ; ça ne commence pas ici.
     const corps = { p_discipline: DISCIPLINE_PLAFOND, p_limite: 30 };
     const resultats = new Set<string>();
+    const totaux = new Set<number>();
     for (let essai = 0; essai < 5; essai++) {
       const { corps: reponse } = await appelRest('/rest/v1/rpc/rechercher_coachs', {
         methode: 'POST',
         session: 'anon',
         corps,
       });
-      resultats.add((reponse as LigneRecherche[]).map((l) => l.offre_id).join(','));
+      const lignes = reponse as LigneRecherche[];
+      resultats.add(lignes.map((l) => l.offre_id).join(','));
+      totaux.add(lignes[0].total_resultats);
     }
     expect(resultats.size).toBeGreaterThan(1);
+    expect(totaux.size).toBe(1);
+    expect([...totaux][0]).toBe(35);
   });
 
   // Règle 8 (docs/prompts/L2.md, reprise docs/prompts/L3.md) : un test qui deviendra faux plus

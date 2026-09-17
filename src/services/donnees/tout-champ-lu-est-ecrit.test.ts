@@ -94,12 +94,7 @@ const EXCEPTIONS_LECTURE_SEULE_CLIENT = ['profil', 'dateNaissance'];
 // personne n'ajoute ici tombe automatiquement dans `ChampsRechercheAVerifier` plus bas, et casse
 // la compilation du témoin qui en dérive tant qu'il n'est pas classé d'un côté ou de l'autre.
 type ChampsRechercheHorsPerimetre =
-  | 'offreId'
-  | 'coachId'
-  | 'titre'
-  | 'prixCentimes'
-  | 'discipline'
-  | 'photoUrl';
+  'offreId' | 'coachId' | 'titre' | 'prixCentimes' | 'discipline' | 'photoUrl';
 
 type ChampsRechercheAVerifier = Exclude<keyof ResultatCoachRecherche, ChampsRechercheHorsPerimetre>;
 const champsRechercheAVerifier: Record<ChampsRechercheAVerifier, true> = {
