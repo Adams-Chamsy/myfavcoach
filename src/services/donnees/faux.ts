@@ -4,6 +4,7 @@ import type {
   DossierVerification,
   EtatProfils,
   InformationsCompte,
+  Langue,
   ModificationsInformations,
   ModificationsOffre,
   Offre,
@@ -40,6 +41,17 @@ export const COMMUNES_FIGEES: CommuneReference[] = [
   { codeInsee: '44109', nom: 'Nantes' },
   { codeInsee: '75056', nom: 'Paris' },
   { codeInsee: '31555', nom: 'Toulouse' },
+];
+
+// Mêmes sept clés que la migration 0025 (langues) — même motif que DISCIPLINES_FIGEES ci-dessus.
+export const LANGUES_FIGEES: Langue[] = [
+  { cle: 'français', libelle: 'Français' },
+  { cle: 'anglais', libelle: 'Anglais' },
+  { cle: 'espagnol', libelle: 'Espagnol' },
+  { cle: 'allemand', libelle: 'Allemand' },
+  { cle: 'italien', libelle: 'Italien' },
+  { cle: 'arabe', libelle: 'Arabe' },
+  { cle: 'portugais', libelle: 'Portugais' },
 ];
 
 export type FauxPortDonnees = PortDonnees & {
@@ -124,7 +136,13 @@ export function etatProfilsParDefaut(surcharges: Partial<EtatProfils> = {}): Eta
 // prénom vide, sans nom. La date de naissance a forcément une valeur (colonne NOT NULL de
 // comptes) — une majeure quelconque, jamais analysée ici.
 function informationsCompteParDefaut(): InformationsCompte {
-  return { profil: 'client', prenom: '', nom: null, dateNaissance: '2000-01-01' };
+  return {
+    profil: 'client',
+    prenom: '',
+    nom: null,
+    communeInsee: null,
+    dateNaissance: '2000-01-01',
+  };
 }
 
 function profilOnboardingVide(): ProfilOnboarding {
@@ -312,9 +330,18 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
               nom: modifs.nom,
               titreCourt: modifs.titreCourt,
               bio: modifs.bio,
+              communeBaseInsee: modifs.communeBaseInsee,
+              formats: modifs.formats,
+              parcoursTexte: modifs.parcoursTexte,
+              langues: modifs.langues,
             }
           : modifs.profil === 'client' && informations.profil === 'client'
-            ? { ...informations, prenom: modifs.prenom, nom: modifs.nom }
+            ? {
+                ...informations,
+                prenom: modifs.prenom,
+                nom: modifs.nom,
+                communeInsee: modifs.communeInsee,
+              }
             : informations;
       etat = { ...etat, identiteActive: { prenom: modifs.prenom, nom: modifs.nom } };
       return { succes: true };
@@ -465,6 +492,10 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
 
     async lireCommunesReference() {
       return COMMUNES_FIGEES;
+    },
+
+    async lireLangues() {
+      return LANGUES_FIGEES;
     },
 
     definirRechercheCoachsPourTest(gestionnaire) {

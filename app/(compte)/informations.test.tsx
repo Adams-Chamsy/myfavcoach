@@ -33,6 +33,7 @@ const INFO_CLIENT: InformationsCompte = {
   profil: 'client',
   prenom: 'Camille',
   nom: 'Dupré',
+  communeInsee: null,
   dateNaissance: '2000-01-01',
 };
 
@@ -43,6 +44,10 @@ const INFO_COACH: InformationsCompte = {
   discipline: 'préparation physique',
   titreCourt: 'Coaching perf',
   bio: '',
+  communeBaseInsee: null,
+  formats: [],
+  parcoursTexte: '',
+  langues: [],
   dateNaissance: '1990-05-02',
 };
 
@@ -128,6 +133,60 @@ describe('Informations (docs/ecrans/L1-09-mes-informations.md, « Mes informatio
     expect(screen.queryByDisplayValue('préparation physique')).toBeNull();
     // Une mention « écris-nous » pour la discipline, une pour la date de naissance.
     expect(screen.getAllByText('Pour la modifier, écris-nous.')).toHaveLength(2);
+  });
+
+  // Révision du 13 septembre 2026 (docs/dette.md) : commune, formats, parcours et langues
+  // rejoignent le formulaire — sans eux rechercher_coachs() (L3) ne peut rien filtrer ni classer
+  // pour un vrai coach. Langues suit le même mécanisme fermé que Discipline (P1.14), jamais un
+  // texte libre.
+  it('côté coach : commune, parcours, formats et langues sont éditables et activent Enregistrer', async () => {
+    const { portDonnees } = await rendre(INFO_COACH);
+
+    expect(boutonEnregistrerDesactive()).toBe(true);
+
+    await fireEvent.press(screen.getByText('Lyon')); // commune de base
+    await fireEvent.changeText(screen.getByLabelText('Parcours'), 'Dix ans de terrain.');
+    await fireEvent.press(screen.getByText('En visio'));
+    await fireEvent.press(screen.getByText('Anglais'));
+    await waitFor(() => expect(boutonEnregistrerDesactive()).toBe(false));
+
+    await fireEvent.press(screen.getByText('Enregistrer'));
+
+    await waitFor(async () => {
+      const info = await portDonnees.lireInformations();
+      if (info.profil !== 'coach') throw new Error('profil coach attendu');
+      expect(info.communeBaseInsee).toBe('69123');
+      expect(info.parcoursTexte).toBe('Dix ans de terrain.');
+      expect(info.formats).toEqual(['visio']);
+      expect(info.langues).toEqual(['anglais']);
+    });
+  });
+
+  // Décocher puis recocher la même langue ne doit jamais laisser le bouton actif : c'est un
+  // ENSEMBLE, pas une liste ordonnée (voir le commentaire d'`empreinte` dans informations.tsx).
+  it('décocher puis recocher la même langue repasse Enregistrer à inactif', async () => {
+    await rendre({ ...INFO_COACH, langues: ['français'] });
+
+    await fireEvent.press(screen.getByText('Français')); // décoche
+    await waitFor(() => expect(boutonEnregistrerDesactive()).toBe(false));
+
+    await fireEvent.press(screen.getByText('Français')); // recoche
+    await waitFor(() => expect(boutonEnregistrerDesactive()).toBe(true));
+  });
+
+  it('côté client : la commune est éditable et active Enregistrer', async () => {
+    const { portDonnees } = await rendre(INFO_CLIENT);
+
+    await fireEvent.press(screen.getByText('Bordeaux'));
+    await waitFor(() => expect(boutonEnregistrerDesactive()).toBe(false));
+
+    await fireEvent.press(screen.getByText('Enregistrer'));
+
+    await waitFor(async () => {
+      const info = await portDonnees.lireInformations();
+      if (info.profil !== 'client') throw new Error('profil client attendu');
+      expect(info.communeInsee).toBe('33063');
+    });
   });
 
   // États, « Erreur » : bandeau, saisie conservée, aucune valeur écrasée.

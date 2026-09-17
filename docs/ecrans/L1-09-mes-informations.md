@@ -24,7 +24,17 @@ Modifie le **profil actif**, pas le compte. Le formulaire n'est donc pas le mêm
 | Commune | oui | commune de base |
 | Discipline | — | oui, liste figée |
 | Titre court, bio | — | oui — **édités mais non publiés** avant le lot L2 |
+| Formats | — | oui, cases à cocher fermées ⊆ {visio, présentiel} (`docs/domaine.md` §3.2) |
+| Parcours | — | oui, texte libre — seuil de complétude à 80 caractères (`docs/domaine.md` §5.6), non imposé à la saisie |
+| Langues | — | oui, liste fermée en table de référence (`langues`, même mécanisme que Discipline) — jamais un texte libre |
 | Date de naissance | **lecture seule**, avec la mention « Pour la modifier, écris-nous » | idem |
+
+**Ajout du 17 septembre 2026** — Formats, Parcours et Langues étaient des colonnes réelles
+(`docs/domaine.md` §3.2) absentes de cette fiche depuis sa première rédaction : la fiche listait
+Commune mais pas les trois autres, et aucun écran ne les écrivait. Sans eux,
+`rechercher_coachs()` (L3) trie sur une proximité et filtre sur un format que personne ne peut
+renseigner. Voir `docs/perimetre.md` §2 pour la trace de cet écart, et `docs/dette.md` pour son
+historique.
 
 Enregistrement **explicite** par un bouton en pied, jamais à la frappe : une sauvegarde
 automatique sur un champ de nom produit des états intermédiaires absurdes côté serveur.

@@ -35,6 +35,10 @@ describe('L2-07 · Devenir coach — étape 4/4 (c’est parti)', () => {
       discipline: 'cybersecurite',
       titreCourt: 'Sécurité offensive',
       bio: 'Dix ans d’expérience.',
+      communeBaseInsee: null,
+      formats: [],
+      parcoursTexte: null,
+      langues: [],
       dateNaissance: '1990-01-01',
     });
 

@@ -5,6 +5,7 @@ import type {
   DossierVerification,
   EtatProfils,
   InformationsCompte,
+  Langue,
   Offre,
   ParametresRecherche,
   PieceDeposee,
@@ -297,7 +298,9 @@ export const portDonneesSupabase: PortDonnees = {
     if (profilActif === 'coach') {
       const { data, error } = await supabase
         .from('profils_coach')
-        .select('prenom, nom, discipline, titre_court, bio')
+        .select(
+          'prenom, nom, discipline, titre_court, bio, commune_base_insee, formats, parcours_texte, langues',
+        )
         .limit(1);
       if (error) throw error;
       const ligne = data?.[0] as
@@ -307,6 +310,10 @@ export const portDonneesSupabase: PortDonnees = {
             discipline: string;
             titre_court: string | null;
             bio: string | null;
+            commune_base_insee: string | null;
+            formats: string[];
+            parcours_texte: string | null;
+            langues: string[];
           }
         | undefined;
       return {
@@ -316,17 +323,26 @@ export const portDonneesSupabase: PortDonnees = {
         discipline: ligne?.discipline ?? '',
         titreCourt: ligne?.titre_court ?? null,
         bio: ligne?.bio ?? null,
+        communeBaseInsee: ligne?.commune_base_insee ?? null,
+        formats: ligne?.formats ?? [],
+        parcoursTexte: ligne?.parcours_texte ?? null,
+        langues: ligne?.langues ?? [],
         dateNaissance,
       } satisfies InformationsCompte;
     }
 
-    const { data, error } = await supabase.from('profils_client').select('prenom, nom').limit(1);
+    const { data, error } = await supabase
+      .from('profils_client')
+      .select('prenom, nom, commune_insee')
+      .limit(1);
     if (error) throw error;
-    const ligne = data?.[0] as { prenom: string; nom: string | null } | undefined;
+    const ligne = data?.[0] as
+      { prenom: string; nom: string | null; commune_insee: string | null } | undefined;
     return {
       profil: 'client',
       prenom: ligne?.prenom ?? '',
       nom: ligne?.nom ?? null,
+      communeInsee: ligne?.commune_insee ?? null,
       dateNaissance,
     } satisfies InformationsCompte;
   },
@@ -346,6 +362,10 @@ export const portDonneesSupabase: PortDonnees = {
           nom: modifs.nom,
           titre_court: modifs.titreCourt,
           bio: modifs.bio,
+          commune_base_insee: modifs.communeBaseInsee,
+          formats: modifs.formats,
+          parcours_texte: modifs.parcoursTexte,
+          langues: modifs.langues,
         })
         .eq('compte_id', compteId);
       if (error) return echec(error);
@@ -354,7 +374,11 @@ export const portDonneesSupabase: PortDonnees = {
 
     const { error } = await supabase
       .from('profils_client')
-      .update({ prenom: modifs.prenom, nom: modifs.nom === '' ? null : modifs.nom })
+      .update({
+        prenom: modifs.prenom,
+        nom: modifs.nom === '' ? null : modifs.nom,
+        commune_insee: modifs.communeInsee,
+      })
       .eq('compte_id', compteId);
     if (error) return echec(error);
     return { succes: true };
@@ -614,6 +638,16 @@ export const portDonneesSupabase: PortDonnees = {
       codeInsee: ligne.code_insee as string,
       nom: ligne.nom as string,
     })) satisfies CommuneReference[];
+  },
+
+  async lireLangues() {
+    const { data, error } = await supabase
+      .from('langues')
+      .select('cle, libelle')
+      .eq('active', true)
+      .order('ordre_affichage', { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as Langue[];
   },
 
   async rechercherCoachs(parametres: ParametresRecherche) {

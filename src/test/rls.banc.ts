@@ -242,6 +242,26 @@ async function supprimerCompteReel(compteId: string): Promise<void> {
   // consentements derrière — rien d'autre à faire ici.
 }
 
+// Piège déjà vécu avec les disciplines : ce fichier écrit 'yoga'/'cuisine'/'cybersécurité' en
+// dur à plus de vingt endroits, en pariant que ces clés restent dans le catalogue de référence
+// — un pari qui a déjà cassé une fois (la ligne éphémère 'natation', créée puis retirée dans ce
+// même fichier pour d'autres tests, aurait pu tout aussi bien être confondue avec une clé
+// « normale » par un futur test qui ne l'aurait pas su hors catalogue). Plutôt que de reproduire
+// ce pari pour les langues, cet helper lit une clé RÉELLEMENT valide dans la vraie table avant
+// de s'en servir : si le contenu de 0025 change un jour, les tests qui l'utilisent s'adaptent au
+// lieu de rougir pour une mauvaise raison — ou pire, de continuer à passer par hasard.
+async function uneLangueValide(): Promise<string> {
+  const { statut, corps } = await appelRest(
+    '/rest/v1/langues?select=cle&order=ordre_affichage.asc&limit=1',
+  );
+  if (statut !== 200 || !Array.isArray(corps) || corps.length === 0) {
+    throw new Error(
+      `Préparation du banc : aucune langue de référence lisible (${statut}) — 0025 est-elle appliquée ?`,
+    );
+  }
+  return (corps[0] as { cle: string }).cle;
+}
+
 let A: Session;
 let B: Session;
 let C: Session;
@@ -2195,6 +2215,115 @@ describe('disciplines — clé étrangère depuis profils_coach.discipline', () 
     });
     expect(statut).toBeGreaterThanOrEqual(400);
     expect(JSON.stringify(corps)).toMatch(/foreign key|profils_coach_discipline_fkey/i);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// langues (déclencheur) et communes_reference (clé étrangère) — 0025, formulaire de L1-09
+// ---------------------------------------------------------------------------------------------
+
+describe('langues et communes_reference — contraintes ajoutées par 0025', () => {
+  let compteContraintes: Session;
+  let compteClientCommune: Session;
+  // Compte dédié au test positif (langue valide acceptée) : compteContraintes sert aux DEUX
+  // tests négatifs voisins (langue absente, commune absente), qui doivent chacun échouer sans
+  // laisser de ligne — le réutiliser pour un écriture qui RÉUSSIT casserait le test négatif
+  // suivant (conflit d'unicité sur profils_coach.compte_id, plus jamais la contrainte visée).
+  let compteLangueValide: Session;
+
+  beforeAll(async () => {
+    compteContraintes = await creerCompteReel(
+      `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-contraintes-profil-coach@${DOMAINE_EMAIL}`,
+      { date_naissance: '1991-01-01', cgu_version_acceptee: '2026-08-01' },
+    );
+    compteClientCommune = await creerCompteReel(
+      `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-contrainte-commune-client@${DOMAINE_EMAIL}`,
+      { date_naissance: '1991-01-01', cgu_version_acceptee: '2026-08-01' },
+    );
+    compteLangueValide = await creerCompteReel(
+      `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-langue-valide-profil-coach@${DOMAINE_EMAIL}`,
+      { date_naissance: '1991-01-01', cgu_version_acceptee: '2026-08-01' },
+    );
+  });
+
+  afterAll(async () => {
+    if (compteContraintes) await supprimerCompteReel(compteContraintes.compteId);
+    if (compteClientCommune) await supprimerCompteReel(compteClientCommune.compteId);
+    if (compteLangueValide) await supprimerCompteReel(compteLangueValide.compteId);
+  });
+
+  // Même principe que le test de discipline ci-dessus (règle 9) : c'est le déclencheur
+  // lui-même qui doit rougir, pas une politique RLS qui se trouverait sur le chemin — écriture
+  // directe par admin (service_role), qui contourne RLS mais jamais un déclencheur ni une
+  // contrainte de table.
+  it('une langue absente de la table de référence est refusée à l’écriture (déclencheur)', async () => {
+    const { statut, corps } = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        compte_id: compteContraintes.compteId,
+        prenom: 'Sans',
+        nom: 'Langue',
+        discipline: 'yoga',
+        langues: ['langue-qui-n-existe-pas'],
+      },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(corps)).toMatch(/langue inconnue/i);
+  });
+
+  // Symétrique du test ci-dessus : le déclencheur doit accepter une langue réelle aussi
+  // sûrement qu'il refuse une langue inventée — sans cette moitié-là, rien ne prouverait que la
+  // contrainte ne bloque pas TOUT, langue valide comprise. `uneLangueValide()` lit la clé dans
+  // la vraie table (voir son commentaire) plutôt que d'en deviner une.
+  it('une langue réellement valide (lue dans le catalogue réel) est acceptée à l’écriture', async () => {
+    const langueValide = await uneLangueValide();
+    const { statut, corps } = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        compte_id: compteLangueValide.compteId,
+        prenom: 'Avec',
+        nom: 'Langue',
+        discipline: 'yoga',
+        langues: [langueValide],
+      },
+    });
+    expect(statut).toBeLessThan(300);
+    expect((corps as { langues: string[] }[])[0]?.langues).toEqual([langueValide]);
+  });
+
+  it('une commune absente du référentiel est refusée à l’écriture, côté coach (clé étrangère)', async () => {
+    const { statut, corps } = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        compte_id: compteContraintes.compteId,
+        prenom: 'Sans',
+        nom: 'Commune',
+        discipline: 'yoga',
+        commune_base_insee: '00000',
+      },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(corps)).toMatch(/foreign key|profils_coach_commune_base_insee_fkey/i);
+  });
+
+  // Côté client, une insertion directe par le compte lui-même est légitime (docs/api.md §3,
+  // déjà exercée par le describe profils_client plus haut) — la commune y est donc exercée par
+  // une vraie session, pas par admin.
+  it('une commune absente du référentiel est refusée à l’écriture, côté client (clé étrangère)', async () => {
+    const { statut, corps } = await appelRest('/rest/v1/profils_client', {
+      methode: 'POST',
+      session: compteClientCommune,
+      corps: {
+        compte_id: compteClientCommune.compteId,
+        prenom: 'Sans',
+        commune_insee: '00000',
+      },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(corps)).toMatch(/foreign key|profils_client_commune_insee_fkey/i);
   });
 });
 

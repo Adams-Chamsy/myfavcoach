@@ -41,6 +41,14 @@ export default function DevenirCoachProfil() {
       nom: profils.identiteActive.nom ?? '',
       titreCourt: titreCourt.trim(),
       bio: bio.trim(),
+      // Toujours vides ici, sans risque d'écraser une vraie valeur : ce profil coach vient
+      // d'être créé par l'étape précédente (P2.4), rien n'a encore pu renseigner commune,
+      // formats, parcours ou langues avant cette étape 2/4 — ces quatre champs vivent dans
+      // « Mes informations » (L1-09), pas dans cet onboarding.
+      communeBaseInsee: null,
+      formats: [],
+      parcoursTexte: null,
+      langues: [],
     });
     setChargement(false);
     if (!resultat.succes) {

@@ -260,6 +260,7 @@ describe('les écritures d’EtatProfils rafraîchissent l’état lu, sans rafr
       profil: 'client',
       prenom: 'Ancien',
       nom: 'Nom',
+      communeInsee: null,
       dateNaissance: '2000-01-01',
     };
     portDonnees.definirInformationsPourTest(infoClient);
@@ -275,6 +276,7 @@ describe('les écritures d’EtatProfils rafraîchissent l’état lu, sans rafr
         profil: 'client',
         prenom: 'Nouveau',
         nom: 'Nom',
+        communeInsee: null,
       });
       expect(r.succes).toBe(true);
     });

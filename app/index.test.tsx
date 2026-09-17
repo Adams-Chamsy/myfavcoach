@@ -172,6 +172,7 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       lireOffresPublieesDeCoach: jest.fn(),
       lireDisciplines: jest.fn(),
       lireCommunesReference: jest.fn(),
+      lireLangues: jest.fn(),
       rechercherCoachs: jest.fn(),
       demanderSuppressionCompte: jest.fn(),
       lireConsentementCommunications: jest.fn(),

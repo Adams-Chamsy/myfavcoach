@@ -44,8 +44,20 @@ export type ResultatEcriture = { succes: true } | { succes: false; erreur: strin
 // 0001_creer_identite.sql). `discipline` (coach) est en lecture seule à ce lot : la liste
 // figée des disciplines est une décision produit qui gouverne la recherche du lot L3, prise à
 // P1.14 (activation de l'espace coach), pas ici.
+//
+// `communeInsee`/`communeBaseInsee`, `formats`, `parcoursTexte`, `langues` : ajoutés le
+// 13 septembre 2026 (révision de L1-09) — quatre colonnes déjà réelles, déjà accordées en
+// UPDATE (0006, 0016, 0022), jamais écrites par aucun écran jusque-là (docs/dette.md). Sans ce
+// formulaire, `rechercher_coachs()` (L3) trie sur une proximité et filtre sur un format que
+// personne ne peut renseigner.
 export type InformationsCompte =
-  | { profil: 'client'; prenom: string; nom: string | null; dateNaissance: string }
+  | {
+      profil: 'client';
+      prenom: string;
+      nom: string | null;
+      communeInsee: string | null;
+      dateNaissance: string;
+    }
   | {
       profil: 'coach';
       prenom: string;
@@ -53,13 +65,27 @@ export type InformationsCompte =
       discipline: string;
       titreCourt: string | null;
       bio: string | null;
+      communeBaseInsee: string | null;
+      formats: string[];
+      parcoursTexte: string | null;
+      langues: string[];
       dateNaissance: string;
     };
 
 // Ce que l'écran peut réécrire — jamais dateNaissance ni discipline (voir InformationsCompte).
 export type ModificationsInformations =
-  | { profil: 'client'; prenom: string; nom: string | null }
-  | { profil: 'coach'; prenom: string; nom: string; titreCourt: string | null; bio: string | null };
+  | { profil: 'client'; prenom: string; nom: string | null; communeInsee: string | null }
+  | {
+      profil: 'coach';
+      prenom: string;
+      nom: string;
+      titreCourt: string | null;
+      bio: string | null;
+      communeBaseInsee: string | null;
+      formats: string[];
+      parcoursTexte: string | null;
+      langues: string[];
+    };
 
 // Ce que les quatre étapes ont accumulé jusqu'ici — distinct d'EtatProfils (qui ne porte que
 // le ROUTAGE : quelle étape afficher, jamais son contenu). Nécessaire pour deux besoins réels,
@@ -105,6 +131,12 @@ export type PieceDeposee = { type: TypePiece; deposeLe: string };
 // aux profils déjà écrits. Catalogue destiné à grandir (nouvelles lignes), jamais une énumération
 // SQL figée.
 export type Discipline = { cle: string; libelle: string };
+
+// Table de référence `langues` (0025_creer_langues_reference_et_communes_fkey.sql, L1-09) :
+// `profils_coach.langues` (text[]) ne peut pas porter une clé étrangère standard Postgres sur
+// une colonne tableau -- un déclencheur vérifie la même chose à chaque écriture (même garantie
+// que `disciplines`, mécanisme différent). Même séparation cle/libelle, même raison.
+export type Langue = { cle: string; libelle: string };
 
 // Référentiel géographique réduit (docs/ecrans/L3-02-recherche-filtres.md, « Référentiel
 // géographique ») : six communes, pas le référentiel INSEE national — le filtre de commune de
@@ -323,6 +355,10 @@ export type PortDonnees = {
 
   // L3-02 : le référentiel de communes réduit (voir `CommuneReference`). Lecture publique.
   lireCommunesReference(): Promise<CommuneReference[]>;
+
+  // L1-09 (coach) : le catalogue de langues (voir `Langue`). Lecture publique, même mécanisme
+  // que lireDisciplines — actives seulement, triées par ordre_affichage.
+  lireLangues(): Promise<Langue[]>;
 
   // L3-01/L3-02 : rechercher_coachs() (0023_creer_recherche_coachs.sql), security invoker,
   // douze cycles casser/restaurer (docs/prompts/L3.md, P3.3). Lecture publique (anon compris) —
