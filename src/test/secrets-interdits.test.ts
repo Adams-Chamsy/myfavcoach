@@ -116,7 +116,7 @@ describe('secrets interdits côté application', () => {
   //
   // Chaque exception est nommée une par une : ajouter une clé ici est un choix humain, jamais
   // un motif générique qui laisserait passer un fichier de plus sans que personne le décide.
-  // Les vingt-huit ci-dessous (compte à jour au 19 septembre 2026, pas figé) nomment
+  // Les trente ci-dessous (compte à jour au 19 septembre 2026, pas figé) nomment
   // "service_role" pour avertir qu'elle est interdite, ou l'utilisent
   // légitimement côté outillage de test, de migration ou de CI (jamais dans l'application) — la
   // doc qui nomme le danger n'est pas le danger :
@@ -142,6 +142,8 @@ describe('secrets interdits côté application', () => {
   //   - supabase/migrations/0027_creer_invitations.sql : GRANT SELECT + INSERT pour service_role sur invitations (même trou récurrent, corrigé directement) — le commentaire nomme aussi explicitement que ce rôle ne contourne PAS les grants comme il contourne RLS, une hypothèse fausse trouvée en écrivant cette migration
   //   - supabase/migrations/0029_ajouter_fonctions_invitations_ecran.sql : commentaire renvoyant au même motif (aucune écriture directe accordée à service_role sur invitations, y compris pour ces deux fonctions)
   //   - supabase/migrations/0030_verrouiller_grants_invitations.sql : revoke explicite de service_role (et anon/authenticated) sur invitations et les cinq fonctions de L3bis — corrige un trou trouvé par la CI (pile fraîche), jamais vu contre le projet distant, où service_role reste alors sans le grant UPDATE qu'il avait localement sans jamais l'avoir reçu explicitement
+  //   - supabase/migrations/0031_verrouiller_grants_fonctions_existantes.sql : généralise 0030 à seize fonctions antérieures à L3bis (0002 à 0024) et à demandes_export (seule table sans grant service_role, trouvée par src/test/conventions-grants-migrations.test.ts plutôt que par hasard) — même motif, étendu à tout le dépôt avant L4
+  //   - src/test/conventions-grants-migrations.test.ts : balaie supabase/migrations/ pour vérifier que chaque revoke nomme explicitement "service_role" avant un grant à anon/authenticated — le rôle apparaît en donnée de test (littéraux SQL écrits exprès, fautifs et corrects) et dans la liste des rôles requis, jamais comme une clé
   //   - docs/prompts/L3bis.md : règle 11 (cumulative) nomme "service_role" pour que le trou récurrent ci-dessus devienne une règle de conduite, pas une note qui ne survit qu'à ma mémoire
   //   - docs/dette.md : explique que le banc RLS insère ses coachs de test directement par service_role (formats/commune_base_insee posés à la main, faute de formulaire applicatif) — P3.2/P3.3
   //   - app/(admin)/verification.tsx : commentaire expliquant que la consultation des pièces passe par le compte examinateur, jamais par service_role
@@ -172,11 +174,13 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0027_creer_invitations.sql',
       'supabase/migrations/0029_ajouter_fonctions_invitations_ecran.sql',
       'supabase/migrations/0030_verrouiller_grants_invitations.sql',
+      'supabase/migrations/0031_verrouiller_grants_fonctions_existantes.sql',
       'docs/prompts/L3bis.md',
       'docs/dette.md',
       'app/(admin)/verification.tsx',
       'supabase/config.toml',
       'src/test/rls.banc.ts',
+      'src/test/conventions-grants-migrations.test.ts',
       '.github/workflows/banc-rls.yml',
     ]);
     const fichiers = contenuDe(fichiersSuivisParGit().filter((chemin) => !EXCEPTIONS.has(chemin)));

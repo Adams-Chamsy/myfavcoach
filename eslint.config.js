@@ -45,7 +45,15 @@ module.exports = [
     files: ['app/**/*.{ts,tsx}', 'src/**/*.{ts,tsx}'],
     // src/test/contraste.test.ts verifie une fonction de calcul de contraste : elle a besoin de
     // vraies valeurs hexadecimales en entree, ce n'est pas un ecran ou un composant.
-    ignores: ['src/theme/**', 'src/test/contraste.test.ts'],
+    // src/test/conventions-grants-migrations.test.ts balaie supabase/migrations/ a la recherche
+    // du NOM de role "service_role" dans du SQL brut (jamais une cle secrete) : un fichier de
+    // test statique, jamais bundle cote mobile (metro.config.js), meme motif que
+    // src/test/rls.banc.ts (SERVICE_ROLE_KEY, une variable, jamais un literal ici).
+    ignores: [
+      'src/theme/**',
+      'src/test/contraste.test.ts',
+      'src/test/conventions-grants-migrations.test.ts',
+    ],
     rules: {
       'no-restricted-syntax': [
         'error',
