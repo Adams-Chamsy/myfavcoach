@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react-native';
+import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
@@ -42,15 +43,24 @@ function creerPortControle(
   };
 }
 
+// Meme valeurs que METRIQUES_ZONES_SURES (src/test/accessibilite.test.tsx) : useSafeAreaInsets()
+// leve sans SafeAreaProvider (Index en a besoin depuis qu'il pose paddingBottom: insets.bottom).
+const METRIQUES_ZONES_SURES: Metrics = {
+  insets: { top: 59, left: 0, right: 0, bottom: 34 },
+  frame: { x: 0, y: 0, width: 393, height: 852 },
+};
+
 async function rendreIndex(port: PortAuth, portDonnees: PortDonnees = creerFauxPortDonnees()) {
   return render(
-    <FournisseurTheme>
-      <FournisseurSession port={port}>
-        <FournisseurDonnees port={portDonnees}>
-          <Index />
-        </FournisseurDonnees>
-      </FournisseurSession>
-    </FournisseurTheme>,
+    <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
+      <FournisseurTheme>
+        <FournisseurSession port={port}>
+          <FournisseurDonnees port={portDonnees}>
+            <Index />
+          </FournisseurDonnees>
+        </FournisseurSession>
+      </FournisseurTheme>
+    </SafeAreaProvider>,
   );
 }
 
@@ -61,6 +71,54 @@ function sessionNonVerifiee(): SessionAuth {
     emailVerifie: false,
     jetonAcces: 'jeton-acces',
     jetonRafraichissement: 'jeton-rafraichissement',
+  };
+}
+
+// Meme forme que le port entierement controle de la garde ci-dessous : seule
+// lireEtatProfils() nous interesse ici, le reste ne doit jamais etre appele avant que l'ecran
+// ne redirige.
+function creerPortDonneesEnAttente(promesse: Promise<EtatProfils>): PortDonnees {
+  return {
+    lireEtatProfils: jest.fn().mockReturnValue(promesse),
+    lireProfilOnboarding: jest.fn(),
+    creerProfilClient: jest.fn(),
+    enregistrerObjectifsEtRythme: jest.fn(),
+    enregistrerPointDeDepart: jest.fn(),
+    terminerOnboarding: jest.fn(),
+    basculerProfil: jest.fn(),
+    creerProfilCoach: jest.fn(),
+    lireInformations: jest.fn(),
+    enregistrerInformations: jest.fn(),
+    lireConsentementSante: jest.fn(),
+    enregistrerConsentementSante: jest.fn(),
+    effacerMesuresCorporelles: jest.fn(),
+    lireDossierVerification: jest.fn(),
+    lirePiecesDeposees: jest.fn(),
+    deposerPieceVerification: jest.fn(),
+    lireMesOffres: jest.fn(),
+    creerOffreBrouillon: jest.fn(),
+    modifierOffre: jest.fn(),
+    publierOffre: jest.fn(),
+    retirerOffre: jest.fn(),
+    lireProfilCoachPublic: jest.fn(),
+    lireOffresPublieesDeCoach: jest.fn(),
+    lireDisciplines: jest.fn(),
+    lireCommunesReference: jest.fn(),
+    lireLangues: jest.fn(),
+    rechercherCoachs: jest.fn(),
+    demanderSuppressionCompte: jest.fn(),
+    lireConsentementCommunications: jest.fn(),
+    enregistrerConsentementCommunications: jest.fn(),
+    lireHistoriqueConsentements: jest.fn(),
+    demanderExportDonnees: jest.fn(),
+    lireDernierExport: jest.fn(),
+    lireDatesDocuments: jest.fn(),
+    lireMonJetonInvitation: jest.fn(),
+    regenererJetonInvitation: jest.fn(),
+    lireMesInvitations: jest.fn(),
+    lireNombreInvitationsEnAttente: jest.fn(),
+    ajouterInvitationEnAttente: jest.fn(),
+    lireCoachParJetonInvitation: jest.fn(),
   };
 }
 
@@ -267,6 +325,63 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
 
       expect(screen.getByText('Ça prend plus de temps que prévu')).toBeTruthy();
       expect(screen.getByText('Réessayer')).toBeTruthy();
+    });
+  });
+
+  // Contenu visuel ajouté à la révision du 19 septembre 2026 (assets/marque/, remplace la
+  // lettre M) : verrouillage logo, vague décorative, barre de progression par étapes réelles.
+  describe('contenu visuel (verrouillage logo, vague, progression)', () => {
+    it('affiche le verrouillage logo avec son libellé pendant le chargement', async () => {
+      await rendreIndex(creerPortControle(jest.fn().mockReturnValue(new Promise(() => {}))));
+
+      expect(screen.getByLabelText('My Fav Coach')).toBeTruthy();
+    });
+
+    it("la vague sable est purement décorative, jamais exposée au lecteur d'écran", async () => {
+      await rendreIndex(creerPortControle(jest.fn().mockReturnValue(new Promise(() => {}))));
+
+      // includeHiddenElements : sans quoi RNTL exclut par défaut tout nœud
+      // accessibilityElementsHidden des requêtes -- la preuve même que l'élément est bien caché.
+      const vague = screen.getByTestId('vague-sable', { includeHiddenElements: true });
+      expect(vague.props.accessibilityElementsHidden).toBe(true);
+      expect(vague.props.importantForAccessibility).toBe('no');
+    });
+
+    // FournisseurDonnees ne lit jamais le port tant qu'aucune session vérifiée n'existe (voir
+    // commentaire en tête de app/index.tsx) : tant que la session traîne, chargementDonnees se
+    // résout tout seul à false, quoi que fasse le port. Ce que la barre peut réellement montrer
+    // avant la redirection se résume donc à une seule étape manquante à la fois (polices acquise
+    // + une des deux autres) : deux façons différentes d'y arriver, jamais une troisième valeur
+    // intermédiaire, et jamais par une minuterie.
+    it("session non résolue : la barre reflète l'étape suivante (polices + profil, sans attendre la session)", async () => {
+      await rendreIndex(creerPortControle(jest.fn().mockReturnValue(new Promise(() => {}))));
+
+      // 2 étapes sur 3 (polices + profil, résolu sans session) : 2/3 arrondi = 67.
+      await waitFor(() => {
+        expect(
+          screen.getByLabelText("Préparation de l'application").props.accessibilityValue,
+        ).toEqual({ min: 0, max: 100, now: 67 });
+      });
+      expect(screen.queryByTestId('redirection')).toBeNull();
+    });
+
+    it('session restaurée mais profil encore en lecture : la barre atteint la même étape par le chemin inverse', async () => {
+      const profilsJamaisResolu = new Promise<EtatProfils>(() => {});
+      const session: SessionAuth = { ...sessionNonVerifiee(), emailVerifie: true };
+
+      await rendreIndex(
+        creerPortControle(jest.fn().mockResolvedValue(session)),
+        creerPortDonneesEnAttente(profilsJamaisResolu),
+      );
+
+      // 2 étapes sur 3 (polices + session) : 2/3 arrondi = 67. Toujours sur cet écran, pas une
+      // redirection : chargementDonnees reste vrai tant que profilsJamaisResolu ne répond pas.
+      await waitFor(() => {
+        expect(
+          screen.getByLabelText("Préparation de l'application").props.accessibilityValue,
+        ).toEqual({ min: 0, max: 100, now: 67 });
+      });
+      expect(screen.queryByTestId('redirection')).toBeNull();
     });
   });
 });

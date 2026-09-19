@@ -16,8 +16,7 @@ const SECONDES_AVANT_RENVOI = 60;
 // Diamètre de la pastille qui entoure l'icône "document" (docs/ecrans/L1-03-verification-
 // email.md : "Icône `document` 62 dans une pastille `marque.secondaire`"). Aucun token ne
 // vaut 62 (le plus proche, taille.avatarXl, vaut 76 — un usage différent, l'avatar d'un
-// profil) : constante locale documentée, même motif que TAILLE_LOGO dans app/index.tsx. Voir
-// docs/dette.md.
+// profil) : constante locale documentée. Voir docs/dette.md.
 const TAILLE_PASTILLE = 62;
 
 type EtatEcran =
