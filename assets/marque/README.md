@@ -10,9 +10,9 @@ Deux conséquences :
 1. Si le vectoriel d'origine existe (la planche annonce des fichiers SVG, AI et EPS), il fait foi
    et ces fichiers sont à jeter. La vectorisation reste une approximation à quelques dixièmes de
    pixel, surtout sur les courbes du ruban sable.
-2. Le nom « My Fav Coach » est du texte vivant dans le SVG, pas des courbes. Il s'affiche
-   correctement là où Manrope est installée et bascule sur une police de substitution ailleurs.
-   Pour un logo définitif, il faut le convertir en tracés.
+2. Le nom « My Fav Coach » et la signature sont **convertis en tracés** depuis Manrope 700 et
+   500 (révision du 19 septembre). Les verrouillages ne dépendent plus d'aucune police installée :
+   ils s'affichent identiques partout, fiche de store comprise.
 
 Le ruban sable sort du cadre en haut à droite : c'est fidèle à la planche, où il est coupé de la
 même façon. Si ce n'était pas voulu à l'origine, il faut le redessiner, pas le recadrer.
@@ -57,9 +57,13 @@ L'orange `#E2603C` n'apparaît nulle part dans la marque, et c'est volontaire : 
 - `android-foreground-432.png` — calque avant pour icône adaptative Android, fond transparent,
   symbole dans la zone sûre de 66 %
 
-**Écran de démarrage**
+**Écran de démarrage** (révision du 19 septembre — remplace `splash-clair.png` et
+`splash-sombre.png`, à supprimer)
 
-- `splash-clair.png` · `splash-sombre.png` — 1242 × 2688, symbole centré
+- `splash-logo-clair.png` — iOS : symbole + nom + signature, fond transparent, 1200 × 880
+- `splash-android-clair.png` — Android : symbole seul, fond transparent, 1152 × 1152 (288 dp à
+  ×4), contenu dans le cercle de 192 dp que l'API splash d'Android 12+ laisse visible
+- `splash-logo-sombre.png` · `splash-android-sombre.png` — pour le thème sombre, non branchés
 
 ---
 
@@ -71,11 +75,6 @@ Dans `app.json` :
 {
   "expo": {
     "icon": "./assets/marque/icone-1024.png",
-    "splash": {
-      "image": "./assets/marque/splash-clair.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FBF8F4"
-    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/marque/android-foreground-432.png",
@@ -86,15 +85,50 @@ Dans `app.json` :
 }
 ```
 
-Trois points à ne pas rater :
+Le splash ne se configure **pas** par la clé `splash` de haut niveau : elle est inopérante sur
+Expo SDK 57 (vérifié dans le code du paquet lors de la première intégration). Il passe par le
+tuple du plugin `expo-splash-screen`, avec une image par plateforme :
+
+```json
+[
+  "expo-splash-screen",
+  {
+    "backgroundColor": "#FBF8F4",
+    "ios": {
+      "image": "./assets/marque/splash-logo-clair.png",
+      "imageWidth": 260
+    },
+    "android": {
+      "image": "./assets/marque/splash-android-clair.png",
+      "imageWidth": 288
+    }
+  }
+]
+```
+
+Les noms exacts des clés par plateforme sont à vérifier dans le code du plugin installé, comme
+la première fois — ce bloc décrit l'intention, pas une configuration éprouvée.
+
+`expo export` ne touche ni l'icône ni le splash : ce sont des affaires de prebuild natif. Ne les
+cherche pas dans `dist/`.
+
+Quatre points à ne pas rater :
+
+- **Deux images, pas une.** Depuis Android 12, le splash passe par l'API système : une icône
+  centrée, masquée en cercle. Un verrouillage large avec le nom y serait rogné. D'où le symbole
+  seul côté Android, et le verrouillage complet côté iOS.
+- **Pas de barre de progression, pas de vague décorative.** Un splash natif est une image fixe
+  affichée avant que le moindre code ne tourne : rien ne peut y bouger, et rien ne peut couvrir
+  tout l'écran sur Android 12+. La barre de la maquette serait une progression inventée — rien
+  ne mesure le chargement à ce moment-là.
 
 - **L'icône iOS ne doit pas avoir de transparence.** `icone-1024.png` a un fond plein, c'est
   voulu. Une icône transparente est refusée à la soumission.
 - **L'icône Android adaptative est recadrée** par le lanceur en cercle, en carré arrondi ou
   en goutte selon l'appareil. Le symbole occupe 60 % du calque pour survivre au recadrage le
   plus agressif.
-- **Le splash sombre n'est pas branché au jalon 1.** Le thème sombre existe en tokens mais
-  son implémentation est reportée (`perimetre.md` §3). Le fichier est fourni pour plus tard.
+- **Les deux splash sombres ne sont pas branchés au jalon 1.** Le thème sombre existe en tokens mais
+  son implémentation est reportée (`perimetre.md` §3). Les fichiers sont fournis pour plus tard.
 
 ---
 

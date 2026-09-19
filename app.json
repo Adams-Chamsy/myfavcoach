@@ -36,9 +36,15 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/marque/splash-clair.png",
-          "resizeMode": "contain",
-          "backgroundColor": "#FBF8F4"
+          "backgroundColor": "#FBF8F4",
+          "ios": {
+            "image": "./assets/marque/splash-logo-clair.png",
+            "imageWidth": 260
+          },
+          "android": {
+            "image": "./assets/marque/splash-android-clair.png",
+            "imageWidth": 288
+          }
         }
       ],
       "expo-secure-store",
