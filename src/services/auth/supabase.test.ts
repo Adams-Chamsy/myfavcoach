@@ -72,7 +72,7 @@ describe('portAuthSupabase', () => {
       auth.signUp.mockResolvedValue({
         data: {},
         error: new AuthApiError(
-          'Database error saving new user: My fav Coach est reserve aux majeurs',
+          'Database error saving new user: My Fav Coach est reserve aux majeurs',
           500,
           'unexpected_failure',
         ),
@@ -86,7 +86,7 @@ describe('portAuthSupabase', () => {
 
       expect(resultat).toEqual({
         succes: false,
-        erreur: { code: 'age_insuffisant', message: 'My fav Coach est réservé aux majeurs.' },
+        erreur: { code: 'age_insuffisant', message: 'My Fav Coach est réservé aux majeurs.' },
       });
     });
 

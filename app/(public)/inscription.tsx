@@ -172,7 +172,7 @@ export default function Inscription() {
 
   function validerDate(date: Date): boolean {
     if (!estMajeur(date)) {
-      setErreurDate('My fav Coach est réservé aux majeurs.');
+      setErreurDate('My Fav Coach est réservé aux majeurs.');
       return false;
     }
     setErreurDate(undefined);

@@ -93,7 +93,7 @@ Sous-titre : « Facultatif. Tu peux l'ajouter plus tard, ou jamais. »
 
 - Deux champs numériques : poids actuel, poids visé, en kilogrammes avec une décimale.
 - Au-dessus des champs, un **interrupteur de consentement**, décoché par défaut :
-  « J'accepte que My fav Coach enregistre mes données de santé pour suivre ma progression. »
+  « J'accepte que My Fav Coach enregistre mes données de santé pour suivre ma progression. »
   Les champs sont inertes tant qu'il est décoché — inertes et **visiblement** inertes.
 - Sous les champs, le rappel : « Tu peux retirer cet accord à tout moment dans ton compte. »
 - Bouton : « Continuer », toujours actif. « Passer » disponible.

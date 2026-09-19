@@ -12,4 +12,4 @@
 export const VERSION_CONSENTEMENT_SANTE = '2026-09-04';
 
 export const TEXTE_CONSENTEMENT_SANTE =
-  "J'accepte que My fav Coach enregistre mes données de santé pour suivre ma progression.";
+  "J'accepte que My Fav Coach enregistre mes données de santé pour suivre ma progression.";

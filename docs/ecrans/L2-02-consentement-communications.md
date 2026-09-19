@@ -29,7 +29,7 @@ titre propre au-delà de « Confidentialité »), avec deux sections :
 
 - **Santé** : le bloc déjà construit en L1 (poids et mesures), inchangé.
 - **Communications** : un interrupteur, « Nouveautés et conseils » — « Courriels occasionnels
-  de MyFavCoach » (`consentements.type = 'communicationsCommerciales'`, `docs/domaine.md`
+  de My Fav Coach » (`consentements.type = 'communicationsCommerciales'`, `docs/domaine.md`
   §3.12). Sous le bloc : « Les messages liés à ton abonnement et à tes paiements arrivent quoi
   qu'il arrive : ils ne relèvent pas d'une autorisation. » — distingue explicitement ce
   consentement des communications transactionnelles (confirmation de paiement, etc.), qui ne

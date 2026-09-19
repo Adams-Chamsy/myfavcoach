@@ -67,7 +67,7 @@ describe('Confidentialité (docs/ecrans/L1-09-mes-informations.md, « Confidenti
     await rendre({ accorde: true, version: VERSION_CONSENTEMENT_SANTE });
 
     expect(
-      screen.getByText(/J.accepte que My fav Coach enregistre mes données de santé/),
+      screen.getByText(/J.accepte que My Fav Coach enregistre mes données de santé/),
     ).toBeTruthy();
     expect(screen.getByText('Version du 04/09/2026')).toBeTruthy();
   });

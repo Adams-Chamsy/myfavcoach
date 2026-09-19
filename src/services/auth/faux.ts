@@ -92,7 +92,7 @@ export function creerFauxPortAuth(): FauxPortAuth {
       // déclencheur de 0001_creer_identite.sql, jamais dupliquée ici) : parce que l'écran
       // L1-02 doit pouvoir être testé face à ce refus précis sans base réelle.
       if (calculerAge(dateNaissance) < AGE_MINIMUM_ANNEES) {
-        return erreur('age_insuffisant', 'My fav Coach est réservé aux majeurs.');
+        return erreur('age_insuffisant', 'My Fav Coach est réservé aux majeurs.');
       }
 
       // Aucune énumération de comptes (docs/ecrans/L1-02, "Aucune énumération de comptes") :

@@ -152,7 +152,7 @@ function traduireErreur(erreurBrute: unknown): ErreurAuth {
     }
     // Zone NON VÉRIFIÉE — voir le commentaire de fonction ci-dessus.
     if (auth.code === 'unexpected_failure' && /majeur/i.test(auth.message)) {
-      return { code: 'age_insuffisant', message: 'My fav Coach est réservé aux majeurs.' };
+      return { code: 'age_insuffisant', message: 'My Fav Coach est réservé aux majeurs.' };
     }
   }
 

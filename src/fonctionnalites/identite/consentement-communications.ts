@@ -4,4 +4,4 @@
 // (docs/dette.md).
 export const VERSION_CONSENTEMENT_COMMUNICATIONS = '2026-09-04';
 
-export const TEXTE_CONSENTEMENT_COMMUNICATIONS = 'Courriels occasionnels de My fav Coach.';
+export const TEXTE_CONSENTEMENT_COMMUNICATIONS = 'Courriels occasionnels de My Fav Coach.';

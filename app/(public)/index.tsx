@@ -199,7 +199,7 @@ export default function Bienvenue() {
             de l'écran (surSombre, clair) devient illisible au point le plus transparent du
             dégradé (docs/ecrans/L1-01-bienvenue.md, critère 5 ; CLAUDE.md §5). */}
         <EmplacementImage
-          nom="My fav Coach"
+          nom="My Fav Coach"
           ratio="pleinCadre"
           remplir
           fondRepli={sombre.fond.canevas}
@@ -248,7 +248,7 @@ export default function Bienvenue() {
               au lancement. Le symbole porte du sens (c'est la marque), pas de la décoration :
               rôle et libellé explicites, comme EmplacementImage le fait déjà pour une vraie
               photo sur cet écran, jamais accessibilityElementsHidden. */}
-          <View accessible accessibilityRole="image" accessibilityLabel="My fav Coach">
+          <View accessible accessibilityRole="image" accessibilityLabel="My Fav Coach">
             <SymboleMarque taille={88} />
           </View>
         </View>

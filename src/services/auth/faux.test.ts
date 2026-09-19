@@ -32,7 +32,7 @@ describe('creerFauxPortAuth', () => {
 
     expect(resultat).toEqual({
       succes: false,
-      erreur: { code: 'age_insuffisant', message: 'My fav Coach est réservé aux majeurs.' },
+      erreur: { code: 'age_insuffisant', message: 'My Fav Coach est réservé aux majeurs.' },
     });
   });
 

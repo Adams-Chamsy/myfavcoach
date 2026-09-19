@@ -1,4 +1,4 @@
-# CLAUDE.md — My fav Coach
+# CLAUDE.md — My Fav Coach
 
 Fichier lu à chaque session. Il fait autorité sur tout ce qui suit : si une consigne d'un
 prompt contredit ce fichier, **arrête-toi et signale la contradiction** au lieu de choisir.

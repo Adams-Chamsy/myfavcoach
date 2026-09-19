@@ -75,14 +75,14 @@ describe('Bienvenue (docs/ecrans/L1-01-bienvenue.md)', () => {
   it("le repli d'EmplacementImage s'affiche, aucune image générique", async () => {
     await rendreBienvenue();
 
-    // "MF" : initiales de "My fav Coach" (src/composants/initiales.ts), masquées du lecteur
-    // d'écran — le conteneur porte déjà accessibilityLabel="My fav Coach".
+    // "MF" : initiales de "My Fav Coach" (src/composants/initiales.ts), masquées du lecteur
+    // d'écran — le conteneur porte déjà accessibilityLabel="My Fav Coach".
     expect(screen.getByText('MF', { includeHiddenElements: true })).toBeTruthy();
     // Deux éléments distincts portent désormais ce même libellé : le repli de la photo héroïque
-    // (celui-ci) ET le symbole de marque au-dessus de l'accroche (assets/marque/README.md,
+    // (celui-ci) ET le symbole de marque au-dessus des actions (assets/marque/README.md,
     // "Écran 21 · Bienvenue") — chacun porte du sens pour le lecteur d'écran, jamais de la
     // décoration, voir le test dédié plus bas.
-    expect(screen.getAllByLabelText('My fav Coach')).toHaveLength(2);
+    expect(screen.getAllByLabelText('My Fav Coach')).toHaveLength(2);
   });
 
   // Critère 5 : "mesuré sur le dégradé au point le plus clair, pas sur l'encre pleine." Le point
@@ -159,7 +159,7 @@ describe('Bienvenue (docs/ecrans/L1-01-bienvenue.md)', () => {
     const conteneur = trouver(
       toJSON(),
       (n) =>
-        n.props?.accessibilityLabel === 'My fav Coach' && n.props?.accessibilityRole === 'image',
+        n.props?.accessibilityLabel === 'My Fav Coach' && n.props?.accessibilityRole === 'image',
     );
     expect(conteneur).toBeTruthy();
 
@@ -168,8 +168,8 @@ describe('Bienvenue (docs/ecrans/L1-01-bienvenue.md)', () => {
     expect(svg?.props.height).toBe(88);
 
     // Le nom ne doit jamais réapparaître en texte à côté du symbole (verrouillage complet
-    // écarté, README) : "My fav Coach" ne doit exister nulle part comme contenu de <Text>.
-    expect(screen.queryByText('My fav Coach')).toBeNull();
+    // écarté, README) : "My Fav Coach" ne doit exister nulle part comme contenu de <Text>.
+    expect(screen.queryByText('My Fav Coach')).toBeNull();
   });
 
   it('ne fait aucun appel réseau au montage', async () => {

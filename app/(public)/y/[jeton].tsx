@@ -219,7 +219,7 @@ export function CorpsArriveeParInvitation({ jeton }: { jeton: string | undefined
         }}
       >
         <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
-          Tu travailles déjà avec {nomCoach}. {coach.prenom} regroupe son suivi sur My fav Coach :
+          Tu travailles déjà avec {nomCoach}. {coach.prenom} regroupe son suivi sur My Fav Coach :
           tes séances, tes échanges et ta progression au même endroit.
         </Text>
 

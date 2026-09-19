@@ -57,7 +57,7 @@ Pied fixe : bouton primaire « Créer mon compte ».
 | Format d'adresse | Cette adresse ne ressemble pas à une adresse e-mail. |
 | Mot de passe trop court | Il faut au moins 10 caractères. |
 | Mot de passe trop long | 72 caractères au maximum. |
-| Moins de 18 ans | My fav Coach est réservé aux majeurs. |
+| Moins de 18 ans | My Fav Coach est réservé aux majeurs. |
 | Réseau | Pas de connexion. Ta saisie est gardée, réessaie. |
 | Serveur | On a un souci de notre côté. Ce n'est pas toi. |
 
