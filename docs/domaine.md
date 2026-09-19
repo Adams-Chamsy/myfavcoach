@@ -304,6 +304,43 @@ Pas de suppression, pas de modification : une décision fausse ou à corriger ne
 elle est suivie d'une nouvelle décision qui la remplace en pratique — la trace complète reste
 lisible, y compris l'erreur.
 
+### 3.15 Invitation
+
+**Règle métier, écrite le 17 septembre 2026 (lot L3bis)** : un coach porte un jeton unique et
+régénérable (`docs/prompts/L3bis.md`, point 1) — pas une invitation par destinataire. Le jeton
+identifie le COACH, jamais une personne précise avant qu'elle n'ait réellement créé un compte
+par ce lien.
+
+`Invitation` : `coach` (`ProfilCoach`), `compteInvite?` (`Compte`, absent tant qu'aucun compte
+n'a été créé par ce lien), `statut` (`en_attente` | `compte_cree` | `abonnee`), `creeLe`,
+`compteCreeLe?`, `abonneeLe?`.
+
+**Règle de troncature d'identité** (`docs/prompts/L3bis.md`, point 2) : le coach ne lit jamais,
+par cette relation, plus que le **prénom et l'initiale du nom** de `compteInvite` — à tous les
+états où une identité individuelle est visible (`compte_cree`, `abonnee`). Aucune autre colonne
+de `Compte` ni de `ProfilClient` n'est accessible par ce chemin, ni avant ni après un abonnement
+réel. Une vue plus complète du client suppose une relation d'abonnement établie et vit ailleurs
+(L7, « Fiche client » — hors périmètre du lot qui introduit `Invitation`).
+
+`abonnee` ne se déclenche que lorsque `compteInvite` s'abonne **précisément** à l'offre du coach
+qui l'a invité — câblé à L4 (`Abonnement` n'existe pas avant ce lot), jamais par le lot qui
+introduit cette entité. Voir §4.11 pour la machine à états, et la règle 8 de
+`docs/prompts/L3bis.md` pour ce que ça implique pour les tests écrits avant que ce câblage
+n'existe.
+
+**Conséquence assumée, écrite ici plutôt que découverte en production** : `compteInvite.prenom`
+et `.nom` se lisent en réalité sur `ProfilClient`, qui ne se crée qu'à l'étape 1 de l'onboarding
+(`docs/ecrans/L1-05-onboarding-client.md`) — jamais à l'inscription elle-même. Un compte créé par
+un lien d'invitation mais qui n'a pas encore commencé son onboarding n'a donc **aucune identité à
+montrer**, et n'apparaît PAS dans ce que le coach lit (`mes_invitations()`, `docs/backend.md`
+§11) tant que `ProfilClient` n'existe pas — ni comme `compte_cree` tronqué, ni autrement. Ce
+n'est pas un défaut à corriger : un compte sans `ProfilClient` n'a rien de réel à afficher, et
+inventer un nom de repli (« Nouveau client », un identifiant) serait pire qu'une absence
+temporaire. **Conséquence pour l'écran (I-01)** : le compteur affiché ne peut donc pas prétendre
+compter les comptes créés, seulement ceux qui ont commencé leur onboarding — le libellé doit le
+dire honnêtement plutôt qu'annoncer un total qu'il ne mesure pas (voir
+`docs/ecrans/L3bis-I01-inviter-mes-clients.md`, Règles).
+
 ---
 
 ## 4. Machines à états
@@ -455,6 +492,19 @@ Lecture, pas une colonne littérale (§3.3) : `brouillon` = `publieeLe` et `reti
 `null` ; `publiee` = `publieeLe` posée ; `retiree` = `retireeLe` posée. Aucun retour en arrière
 écrit ici (`retiree` → `brouillon`, ou re-publication) : ni demandé ni observé dans le dossier de
 design, laissé ouvert plutôt qu'inventé.
+
+### 4.11 Invitation
+
+```
+en_attente --(un compte se crée par le lien du coach)--> compte_cree
+compte_cree --(abonnement à CE coach précisément, câblé à L4)--> abonnee
+```
+
+`en_attente` est aussi l'état de départ d'une entrée créée manuellement par le coach (« Ajouter »,
+une note privée pour lui-même, `docs/prompts/L3bis.md`) — elle ne transite **jamais**
+automatiquement vers `compte_cree` : rien dans ce dépôt ne devine qu'une entrée manuelle et un
+compte réel créé plus tard désignent la même personne. Les deux restent des lignes distinctes,
+sans rapprochement algorithmique.
 
 ---
 

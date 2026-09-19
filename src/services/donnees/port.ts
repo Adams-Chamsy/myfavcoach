@@ -138,6 +138,18 @@ export type Discipline = { cle: string; libelle: string };
 // que `disciplines`, mécanisme différent). Même séparation cle/libelle, même raison.
 export type Langue = { cle: string; libelle: string };
 
+// L3bis (docs/domaine.md §3.15) : ce qu'un coach lit de SES invitations aux états
+// compte_cree/abonnee — prénom + initiale du nom, jamais plus (docs/backend.md §11). Les
+// invitations en_attente n'ont pas de représentation ici : elles ne sortent jamais
+// individuellement, seulement comptées (voir lireNombreInvitationsEnAttente).
+export type Invitation = {
+  id: string;
+  statut: 'compte_cree' | 'abonnee';
+  prenom: string;
+  initialeNom: string;
+  abonneeLe: string | null;
+};
+
 // Référentiel géographique réduit (docs/ecrans/L3-02-recherche-filtres.md, « Référentiel
 // géographique ») : six communes, pas le référentiel INSEE national — le filtre de commune de
 // L3-02 est donc un choix fermé parmi ces lignes, jamais un champ texte libre. Table
@@ -406,6 +418,36 @@ export type PortDonnees = {
   // d'acceptation elle-même, seulement à sa version — exact tant qu'aucune ré-acceptation n'a
   // eu lieu depuis la création du compte (docs/dette.md).
   lireDatesDocuments(): Promise<{ cguVersionAcceptee: string; creeLe: string }>;
+
+  // L3bis-I01 : le jeton d'invitation du coach courant (mon_jeton_invitation, 0026). Lecture
+  // pour SON PROPRE coach seulement — jamais accordée à quiconque d'autre (docs/backend.md §8 :
+  // toute colonne de profils_coach est publique dès qu'elle est accordée, jeton_invitation n'a
+  // donc jamais de grant, cette fonction est le seul chemin).
+  lireMonJetonInvitation(): Promise<string>;
+
+  // L3bis-I01 : remplace le jeton du coach courant (regenerer_jeton_invitation, 0026). Ne touche
+  // à aucune ligne invitations — seule la valeur du jeton change.
+  regenererJetonInvitation(): Promise<string>;
+
+  // L3bis-I01 : les invitations du coach courant aux états compte_cree/abonnee (mes_invitations,
+  // 0027) — colonnes exactes, docs/ecrans/L3bis-I01-inviter-mes-clients.md, « Colonnes rendues ».
+  lireMesInvitations(): Promise<Invitation[]>;
+
+  // L3bis-I01 : le compte agrégé des invitations en_attente
+  // (nombre_invitations_en_attente, 0029) — jamais les lignes elles-mêmes, qui ne fuient jamais
+  // individuellement (docs/prompts/L3bis.md, P3bis.4).
+  lireNombreInvitationsEnAttente(): Promise<number>;
+
+  // L3bis-I01, « Ajouter » (ajouter_invitation_en_attente, 0029) : incrémente le compte
+  // en_attente de un. Aucun paramètre, aucune identité capturée (docs/ecrans/L3bis-I01-
+  // inviter-mes-clients.md, Règles).
+  ajouterInvitationEnAttente(): Promise<ResultatEcriture>;
+
+  // L3bis-I02 : résout un jeton public vers un coach_id (coach_par_jeton_invitation, 0027).
+  // Lecture publique (anon compris) — null si le jeton ne résout à rien (absent, régénéré, ou
+  // coach non vérifié), jamais une erreur : un jeton presque valide se comporte comme un jeton
+  // absent (docs/ecrans/L3bis-I02-arrivee-par-invitation.md, Règles).
+  lireCoachParJetonInvitation(jeton: string): Promise<string | null>;
 };
 
 // Les trois écritures qui changent EtatProfils. Elles ne sont JAMAIS appelées sur un `port`

@@ -10,3 +10,9 @@ maquettes
 docs
 design
 CLAUDE.md
+
+# Sans extension par convention Apple (Universal Links, L3bis) : Prettier ne peut pas lui
+# inférer de parseur JSON. Aujourd'hui exemptée en silence par le glob de `prettier --check .`
+# (qui ne descend pas dans les répertoires en point, `.well-known/`) -- rendue explicite ici pour
+# ne pas dépendre de ce comportement incident.
+public/.well-known/apple-app-site-association

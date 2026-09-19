@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';
 
 import { FournisseurTheme } from '@/theme/fournisseur';
@@ -62,6 +62,34 @@ describe('Modale', () => {
     await rendreModale(false);
 
     expect(screen.queryByTestId('modale')).toBeNull();
+  });
+
+  it('destructeurOccupe desactive UNIQUEMENT le bouton destructeur, jamais Annuler', async () => {
+    const onDestructeur = jest.fn();
+    const onAction = jest.fn();
+    await render(
+      <FournisseurTheme>
+        <Modale
+          ouverte
+          onFermer={() => {}}
+          titre="Supprimer ce programme ?"
+          corps="Cette action est definitive."
+          libelleAction="Annuler"
+          onAction={onAction}
+          libelleDestructeur="Supprimer"
+          onDestructeur={onDestructeur}
+          destructeurOccupe
+        >
+          <Text>Contenu ecran</Text>
+        </Modale>
+      </FournisseurTheme>,
+    );
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Supprimer' }));
+    expect(onDestructeur).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Annuler' }));
+    expect(onAction).toHaveBeenCalledTimes(1);
   });
 });
 

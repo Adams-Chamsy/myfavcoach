@@ -56,6 +56,7 @@ function envoyerCourrielInscription(
   email: string,
   motDePasse: string,
   dateNaissance: string,
+  jetonInvitation?: string,
 ): ReturnType<typeof supabase.auth.signUp> {
   return supabase.auth.signUp({
     email,
@@ -67,7 +68,14 @@ function envoyerCourrielInscription(
       // déclencheur ne le trouve jamais, et l'inscription réelle échouait donc toujours (500
       // "Database error saving new user", jamais vu en test faute d'un test contre le vrai
       // serveur). Trouvé en préparant P1.11, cgu_version_acceptee manquant EN PLUS.
-      data: { date_naissance: dateNaissance, cgu_version_acceptee: VERSION_CGU_ACCEPTEE },
+      // jeton_invitation (L3bis, 0027) : même snake_case, même raison — absent (undefined) pour
+      // la grande majorité des inscriptions, JSON.stringify l'omet alors silencieusement plutôt
+      // que d'envoyer une clé vide.
+      data: {
+        date_naissance: dateNaissance,
+        cgu_version_acceptee: VERSION_CGU_ACCEPTEE,
+        jeton_invitation: jetonInvitation,
+      },
       emailRedirectTo: LIEN_VERIFICATION_EMAIL,
     },
   });
@@ -152,8 +160,13 @@ function traduireErreur(erreurBrute: unknown): ErreurAuth {
 }
 
 export const portAuthSupabase: PortAuth = {
-  async inscrire(email, motDePasse, dateNaissance) {
-    const { error } = await envoyerCourrielInscription(email, motDePasse, dateNaissance);
+  async inscrire(email, motDePasse, dateNaissance, jetonInvitation) {
+    const { error } = await envoyerCourrielInscription(
+      email,
+      motDePasse,
+      dateNaissance,
+      jetonInvitation,
+    );
     if (error) return { succes: false, erreur: traduireErreur(error) };
     return { succes: true };
   },

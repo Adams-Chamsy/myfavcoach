@@ -51,6 +51,7 @@ import DevenirCoachProfil from './(onboarding)/devenir-coach-profil';
 import DevenirCoachVerification from './(onboarding)/devenir-coach-verification';
 import DevenirCoachRecapitulatif from './(onboarding)/devenir-coach-recapitulatif';
 import { AttenteVerification } from '@/fonctionnalites/coach/attente-verification';
+import { CarteImporterClients } from '@/fonctionnalites/coach/carte-importer-clients';
 import { PremierLancement } from '@/fonctionnalites/coach/premier-lancement';
 import { EcranCreationOffre } from '@/fonctionnalites/offres/ecran-creation-offre';
 import Informations from './(compte)/informations';
@@ -63,6 +64,8 @@ import { CorpsDocumentLegal } from './(public)/documents/[type]';
 import { CorpsProfilCoachPublic } from './(client)/coach/[id]';
 import Accueil from './(client)/(tabs)/accueil';
 import { CorpsExplorer } from './(client)/(tabs)/explorer';
+import Invitations from './(coach)/invitations';
+import { CorpsArriveeParInvitation } from './(public)/y/[jeton]';
 import type { ResultatRecherche } from '@/services/donnees/port';
 import {
   FournisseurMouvementReduit,
@@ -133,6 +136,7 @@ function Corps({
       <SectionEcransL1 />
       <SectionEcransL2 />
       <SectionEcransL3 />
+      <SectionEcransL3bis />
       <PiedGalerie
         themeClair={themeClair}
         onChangeThemeClair={onChangeThemeClair}
@@ -1471,6 +1475,155 @@ const ECRANS_L3: { titre: string; rendu: () => ReactNode }[] = [
   { titre: 'L3-02 · Recherche et filtres', rendu: () => <ExplorerAvecResultatsFixture /> },
   { titre: 'L3-03 · Recherche, aucun résultat', rendu: () => <ExplorerAucunResultatFixture /> },
 ];
+
+// I-01 : espace coach, la session de démonstration partagée ne porte ni jeton ni invitations —
+// fixture locale, même motif que ProfilCoachPublicAvecFixture plus haut.
+function InvitationsAvecFixture() {
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    p.definirEtatProfilsPourTest(
+      etatProfilsParDefaut({
+        profilActif: 'coach',
+        coachExiste: true,
+        identiteActive: { prenom: 'Yannick', nom: 'Berthaud' },
+      }),
+    );
+    p.definirJetonInvitationPourTest('demo-jeton-fictif-22ab');
+    p.definirInvitationsPourTest([
+      { id: 'inv-1', statut: 'compte_cree', prenom: 'Inès', initialeNom: 'R', abonneeLe: null },
+      {
+        id: 'inv-2',
+        statut: 'abonnee',
+        prenom: 'Camille',
+        initialeNom: 'D',
+        abonneeLe: '2026-09-12T00:00:00.000Z',
+      },
+    ]);
+    p.definirNombreInvitationsEnAttentePourTest(6);
+    return p;
+  });
+  return (
+    <FournisseurDonnees port={port}>
+      <Invitations />
+    </FournisseurDonnees>
+  );
+}
+
+// I-02 : lecture publique (pas de session), même motif que ProfilCoachPublicAvecFixture — un
+// jeton de démonstration résolu à la main, jamais par un vrai appel réseau.
+function ArriveeParInvitationAvecFixture() {
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    p.definirCoachParJetonPourTest({ 'jeton-galerie': 'coach-galerie-invitation' });
+    p.definirProfilsCoachPublicsPourTest({
+      'coach-galerie-invitation': {
+        id: 'coach-galerie-invitation',
+        prenom: 'Yannick',
+        nom: 'Berthaud',
+        photoUrl: null,
+        discipline: 'Préparation physique',
+        titreCourt: 'Coaching perf',
+        bio: 'Dix ans d’expérience.',
+        verifiee: true,
+        verifieeDepuisLe: '2026-03-01T00:00:00.000Z',
+        parcoursTexte: null,
+        langues: ['Français'],
+      },
+    });
+    p.definirOffresPubliquesPourTest({
+      'coach-galerie-invitation': [
+        {
+          id: 'offre-galerie-invitation',
+          titre: 'Suivi complet',
+          description: null,
+          prixCentimes: 4900,
+          benefices: [],
+          engagementHumain: [],
+          estMiseEnAvant: true,
+          publieeLe: '2026-01-01T00:00:00.000Z',
+          retireeLe: null,
+        },
+      ],
+    });
+    return p;
+  });
+  return (
+    <FournisseurDonnees port={port}>
+      <CorpsArriveeParInvitation jeton="jeton-galerie" />
+    </FournisseurDonnees>
+  );
+}
+
+// Carte d'entrée vers I-01, rendue seule (docs/ecrans/L3bis-I01-inviter-mes-clients.md, Règles) :
+// le seul chemin qui rend l'écran atteignable depuis pilotage.tsx (L7 provisoire par ailleurs).
+// Fond de canevas explicite pour ne pas dépendre de l'écran hôte, absent ici.
+function CarteImporterClientsAvecFond() {
+  const theme = useTheme();
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: theme.couleur.fond.canevas,
+        paddingTop: theme.espace[6],
+      }}
+    >
+      <CarteImporterClients onPress={() => {}} />
+    </View>
+  );
+}
+
+const ECRANS_L3BIS: { titre: string; rendu: () => ReactNode }[] = [
+  { titre: 'I-01 · Inviter mes clients', rendu: () => <InvitationsAvecFixture /> },
+  { titre: 'I-02 · Arrivée par invitation', rendu: () => <ArriveeParInvitationAvecFixture /> },
+  {
+    titre: 'Pilotage · Carte d’entrée « Importer mes clients »',
+    rendu: () => <CarteImporterClientsAvecFond />,
+  },
+];
+
+function SectionEcransL3bis() {
+  const theme = useTheme();
+  const [session, setSession] = useState<Awaited<
+    ReturnType<typeof creerSessionDemonstration>
+  > | null>(null);
+
+  useEffect(() => {
+    let monte = true;
+    void creerSessionDemonstration().then((s) => {
+      if (monte) setSession(s);
+    });
+    return () => {
+      monte = false;
+    };
+  }, []);
+
+  if (!session) return null;
+
+  return (
+    <Section titre="17 · Écrans du lot L3bis">
+      {ECRANS_L3BIS.map(({ titre, rendu }) => (
+        <View key={titre} style={{ gap: theme.espace[2] }}>
+          <SousTitre texte={titre} />
+          <View
+            style={{
+              height: 520,
+              overflow: 'hidden',
+              borderRadius: theme.rayon.saisie,
+              borderWidth: 1,
+              borderColor: theme.couleur.bordure.discrete,
+            }}
+          >
+            {/* FournisseurSession ambiant : I-01/I-02 fournissent chacun leur propre
+                FournisseurDonnees (fixture), mais useSession() (via FournisseurDonnees lui-même)
+                a besoin d'une session ambiante, même pour I-02, public, comme les autres
+                sections (SectionEcransL3, ProfilCoachPublicAvecFixture). */}
+            <FournisseurSession port={session.portAuth}>{rendu()}</FournisseurSession>
+          </View>
+        </View>
+      ))}
+    </Section>
+  );
+}
 
 function SectionEcransL3() {
   const theme = useTheme();

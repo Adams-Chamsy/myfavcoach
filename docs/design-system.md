@@ -156,3 +156,32 @@ pas de photos réelles :
   cadre 400 pt de haut** pour l'en-tête du profil coach.
 - Un profil coach sans photo reste publiable, mais est **rétrogradé dans le classement**
   (composante « fraîcheur du profil », `docs/domaine.md` §5.6).
+
+---
+
+## 8. Opacité et dégradés — aucune valeur pré-mélangée
+
+**Contrainte permanente, pas un arbitrage propre à un lot.** Le dépôt n'exprime jamais une
+couleur pré-mélangée : ni un dégradé CSS recopié tel quel, ni un `rgba(...)` inventé pour
+imiter une superposition ou un assombrissement vus dans une maquette, ni une opacité posée sur
+un token existant pour en simuler un autre. Une maquette qui montre l'un de ces trois cas est
+un rendu HTML, pas une source de vérité de couleur (`CLAUDE.md` §3) : elle se **ramène à un
+token existant** de `design/tokens.json`, jamais recopiée en valeur brute dans le code.
+
+- Un dégradé de superposition (scrim sur une photo, assombrissement de bas d'écran) se remplace
+  par un aplat d'un token de fond déjà défini pour le thème fixé de cette surface (`themes.
+  clair.*`/`themes.sombre.*`, jamais `useTheme()` sur une île — voir `CLAUDE.md` §5). Précédent :
+  L3bis-I02 (`docs/ecrans/L3bis-I02-arrivee-par-invitation.md`), où le dégradé de la maquette
+  sur l'image d'en-tête est devenu un aplat `sombre.fond.canevas` — décision de lot, mais la
+  règle qui l'a produite ne l'est pas.
+- Une désaturation ou un assombrissement de texte (« passer en gris clair », « à 60 % ») ne
+  s'implémente jamais par `opacity` sur `texte.principal` ou un équivalent : le token
+  `texte.attenue` (ou l'équivalent le plus proche déjà défini) porte cette intention et a été
+  mesuré pour rester lisible — un `opacity` réduit une valeur déjà mesurée sans cette garantie
+  (voir aussi `docs/ecrans/L3bis-I01-inviter-mes-clients.md`, Règles, pour un cas concret où
+  `npm run test:a11y` a tranché contre la maquette).
+- Si aucun token existant ne correspond, la règle de `CLAUDE.md` §3 s'applique normalement :
+  la valeur s'ajoute à `design/tokens.json` et se régénère (`npm run tokens`) — elle ne
+  s'invente jamais en ligne, même une seule fois, même pour un seul écran.
+
+---

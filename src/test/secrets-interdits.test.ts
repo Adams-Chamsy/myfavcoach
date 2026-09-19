@@ -116,7 +116,7 @@ describe('secrets interdits côté application', () => {
   //
   // Chaque exception est nommée une par une : ajouter une clé ici est un choix humain, jamais
   // un motif générique qui laisserait passer un fichier de plus sans que personne le décide.
-  // Les vingt-quatre ci-dessous (compte à jour au 13 septembre 2026, pas figé) nomment
+  // Les vingt-sept ci-dessous (compte à jour au 18 septembre 2026, pas figé) nomment
   // "service_role" pour avertir qu'elle est interdite, ou l'utilisent
   // légitimement côté outillage de test, de migration ou de CI (jamais dans l'application) — la
   // doc qui nomme le danger n'est pas le danger :
@@ -139,6 +139,9 @@ describe('secrets interdits côté application', () => {
   //   - supabase/migrations/0021_accorder_service_role_disciplines.sql : GRANT étroit (select/insert/delete) pour que service_role prépare ses propres lignes de référence au banc, même trou que 0009/0010/0014
   //   - supabase/migrations/0023_creer_recherche_coachs.sql : GRANT SELECT pour service_role (lecture seule du référentiel de communes), et commentaire renvoyant au même trou récurrent (0009/0010/0014/0021)
   //   - supabase/migrations/0025_creer_langues_reference_et_communes_fkey.sql : GRANT SELECT pour service_role sur la table langues, accordé directement cette fois plutôt que par une migration de rattrapage (même trou que 0009/0010/0014/0021/0023, corrigé sans le reproduire)
+  //   - supabase/migrations/0027_creer_invitations.sql : GRANT SELECT + INSERT pour service_role sur invitations (même trou récurrent, corrigé directement) — le commentaire nomme aussi explicitement que ce rôle ne contourne PAS les grants comme il contourne RLS, une hypothèse fausse trouvée en écrivant cette migration
+  //   - supabase/migrations/0029_ajouter_fonctions_invitations_ecran.sql : commentaire renvoyant au même motif (aucune écriture directe accordée à service_role sur invitations, y compris pour ces deux fonctions)
+  //   - docs/prompts/L3bis.md : règle 11 (cumulative) nomme "service_role" pour que le trou récurrent ci-dessus devienne une règle de conduite, pas une note qui ne survit qu'à ma mémoire
   //   - docs/dette.md : explique que le banc RLS insère ses coachs de test directement par service_role (formats/commune_base_insee posés à la main, faute de formulaire applicatif) — P3.2/P3.3
   //   - app/(admin)/verification.tsx : commentaire expliquant que la consultation des pièces passe par le compte examinateur, jamais par service_role
   //   - supabase/config.toml                          : commentaire généré par `supabase init`, décrivant les rôles de la Data API
@@ -165,6 +168,9 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0021_accorder_service_role_disciplines.sql',
       'supabase/migrations/0023_creer_recherche_coachs.sql',
       'supabase/migrations/0025_creer_langues_reference_et_communes_fkey.sql',
+      'supabase/migrations/0027_creer_invitations.sql',
+      'supabase/migrations/0029_ajouter_fonctions_invitations_ecran.sql',
+      'docs/prompts/L3bis.md',
       'docs/dette.md',
       'app/(admin)/verification.tsx',
       'supabase/config.toml',

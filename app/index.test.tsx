@@ -181,6 +181,12 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       demanderExportDonnees: jest.fn(),
       lireDernierExport: jest.fn(),
       lireDatesDocuments: jest.fn(),
+      lireMonJetonInvitation: jest.fn(),
+      regenererJetonInvitation: jest.fn(),
+      lireMesInvitations: jest.fn(),
+      lireNombreInvitationsEnAttente: jest.fn(),
+      ajouterInvitationEnAttente: jest.fn(),
+      lireCoachParJetonInvitation: jest.fn(),
     };
 
     await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);

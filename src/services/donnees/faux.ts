@@ -4,6 +4,7 @@ import type {
   DossierVerification,
   EtatProfils,
   InformationsCompte,
+  Invitation,
   Langue,
   ModificationsInformations,
   ModificationsOffre,
@@ -109,6 +110,14 @@ export type FauxPortDonnees = PortDonnees & {
   ): void;
 
   definirDatesDocumentsPourTest(dates: { cguVersionAcceptee: string; creeLe: string }): void;
+
+  // L3bis
+  definirJetonInvitationPourTest(jeton: string): void;
+  definirInvitationsPourTest(nouvellesInvitations: Invitation[]): void;
+  definirNombreInvitationsEnAttentePourTest(nombre: number): void;
+  // I-02 lit un jeton qu'aucun compte connecté ne possède (visiteur anonyme) : la table jeton ->
+  // coachId simule coach_par_jeton_invitation() sans dépendre de l'état du coach courant.
+  definirCoachParJetonPourTest(table: Record<string, string>): void;
 };
 
 // docs/api.md §3 : un compte neuf a toujours profilActif = 'client' (colonne NOT NULL, défaut
@@ -205,6 +214,13 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     cguVersionAcceptee: '2026-09-04',
     creeLe: '2026-01-01T00:00:00.000Z',
   };
+  // L3bis : 22 caractères, même forme que le vrai jeton (0026) — un test qui vérifierait la
+  // longueur affichée par erreur sur le faux port trouverait la même chose que contre la vraie
+  // base.
+  let jetonInvitation = 'demo-jeton-fictif-22ab';
+  let invitations: Invitation[] = [];
+  let nombreInvitationsEnAttente = 0;
+  let coachsParJetonPourTest: Record<string, string> = {};
 
   // true : applique nouvelEtat/nouveauProfil et rend { succes: true } ; false : consomme
   // l'échec programmé et ne change rien (docs/ecrans/L1-05, États : "l'étape n'avance pas et
@@ -584,6 +600,44 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     },
     async lireDatesDocuments() {
       return datesDocuments;
+    },
+
+    async lireMonJetonInvitation() {
+      return jetonInvitation;
+    },
+    async regenererJetonInvitation() {
+      // Fictif mais reconnaissable : suffit à prouver qu'un écran de test a bien reçu une
+      // NOUVELLE valeur, différente de l'ancienne — jamais comparé à la vraie forme du jeton.
+      jetonInvitation = `regenere-${Date.now().toString(36).slice(0, 13)}`;
+      return jetonInvitation;
+    },
+    definirJetonInvitationPourTest(jeton) {
+      jetonInvitation = jeton;
+    },
+
+    async lireMesInvitations() {
+      return invitations;
+    },
+    definirInvitationsPourTest(nouvellesInvitations) {
+      invitations = nouvellesInvitations;
+    },
+
+    async lireNombreInvitationsEnAttente() {
+      return nombreInvitationsEnAttente;
+    },
+    definirNombreInvitationsEnAttentePourTest(nombre) {
+      nombreInvitationsEnAttente = nombre;
+    },
+    async ajouterInvitationEnAttente() {
+      nombreInvitationsEnAttente += 1;
+      return { succes: true };
+    },
+
+    async lireCoachParJetonInvitation(jeton) {
+      return coachsParJetonPourTest[jeton] ?? null;
+    },
+    definirCoachParJetonPourTest(table) {
+      coachsParJetonPourTest = table;
     },
   } satisfies FauxPortDonnees;
 }

@@ -53,7 +53,15 @@ export type ResultatConnexion =
   | { type: 'echec'; erreur: ErreurAuth };
 
 export type PortAuth = {
-  inscrire(email: string, motDePasse: string, dateNaissance: string): Promise<ResultatAuth>;
+  // jetonInvitation (L3bis) : facultatif, transmis tel quel jusqu'aux métadonnées d'inscription
+  // (creer_compte_depuis_auth, 0027) — absent pour la grande majorité des inscriptions, jamais
+  // une exigence de ce port. Voir docs/prompts/L3bis.md, P3bis.3.
+  inscrire(
+    email: string,
+    motDePasse: string,
+    dateNaissance: string,
+    jetonInvitation?: string,
+  ): Promise<ResultatAuth>;
   connecter(email: string, motDePasse: string): Promise<ResultatConnexion>;
   deconnecter(): Promise<void>;
   renvoyerVerification(email: string): Promise<ResultatAuth>;

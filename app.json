@@ -7,9 +7,21 @@
     "scheme": "myfavcoach",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": false
+      "bundleIdentifier": "fr.myfavcoach.app",
+      "supportsTablet": false,
+      "associatedDomains": ["applinks:myfavcoach.fr"]
     },
-    "android": {},
+    "android": {
+      "package": "fr.myfavcoach.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [{ "scheme": "https", "host": "myfavcoach.fr", "pathPrefix": "/y" }],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
     "web": {
       "output": "static"
     },

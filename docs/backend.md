@@ -212,6 +212,21 @@ encore posé la question — le même défaut que « une liste d'exclusion qui n
 (`docs/prompts/L1.md`, tableau des faux verts, 3ᵉ ligne), appliqué à la lecture plutôt qu'à
 l'écriture.
 
+**Contrainte permanente du schéma, pas une note propre à un lot** (trouvée en écrivant
+`jeton_invitation`, L3bis, 0026) : depuis `profils_coach_select_verifiee` (0008),
+**toute colonne ajoutée à `profils_coach` est publique par défaut, dès qu'elle est accordée** —
+la politique laisse déjà passer n'importe quelle ligne vérifiée à `anon`, pour n'importe quelle
+colonne que le rôle a le droit de lire. Une politique RLS filtre des LIGNES ; un `GRANT` s'accorde
+à un RÔLE ENTIER, jamais « seulement pour son propre profil » — les deux mécanismes ne se
+recoupent pas, et c'est le grant, pas la politique, qui décide au final ce qu'une colonne publie.
+**Une colonne de `profils_coach` qui ne doit pas être publique n'a donc qu'une seule protection
+possible : ne jamais figurer dans le grant `SELECT` d'`anon`/`authenticated`, et passer
+exclusivement par une fonction `security definer` dédiée** (même famille que
+`date_verification_coach()`, 0019, ou `mes_invitations()`/`coach_par_jeton_invitation()`, 0027) —
+jamais une politique RLS supplémentaire sur cette table, qui ne changerait rien à ce que le grant
+laisse déjà passer. À vérifier à chaque nouvelle colonne posée sur `profils_coach`, pas seulement
+à l'écriture de la migration qui l'ajoute.
+
 ---
 
 ## 9. Rôle d'équipe (examinateur) : un compte distinct, un rôle serveur
@@ -307,3 +322,42 @@ client (« l'écran ne demande jamais plus de 20 ») ne protège rien : tout app
 fonction — un outil, un script, un futur écran qui oublie la même limite — la contourne. La
 fonction borne elle-même ce qu'elle rend (`least(p_limite, PLAFOND)`), quelle que soit la valeur
 demandée.
+
+---
+
+## 11. Lecture inter-comptes minimale : invitation (L3bis)
+
+Volontairement courte, à la différence de §8 et §10 : cette lecture-ci ne rend jamais plus d'une
+poignée de lignes, jamais rien qu'un attaquant ne connaisse déjà en partie (le coach ne lit que
+SES propres invitations), et elle ne trie ni ne filtre à grande échelle. Le risque n'est pas
+« combien de lignes fuient », c'est « combien de colonnes fuient sur chaque ligne qui, elle,
+est légitimement visible ».
+
+**Mécanisme retenu : une fonction dédiée, `security definer`, pas une politique RLS plus un
+grant colonne par colonne.** Même famille de décision que `date_verification_coach()`
+(`docs/domaine.md` §5.1, 0019) : une fonction étroite qui rend un fait calculé, jamais un accès
+direct à la table sous-jacente. Raison précise, pas une préférence de style : la règle de
+troncature (`docs/domaine.md` §3.15 — prénom + **initiale** du nom, jamais le nom complet)
+n'est pas une restriction de colonnes, c'est une transformation d'une colonne. Un grant ne peut
+accorder que des colonnes entières ; il ne peut pas accorder « les trois premiers caractères de
+`nom` ». Une politique RLS plus un grant sur `profils_client.nom` laisserait donc, au mieux,
+la troncature à la charge de l'écran — exactement le défaut que `CLAUDE.md` §10 interdit
+ailleurs (une donnée qui transite en entier alors que seule sa forme réduite doit sortir du
+serveur) : un appel direct à l'API, hors de l'écran, lirait le nom complet malgré tout.
+
+La fonction (`mes_invitations()`, ou son nom définitif — à fixer par la fiche I-01) calcule donc
+elle-même `left(nom, 1)` et ne rend jamais `nom` en entier, à aucun rôle, à aucun chemin. Elle ne
+lit que les invitations dont `coach_id` correspond au `profils_coach` du compte appelant
+(`auth.uid()`, jamais un paramètre reçu) — même garde que `profil_actif_courant()` (§7). Comme
+`date_verification_coach()`, elle est accordée à `authenticated`, jamais `anon` (l'invité n'a
+besoin de rien y lire, voir `docs/prompts/L3bis.md`).
+
+**Aucune politique SELECT, aucun grant SELECT sur `invitations`, pour aucun rôle — la fermeture
+EST cette absence.** Une fonction `security definer` n'a besoin d'aucun privilège côté appelant
+pour fonctionner : elle lit avec les droits de son propriétaire, jamais ceux du rôle qui
+l'invoque. Ajouter malgré tout un grant SELECT sur cette table, même colonne par colonne,
+n'apporterait rien à la fonction et ouvrirait un second chemin qui contournerait la troncature
+— exactement la tension nommée à la porte de sortie de L3 (règle 9, deux chemins qui doivent
+s'accorder), évitée ici en n'en laissant exister qu'un seul. Ce n'est pas un oubli à compléter :
+un futur grant sur `invitations`, ajouté en croyant bien faire (« pour que le coach puisse
+filtrer ses propres invitations directement »), romprait cette fermeture.

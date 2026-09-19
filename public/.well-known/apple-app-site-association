@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "EQUIPE_APPLE_A_REMPLACER.fr.myfavcoach.app",
+        "paths": ["/y/*"]
+      }
+    ]
+  }
+}

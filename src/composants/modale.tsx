@@ -21,6 +21,12 @@ export type ProprietesModale = {
   onAction: () => void;
   libelleDestructeur: string;
   onDestructeur: () => void;
+  // Desactive UNIQUEMENT le bouton destructeur pendant que son propre onDestructeur est en
+  // vol (ecran appelant : un booleen mis a true avant l'appel, remis a false dans un finally).
+  // Par defaut false : aucune Modale existante n'a besoin d'y penser tant qu'elle ne passe pas
+  // cette prop. N'importe pas Annuler/onFermer, laisses actifs — annuler pendant l'attente reste
+  // un geste valide, la Modale se ferme, la reponse tardive s'applique silencieusement au retour.
+  destructeurOccupe?: boolean;
   // Contenu d'ecran normal, derriere la modale : masque du lecteur d'ecran tant que la
   // modale est montee (piege de focus, meme mecanisme que FeuilleBasse).
   children: ReactNode;
@@ -56,6 +62,7 @@ export function Modale({
   onAction,
   libelleDestructeur,
   onDestructeur,
+  destructeurOccupe = false,
   children,
   testID,
 }: ProprietesModale) {
@@ -164,6 +171,7 @@ export function Modale({
                   variante="destructeur"
                   libelle={libelleDestructeur}
                   onPress={onDestructeur}
+                  desactive={destructeurOccupe}
                 />
               </View>
             </Animated.View>

@@ -112,7 +112,10 @@ export default function Inscription() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const params = useLocalSearchParams<{ email?: string }>();
+  // jeton (L3bis) : porté depuis I-02 (app/(public)/y/[jeton].tsx) — même mécanique que
+  // viaCoach (app/(public)/index.tsx, docs/dette.md), transmis tel quel jusqu'aux métadonnées
+  // d'inscription (port.inscrire, src/services/auth/port.ts).
+  const params = useLocalSearchParams<{ email?: string; jeton?: string }>();
   const { port } = useSession();
 
   const [email, setEmail] = useState(params.email ?? '');
@@ -229,7 +232,12 @@ export default function Inscription() {
 
     setErreurGlobale(undefined);
     setChargement(true);
-    const resultat = await port.inscrire(email.trim(), motDePasse, formatDateISO(dateNaissance));
+    const resultat = await port.inscrire(
+      email.trim(),
+      motDePasse,
+      formatDateISO(dateNaissance),
+      params.jeton,
+    );
     setChargement(false);
 
     if (!resultat.succes) {

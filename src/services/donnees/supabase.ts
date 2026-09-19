@@ -5,6 +5,7 @@ import type {
   DossierVerification,
   EtatProfils,
   InformationsCompte,
+  Invitation,
   Langue,
   Offre,
   ParametresRecherche,
@@ -797,5 +798,55 @@ export const portDonneesSupabase: PortDonnees = {
     const ligne = data?.[0] as { cgu_version_acceptee: string; cree_le: string } | undefined;
     if (!ligne) throw new Error('Compte introuvable (lireDatesDocuments).');
     return { cguVersionAcceptee: ligne.cgu_version_acceptee, creeLe: ligne.cree_le };
+  },
+
+  async lireMonJetonInvitation() {
+    const { data, error } = await supabase.rpc('mon_jeton_invitation');
+    if (error) throw error;
+    return data as string;
+  },
+
+  async regenererJetonInvitation() {
+    const { data, error } = await supabase.rpc('regenerer_jeton_invitation');
+    if (error) throw error;
+    return data as string;
+  },
+
+  async lireMesInvitations() {
+    const { data, error } = await supabase.rpc('mes_invitations');
+    if (error) throw error;
+    return (data ?? []).map(
+      (ligne: {
+        id: string;
+        statut: 'compte_cree' | 'abonnee';
+        prenom: string;
+        initiale_nom: string;
+        abonnee_le: string | null;
+      }) => ({
+        id: ligne.id,
+        statut: ligne.statut,
+        prenom: ligne.prenom,
+        initialeNom: ligne.initiale_nom,
+        abonneeLe: ligne.abonnee_le,
+      }),
+    ) satisfies Invitation[];
+  },
+
+  async lireNombreInvitationsEnAttente() {
+    const { data, error } = await supabase.rpc('nombre_invitations_en_attente');
+    if (error) throw error;
+    return data as number;
+  },
+
+  async ajouterInvitationEnAttente() {
+    const { error } = await supabase.rpc('ajouter_invitation_en_attente');
+    if (error) return { succes: false, erreur: error.message };
+    return { succes: true };
+  },
+
+  async lireCoachParJetonInvitation(jeton: string) {
+    const { data, error } = await supabase.rpc('coach_par_jeton_invitation', { p_jeton: jeton });
+    if (error) throw error;
+    return (data as string | null) ?? null;
   },
 } satisfies PortDonnees;

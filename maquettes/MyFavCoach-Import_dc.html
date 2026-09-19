@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+  body { margin: 0; background: #E8E2D8; font-family: Manrope, system-ui, sans-serif; }
+  a { color: #0F5140; text-decoration: none; }
+</style>
+</helmet>
+
+<section style="display:flex;flex-direction:column;gap:36px;padding:56px 64px 96px;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+
+  <div style="display:flex;flex-direction:column;gap:14px;max-width:780px">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6B746E">My fav Coach — import des clients coach</span>
+    <h1 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:44px;line-height:1.05">Arriver avec ses clients</h1>
+    <p style="margin:0;font-size:16px;line-height:1.6;color:#55605B">Deux écrans. Un coach qui rejoint la plateforme suit déjà des gens ailleurs — carnet, messagerie, tableur. S'il peut les inviter, chaque coach recruté amène ses clients, qui sont aussi les seuls à pouvoir écrire un avis sincère dès L4, parce qu'ils ont réellement travaillé avec lui.</p>
+    <div style="border-radius:18px;background:#EFE6D8;padding:15px 17px;display:flex;gap:12px;align-items:flex-start;max-width:700px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8C7A57" stroke-width="1.9" stroke-linecap="round" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+      <span style="flex:1;font-size:14px;line-height:1.55;color:#3A3226">Aucune lecture inter-comptes, aucune donnée de santé, aucun modèle de sécurité nouveau. Une table d'invitations, un lien, deux écrans. C'est nettement plus simple que la recherche.</span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:56px;flex-wrap:wrap;align-items:flex-start">
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <span style="font-size:14px;font-weight:700">I-01 · Inviter mes clients <span style="color:#7C766E;font-weight:500">— iOS · coach</span></span>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+        <div data-screen-label="I-01 Inviter mes clients" style="height:100%;background:#FBF8F4;display:flex;flex-direction:column;padding-top:58px;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+          <div style="padding:8px 20px 16px;display:flex;align-items:center;gap:14px">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="2" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg>
+            <span style="flex:1;font-size:15px;font-weight:700">Mes invitations</span>
+          </div>
+          <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:18px">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <span style="font-family:'Instrument Serif',serif;font-size:28px;line-height:1.12">Tes clients actuels</span>
+              <span style="font-size:14px;line-height:1.55;color:#55605B">Ceux que tu suis déjà ailleurs. Ils retrouvent leur programme ici, et tu arrêtes de jongler entre trois outils.</span>
+            </div>
+
+            <div style="border-radius:22px;background:#17211E;color:#F4F0E9;padding:17px;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline">
+                <span style="font-size:14px;font-weight:700">Ton lien d'invitation</span>
+                <span style="font-size:12px;color:#B4ADA3">3 inscrits sur 9</span>
+              </div>
+              <div style="border-radius:12px;background:#26221D;padding:12px 13px;display:flex;gap:10px;align-items:center">
+                <span style="flex:1;font-size:13px;color:#B4ADA3;overflow:hidden">myfavcoach.fr/y/berthaud-4f2a</span>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#58C2A2" stroke-width="2" stroke-linecap="round" style="flex-shrink:0"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+              </div>
+              <div style="height:48px;border-radius:999px;background:#58C2A2;color:#0B1F1A;display:flex;align-items:center;justify-content:center;gap:9px;font-size:15px;font-weight:800"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0B1F1A" stroke-width="2.2" stroke-linecap="round"><path d="M12 16V4M7.5 8.5 12 4l4.5 4.5M5 20h14"/></svg>Partager</div>
+              <span style="font-size:12px;line-height:1.5;color:#8F8A82">Un seul lien pour tout le monde. Envoie-le par message, par mail, comme tu veux.</span>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:11px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:15px;font-weight:700">Qui a répondu</span>
+                <span style="font-size:13px;font-weight:700;color:#0F5140">Ajouter</span>
+              </div>
+              <div style="display:flex;gap:11px;align-items:center;padding:2px 0">
+                <div style="width:34px;height:34px;border-radius:999px;background:#DDEBE3;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E7A55" stroke-width="2.6" stroke-linecap="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:1px">
+                  <span style="font-size:14px;font-weight:700">Camille D.</span>
+                  <span style="font-size:12px;color:#7C766E">Abonnée depuis le 12 septembre</span>
+                </div>
+              </div>
+              <div style="display:flex;gap:11px;align-items:center;padding:2px 0">
+                <div style="width:34px;height:34px;border-radius:999px;background:#DDEBE3;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E7A55" stroke-width="2.6" stroke-linecap="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:1px">
+                  <span style="font-size:14px;font-weight:700">Marc T.</span>
+                  <span style="font-size:12px;color:#7C766E">Abonné depuis le 13 septembre</span>
+                </div>
+              </div>
+              <div style="display:flex;gap:11px;align-items:center;padding:2px 0">
+                <div style="width:34px;height:34px;border-radius:999px;background:#EFE6D8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8C7A57" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3 2"/></svg></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:1px">
+                  <span style="font-size:14px;font-weight:700">Inès R.</span>
+                  <span style="font-size:12px;color:#7C766E">Compte créé, pas encore abonnée</span>
+                </div>
+                <span style="font-size:12px;font-weight:700;color:#0F5140">Relancer</span>
+              </div>
+              <div style="display:flex;gap:11px;align-items:center;padding:2px 0;opacity:.6">
+                <div style="width:34px;height:34px;border-radius:999px;background:#F1EDE6;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8C867E" stroke-width="2" stroke-linecap="round"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:1px">
+                  <span style="font-size:14px;font-weight:700">6 invitations envoyées</span>
+                  <span style="font-size:12px;color:#7C766E">Sans réponse pour l'instant</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="border-radius:18px;background:#EFE6D8;padding:14px;display:flex;gap:11px;align-items:flex-start">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#8C7A57" stroke-width="1.9" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+              <span style="flex:1;font-size:13px;line-height:1.5;color:#3A3226">Commission offerte jusqu'au 11 décembre. Sur ces trois abonnements, tu touches 147 € au lieu de 132,30 €.</span>
+            </div>
+          </div>
+          <div style="padding:12px 20px 38px"></div>
+        </div>
+      </x-import>
+      <span style="max-width:402px;font-size:13px;line-height:1.55;color:#55605B">Un seul lien plutôt qu'une saisie d'adresses : le coach a déjà ses clients dans sa messagerie, il colle le lien là où il leur parle déjà. Les invitations envoyées sans réponse sont regroupées en une ligne — les détailler transformerait l'écran en tableau de relance, ce qui est un autre produit. Le rappel de commission est ici parce que c'est le moment où le coach mesure ce que la plateforme lui rapporte.</span>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <span style="font-size:14px;font-weight:700">I-02 · Arrivée par invitation <span style="color:#7C766E;font-weight:500">— Android · client</span></span>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+        <div data-screen-label="I-02 Arrivee par invitation" style="height:100%;background:#FBF8F4;display:flex;flex-direction:column;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+          <div style="position:relative;height:238px;flex-shrink:0">
+            <image-slot id="i-hero" shape="rect" placeholder="Yannick en séance — plein cadre"></image-slot>
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(23,33,30,.35) 0 30%,rgba(23,33,30,.88) 100%);pointer-events:none"></div>
+            <div style="position:absolute;left:20px;right:20px;bottom:16px;display:flex;flex-direction:column;gap:7px;color:#F4F0E9;pointer-events:none">
+              <span style="padding:5px 11px;border-radius:999px;background:rgba(88,194,162,.22);color:#7FD9BC;font-size:11px;font-weight:800;letter-spacing:.06em;align-self:flex-start">INVITATION PERSONNELLE</span>
+              <span style="font-family:'Instrument Serif',serif;font-size:30px;line-height:1.08">Yannick t'invite à le suivre ici</span>
+            </div>
+          </div>
+          <div style="flex:1;overflow:hidden;padding:18px 20px 0;display:flex;flex-direction:column;gap:18px">
+            <span style="font-size:15px;line-height:1.6;color:#333B37">Tu travailles déjà avec Yannick Berthaud. Il regroupe son suivi sur MyFavCoach : tes séances, tes échanges et ta progression au même endroit.</span>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;gap:12px;align-items:flex-start">
+                <div style="width:30px;height:30px;border-radius:999px;background:#E2EDE8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0F5140" stroke-width="2.2" stroke-linecap="round"><path d="M3 12h3l3-7 4 14 3-7h4"/></svg></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:14px;font-weight:700">Ton programme, écrit par lui</span>
+                  <span style="font-size:13px;line-height:1.5;color:#55605B">Réécrit chaque semaine selon ce que tu lui remontes.</span>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;align-items:flex-start">
+                <div style="width:30px;height:30px;border-radius:999px;background:#E2EDE8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0F5140" stroke-width="2" stroke-linecap="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:14px;font-weight:700">Vos échanges au même endroit</span>
+                  <span style="font-size:13px;line-height:1.5;color:#55605B">Plus de messages perdus entre deux applications.</span>
+                </div>
+              </div>
+            </div>
+            <div style="border-radius:20px;background:#fff;border:1px solid #E7E2DA;padding:16px;display:flex;flex-direction:column;gap:11px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline">
+                <span style="font-size:15px;font-weight:800">Suivi complet</span>
+                <span style="font-size:22px;font-weight:800">49 €<span style="font-size:12px;color:#7C766E;font-weight:600"> /mois</span></span>
+              </div>
+              <span style="font-size:13px;line-height:1.5;color:#55605B">C'est le tarif de Yannick. Tu peux arrêter à tout moment, sans justification.</span>
+            </div>
+            <div style="border-radius:16px;background:#EFE6D8;padding:13px 14px;display:flex;gap:11px;align-items:flex-start">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#8C7A57" stroke-width="1.9" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><rect x="5" y="10.5" width="14" height="9.5" rx="2.5"/><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3"/></svg>
+              <span style="flex:1;font-size:13px;line-height:1.5;color:#3A3226">Yannick ne voit rien de ton compte tant que tu ne t'abonnes pas. Créer un compte ne l'engage à rien, et toi non plus.</span>
+            </div>
+          </div>
+          <div style="padding:12px 20px 20px;background:rgba(251,248,244,.96);border-top:1px solid #E7E2DA;display:flex;flex-direction:column;gap:9px">
+            <div style="height:52px;border-radius:999px;background:#0F5140;color:#FBF8F4;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700">Créer mon compte</div>
+            <div style="height:44px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#55605B">Voir son profil d'abord</div>
+          </div>
+        </div>
+      </x-import>
+      <span style="max-width:412px;font-size:13px;line-height:1.55;color:#55605B">L'écran ne vend pas la plateforme, il vend le fait de continuer avec quelqu'un qu'on connaît déjà — c'est tout l'intérêt de ce canal, et c'est ce qui le distingue d'une arrivée par la recherche. « Voir son profil d'abord » évite l'impression d'entonnoir. Et la ligne sur ce que Yannick voit ou non est là parce qu'un lien reçu par message soulève immédiatement cette question.</span>
+    </div>
+
+  </div>
+
+</section>
+</x-dc>
+</body>
+</html>

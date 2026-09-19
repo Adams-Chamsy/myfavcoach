@@ -1718,6 +1718,20 @@ describe('offres', () => {
     expect(JSON.stringify(corps)).toMatch(/permission denied/i);
   });
 
+  // Même famille que le test ci-dessus, même mécanisme (le grant, pas une politique) -- ajouté en
+  // écrivant jeton_invitation (L3bis, 0026) : docs/backend.md §8, "toute colonne ajoutée à
+  // profils_coach est publique par défaut, dès qu'elle est accordée" -- jeton_invitation n'est
+  // JAMAIS accordée, la preuve en est ici, avec le code d'erreur explicite (42501), pas seulement
+  // le message.
+  it("anon lit jeton_invitation d'un coach vérifié, par une demande explicite : refusé par le grant (42501)", async () => {
+    const { statut, corps } = await appelRest(
+      `/rest/v1/profils_coach?id=eq.${profilCoachIdB}&select=jeton_invitation`,
+      { session: 'anon' },
+    );
+    expect(statut).toBeGreaterThanOrEqual(400);
+    expect((corps as { code?: string }).code).toBe('42501');
+  });
+
   it('anon atteint profils_coach par relation imbriquée PostgREST depuis offres : refusé ou sans les colonnes fermées', async () => {
     const { statut, corps } = await appelRest(
       `/rest/v1/offres?id=eq.${offreIdBrouillonB}&select=*,profils_coach(*)`,
@@ -3247,5 +3261,412 @@ describe('rechercher_coachs', () => {
     });
     expect(statut).toBe(200);
     expect(corps).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// invitations (0026/0027) — L3bis. P3bis.4 : jeton, lecture étroite dans les deux sens, piège
+// abonnee, liaison compte -> invitation.
+// ---------------------------------------------------------------------------------------------
+
+describe('invitations — L3bis (0026/0027)', () => {
+  async function creerCoachAvecJeton(
+    suffixe: string,
+    discipline = 'yoga',
+  ): Promise<{ session: Session; profilId: string; jeton: string }> {
+    const session = await creerCompteReel(
+      `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-${suffixe}@${DOMAINE_EMAIL}`,
+      { date_naissance: '1990-01-01', cgu_version_acceptee: '2026-08-01' },
+    );
+    const creation = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { compte_id: session.compteId, prenom: suffixe, nom: 'Coach', discipline },
+    });
+    if (creation.statut >= 400) {
+      throw new Error(`Préparation du banc : profil coach ${suffixe} refusé (${creation.statut})`);
+    }
+    const profilId = (creation.corps as { id: string }[])[0].id;
+    // coach_par_jeton_invitation() (0027) exige statut_verification = 'verifiee', même fermeture
+    // que profils_coach_select_verifiee (0008) : un coach en cours d'examen ne doit pas avoir un
+    // lien qui fonctionne. Vérifié systématiquement ici pour que les tests plus bas exercent le
+    // mécanisme visé, pas ce refus-là (qui a sa propre couverture, describe('offres') plus haut).
+    const verification = await appelRest(`/rest/v1/profils_coach?id=eq.${profilId}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { statut_verification: 'verifiee' },
+    });
+    if (verification.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : vérification du coach ${suffixe} refusée (${verification.statut})`,
+      );
+    }
+    // Le jeton se lit par la session du coach lui-même, jamais par service_role (docs/backend.md
+    // §8 : jeton_invitation n'est accordée à aucun rôle, y compris pour préparer un banc).
+    const { corps: jeton } = await appelRest('/rest/v1/rpc/mon_jeton_invitation', {
+      methode: 'POST',
+      session,
+    });
+    return { session, profilId, jeton: jeton as string };
+  }
+
+  // Compte créé PAR LE LIEN (le vrai déclencheur, 0027), profils_client créé ensuite par le
+  // compte lui-même (légitime, docs/api.md §3) : l'état "compte_cree" complet, visible via
+  // mes_invitations() -- à la différence du premier test de ce describe, qui s'arrête
+  // volontairement avant cette étape.
+  async function creerInviteComplet(suffixe: string, jeton: string, nom: string): Promise<Session> {
+    const session = await creerCompteReel(
+      `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-${suffixe}@${DOMAINE_EMAIL}`,
+      { date_naissance: '1995-01-01', cgu_version_acceptee: '2026-08-01', jeton_invitation: jeton },
+    );
+    const creationProfil = await appelRest('/rest/v1/profils_client', {
+      methode: 'POST',
+      session,
+      corps: { compte_id: session.compteId, prenom: suffixe, nom },
+    });
+    if (creationProfil.statut >= 400) {
+      throw new Error(
+        `Préparation du banc : profil client ${suffixe} refusé (${creationProfil.statut})`,
+      );
+    }
+    return session;
+  }
+
+  // docs/domaine.md §3.15, docs/ecrans/L3bis-I01-inviter-mes-clients.md, "Colonnes rendues" :
+  // mes_invitations() joint ProfilClient, qui ne se crée qu'à l'étape 1 de l'onboarding, jamais
+  // à l'inscription elle-même. Ce test prouve les DEUX moitiés à la fois -- la ligne existe
+  // réellement (le déclencheur a fonctionné), ET elle n'apparaît pas via mes_invitations() tant
+  // que ProfilClient n'existe pas -- sans les deux, on ne distingue pas "le lien a échoué" de
+  // "le lien a marché mais le JOIN la cache", exactement l'ambiguïté que ce test doit lever.
+  it("mes_invitations() n'inclut pas un compte créé par le lien tant qu'il n'a pas de ProfilClient (onboarding non commencé)", async () => {
+    const coach = await creerCoachAvecJeton('invitations-coach-sans-profil');
+    const invite = await creerCompteReel(
+      `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-invitations-invite-sans-profil@${DOMAINE_EMAIL}`,
+      {
+        date_naissance: '1995-01-01',
+        cgu_version_acceptee: '2026-08-01',
+        jeton_invitation: coach.jeton,
+      },
+    );
+
+    const { corps: ligneReelle } = await appelRest(
+      `/rest/v1/invitations?compte_invite_id=eq.${invite.compteId}&select=id,statut`,
+      { session: 'admin' },
+    );
+    expect(ligneReelle).toHaveLength(1);
+    expect((ligneReelle as { statut: string }[])[0].statut).toBe('compte_cree');
+
+    const { corps: viaFonction } = await appelRest('/rest/v1/rpc/mes_invitations', {
+      methode: 'POST',
+      session: coach.session,
+    });
+    expect(viaFonction).toEqual([]);
+
+    await supprimerCompteReel(invite.compteId);
+    await supprimerCompteReel(coach.session.compteId);
+  });
+
+  describe('le jeton (point 1 de docs/prompts/L3bis.md)', () => {
+    // Deux tests partagent les deux mêmes comptes (beforeAll/afterAll) plutôt que d'en créer un
+    // troisième pour la seule devinette : la machine de développement n'a pas la limite
+    // habituelle en tête, mais le projet Supabase de dev, lui, plafonne les connexions par
+    // fenêtre de temps (over_request_rate_limit, trouvé en écrivant ce describe) -- chaque
+    // compte réel de moins compte, à l'échelle de tout ce fichier.
+    let coachA: { session: Session; profilId: string; jeton: string };
+    let coachB: { session: Session; profilId: string; jeton: string };
+
+    beforeAll(async () => {
+      coachA = await creerCoachAvecJeton('jeton-a');
+      coachB = await creerCoachAvecJeton('jeton-b');
+    }, 30_000);
+
+    afterAll(async () => {
+      await supprimerCompteReel(coachA.session.compteId);
+      await supprimerCompteReel(coachB.session.compteId);
+    }, 30_000);
+
+    it("un jeton construit à la main à partir du nom public d'un coach ne résout à rien — comme un jeton absent", async () => {
+      // Même motif que le chemin de stockage de P2.5 : parier sur le nom public + un suffixe
+      // court, jamais sur le vrai jeton (22 caractères aléatoires, jamais dérivés du nom).
+      const jetonDevine = `jeton-a-${coachA.profilId.slice(0, 4)}`;
+      const { statut, corps } = await appelRest('/rest/v1/rpc/coach_par_jeton_invitation', {
+        methode: 'POST',
+        session: 'anon',
+        corps: { p_jeton: jetonDevine },
+      });
+      expect(statut).toBe(200);
+      expect(corps).toBeNull();
+    });
+
+    it('deux coachs ont chacun leur propre jeton, jamais le même, jamais dérivable l’un de l’autre', async () => {
+      expect(coachA.jeton).not.toBe(coachB.jeton);
+      expect(coachA.jeton).toHaveLength(22);
+      expect(coachB.jeton).toHaveLength(22);
+      // "Dérivable" testé au sens le plus direct : aucun n'est une sous-chaîne de l'autre — un
+      // vrai dérivé (préfixe, suffixe partagé) le serait.
+      expect(coachB.jeton).not.toContain(coachA.jeton.slice(0, 10));
+    });
+
+    it('un coach régénère son jeton : l’ancien ne résout plus rien, le nouveau fonctionne, une invitation déjà liée reste inchangée', async () => {
+      const coach = await creerCoachAvecJeton('jeton-regenere');
+      const ancienJeton = coach.jeton;
+      const invite = await creerInviteComplet('jeton-regenere-invite', ancienJeton, 'Avant');
+
+      const { statut: statutRegen, corps: nouveauJeton } = await appelRest(
+        '/rest/v1/rpc/regenerer_jeton_invitation',
+        { methode: 'POST', session: coach.session },
+      );
+      expect(statutRegen).toBe(200);
+      expect(nouveauJeton).not.toBe(ancienJeton);
+
+      const { corps: viaAncien } = await appelRest('/rest/v1/rpc/coach_par_jeton_invitation', {
+        methode: 'POST',
+        session: 'anon',
+        corps: { p_jeton: ancienJeton },
+      });
+      expect(viaAncien).toBeNull();
+
+      const { corps: viaNouveau } = await appelRest('/rest/v1/rpc/coach_par_jeton_invitation', {
+        methode: 'POST',
+        session: 'anon',
+        corps: { p_jeton: nouveauJeton },
+      });
+      expect(viaNouveau).toBe(coach.profilId);
+
+      // L'invitation créée AVANT la régénération reste lisible telle quelle -- la régénération
+      // ne touche qu'au jeton, jamais aux lignes invitations (0026, regenerer_jeton_invitation).
+      const { corps: invitationsApres } = await appelRest('/rest/v1/rpc/mes_invitations', {
+        methode: 'POST',
+        session: coach.session,
+      });
+      expect(invitationsApres).toEqual([
+        expect.objectContaining({ prenom: 'jeton-regenere-invite', initiale_nom: 'A' }),
+      ]);
+
+      await supprimerCompteReel(invite.compteId);
+      await supprimerCompteReel(coach.session.compteId);
+    });
+  });
+
+  describe('la lecture étroite par le coach, dans les deux sens (docs/backend.md §11)', () => {
+    let coach: { session: Session; profilId: string; jeton: string };
+    let coachB: { session: Session; profilId: string; jeton: string };
+    let invite: Session;
+
+    beforeAll(async () => {
+      coach = await creerCoachAvecJeton('lecture-etroite-coach');
+      coachB = await creerCoachAvecJeton('lecture-etroite-autre-coach');
+      invite = await creerInviteComplet('lecture-etroite-invite', coach.jeton, 'Dupont');
+    }, 30_000);
+
+    afterAll(async () => {
+      await supprimerCompteReel(invite.compteId);
+      await supprimerCompteReel(coach.session.compteId);
+      await supprimerCompteReel(coachB.session.compteId);
+    }, 30_000);
+
+    it('le coach lit id + statut + prenom + initiale_nom + abonnee_le de sa propre invitation, colonnes exactes', async () => {
+      const { statut, corps } = await appelRest('/rest/v1/rpc/mes_invitations', {
+        methode: 'POST',
+        session: coach.session,
+      });
+      expect(statut).toBe(200);
+      const lignes = corps as Record<string, unknown>[];
+      expect(lignes).toHaveLength(1);
+      const ligne = lignes[0];
+      expect(Object.keys(ligne).sort()).toEqual(
+        ['id', 'statut', 'prenom', 'initiale_nom', 'abonnee_le'].sort(),
+      );
+      expect(ligne.statut).toBe('compte_cree');
+      expect(ligne.prenom).toBe('lecture-etroite-invite');
+      expect(ligne.abonnee_le).toBeNull();
+      expect(ligne).not.toHaveProperty('compte_cree_le');
+    });
+
+    // Assertion sur la VALEUR, pas seulement sur l'absence d'un champ nommé "nom" : le vrai nom
+    // de l'invité ('Dupont') est connu par construction (préparé ci-dessus) -- comparé
+    // directement à ce que mes_invitations() rend, pour que le test rougisse si un futur
+    // renommage de colonne (nom_complet, identite...) faisait fuiter le nom complet ailleurs.
+    it('initiale_nom ne contient jamais plus que la première lettre du vrai nom -- vérifié contre la valeur réelle', async () => {
+      const { corps } = await appelRest('/rest/v1/rpc/mes_invitations', {
+        methode: 'POST',
+        session: coach.session,
+      });
+      const ligne = (corps as { initiale_nom: string }[])[0];
+      const vraiNom = 'Dupont';
+      expect(ligne.initiale_nom).toBe(vraiNom.charAt(0));
+      expect(ligne.initiale_nom).toHaveLength(1);
+      expect(JSON.stringify(corps)).not.toContain(vraiNom);
+    });
+
+    it('GET /rest/v1/invitations directement (authenticated) : refusé par le grant (42501), même avec des colonnes non sensibles (id, statut)', async () => {
+      const large = await appelRest('/rest/v1/invitations', { session: coach.session });
+      expect(large.statut).toBeGreaterThanOrEqual(400);
+      expect((large.corps as { code?: string }).code).toBe('42501');
+
+      const etroit = await appelRest('/rest/v1/invitations?select=id,statut', {
+        session: coach.session,
+      });
+      expect(etroit.statut).toBeGreaterThanOrEqual(400);
+      expect((etroit.corps as { code?: string }).code).toBe('42501');
+    });
+
+    it('relation imbriquée PostgREST depuis une autre table vers invitations : refusée, même mécanisme que le grant', async () => {
+      // invitations n'étant référencée par aucune table que l'application peut lire (comptes et
+      // profils_coach ne l'exposent pas comme relation inverse accordée), le chemin le plus
+      // proche est une tentative directe avec une relation imbriquée sur elle-même -- refusée
+      // pour la même raison que l'accès direct : le grant ferme la table avant qu'une politique
+      // n'ait la moindre occasion de s'appliquer.
+      const { statut, corps } = await appelRest(
+        '/rest/v1/invitations?select=id,comptes(date_naissance)',
+        { session: coach.session },
+      );
+      expect(statut).toBeGreaterThanOrEqual(400);
+      expect((corps as { code?: string }).code).toBe('42501');
+    });
+
+    it('un AUTRE coach ne reçoit aucune ligne qui ne lui appartient pas', async () => {
+      const { statut, corps } = await appelRest('/rest/v1/rpc/mes_invitations', {
+        methode: 'POST',
+        session: coachB.session,
+      });
+      expect(statut).toBe(200);
+      expect(corps).toEqual([]);
+    });
+
+    it('anon : refusé sur la table (42501) et refusé à l’exécution de mes_invitations()', async () => {
+      const table = await appelRest('/rest/v1/invitations', { session: 'anon' });
+      expect(table.statut).toBeGreaterThanOrEqual(400);
+      expect((table.corps as { code?: string }).code).toBe('42501');
+
+      // Jamais accordée à anon (docs/backend.md §11) -- à la différence de
+      // date_verification_coach(), qui l'est parce que la date est publique. mes_invitations()
+      // ne l'est pas : refus d'exécution, pas un ensemble vide.
+      const fonction = await appelRest('/rest/v1/rpc/mes_invitations', {
+        methode: 'POST',
+        session: 'anon',
+      });
+      expect(fonction.statut).toBeGreaterThanOrEqual(400);
+      expect(JSON.stringify(fonction.corps)).toMatch(/permission denied/i);
+    });
+
+    it("une invitation en_attente n'apparaît individuellement nulle part, même en creux", async () => {
+      // Insérée directement par service_role (grant insert, 0027) -- aucun mécanisme applicatif
+      // ne crée encore de ligne en_attente à ce lot (l'action "Ajouter" de I-01 est un prompt
+      // d'écran, P3bis.5, pas encore construit) : c'est le chemin honnête pour la préparer ici.
+      const enAttente = await appelRest('/rest/v1/invitations', {
+        methode: 'POST',
+        session: 'admin',
+        corps: { coach_id: coach.profilId, statut: 'en_attente' },
+      });
+      expect(enAttente.statut).toBeLessThan(300);
+      const idEnAttente = (enAttente.corps as { id: string }[])[0].id;
+
+      const { corps } = await appelRest('/rest/v1/rpc/mes_invitations', {
+        methode: 'POST',
+        session: coach.session,
+      });
+      const lignes = corps as { id: string }[];
+      expect(lignes.some((l) => l.id === idEnAttente)).toBe(false);
+      expect(JSON.stringify(corps)).not.toContain(idEnAttente);
+
+      await appelRest(`/rest/v1/invitations?id=eq.${idEnAttente}`, {
+        methode: 'DELETE',
+        session: 'admin',
+      });
+    });
+
+    // Réutilise coach/coachB/invite du beforeAll de ce describe plutôt que ses propres comptes
+    // (comme les deux tests suivants) : le projet Supabase de dev plafonne les connexions par
+    // fenêtre de temps (over_request_rate_limit), trouvé en écrivant ce fichier -- chaque compte
+    // réel évité compte, à l'échelle de tout le banc.
+    it('un compte créé par le lien porte compte_invite_id vers ce compte précisément, jamais vers un autre coach', async () => {
+      const { corps } = await appelRest(
+        `/rest/v1/invitations?compte_invite_id=eq.${invite.compteId}&select=coach_id,compte_invite_id`,
+        { session: 'admin' },
+      );
+      const lignes = corps as { coach_id: string; compte_invite_id: string }[];
+      expect(lignes).toHaveLength(1);
+      expect(lignes[0].coach_id).toBe(coach.profilId);
+      expect(lignes[0].coach_id).not.toBe(coachB.profilId);
+      expect(lignes[0].compte_invite_id).toBe(invite.compteId);
+    });
+
+    // Règle 8 (docs/prompts/L3bis.md) : ce test est destiné à devenir FAUX. À ce lot, AUCUN
+    // chemin ne peut faire passer une invitation à 'abonnee' -- ni une fonction (aucune n'existe),
+    // ni un déclencheur (aucun ne référence 'abonnee'), ni une écriture directe accordée
+    // (invitations n'a aucun grant UPDATE, pour aucun rôle, y compris service_role -- voir 0027).
+    // LE JOUR OÙ L4 AJOUTE LA FONCTION DE CRÉATION D'ABONNEMENT : vérifier qu'elle écrit bien
+    // invitations.statut = 'abonnee' (et abonnee_le) quand l'abonné et l'inviteur coïncident,
+    // PUIS remplacer ce test par son inverse -- ne pas se contenter de le supprimer en croyant
+    // nettoyer.
+    it("[Règle 8, deviendra faux à L4] aucun chemin actuel ne peut faire passer une invitation à 'abonnee'", async () => {
+      const { corps: avant } = await appelRest('/rest/v1/rpc/mes_invitations', {
+        methode: 'POST',
+        session: coach.session,
+      });
+      const idInvitation = (avant as { id: string; statut: string }[])[0].id;
+      expect((avant as { statut: string }[])[0].statut).toBe('compte_cree');
+
+      // Tentative directe par le coach lui-même, propriétaire de la ligne : aucun grant UPDATE
+      // n'existe sur invitations pour authenticated, quel que soit le propriétaire de la ligne.
+      const tentativeCoach = await appelRest(`/rest/v1/invitations?id=eq.${idInvitation}`, {
+        methode: 'PATCH',
+        session: coach.session,
+        corps: { statut: 'abonnee' },
+      });
+      expect(tentativeCoach.statut).toBeGreaterThanOrEqual(400);
+      expect((tentativeCoach.corps as { code?: string }).code).toBe('42501');
+
+      // Tentative par l'invité lui-même : mêmes droits (aucun) sur cette table.
+      const tentativeInvite = await appelRest(`/rest/v1/invitations?id=eq.${idInvitation}`, {
+        methode: 'PATCH',
+        session: invite,
+        corps: { statut: 'abonnee' },
+      });
+      expect(tentativeInvite.statut).toBeGreaterThanOrEqual(400);
+      expect((tentativeInvite.corps as { code?: string }).code).toBe('42501');
+
+      // service_role lui-même : select + insert seulement (0027), aucun update accordé -- même
+      // une préparation de fixture ne peut pas poser 'abonnee' directement, par construction.
+      const tentativeAdmin = await appelRest(`/rest/v1/invitations?id=eq.${idInvitation}`, {
+        methode: 'PATCH',
+        session: 'admin',
+        corps: { statut: 'abonnee' },
+      });
+      expect(tentativeAdmin.statut).toBeGreaterThanOrEqual(400);
+    });
+  });
+
+  describe('la liaison compte -> invitation, à l’inscription (0027, creer_compte_depuis_auth)', () => {
+    it('un compte créé SANS jeton (inscription normale) ne crée aucune ligne invitations', async () => {
+      const compteNormal = await creerCompteReel(
+        `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-inscription-normale-sans-jeton@${DOMAINE_EMAIL}`,
+        { date_naissance: '1995-01-01', cgu_version_acceptee: '2026-08-01' },
+      );
+      const { corps } = await appelRest(
+        `/rest/v1/invitations?compte_invite_id=eq.${compteNormal.compteId}`,
+        { session: 'admin' },
+      );
+      expect(corps).toEqual([]);
+      await supprimerCompteReel(compteNormal.compteId);
+    });
+
+    it('un jeton présent mais invalide dans les métadonnées ne bloque pas l’inscription et ne crée aucune ligne', async () => {
+      const compteJetonInvalide = await creerCompteReel(
+        `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-inscription-jeton-invalide@${DOMAINE_EMAIL}`,
+        {
+          date_naissance: '1995-01-01',
+          cgu_version_acceptee: '2026-08-01',
+          jeton_invitation: 'jeton-completement-invente-qui-n-existe-pas',
+        },
+      );
+      const { corps } = await appelRest(
+        `/rest/v1/invitations?compte_invite_id=eq.${compteJetonInvalide.compteId}`,
+        { session: 'admin' },
+      );
+      expect(corps).toEqual([]);
+      await supprimerCompteReel(compteJetonInvalide.compteId);
+    });
   });
 });
