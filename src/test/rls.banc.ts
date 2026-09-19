@@ -3550,6 +3550,29 @@ describe('invitations — L3bis (0026/0027)', () => {
       expect(JSON.stringify(fonction.corps)).toMatch(/permission denied/i);
     });
 
+    // Même défaut que mes_invitations() ci-dessus, trouvé le même jour (revue de fin de lot
+    // L3bis + CI sur pile fraîche, 0030_verrouiller_grants_invitations.sql) : ces quatre
+    // fonctions partagent le même style "revoke execute ... from public" que mes_invitations()
+    // avait avant sa correction — un style qui ne ferme PAS un grant séparé posé directement à
+    // anon sur une pile dont le baseline en accorde un (la pile locale de CI, jamais le projet
+    // distant partagé). Testées ensemble : la même classe de trou, fermée partout à la fois.
+    it.each([
+      'mon_jeton_invitation',
+      'regenerer_jeton_invitation',
+      'nombre_invitations_en_attente',
+      'ajouter_invitation_en_attente',
+    ])(
+      'anon ne peut pas exécuter %s() (aucune de ces quatre fonctions ne lui est accordée)',
+      async (nom) => {
+        const { statut, corps } = await appelRest(`/rest/v1/rpc/${nom}`, {
+          methode: 'POST',
+          session: 'anon',
+        });
+        expect(statut).toBeGreaterThanOrEqual(400);
+        expect(JSON.stringify(corps)).toMatch(/permission denied/i);
+      },
+    );
+
     it("une invitation en_attente n'apparaît individuellement nulle part, même en creux", async () => {
       // Insérée directement par service_role (grant insert, 0027) -- aucun mécanisme applicatif
       // ne crée encore de ligne en_attente à ce lot (l'action "Ajouter" de I-01 est un prompt
