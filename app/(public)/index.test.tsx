@@ -1,11 +1,29 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Platform } from 'react-native';
 import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
+import type { ReactTestRendererJSON } from 'react-test-renderer';
 
 import { contraste } from '@/test/contraste';
 import { FournisseurTheme } from '@/theme/fournisseur';
 import { taille, themes } from '@/theme/tokens';
 import Bienvenue from './index';
+
+type Noeud = ReactTestRendererJSON | string | null;
+
+// Même motif que src/composants/barre-navigation.test.tsx : parcours simple de l'arbre rendu,
+// pas de dépendance à une API RTL plus haut niveau pour retrouver un noeud par type/props natifs.
+function trouver(
+  noeud: Noeud,
+  predicat: (noeud: ReactTestRendererJSON) => boolean,
+): ReactTestRendererJSON | null {
+  if (!noeud || typeof noeud === 'string') return null;
+  if (predicat(noeud)) return noeud;
+  for (const enfant of noeud.children ?? []) {
+    const trouve = trouver(enfant, predicat);
+    if (trouve) return trouve;
+  }
+  return null;
+}
 
 const mockPousser = jest.fn();
 
@@ -60,7 +78,11 @@ describe('Bienvenue (docs/ecrans/L1-01-bienvenue.md)', () => {
     // "MF" : initiales de "My fav Coach" (src/composants/initiales.ts), masquées du lecteur
     // d'écran — le conteneur porte déjà accessibilityLabel="My fav Coach".
     expect(screen.getByText('MF', { includeHiddenElements: true })).toBeTruthy();
-    expect(screen.getByLabelText('My fav Coach')).toBeTruthy();
+    // Deux éléments distincts portent désormais ce même libellé : le repli de la photo héroïque
+    // (celui-ci) ET le symbole de marque au-dessus de l'accroche (assets/marque/README.md,
+    // "Écran 21 · Bienvenue") — chacun porte du sens pour le lecteur d'écran, jamais de la
+    // décoration, voir le test dédié plus bas.
+    expect(screen.getAllByLabelText('My fav Coach')).toHaveLength(2);
   });
 
   // Critère 5 : "mesuré sur le dégradé au point le plus clair, pas sur l'encre pleine." Le point
@@ -100,13 +122,36 @@ describe('Bienvenue (docs/ecrans/L1-01-bienvenue.md)', () => {
     expect(accroche.props.numberOfLines).toBeUndefined();
   });
 
-  it("aucune valeur en dur : le logotype et l'accroche utilisent titre1 et display, pas 36/38", async () => {
+  it("aucune valeur en dur : l'accroche utilise display, pas 38", async () => {
     await rendreBienvenue();
 
-    const logotype = screen.getByText('My fav Coach');
     const accroche = screen.getByText('Le bon coach, pas le plus bruyant');
-    expect(logotype.props.style.fontSize).toBe(32);
     expect(accroche.props.style.fontSize).toBe(44);
+  });
+
+  // assets/marque/README.md, "Écran 21 · Bienvenue" : le symbole remplace le bloc de titre,
+  // environ 88 px, jamais le verrouillage complet (symbole + nom) — le nom est déjà porté par
+  // l'icône de l'app et par le système au lancement.
+  it('le symbole de marque fait 88 px et porte le nom pour le lecteur d’écran, sans le répéter en texte', async () => {
+    const { toJSON } = await rendreBienvenue();
+
+    // Le symbole seul (accessibilityRole="image") se distingue du repli d'EmplacementImage
+    // (accessibilityRole absent, testé au-dessus) : les deux partagent le même libellé, pas le
+    // même rôle.
+    const conteneur = trouver(
+      toJSON(),
+      (n) =>
+        n.props?.accessibilityLabel === 'My fav Coach' && n.props?.accessibilityRole === 'image',
+    );
+    expect(conteneur).toBeTruthy();
+
+    const svg = trouver(conteneur, (n) => n.type === 'RNSVGSvgView');
+    expect(svg?.props.width).toBe(88);
+    expect(svg?.props.height).toBe(88);
+
+    // Le nom ne doit jamais réapparaître en texte à côté du symbole (verrouillage complet
+    // écarté, README) : "My fav Coach" ne doit exister nulle part comme contenu de <Text>.
+    expect(screen.queryByText('My fav Coach')).toBeNull();
   });
 
   it('ne fait aucun appel réseau au montage', async () => {

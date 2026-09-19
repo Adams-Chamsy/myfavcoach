@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "scheme": "myfavcoach",
     "userInterfaceStyle": "light",
+    "icon": "./assets/marque/icone-1024.png",
     "ios": {
       "bundleIdentifier": "fr.myfavcoach.app",
       "supportsTablet": false,
@@ -13,6 +14,10 @@
     },
     "android": {
       "package": "fr.myfavcoach.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/marque/android-foreground-432.png",
+        "backgroundColor": "#EFE6D8"
+      },
       "intentFilters": [
         {
           "action": "VIEW",
@@ -28,7 +33,14 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/marque/splash-clair.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#FBF8F4"
+        }
+      ],
       "expo-secure-store",
       "@react-native-community/datetimepicker"
     ],
