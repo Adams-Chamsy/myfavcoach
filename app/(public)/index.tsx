@@ -206,27 +206,51 @@ export default function Bienvenue() {
           couleurTexteRepli={sombre.texte.surSombre}
         />
         <DegradeVersEncre couleur={clair.fond.inverse} />
+
+        {/* Titre en haut, trait sable dessous : mise en page reprise de la planche de marque
+            (splash clair et écran de lancement), pas d'une maquette HTML — aucune n'existe pour
+            ce placement précis (voir docs/ecrans/L1-01-bienvenue.md, "Ce qui a été inventé").
+            Contraste vérifié contre les deux mêmes pires cas que le reste de ce bandeau (critère
+            5, ci-dessous) : ce même test couvre déjà "un texte clair n'importe où sur ce
+            bandeau", pas seulement l'accroche qu'il visait à l'origine. */}
+        <View
+          style={{
+            position: 'absolute',
+            top: insets.top + theme.espace[4],
+            left: theme.espace.gouttiere,
+            right: theme.espace.gouttiere,
+          }}
+        >
+          <Text style={{ ...theme.texte.display, color: sombre.texte.surSombre }}>
+            Un meilleur toi, chaque jour.
+          </Text>
+          <View
+            style={{
+              marginTop: theme.espace[3],
+              width: 48,
+              height: 4,
+              borderRadius: theme.rayon.pilule,
+              backgroundColor: clair.marque.ruban,
+            }}
+          />
+        </View>
+
         <View
           style={{
             position: 'absolute',
             left: theme.espace.gouttiere,
             right: theme.espace.gouttiere,
             bottom: theme.espace.gouttiere,
-            gap: theme.espace[2],
           }}
         >
           {/* Symbole seul, jamais le verrouillage complet (assets/marque/README.md, "Écran 21 ·
               Bienvenue") : le nom est déjà porté par l'icône de l'application et par le système
-              au lancement — le répéter ici prendrait la place de l'accroche, qui est ce qui doit
-              se lire. Le symbole porte du sens (c'est la marque), pas de la décoration : rôle et
-              libellé explicites, comme EmplacementImage le fait déjà pour une vraie photo sur cet
-              écran, jamais accessibilityElementsHidden. */}
+              au lancement. Le symbole porte du sens (c'est la marque), pas de la décoration :
+              rôle et libellé explicites, comme EmplacementImage le fait déjà pour une vraie
+              photo sur cet écran, jamais accessibilityElementsHidden. */}
           <View accessible accessibilityRole="image" accessibilityLabel="My fav Coach">
             <SymboleMarque taille={88} />
           </View>
-          <Text style={{ ...theme.texte.display, color: sombre.texte.surSombre }}>
-            Le bon coach, pas le plus bruyant
-          </Text>
         </View>
       </View>
 

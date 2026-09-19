@@ -22,8 +22,9 @@ Photo plein cadre en fond, dégradé du bas vers l'encre pour porter le texte.
 |---|---|
 | Fond | `EmplacementImage` ratio `pleinCadre`. **Aucune photo n'existe** : repli typographique obligatoire, jamais de cadre vide |
 | Dégradé | de `transparent` à `fond.inverse`, sur les 55 % inférieurs |
-| Logotype | « My fav Coach », `texte.titre1`, `texte.surSombre` |
-| Accroche | « Le bon coach, pas le plus bruyant », `texte.display`, `texte.surSombre` |
+| Titre | « Un meilleur toi, chaque jour. », en haut d'écran, `texte.display`, `texte.surSombre` |
+| Trait | sable (`marque.ruban`), sous le titre — voir « Ce qui a été inventé » |
+| Symbole de marque | 88 px, au-dessus des actions — symbole seul, jamais le verrouillage complet (assets/marque/README.md, « Écran 21 ») |
 | Action 1 | « Continuer avec Apple », bouton secondaire sur fond clair, icône Apple |
 | Action 2 | « Continuer par e-mail », bouton à contour clair |
 | Ligne de retour | « J'ai déjà un compte · Se connecter » — **ajout, voir Règles** |
@@ -61,9 +62,18 @@ jalon 1 où c'est autorisé.
   textes ne sont pas rédigés (lot L2, C-06), ils pointent vers une **version de développement
   datée**, et c'est la **version acceptée qui est enregistrée** avec le compte. Le texte peut
   changer, la trace de ce qui a été accepté ne se rattrape pas.
-- Aucune valeur en dur : la maquette écrit 36 et 38 pour le logotype et l'accroche, les tokens
-  disent `titre1` et `display`. Les tokens gagnent.
+- Aucune valeur en dur : le titre utilise `display` (44 pt), jamais une taille écrite à la main.
 - Cet écran ne fait **aucun appel réseau au montage**.
+
+### Ce qui a été inventé
+
+Révision du 19 septembre 2026 (planche de marque, splash clair et écran de lancement) :
+l'ancienne accroche (« Le bon coach, pas le plus bruyant ») disparaît, remplacée par ce titre et
+le trait sable. Ni la maquette HTML (`maquettes/MyFavCoach-Parcours_dc.html`, « 21 Bienvenue »,
+toujours la référence pour la disposition générale — photo, dégradé, actions), ni
+`assets/marque/README.md` ne décrivent la position exacte du titre en haut d'écran ni les
+dimensions du trait sable dessous : les deux sont dessinés à la main (`app/(public)/index.tsx`),
+dans l'esprit de la planche de marque fournie séparément, pas tracés depuis une source exacte.
 
 ---
 
@@ -78,8 +88,8 @@ jalon 1 où c'est autorisé.
 5. Tous les couples texte/fond de l'écran atteignent 4,5:1 **mesurés sur le dégradé au point le
    plus clair**, pas sur l'encre pleine.
 6. Le lien coach et la ligne « J'ai déjà un compte » ont chacun une cible ≥ 44 pt.
-7. À 200 % de taille de police, l'accroche passe sur trois lignes et rien n'est tronqué ; les
-   actions restent visibles sans défilement.
+7. À 200 % de taille de police, le titre n'est jamais tronqué ; les actions restent visibles
+   sans défilement.
 8. L'écran est présent dans la galerie L0-00, exercé **en clair et en sombre**.
 9. `npm run verif` passe.
 

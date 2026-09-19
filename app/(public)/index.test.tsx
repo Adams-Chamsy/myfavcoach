@@ -111,22 +111,40 @@ describe('Bienvenue (docs/ecrans/L1-01-bienvenue.md)', () => {
   });
 
   // Critère 7 (partiel — voir docs/dette.md pour la partie qui nécessite un appareil réel) :
-  // l'accroche n'est jamais tronquée par numberOfLines, et le panneau d'actions n'est pas
+  // le titre n'est jamais tronqué par numberOfLines, et le panneau d'actions n'est pas
   // enveloppé dans un défilement — sa hauteur suit son contenu, jamais une hauteur fixe qui
-  // couperait à 200 %. Ce que ce test NE prouve PAS : que le texte tient réellement sur trois
-  // lignes sans chevauchement visuel à 200 % — cela demande un moteur de rendu réel.
-  it("l'accroche n'est jamais tronquée, et le panneau d'actions n'a pas de hauteur fixe", async () => {
+  // couperait à 200 %. Ce que ce test NE prouve PAS : que le texte tient réellement sans
+  // chevauchement visuel à 200 % — cela demande un moteur de rendu réel.
+  it("le titre n'est jamais tronqué, et le panneau d'actions n'a pas de hauteur fixe", async () => {
     await rendreBienvenue();
 
-    const accroche = screen.getByText('Le bon coach, pas le plus bruyant');
-    expect(accroche.props.numberOfLines).toBeUndefined();
+    const titre = screen.getByText('Un meilleur toi, chaque jour.');
+    expect(titre.props.numberOfLines).toBeUndefined();
   });
 
-  it("aucune valeur en dur : l'accroche utilise display, pas 38", async () => {
+  it('aucune valeur en dur : le titre utilise display, pas 38', async () => {
     await rendreBienvenue();
 
-    const accroche = screen.getByText('Le bon coach, pas le plus bruyant');
-    expect(accroche.props.style.fontSize).toBe(44);
+    const titre = screen.getByText('Un meilleur toi, chaque jour.');
+    expect(titre.props.style.fontSize).toBe(44);
+  });
+
+  // Révision du 19 septembre 2026 (planche de marque, écran de lancement) : l'ancienne accroche
+  // disparaît, remplacée par ce titre en haut d'écran et un trait sable dessous.
+  it("l'ancienne accroche n'apparaît plus", async () => {
+    await rendreBienvenue();
+
+    expect(screen.queryByText('Le bon coach, pas le plus bruyant')).toBeNull();
+  });
+
+  it('le trait sous le titre utilise le token de marque, jamais une couleur en dur', async () => {
+    const { toJSON } = await rendreBienvenue();
+
+    const trait = trouver(
+      toJSON(),
+      (n) => n.type === 'View' && n.props?.style?.backgroundColor === themes.clair.marque.ruban,
+    );
+    expect(trait).toBeTruthy();
   });
 
   // assets/marque/README.md, "Écran 21 · Bienvenue" : le symbole remplace le bloc de titre,
