@@ -229,10 +229,14 @@ s'il y a des résultats.
 **Servi par :** fonction distante à écrire (appels Stripe, réception des webhooks, gestion de
 l'idempotence — rien de tout ça ne s'exprime en PostgREST direct).
 
-Le paiement se fait en trois temps, et l'application ne voit jamais un numéro de carte.
+**Révisé le 28 septembre 2026** (`docs/backend.md` §13) : la collecte passe par une **page de
+paiement hébergée par Stripe** (Checkout), plus par un module natif. L'application ne voit jamais
+un numéro de carte ni un IBAN, et ne tient aucune clé Stripe.
+
+**1. Intention** — l'application demande le récapitulatif et l'adresse de la page de paiement :
 
 ```
-POST /abonnements/intention
+POST /abonnements/intention             Idempotency-Key obligatoire (docs/backend.md §13)
   { "offreId": "…" }
 → 201 {
     "intentionId": "…",
@@ -240,22 +244,56 @@ POST /abonnements/intention
       "prixCentimes": 4900, "totalCentimes": 4900,
       "prochainPrelevementLe": "2026-09-20T00:00:00Z", "jourPrelevement": 20
     },
-    "jetonPrestataire": "…",       // à usage unique, 15 minutes
+    "urlPaiement": "https://checkout.stripe.com/…",   // expire après 30 minutes
     "moyensAcceptes": ["carte", "sepa"]
   }
+→ 409 { "code": "auto_abonnement_interdit" | "requete_en_cours" | "compte_versement_non_operationnel" }
+→ 422 { "code": "cle_idempotence_reutilisee" }
 ```
 
-L'application remet `jetonPrestataire` au module du prestataire, qui collecte le moyen de
-paiement et rend un identifiant. Puis :
+`compte_versement_non_operationnel` : applicable à partir de L5 (`docs/domaine.md` §3.3).
+
+**2. Paiement** — l'application ouvre `urlPaiement` dans un navigateur (`expo-web-browser`,
+redirection sur web). Carte, 3-D Secure, mandat SEPA et **refus de carte** se passent dans la page
+Stripe, qui laisse réessayer : aucune réponse de refus ne revient à l'application pour la
+souscription. La page renvoie ensuite vers une adresse de `myfavcoach.fr` qui rouvre
+l'application (`docs/backend.md` §13).
+
+**3. Constat** — l'abonnement est créé **par le serveur**, jamais par une réponse faite à
+l'application. Au retour de la page Stripe — ou quand le client revient dans l'application après
+avoir fermé le navigateur, **sans aucun retour** —, l'application demande au serveur de constater :
 
 ```
-POST /abonnements                       Idempotency-Key obligatoire
-  { "intentionId": "…", "moyenPaiementId": "…" }
-→ 201  { "abonnement": { … , "statut": "actif" } }                      // carte
-→ 201  { "abonnement": { … , "statut": "en_attente_confirmation" } }    // SEPA, docs/domaine.md §4.3
-→ 202  { "statut": "authentification_requise", "urlAuthentification": "…" }   // 3-D Secure
-→ 402  { "code": "paiement_refuse", "motifBanque": "fonds_insuffisants",
-         "title": "Ta banque a refusé le paiement", "rienDebite": true }
+POST /abonnements/intention/{intentionId}/constat     aucun corps, idempotent
+→ 200 { "etat": "abonne", "abonnement": { …, "statut": "actif" } }                   // carte
+→ 200 { "etat": "abonne", "abonnement": { …, "statut": "en_attente_confirmation" } } // SEPA
+→ 200 { "etat": "paiement_recu" }        // Stripe a le paiement, notre abonnement pas encore
+→ 200 { "etat": "non_terminee", "urlPaiement": "…" }   // page quittée avant la fin, encore valable
+→ 200 { "etat": "expiree" }              // page quittée, plus valable : nouvelle intention
+```
+
+Le serveur **ne se contente pas d'attendre le webhook** : il lit la session Checkout chez Stripe.
+Session payée (ou mandat SEPA accepté) → il applique **le même traitement que le webhook**, dans
+la même fonction, idempotent par identifiant de session (`docs/backend.md` §12) — le premier des
+deux qui arrive crée l'abonnement, le second ne fait rien. `paiement_recu` ne subsiste donc que si
+ce traitement échoue ou est en cours au même instant. Session encore ouverte → `non_terminee`,
+avec la même URL. Session expirée → `expiree`.
+
+**`paiement_recu` et `non_terminee` ne sont pas des états d'abonnement** : aucun abonnement
+n'existe encore. À ne jamais confondre avec `en_attente_confirmation` (SEPA,
+`docs/domaine.md` §4.3), qui décrit un abonnement **créé**, dont la banque n'a pas encore
+confirmé le premier prélèvement.
+
+Le 202 « authentification requise » de la version précédente n'existe plus (3-D Secure est géré
+dans la page Stripe).
+
+**Échec d'une échéance** (prélèvement hors session par le serveur, `docs/domaine.md` §4.4) : le
+motif est porté par l'abonnement, lu par `GET /abonnements/{id}` :
+
+```
+{ …, "statut": "impaye",
+  "dernierEchec": { "motifBanque": "fonds_insuffisants", "rienDebite": true,
+                    "graceJusquAu": "2026-10-07T00:00:00Z" } }
 ```
 
 **Pas de code promo au jalon 1** (retiré le 28 septembre 2026) : aucune règle de domaine ne dit
@@ -263,7 +301,7 @@ qui finance une remise ni sur quel montant porte alors la commission. Reporté a
 (`docs/jalon-2.md`) ; `totalCentimes` vaut `prixCentimes` tant qu'aucune remise n'existe — le
 champ reste distinct pour que le contrat n'ait pas à changer le jour où elle existera.
 
-`motifBanque` alimente l'écran 20. Valeurs : `fonds_insuffisants`, `carte_expiree`,
+`motifBanque` alimente l'écran 20 (échecs d'échéance seulement). Valeurs : `fonds_insuffisants`, `carte_expiree`,
 `opposition`, `plafond_atteint`, `authentification_echouee`, `inconnu`.
 
 | Verbe | Chemin | Notes |
@@ -274,7 +312,7 @@ champ reste distinct pour que le contrat n'ait pas à changer le jour où elle e
 | `POST` | `/abonnements/{id}/reprise` | |
 | `POST` | `/abonnements/{id}/resiliation` | fin de période, jamais immédiate |
 | `DELETE` | `/abonnements/{id}/resiliation` | annule la résiliation programmée |
-| `POST` | `/abonnements/{id}/moyen-paiement` | remplacement après échec |
+| `POST` | `/abonnements/{id}/moyen-paiement` | remplacement après échec : rend une `urlPaiement` Stripe (page hébergée, enregistrement du nouveau moyen), même mécanisme que la souscription |
 | `GET` | `/factures` | |
 | `GET` | `/factures/{id}/pdf` | URL signée, 5 minutes |
 

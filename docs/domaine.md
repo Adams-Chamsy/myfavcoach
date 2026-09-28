@@ -215,6 +215,29 @@ sont hors périmètre, pas « pour plus tard » (`docs/perimetre.md` §3, règle
 le modèle économique : elle évite que l'offre soit qualifiée de contenu numérique, ce qui
 imposerait l'achat in-app.
 
+**Aucun fonds retenu pour un coach qui ne peut pas le recevoir** (écrit le 28 septembre 2026,
+**applicable en L5**, `docs/backend.md` §13). Avec les charges séparées, l'argent d'un client
+arrive sur le compte de la plateforme et n'est viré au coach que par un `Versement` (§3.10) vers
+son compte Stripe Connect. Un coach dont ce compte n'est pas opérationnel (identification
+incomplète, virements non autorisés par Stripe) laisserait la plateforme détenir son argent pour
+une durée indéterminée — ce qu'elle ne doit jamais faire. Deux règles, qui ne font qu'une :
+
+1. **Une offre ne peut être publiée que si le compte de versement de son coach est
+   opérationnel**, en plus de `verifiee` (§4.2) et de l'engagement humain (409
+   `compte_versement_non_operationnel`).
+2. **Une souscription est refusée si le compte de versement du coach n'est plus opérationnel au
+   moment de payer**, même pour une offre déjà publiée (même code) — la règle 1 ne suffit pas :
+   un compte peut perdre ce statut après la publication (Stripe demande une pièce, un
+   justificatif expire).
+
+« Opérationnel » est lu depuis Stripe par le serveur, jamais déclaré par l'application. Son
+critère exact (capacité `transfers` active, aucune exigence d'identification en retard) s'écrit
+avec l'identification du coach en L5 (`docs/api.md` §8).
+**D'ici L5, personne ne paie réellement** : L4 fonctionne en mode test Stripe
+(`CLAUDE.md` §2), et le premier paiement réel n'est possible qu'une fois ces deux règles
+appliquées. Aucune offre publiée avant L5 ne peut donc encaisser un euro réel sans être passée
+par la règle 2.
+
 Une offre `retiree` reste facturée aux abonnés existants jusqu'à leur résiliation, mais
 n'apparaît plus à la vente. Le prix d'un abonnement est **figé au moment de la souscription** :
 un changement de prix ne s'applique qu'aux nouveaux abonnés.
@@ -646,7 +669,8 @@ publie --(modification ≤ 14 j)--> publie
 ### 4.10 Offre
 
 ```
-brouillon --(publication, coach vérifié + engagement humain requis)--> publiee
+brouillon --(publication, coach vérifié + engagement humain requis
+              + compte de versement opérationnel, à partir de L5 — §3.3)--> publiee
 publiee --(retrait)--> retiree
 ```
 

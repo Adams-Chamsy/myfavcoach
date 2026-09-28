@@ -3,16 +3,18 @@
 **Lot** L4 · **Rôle** client · **Route** `app/(client)/souscription/paiement.tsx` (nom inventé)
 **Référence visuelle** `maquettes/MyFavCoach-Client_dc.html`, bloc « 04b · Récapitulatif &
 paiement », `data-screen-label="04b Paiement"`. **Trois corrections et un manque, lus en
-Règles** : code promo sans règle de domaine, moyen de paiement enregistré qui n'existe pas au
-premier achat, et le droit de rétractation, absent de la maquette.
+Règles** : code promo sans règle de domaine, bloc « moyen de paiement » remplacé par la page
+Stripe hébergée, et le droit de rétractation, absent de la maquette.
+**Révisée le 28 septembre 2026 (P4.2)** : la collecte passe par Stripe Checkout
+(`docs/backend.md` §13), plus par un module natif.
 
 ---
 
 ## Raison d'être
 
-L'écran où le client voit exactement ce qu'il va payer, choisit carte ou prélèvement SEPA, et
-paie. C'est ici que l'argent bouge : toutes les règles d'idempotence (`docs/api.md` §1) et de
-non-manipulation des moyens de paiement (`docs/api.md` §15, `CLAUDE.md` §10) s'y appliquent.
+L'écran où le client voit exactement ce qu'il va payer, avant de quitter l'application pour la
+page de paiement Stripe. Il ne collecte rien lui-même : ni carte, ni IBAN, ni choix du moyen —
+tout cela se fait dans la page Stripe (`docs/api.md` §7).
 
 ---
 
@@ -22,7 +24,7 @@ En-tête : retour (vers 04a), titre « Paiement », indicateur d'étape (voir 04
 inventé »), mention « Sécurisé » (maquette).
 
 **Récapitulatif** — tout vient de `recapitulatif` rendu par `POST /abonnements/intention`
-(`docs/api.md` §7), rien n'est calculé par l'écran :
+(appelé depuis 04a, `docs/api.md` §7), rien n'est calculé par l'écran :
 
 | Ligne | Source |
 |---|---|
@@ -31,15 +33,16 @@ inventé »), mention « Sécurisé » (maquette).
 | « À payer aujourd'hui » | `recapitulatif.totalCentimes` |
 | « Puis le {jour} de chaque mois » | `recapitulatif.jourPrelevement` ; la date du prochain prélèvement en clair (`prochainPrelevementLe`, formatée Europe/Paris) |
 
-**Moyen de paiement** : le composant du SDK du prestataire (`docs/prompts/L4.md` point 2,
-dépendance à valider en P4.2), qui propose **carte** et **prélèvement SEPA**
-(`moyensAcceptes`). Aucun champ de carte ni d'IBAN n'est un composant de ce dépôt.
+**Moyens acceptés** : une ligne « Carte bancaire ou prélèvement SEPA » (`moyensAcceptes`), et
+« Tu choisiras sur la page de paiement sécurisée de notre prestataire. » — le client doit savoir,
+avant d'appuyer, qu'il va quitter l'application.
 
 **Information précontractuelle** (voir Règles, « Droit de rétractation ») : un emplacement
-réservé entre le moyen de paiement et le bouton, dont le texte vient du juriste.
+réservé entre le récapitulatif et le bouton, dont le texte vient du juriste.
 
 Pied : bouton principal « Payer {total} € », puis « En continuant tu acceptes les conditions
 d'abonnement » — « conditions d'abonnement » ouvre les CGV (`docs/ecrans/L2-03-documents-contractuels.md`).
+« Payer » ouvre `urlPaiement` (`expo-web-browser` sur iOS/Android, redirection sur web).
 
 ---
 
@@ -52,9 +55,9 @@ d'abonnement » — « conditions d'abonnement » ouvre les CGV (`docs/ecrans/L2
    quel montant porte alors la commission de 10 %, combien de mois, qui crée les codes).
    **Décidé le 28 septembre 2026** : retiré de l'écran et de `docs/api.md` §7, reporté au
    jalon 2 comme fonctionnalité sans règle (`docs/jalon-2.md`, n° 24) — pas une dette.
-2. **« VISA •••• 4218 · 07/28 » et « Ajouter une carte » remplacés par le composant du SDK.**
-   Au premier abonnement, aucun moyen de paiement n'existe ; l'application n'en stocke jamais
-   aucun (`docs/api.md` §15). Ce que le SDK affiche est ce qui s'affiche.
+2. **« VISA •••• 4218 · 07/28 » et « Ajouter une carte » retirés.** Au premier abonnement,
+   aucun moyen de paiement n'existe, l'application n'en stocke jamais aucun (`docs/api.md` §15),
+   et le choix du moyen se fait désormais dans la page Stripe.
 3. **« Résiliable en 2 appuis » retiré.** Aucune règle ne fixe ce nombre. La résiliation vit
    dans le bloc « Mes abonnements » de l'écran 24 (`docs/ecrans/L4-24b-mes-abonnements.md`) ;
    une promesse chiffrée de sortie qu'on ne mesure pas est pire qu'aucune.
@@ -76,8 +79,8 @@ connaissance du client **avant** qu'il paie. La maquette n'en dit rien. Cette fi
 - le libellé du bouton de paiement (le droit de la consommation encadre la formulation du bouton
   qui engage à payer — « Payer {total} € » est à confirmer, pas présumé conforme).
 
-Ce que la fiche fixe, en revanche : **un emplacement dans l'écran**, entre le moyen de paiement
-et le bouton, qui ne sera rempli qu'avec le texte validé ; **aucun texte provisoire inventé**
+Ce que la fiche fixe, en revanche : **un emplacement dans l'écran**, entre le récapitulatif et
+le bouton, qui ne sera rempli qu'avec le texte validé ; **aucun texte provisoire inventé**
 n'y est écrit (même règle que les liens légaux de L1-01, `docs/dette.md`). Le tunnel se développe
 et se teste en mode test Stripe sans ce texte ; il **ne passe pas en production** sans lui.
 
@@ -85,19 +88,48 @@ et se teste en mode test Stripe sans ce texte ; il **ne passe pas en production*
 
 - **Magasins d'applications** (`docs/domaine.md` §2) : aucun terme interdit ; « Abonnement
   mensuel » est rattaché à l'offre du coach nommée juste au-dessus.
-- **Idempotence** : « Payer » envoie `POST /abonnements` avec une `Idempotency-Key` générée
-  **une fois à l'ouverture de l'écran** (ou à la création de l'intention), réutilisée à chaque
-  nouvel essai du même paiement — jamais une clé neuve par appui, sans quoi un double appui
-  pendant un mauvais réseau créerait deux abonnements (`docs/prompts/L4.md` point 4).
-- **Trois réponses** (`docs/api.md` §7) :
-  - 201 `actif` → 04c (variante carte ou SEPA, voir `L4-04c`) ;
-  - 202 `authentification_requise` → le SDK conduit l'authentification 3-D Secure ; l'écran
-    attend, puis relit l'état (`GET /abonnements/{id}`), jamais de conclusion locale ;
-  - 402 `paiement_refuse` → écran 20 avec `motifBanque`.
-- **Jeton du prestataire expiré** (15 minutes, `docs/api.md` §7) : l'écran redemande une
-  intention plutôt que d'échouer ; le récapitulatif affiché est remplacé par le nouveau.
+- **Idempotence** (`docs/backend.md` §13) : l'`Idempotency-Key` naît en 04a, à l'appui sur
+  « Continuer » qui demande l'intention, et resert à chaque nouvel essai réseau de cette même
+  demande. 04b n'envoie rien qui engage de l'argent : il ouvre une URL déjà créée. Un double
+  appui sur « Payer » rouvre la même page Stripe, jamais une seconde session.
+- **Page expirée** (30 minutes, `docs/api.md` §7) : « Payer » redemande une intention depuis
+  l'écran (nouvelle clé), récapitulatif remplacé — jamais une page Stripe périmée ouverte.
+- **Au retour — avec ou sans retour propre.** Trois signaux déclenchent le même constat, le
+  premier arrivé gagne : l'adresse de retour de `myfavcoach.fr` qui rouvre l'application
+  (`docs/backend.md` §13), la fermeture du navigateur par le client, ou l'application qui revient
+  au premier plan alors que 04b attendait un paiement. Dans les trois cas, l'écran appelle
+  `POST /abonnements/intention/{intentionId}/constat` (`docs/api.md` §7), jamais une conclusion
+  locale — un navigateur fermé ne dit **rien** de ce qui s'est passé : le paiement a pu aboutir
+  une seconde avant, être en cours d'authentification, ou n'avoir jamais commencé. Voir
+  « Retour sans confirmation » ci-dessous.
+- **Retour sans confirmation — navigateur fermé en plein paiement.** Ce n'est **pas** l'état SEPA
+  `en_attente_confirmation` : ici, aucun abonnement n'existe. L'écran affiche selon le constat :
+
+  | Constat | Ce que l'écran affiche | Ce qu'il propose |
+  |---|---|---|
+  | (appel en cours) | « On vérifie ton paiement auprès de notre prestataire… » ; « Payer » désactivé | rien — l'écran ne laisse pas repayer tant qu'il ne sait pas |
+  | `abonne` | → 04c, variante carte ou SEPA selon le statut de l'abonnement | — |
+  | `non_terminee` | bandeau « Paiement non terminé. Rien n'a été débité. » au-dessus du récapitulatif | « Reprendre le paiement » (rouvre **la même** page Stripe, jamais une nouvelle) ; retour arrière possible |
+  | `expiree` | même bandeau | « Payer » demande une nouvelle intention (nouvelle clé) |
+  | `paiement_recu` | « Ton paiement est bien arrivé chez notre prestataire. On finalise ton abonnement… » | rien pendant l'attente (ci-dessous) |
+  | erreur réseau | « Impossible de vérifier pour l'instant. » | « Vérifier à nouveau » — **jamais** « Payer » |
+
+  **Attente bornée à 20 secondes**, pour `paiement_recu` et pour les erreurs réseau : nouveau
+  constat toutes les 2 secondes, au plus dix fois. Vingt secondes, parce que Stripe renvoie vers
+  l'application au plus tard dix secondes après le paiement et que le serveur n'attend pas le
+  webhook pour traiter (il lit Stripe) : au-delà, ce n'est plus un délai, c'est une panne.
+  **Passé ce délai**, l'écran cesse d'attendre et affiche : « Ton paiement est bien arrivé, mais
+  la confirmation prend plus de temps que prévu. **Tu n'as rien à refaire** : ton abonnement
+  apparaîtra dans ton compte, rubrique Mes abonnements. » Actions : « Voir mes abonnements »
+  (24b) et « Revenir au profil de {prénom} ». **Jamais « Payer » ni « Réessayer le paiement »
+  quand Stripe a constaté un paiement** : proposer de payer à nouveau, c'est fabriquer un double
+  prélèvement. Pour une erreur réseau persistante (on ne sait rien), le même message sans « ton
+  paiement est bien arrivé » : « On n'arrive pas à vérifier ton paiement pour l'instant. Si tu as
+  payé, ton abonnement apparaîtra dans ton compte. » et « Vérifier à nouveau ».
+- **Aucun refus de carte n'arrive ici** : la page Stripe l'affiche elle-même et laisse réessayer
+  un autre moyen. L'écran 20 ne sert plus la souscription (`L4-20`).
 - **Aucune donnée de paiement dans un journal, une URL ou un stockage local** (`CLAUDE.md` §4,
-  §10) — ni le jeton, ni l'identifiant du moyen de paiement.
+  §10) — l'URL de paiement comprise : elle n'est ni journalisée, ni conservée au-delà de l'écran.
 - Le prix affiché vient du serveur ; s'il diffère de celui vu en 04a (le coach a changé son prix
   entre-temps), c'est celui de 04b qui fait foi, et il est celui qui sera figé.
 
@@ -107,19 +139,33 @@ et se teste en mode test Stripe sans ce texte ; il **ne passe pas en production*
 
 | État | Comportement |
 |---|---|
-| Récapitulatif chargé | Lignes ci-dessus, composant du SDK, bouton « Payer » actif une fois un moyen choisi |
-| Paiement en cours | Bouton en chargement, non pressable, retour désactivé |
-| Authentification 3-D Secure | Interface du SDK au premier plan ; au retour, relecture de l'état |
-| Jeton expiré | Nouvelle intention demandée, récapitulatif remplacé, aucun champ perdu côté SDK si possible |
-| Erreur réseau | Message, bouton réactivé ; le nouvel essai réutilise la même `Idempotency-Key` |
+| Récapitulatif chargé | Lignes ci-dessus, « Payer » actif |
+| Page Stripe ouverte | Écran en attente derrière le navigateur |
+| Retour (lien, navigateur fermé, retour au premier plan) | Constat en cours, « Payer » désactivé |
+| Retour, abonné | 04c |
+| Retour, `non_terminee` | Bandeau « Paiement non terminé. Rien n'a été débité. », « Reprendre le paiement » |
+| Retour, `expiree` / page expirée | Bandeau, nouvelle intention au prochain « Payer » |
+| Retour, `paiement_recu` | Attente bornée à 20 s, puis « Tu n'as rien à refaire » et lien vers 24b |
+| Constat impossible (réseau) | Attente bornée à 20 s, puis « Vérifier à nouveau », jamais « Payer » |
+| Erreur réseau à la demande d'intention (page expirée) | Message, bouton réactivé |
 
 ---
 
 ## Ce qui a été inventé pour cette fiche
 
-- **Moment de création de l'`Idempotency-Key`** (à l'ouverture de l'écran) : `docs/api.md` §1 dit
-  qu'elle est obligatoire, pas quand elle naît. À confirmer en P4.2, avec la conception de la
-  table.
+- **Attente après retour** : 2 secondes entre deux constats, 20 secondes au plus (raisons
+  ci-dessus). Et les textes des états de retour.
+- **Application tuée en plein paiement — décidé, pas un manque** (28 septembre 2026).
+  L'`intentionId` n'est gardé qu'en mémoire (jamais dans un stockage local, `CLAUDE.md` §4) ; au
+  redémarrage, 04b n'existe plus et aucun constat n'a lieu. **C'est voulu** : le webhook crée
+  l'abonnement que l'application soit ouverte ou non ; la personne ne le voit simplement pas tout
+  de suite, et le voit dans 24b à la prochaine ouverture. Si le webhook lui-même échoue, le
+  rapprochement quotidien (`docs/prompts/L4.md` point 12) est le filet. **Aucun balayage serveur
+  rapide des sessions payées sans abonnement n'est construit** : un troisième mécanisme pour
+  couvrir les quelques secondes entre le webhook et la prochaine ouverture ne vaut pas sa
+  complexité. Ne pas le redécouvrir comme un oubli.
+- **Phrase « Tu choisiras sur la page de paiement sécurisée de notre prestataire »**, et le texte
+  d'attente.
 - ~~Aucun écran de résiliation dans le périmètre~~ — **résolu le 28 septembre 2026** : la
   maquette existait (écran 24, bloc abonnements, écarté en L1). Ajouté comme 24b
   (`docs/ecrans/L4-24b-mes-abonnements.md`) ; la question de conformité reste jointe à celle du
@@ -132,17 +178,25 @@ et se teste en mode test Stripe sans ce texte ; il **ne passe pas en production*
 
 1. Aucun montant ni jour de prélèvement n'est calculé par l'écran : tout vient de
    `recapitulatif`.
-2. Aucun champ de carte ni d'IBAN n'existe hors des composants du SDK.
-3. Carte et SEPA sont proposés, et payables en mode test Stripe (carte de test qui réussit,
-   carte de test qui exige 3-D Secure, IBAN de test).
-4. Un double appui sur « Payer », ou un nouvel essai après une erreur réseau, ne crée jamais
-   deux abonnements (même `Idempotency-Key`, prouvé au banc côté serveur).
-5. 201 → 04c ; 202 → 3-D Secure puis relecture ; 402 → écran 20 avec le motif.
-6. Aucun champ ni texte « code promo » (reporté au jalon 2) ; aucun moyen de paiement « enregistré » inventé.
-7. L'emplacement de l'information sur la rétractation existe et ne contient aucun texte inventé.
-8. **Libellés interdits** (`docs/domaine.md` §2) : aucun terme de la liste partagée dans les
+2. Aucun champ de carte ni d'IBAN, aucune clé Stripe, aucun module Stripe dans ce dépôt côté
+   application (`src/test/secrets-interdits.test.ts`).
+3. Carte et SEPA sont payables en mode test Stripe, **dans un navigateur sur web** comme depuis
+   l'application : carte de test qui réussit, carte qui exige 3-D Secure, carte refusée (le refus
+   s'affiche dans la page Stripe), IBAN de test.
+4. Un double appui sur « Payer » n'ouvre jamais une seconde session ; un double appui sur
+   « Continuer » (04a) n'en crée jamais une seconde (même `Idempotency-Key`, prouvé au banc).
+5. Au retour — lien, navigateur fermé ou retour au premier plan —, l'écran ne conclut qu'à partir
+   de `POST /abonnements/intention/{id}/constat` ; un navigateur fermé sans constat n'affiche
+   jamais un succès ni un échec.
+6. Navigateur fermé en plein paiement (vérification manuelle en mode test : fermer la page Stripe
+   avant, puis juste après avoir validé une carte de test) : `non_terminee` propose de reprendre
+   la même page ; `paiement_recu` ne propose **jamais** de payer à nouveau ; après 20 secondes
+   sans confirmation, l'écran cesse d'attendre et renvoie vers 24b.
+7. Aucun champ ni texte « code promo » (reporté au jalon 2) ; aucun moyen de paiement
+   « enregistré » inventé.
+8. L'emplacement de l'information sur la rétractation existe et ne contient aucun texte inventé.
+9. **Libellés interdits** (`docs/domaine.md` §2) : aucun terme de la liste partagée dans les
    textes rendus ni dans les libellés d'accessibilité.
-9. Aucune donnée de paiement dans un journal, une URL, un stockage local (vérifié par lecture de
-   code et par le test existant d'ESLint sur les clés secrètes).
-10. Galerie, deux thèmes (le composant du SDK remplacé par un bloc neutre dans la galerie).
-11. `npm run verif` passe.
+10. L'URL de paiement n'apparaît dans aucun journal ni stockage local.
+11. Galerie, deux thèmes.
+12. `npm run verif` passe.

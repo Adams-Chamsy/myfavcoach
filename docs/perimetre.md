@@ -246,6 +246,15 @@ Ces délais sont externes et bloquent la publication, pas le développement :
 
 - Création de la société et compte bancaire professionnel
 - Compte développeur Apple et Google Play, au nom de l'entité
+- **Domaine `myfavcoach.fr`, servi en HTTPS** (ajouté le 28 septembre 2026). Deux usages, tous
+  deux bloquants pour un parcours réel : les **liens d'invitation** de L3bis
+  (`https://<domaine>/y/<jeton>`, `docs/ecrans/L3bis-I02-arrivee-par-invitation.md`) et la **page
+  de retour après paiement** de L4 (Stripe Checkout renvoie vers une adresse web, pas vers un
+  schéma d'application — `docs/backend.md` §13). Il faut : le domaine, un hébergement HTTPS, les
+  fichiers d'association d'application (`.well-known/apple-app-site-association` pour iOS,
+  `.well-known/assetlinks.json` pour Android) qui font ouvrir l'application à ces adresses, et
+  une page de repli pour quand l'application ne s'ouvre pas. Sans lui, les deux parcours ne
+  s'essaient qu'en mode dégradé (lien en schéma `myfavcoach://`, adresse de test).
 - Dossier de conformité auprès du prestataire de paiement — plusieurs semaines
 - Rédaction des documents contractuels (juriste)
 - Assurance responsabilité civile professionnelle
@@ -268,6 +277,17 @@ Ces délais sont externes et bloquent la publication, pas le développement :
   résiliation en ligne** qu'impose le droit de la consommation pour un contrat souscrit en ligne —
   le bloc « Mes abonnements » (24b, `docs/ecrans/L4-24b-mes-abonnements.md`) la porte ; reste à
   confirmer que son parcours (nombre d'écrans, confirmation, accusé de réception) y satisfait.
+- **Paiement en charges séparées — deux questions pour le juriste** (ajouté le 28 septembre 2026,
+  `docs/backend.md` §13) : (1) le **relevé bancaire du client affiche la plateforme**, pas le
+  coach, alors que la facture désigne le coach comme vendeur (`docs/domaine.md` §3.5) — est-ce
+  acceptable, et que doit dire la facture ou le relevé ? (2) **la plateforme encaisse pour le
+  compte des coachs** et ne leur reverse l'argent qu'au `Versement` (le 5 du mois, à partir de
+  20 €, `docs/domaine.md` §4.8). La détention indéfinie est déjà fermée (`docs/domaine.md` §3.3 :
+  aucune offre ni souscription sans compte de versement opérationnel, applicable en L5) ; reste
+  une détention bornée — jusqu'à environ cinq semaines, et plus longtemps pour un solde sous
+  20 € — dont la compatibilité avec la réglementation des services de paiement (encaissement pour
+  compte de tiers) est à confirmer, pas à supposer. **Bloque le premier paiement réel (L5)**, pas
+  le mode test.
 - **POINT BLOQUANT — Apple : le paiement hors achat in-app n'est probablement pas permis pour
   cette offre sur iOS** (ajouté le 28 septembre 2026, décidé en conversation ; raisonnement dans
   `docs/domaine.md` §2). La seule exception d'Apple qui pourrait s'appliquer, la règle 3.1.3(d),

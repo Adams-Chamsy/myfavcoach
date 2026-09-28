@@ -17,7 +17,12 @@ Aucune exception, y compris pour une migration « triviale ».
 
 Plan gratuit en développement. Passage au plan Pro pour le projet de production, au plus tard au
 lot L4 (paiement réel qui s'ouvre) — voir aussi §3 ci-dessous pour ce que ce passage débloque
-côté authentification.
+côté authentification. **Révisé le 28 septembre 2026 : pas de passage en Pro à L4**
+(`docs/prompts/L4.md` point 10). Les deux projets restent en plan gratuit, sans lot fixé pour le
+passage ; les dettes qui l'attendaient restent dans `docs/dette.md`. Conséquence constatée le jour
+même : un projet gratuit inactif est **mis en pause** (son adresse ne résout plus), ce qui rend
+`npm run test:rls` — et un webhook qui y pointerait — indisponibles jusqu'à sa reprise manuelle
+depuis le tableau de bord.
 
 ---
 
@@ -397,7 +402,7 @@ part, et l'application l'appelle comme n'importe quelle URL.
 
 Deux cas, jamais mélangés dans une même fonction :
 
-1. **Fonction appelée par l'application** (`abonnement-intention`, souscription...).
+1. **Fonction appelée par l'application** (`abonnement-intention`...).
    L'application envoie son jeton de session habituel (`Authorization: Bearer <jeton>`,
    `docs/api.md` §1) ; Supabase vérifie ce jeton avant même d'exécuter la fonction (réglage par
    défaut, `verify_jwt`). La fonction crée alors son client Postgres **avec ce même jeton** —
@@ -405,6 +410,14 @@ Deux cas, jamais mélangés dans une même fonction :
    s'applique comme pour un appel PostgREST. Les écritures sensibles passent par des fonctions
    SQL `security definer` déjà soumises à §7 (leurs propres tests de refus), jamais par un
    contournement de la RLS dans le code TypeScript.
+   **Toute fonction SQL qui lit `auth.uid()` s'appelle par ce client-là, jamais par le client
+   `service_role`** : sous `service_role`, `auth.uid()` est nul. C'est le cas des deux fonctions
+   d'idempotence (§13) — `reserver_cle_idempotence` et `terminer_cle_idempotence` sont appelées
+   par `abonnement-intention` **avec le jeton de session du client**, transmis tel quel depuis
+   l'en-tête `Authorization` de la requête entrante. Une même Edge Function peut avoir besoin des
+   deux clients (le jeton du client pour ce qui dépend de son identité, `service_role` pour une
+   écriture que seul le serveur a le droit de faire) : chacun est nommé explicitement dans le
+   code (`clientDuClient`, `clientServeur`), jamais un client unique réutilisé pour les deux.
 2. **Fonction appelée par un tiers ou par un planificateur** (`webhook-paiement`, relances,
    rapprochement). Aucun utilisateur derrière l'appel, donc aucun jeton : la fonction utilise
    `service_role` — **même mécanisme que le reste du dépôt** (§6, banc RLS) — via la variable
@@ -467,3 +480,194 @@ entre deux événements. L'`Idempotency-Key` de `docs/api.md` §1 ne couvre que 
 Les deux se prouvent au banc (relivraison → aucune écriture de plus ; ordre inversé → même état
 final), pas à la lecture du code. Ce qui reste invisible même avec ces deux règles — un
 événement jamais arrivé — relève du rapprochement quotidien (`docs/prompts/L4.md` point 12).
+
+---
+
+## 13. Paiement : architecture retenue (L4)
+
+Décidée le 28 septembre 2026 (`docs/prompts/L4.md` P4.2). Décision d'architecture durable : un
+changement ici se discute avant le code, comme une migration.
+
+### Modèle de flux : charges séparées
+
+Le client paie **la plateforme** (compte Stripe de la plateforme) ; `Facture` et `LigneCommission`
+s'écrivent à chaque paiement ; le coach est réglé ensuite par un virement Stripe (`Transfer`) vers
+son compte Connect Express — le `Versement` de `docs/domaine.md` §3.10, construit en L5. C'est le
+seul modèle compatible avec la coupure L4/L5 (identification Stripe du coach en L5,
+`docs/api.md` §8). Vérifié dans la documentation Stripe (« separate charges and transfers ») : la
+France est couverte ; **la plateforme supporte les frais Stripe, les remboursements et les
+litiges** — cohérent avec `docs/domaine.md` §5.5 (« les frais du prestataire sont à la charge de
+la plateforme ») ; pour un prélèvement SEPA, le virement au coach attend la confirmation du
+paiement (`charge.succeeded`), jamais avant.
+
+Deux conséquences, écrites plutôt que découvertes :
+
+- **Le relevé bancaire du client affiche la plateforme**, pas le coach. Afficher le coach
+  demanderait `on_behalf_of`, qui exige un compte Connect déjà opérationnel. Question jointe au
+  juriste (`docs/perimetre.md` §6), à côté de « qui est le vendeur » (`docs/domaine.md` §3.5).
+- **Aucun fonds n'est retenu pour un coach qui ne peut pas le recevoir** : règle écrite dans
+  `docs/domaine.md` §3.3 (condition de publication et de souscription), applicable en L5.
+
+### Pas de Stripe Billing
+
+Aucun objet d'abonnement Stripe (`Subscription`, `Invoice` Stripe, relances automatiques Stripe).
+Le moyen de paiement est **enregistré** au premier paiement (`setup_future_usage = off_session`) ;
+chaque échéance est ensuite un paiement ponctuel (`PaymentIntent` hors session) déclenché par
+notre tâche planifiée (P4.8). Le client Stripe (`Customer`) qui porte ce moyen enregistré est
+créé au premier paiement ; son identifiant se conserve côté serveur (colonne à poser en P4.3,
+sans aucun grant à `anon`/`authenticated`), jamais exposé à l'application. Raison : `docs/domaine.md` §4.3/§4.4 est la seule machine à états
+de l'abonnement, `Facture` la seule facture, et nos relances (J+1, J+3, J+7) les seules relances.
+Stripe Billing aurait tenu une seconde machine, une seconde facture et un second calendrier de
+relances, que rien ne garantit de maintenir d'accord avec les nôtres.
+
+### Collecte du paiement : page Stripe hébergée (Checkout), pas de SDK natif
+
+La souscription ouvre une **page de paiement hébergée par Stripe** (`Checkout Session`,
+`mode = payment`, carte et prélèvement SEPA), dans un navigateur :
+`expo-web-browser` sur iOS/Android, une redirection sur web. Aucun champ de carte ni d'IBAN dans
+ce dépôt, aucune clé publiable Stripe dans le paquet mobile (`EXPO_PUBLIC_STRIPE_PK`, réservée
+depuis L0, **n'a plus d'usage** et reste interdite à la lecture par
+`src/test/secrets-interdits.test.ts`).
+
+Raison décisive : le SDK natif (`@stripe/stripe-react-native`) **n'a aucune implémentation web**
+(vérifié dans son paquet : aucun fichier `.web.*`) — sur web, il ne rendrait rien, sans erreur
+(`CLAUDE.md` §6). Or le web est le canal du plan B si Apple refuse le paiement hors achat in-app
+(`docs/perimetre.md` §6). Checkout fonctionne à l'identique sur les trois plateformes, gère 3-D
+Secure et le mandat SEPA, et se teste dans un navigateur sur cette machine.
+
+Ce que ça change au contrat (`docs/api.md` §7, réécrit en conséquence) : l'intention rend une URL
+de paiement ; l'abonnement naît **du webhook** (`checkout.session.completed` puis, pour SEPA,
+`checkout.session.async_payment_succeeded`/`_failed`), jamais de la réponse à l'application ; le
+202 « authentification requise » disparaît (3-D Secure se passe dans la page Stripe) ; un refus de
+carte à la souscription s'affiche **dans** la page Stripe, qui laisse réessayer — l'écran 20 ne
+sert plus que les échecs d'échéance.
+
+**Retour dans l'application.** Stripe documente l'adresse de retour (`success_url`) comme une
+**adresse web** — un lien universel (iOS) / App Link (Android) —, avec une page de repli qui porte
+le lien en schéma d'application (`myfavcoach://`) pour le cas où le lien universel n'ouvre pas
+l'app. Le retour passe donc par une page de **myfavcoach.fr** (prérequis hors code,
+`docs/perimetre.md` §6, même domaine que les liens d'invitation de L3bis). Stripe redirige vers
+`success_url` dès que le webhook a été acquitté, ou au plus tard dix secondes après le paiement :
+l'écran 04c relit donc l'état serveur, il ne suppose jamais qu'un retour signifie un abonnement
+créé.
+
+### Dépendances accordées (28 septembre 2026)
+
+| Paquet | Où | Pourquoi | Frontière |
+|---|---|---|---|
+| `expo-web-browser` (~57.0.2, 0,29 Mo décompressé, implémentation web présente) | application mobile | ouvrir la page Checkout et en revenir | aucune donnée de paiement ne transite par lui : il ouvre une URL |
+| `stripe` (SDK serveur Node, importé en `npm:stripe` par Deno, 16 Mo décompressé) | **Edge Functions seulement** (`supabase/functions/`) | créer les sessions Checkout, les paiements hors session, vérifier la signature du webhook | **n'entre jamais dans le paquet mobile** : `src/test/secrets-interdits.test.ts` interdit toute mention de `stripe` dans `src/`, `app/`, `scripts/` et exclut `supabase/functions/` **nommément** ; `scripts/verifier-bundle-production.mjs` prouve son absence dans les octets livrés |
+
+### Idempotence des appels sortants (`Idempotency-Key`, `docs/api.md` §1)
+
+Protège `POST /abonnements/intention` — la seule route que l'application appelle et qui engage de
+l'argent — contre un double appui ou un nouvel essai réseau. Les événements **entrants** relèvent
+d'un autre mécanisme (§12, `evenements_prestataire`). Les paiements d'échéance, déclenchés par le
+serveur, portent leur propre clé d'idempotence Stripe (l'identifiant de la
+`TentativePrelevement`), sans cette table.
+
+```sql
+create table public.cles_idempotence (
+  compte_id     uuid not null references public.comptes(id),
+  cle           uuid not null,
+  operation     text not null check (operation in ('intention_souscription')),
+  empreinte     text not null,          -- sha256 du corps utile de la requête (offreId)
+  statut        text not null default 'en_cours' check (statut in ('en_cours','terminee')),
+  reservee_le   timestamptz not null default now(),
+  code_reponse  int,
+  corps_reponse jsonb,
+  termine_le    timestamptz,
+  primary key (compte_id, cle)
+);
+revoke all on table public.cles_idempotence from public, anon, authenticated, service_role;
+-- banc (péremption simulée en reculant reservee_le) et purge des clés de plus de 24 h
+grant select, delete, update (reservee_le) on table public.cles_idempotence to service_role;
+
+create or replace function public.reserver_cle_idempotence(
+  p_cle uuid, p_operation text, p_empreinte text)
+returns table (etat text, code_reponse int, corps_reponse jsonb)
+language plpgsql security definer set search_path = public as $$
+declare v public.cles_idempotence;
+begin
+  if auth.uid() is null then raise exception 'non_authentifie'; end if;
+
+  insert into cles_idempotence (compte_id, cle, operation, empreinte)
+  values (auth.uid(), p_cle, p_operation, p_empreinte)
+  on conflict (compte_id, cle) do nothing;
+  if found then return query select 'nouvelle'::text, null::int, null::jsonb; return; end if;
+
+  select * into v from cles_idempotence
+   where compte_id = auth.uid() and cle = p_cle for update;
+
+  if v.operation <> p_operation or v.empreinte <> p_empreinte then
+    raise exception 'cle_idempotence_reutilisee';            -- 422
+  end if;
+  if v.statut = 'terminee' then
+    return query select 'rejouee'::text, v.code_reponse, v.corps_reponse; return;
+  end if;
+  -- en_cours abandonné (fonction arrêtée en plein traitement) : réclamable après 5 minutes
+  if v.reservee_le < now() - interval '5 minutes' then
+    update cles_idempotence set reservee_le = now()
+     where compte_id = auth.uid() and cle = p_cle;
+    return query select 'reprise'::text, null::int, null::jsonb; return;
+  end if;
+  return query select 'en_cours'::text, null::int, null::jsonb;   -- 409 + Retry-After
+end $$;
+
+create or replace function public.terminer_cle_idempotence(
+  p_cle uuid, p_code int, p_corps jsonb)
+returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'non_authentifie'; end if;
+  update cles_idempotence
+     set statut = 'terminee', code_reponse = p_code, corps_reponse = p_corps, termine_le = now()
+   where compte_id = auth.uid() and cle = p_cle and statut = 'en_cours';
+  if not found then raise exception 'cle_idempotence_inconnue'; end if;
+end $$;
+
+revoke all on function public.reserver_cle_idempotence(uuid, text, text)
+  from public, anon, authenticated, service_role;
+grant execute on function public.reserver_cle_idempotence(uuid, text, text) to authenticated;
+revoke all on function public.terminer_cle_idempotence(uuid, int, jsonb)
+  from public, anon, authenticated, service_role;
+grant execute on function public.terminer_cle_idempotence(uuid, int, jsonb) to authenticated;
+```
+
+**Qui l'appelle, avec quel jeton.** L'Edge Function `abonnement-intention`, invoquée par
+l'application avec le jeton de session du client, appelle les deux fonctions **avec ce même
+jeton** (§12, cas 1) — jamais avec `service_role`, sous lequel `auth.uid()` est nul et chaque
+appel lèverait `non_authentifie`. `authenticated` est donc le seul rôle qui reçoit `EXECUTE`.
+
+**Déroulé, dans l'Edge Function :**
+
+| `etat` rendu | Ce que fait la fonction |
+|---|---|
+| `nouvelle` ou `reprise` | crée la session Checkout **en transmettant la même clé comme clé d'idempotence Stripe**, puis `terminer_cle_idempotence` avec la réponse (201, URL) |
+| `rejouee` | rend la réponse mémorisée telle quelle, sans rien recréer |
+| `en_cours` | 409 `requete_en_cours`, avec `Retry-After` |
+| exception `cle_idempotence_reutilisee` | 422 : même clé, autre requête |
+
+**Pourquoi la péremption est sans danger.** Une clé `en_cours` depuis plus de cinq minutes
+signale une fonction arrêtée en plein traitement ; la reprendre rejoue l'appel à Stripe **avec la
+même clé Stripe**, que Stripe déduplique lui-même (24 h) — la reprise ne crée jamais une seconde
+session. Sans péremption, une seule panne rendrait l'opération impossible à retenter pour
+toujours. Cinq minutes, parce qu'aucun traitement légitime de cette fonction n'approche cette
+durée (un appel Stripe, deux appels SQL) ; une valeur plus courte risquerait de reprendre une
+fonction encore vivante mais lente.
+
+**Durée de vie.** Une session Checkout est créée avec une expiration de 30 minutes ; la clé qui
+l'a produite n'a plus de sens après. L'application génère une clé neuve à chaque nouvelle demande
+d'intention — « Continuer » en 04a, ou « Payer » en 04b quand la page a expiré
+(`docs/ecrans/L4-04b-recapitulatif-paiement.md`) — et la réutilise pour les nouveaux essais réseau
+de cette même demande ; la purge des clés de plus de 24 h est une tâche
+planifiée (P4.8), par `service_role`.
+
+**Preuves au banc** (écrites avec la migration, P4.3), chacune avec son rouge nommé d'abord :
+double appel avec la même clé → une seule réservation, la seconde rend `en_cours` puis `rejouee`
+une fois terminée ; même clé, autre empreinte → `cle_idempotence_reutilisee` ; clé `en_cours`
+reculée de six minutes par le rôle serveur du banc → `reprise` ; reculée de quatre minutes →
+toujours `en_cours` ; appel sans jeton client (`service_role`) → `non_authentifie` ; `anon` →
+refus d'exécution ; le compte B ne voit ni ne reprend jamais la clé du compte A (la clé primaire
+inclut `compte_id`).
+

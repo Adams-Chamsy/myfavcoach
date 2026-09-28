@@ -69,9 +69,11 @@ Le reste :
 
 - **Magasins d'applications** (`docs/domaine.md` §2) : aucun terme interdit dans l'écran ; ce que
   la carte met en avant est l'engagement humain du coach, jamais un contenu.
-- **Aucun appel au prestataire sur cet écran.** « Continuer » demande l'intention de paiement
-  (`POST /abonnements/intention`, `docs/api.md` §7) et, en cas de succès, pousse 04b avec le
-  récapitulatif rendu. L'offre choisie part au serveur par son identifiant ; le prix affiché ici
+- **Aucun appel au prestataire depuis l'application.** « Continuer » demande l'intention de
+  paiement (`POST /abonnements/intention`, `docs/api.md` §7) — c'est le serveur qui crée la page
+  Stripe — et, en cas de succès, pousse 04b avec le récapitulatif et l'URL de paiement rendus.
+  **L'`Idempotency-Key` naît ici**, une par appui sur « Continuer », réutilisée pour les nouveaux
+  essais réseau de cette même demande (`docs/backend.md` §13). L'offre choisie part au serveur par son identifiant ; le prix affiché ici
   n'est jamais renvoyé comme vérité (le serveur relit et fige `prixFigeCentimes`).
 - **Session requise, profil client actif.** L'écran est dans `(client)` ; un visiteur `anon` qui
   presse « S'abonner » sur `L2-12` n'arrive jamais ici sans session — voir « Ce qui a été
@@ -95,7 +97,7 @@ Le reste :
 | Plusieurs offres | Cartes sélectionnables, présélection comme ci-dessus |
 | Aucune offre publiée | État vide honnête : « {Prénom} n'a pas d'offre ouverte pour le moment. » — cas atteignable si le coach retire sa dernière offre pendant que le client consulte son profil |
 | « Continuer » en cours | Bouton en chargement, non pressable deux fois |
-| Erreur de l'intention | Message du serveur tel quel, bouton réactivé |
+| Erreur de l'intention | Message du serveur tel quel (dont `requete_en_cours`, 409), bouton réactivé |
 
 ---
 

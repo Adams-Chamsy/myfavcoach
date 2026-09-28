@@ -84,9 +84,19 @@ navigation normale de l'espace client reste disponible.
   Android ramènent au profil coach, jamais à « Payer ». Propriété de pile, donc testée par
   `renderRouter` (`CLAUDE.md` §8), pas par un test d'écran isolé.
 - **Magasins d'applications** (`docs/domaine.md` §2) : aucun terme interdit.
-- **La variante vient de l'état serveur**, jamais du moyen choisi en 04b : l'écran lit
-  l'abonnement (ou la demande en cours) et affiche la variante SEPA tant que le premier
-  prélèvement n'est pas confirmé.
+- **La variante vient de l'état serveur**, jamais du moyen choisi dans la page Stripe : 04c
+  n'est atteint que lorsque `POST /abonnements/intention/{id}/constat` rend `abonne`
+  (`docs/api.md` §7, flux Checkout décidé le 28 septembre 2026), et affiche la variante SEPA tant
+  que l'abonnement est `en_attente_confirmation`. Un simple retour depuis la page Stripe ne suffit
+  jamais à l'afficher.
+- **Ce que 04c n'affiche jamais : le retour sans confirmation.** Un client qui a fermé le
+  navigateur en plein paiement, ou dont le paiement est reçu par Stripe mais pas encore
+  transformé en abonnement (`non_terminee`, `expiree`, `paiement_recu`), **reste sur 04b**, qui
+  porte ces états (`docs/ecrans/L4-04b-recapitulatif-paiement.md`, « Retour sans confirmation »).
+  La variante SEPA de 04c n'en est pas un substitut : elle décrit un abonnement **créé** dont la
+  banque doit encore confirmer le premier prélèvement — une situation connue, durable, avec un
+  abonnement consultable dans 24b. « On ne sait pas encore » et « c'est en cours à la banque »
+  sont deux messages différents, et l'un ne doit jamais s'afficher à la place de l'autre.
 - Aucun montant n'est calculé par l'écran.
 
 ---
@@ -121,6 +131,8 @@ navigation normale de l'espace client reste disponible.
    chiffres.
 2. SEPA : jamais « Payé » tant que le prélèvement n'est pas confirmé côté serveur ; « Prélèvement
    en cours » à la place.
+2 bis. 04c ne s'affiche jamais sans abonnement créé : `non_terminee`, `expiree` et
+   `paiement_recu` restent sur 04b, et ne produisent jamais la variante SEPA.
 3. Aucune formulation genrée pour le client ni pour le coach ; aucune promesse de délai du coach ;
    aucune mention d'une facture consultable ni du questionnaire santé à L4.
 4. La phrase de résiliation est au-dessus du récapitulatif.
