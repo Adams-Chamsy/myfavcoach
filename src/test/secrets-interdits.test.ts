@@ -198,6 +198,7 @@ describe('secrets interdits côté application', () => {
   //   - supabase/migrations/0031_verrouiller_grants_fonctions_existantes.sql : généralise 0030 à seize fonctions antérieures à L3bis (0002 à 0024) et à demandes_export (seule table sans grant service_role, trouvée par src/test/conventions-grants-migrations.test.ts plutôt que par hasard) — même motif, étendu à tout le dépôt avant L4
   //   - supabase/migrations/0033_creer_abonnements.sql : grants service_role sur abonnements (select, update de trois dates pour le banc) et EXECUTE des trois fonctions réservées au serveur (souscription, confirmation et rejet du premier prélèvement) -- la règle 11 de docs/prompts/L4.md, écrite dans la migration qui crée la table
   //   - supabase/migrations/0034_creer_cles_idempotence.sql : grants service_role (banc, purge) et commentaires qui expliquent pourquoi les deux fonctions refusent un appel sous ce rôle (auth.uid() nul, docs/backend.md §12)
+  //   - supabase/migrations/0036_creer_factures_commissions_tentatives.sql : grants service_role (select sur les pièces comptables et les tentatives pour le banc, update d'une seule colonne de profils_coach pour prouver la bascule au jour 90) et réaffirmation des droits des deux fonctions de 0033 qu'elle remplace
   //   - src/test/conventions-grants-migrations.test.ts : balaie supabase/migrations/ pour vérifier que chaque revoke nomme explicitement "service_role" avant un grant à anon/authenticated — le rôle apparaît en donnée de test (littéraux SQL écrits exprès, fautifs et corrects) et dans la liste des rôles requis, jamais comme une clé
   //   - docs/prompts/L3bis.md : règle 11 (cumulative) nomme "service_role" pour que le trou récurrent ci-dessus devienne une règle de conduite, pas une note qui ne survit qu'à ma mémoire
   //   - docs/prompts/L4.md : règle 12 (cumulative) nomme "service_role" pour la même raison, et le point 3 de tête de fichier explique que le webhook Stripe s'authentifie contre Postgres par ce même rôle
@@ -233,6 +234,7 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0031_verrouiller_grants_fonctions_existantes.sql',
       'supabase/migrations/0033_creer_abonnements.sql',
       'supabase/migrations/0034_creer_cles_idempotence.sql',
+      'supabase/migrations/0036_creer_factures_commissions_tentatives.sql',
       'docs/prompts/L3bis.md',
       'docs/prompts/L4.md',
       'docs/dette.md',

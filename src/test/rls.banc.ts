@@ -3935,13 +3935,18 @@ describe('abonnements — L4 (0033)', () => {
     });
     profilClient1 = await creerProfilClient(client1, 'Client1');
     client2 = A;
+    // Le profil client de A est normalement créé par le beforeAll de describe('profils_client').
+    // Filtré avec -t, ce describe ne tourne pas : sans ce repli, A n'aurait aucun profil et tout
+    // ce describe échouerait dans sa préparation (trouvé en P4.4). Créé alors par la session de A
+    // elle-même, le chemin légitime -- jamais par service_role.
     const profilA = await appelRest(
       `/rest/v1/profils_client?compte_id=eq.${A.compteId}&select=id`,
       {
         session: 'admin',
       },
     );
-    profilClient2 = (profilA.corps as { id: string }[])[0].id;
+    const existant = (profilA.corps as { id: string }[])[0];
+    profilClient2 = existant ? existant.id : await creerProfilClient(A, 'Client2');
 
     // Profil coach JAMAIS vérifié, sur le compte de client1, avec une offre marquée publiée par
     // service_role -- fixture délibérément incohérente (même famille que D, describe('offres')) :
@@ -4364,6 +4369,234 @@ describe('abonnements — L4 (0033)', () => {
   });
 
   // -------------------------------------------------------------------------------------------
+  // Factures et commission (0036 ; docs/domaine.md §3.5, §3.10, §5.5)
+  // -------------------------------------------------------------------------------------------
+  // À ce stade du describe, les paiements encaissés chez le coach de ce describe sont, dans
+  // l'ordre : sepa-1 (confirmé), carte-2, retiree-honoree. sepa-rejet n'a jamais été encaissé ;
+  // les refus (brouillon, non vérifié, auto-abonnement, intentions refusées) n'ont rien inséré ;
+  // les rejeux de carte-2 n'ont rien émis de plus.
+  describe('factures et commission (0036)', () => {
+    type Facture = {
+      id: string;
+      numero: string;
+      reference_prestataire: string;
+      vendeur_profil_coach_id: string;
+      vendeur_prenom: string;
+      vendeur_nom: string;
+      vendeur_siren: string | null;
+      vendeur_regime_tva: string | null;
+      client_prenom: string;
+      libelle: string;
+      periode_du: string;
+      periode_au: string;
+      montant_ttc_centimes: number;
+      montant_ht_centimes: number | null;
+      tva_centimes: number | null;
+      commission_centimes: number;
+      abonnement_id: string;
+    };
+    type Ligne = { facture_id: string; taux_applique: number; montant_centimes: number };
+    const annee = (): string => aujourdhuiParis().slice(0, 4);
+
+    async function facturesDuCoach(coachId: string): Promise<Facture[]> {
+      const { corps } = await appelRest(
+        `/rest/v1/factures?vendeur_profil_coach_id=eq.${coachId}&select=*&order=numero.asc`,
+        { session: 'admin' },
+      );
+      return corps as Facture[];
+    }
+    async function factureDe(ref: string): Promise<Facture | undefined> {
+      const { corps } = await appelRest(
+        `/rest/v1/factures?reference_prestataire=eq.${ref}&select=*`,
+        { session: 'admin' },
+      );
+      return (corps as Facture[])[0];
+    }
+    async function ligneDe(factureId: string): Promise<Ligne> {
+      const { corps } = await appelRest(
+        `/rest/v1/lignes_commission?facture_id=eq.${factureId}&select=*`,
+        { session: 'admin' },
+      );
+      return (corps as Ligne[])[0];
+    }
+    async function poserFinCommission(coachId: string, jour: string): Promise<void> {
+      const { statut } = await appelRest(`/rest/v1/profils_coach?id=eq.${coachId}`, {
+        methode: 'PATCH',
+        session: 'admin',
+        corps: { commission_offerte_jusqu_le: jour },
+      });
+      if (statut >= 400)
+        throw new Error(`Préparation du banc : date de commission refusée (${statut})`);
+    }
+
+    it('chaque paiement encaissé a sa facture, numérotée sans trou dans la série du coach', async () => {
+      const factures = await facturesDuCoach(profilCoachId);
+      expect(factures.map((f) => f.numero)).toEqual([
+        `${annee()}-000001`,
+        `${annee()}-000002`,
+        `${annee()}-000003`,
+      ]);
+      expect(factures.map((f) => f.reference_prestataire).sort()).toEqual(
+        [reference('carte-2'), reference('retiree-honoree'), reference('sepa-1')].sort(),
+      );
+      expect(await factureDe(reference('sepa-rejet'))).toBeUndefined();
+    });
+
+    it('la facture porte sa propre copie : parties, libellé, période, montant ; HT, TVA et identité fiscale vides (mode test)', async () => {
+      const facture = (await factureDe(reference('carte-2'))) as Facture;
+      const abonnement = await lire(facture.abonnement_id);
+      expect(facture.vendeur_prenom).toBe('Abo');
+      expect(facture.vendeur_nom).toBe('Coach');
+      expect(facture.client_prenom).toBeTruthy();
+      expect(facture.libelle).toBe('Suivi complet');
+      expect(facture.montant_ttc_centimes).toBe(4900);
+      expect(facture.periode_au).toBe(plusJours(abonnement.prochain_prelevement_le, -1));
+      expect(facture.montant_ht_centimes).toBeNull();
+      expect(facture.tva_centimes).toBeNull();
+      expect(facture.vendeur_siren).toBeNull();
+      expect(facture.vendeur_regime_tva).toBeNull();
+    });
+
+    it('une ligne de commission par facture, à 0 % pendant les 90 jours offerts', async () => {
+      for (const facture of await facturesDuCoach(profilCoachId)) {
+        const ligne = await ligneDe(facture.id);
+        expect(ligne.taux_applique).toBe(0);
+        expect(ligne.montant_centimes).toBe(0);
+        expect(facture.commission_centimes).toBe(0);
+      }
+    });
+
+    // Porte de sortie de L4, étape 5 : la commission bascule exactement le jour de
+    // commission_offerte_jusqu_le, jamais avant ; une ligne écrite n'est jamais recalculée.
+    it('bascule au jour 90 : le jour même, 10 % ; la veille, 0 % ; une ligne écrite ne change plus', async () => {
+      await poserFinCommission(profilCoachId, aujourdhuiParis());
+      const jour = await souscrire(profilClient1, offreId, 'carte', reference('jour-90'));
+      expect(jour.statut).toBe(200);
+      const factureJour = (await factureDe(reference('jour-90'))) as Facture;
+      expect((await ligneDe(factureJour.id)).taux_applique).toBe(10);
+      expect((await ligneDe(factureJour.id)).montant_centimes).toBe(490);
+      expect(factureJour.commission_centimes).toBe(490);
+
+      await poserFinCommission(profilCoachId, plusJours(aujourdhuiParis(), 1));
+      await souscrire(profilClient1, offreId, 'carte', reference('veille-90'));
+      const factureVeille = (await factureDe(reference('veille-90'))) as Facture;
+      expect((await ligneDe(factureVeille.id)).taux_applique).toBe(0);
+
+      // La date a reculé d'un jour après coup : la ligne du « jour 90 » reste à 10 %.
+      expect((await ligneDe(factureJour.id)).taux_applique).toBe(10);
+    });
+
+    // Complète la preuve de P4.3 (« même jour » seulement) : une date posée un autre jour,
+    // n'importe lequel, n'est jamais recalculée par une nouvelle entrée en actif.
+    it('la fin de commission offerte n’est jamais recalculée, même posée un autre jour', async () => {
+      await poserFinCommission(profilCoachId, '2026-01-01');
+      await souscrire(profilClient2, offreId, 'carte', reference('pas-de-recalcul'));
+      expect(await commissionDuCoach()).toBe('2026-01-01');
+      const facture = (await factureDe(reference('pas-de-recalcul'))) as Facture;
+      expect((await ligneDe(facture.id)).taux_applique).toBe(10);
+    });
+
+    it('une série par coach : le premier paiement chez un autre coach est son 000001', async () => {
+      const { corps } = await appelRest(
+        `/rest/v1/offres?id=eq.${offreCoachNonVerifieId}&select=coach_id`,
+        {
+          session: 'admin',
+        },
+      );
+      const autreCoach = (corps as { coach_id: string }[])[0].coach_id;
+      // Vérifié ici seulement : coach_non_verifie a déjà été prouvé plus haut sur ce même profil.
+      await appelRest(`/rest/v1/profils_coach?id=eq.${autreCoach}`, {
+        methode: 'PATCH',
+        session: 'admin',
+        corps: { statut_verification: 'verifiee' },
+      });
+      const { statut } = await souscrire(
+        profilClient2,
+        offreCoachNonVerifieId,
+        'carte',
+        reference('autre-serie'),
+      );
+      expect(statut).toBe(200);
+      expect((await facturesDuCoach(autreCoach)).map((f) => f.numero)).toEqual([
+        `${annee()}-000001`,
+      ]);
+      // La série du premier coach, elle, a continué sans trou et sans emprunt.
+      expect((await facturesDuCoach(profilCoachId)).map((f) => f.numero)).toEqual(
+        [1, 2, 3, 4, 5, 6].map((n) => `${annee()}-00000${n}`),
+      );
+    });
+
+    it('aucune écriture directe sur une facture ou une ligne de commission, pas même par service_role', async () => {
+      const facture = (await factureDe(reference('carte-2'))) as Facture;
+      const modification = await appelRest(`/rest/v1/factures?id=eq.${facture.id}`, {
+        methode: 'PATCH',
+        session: 'admin',
+        corps: { montant_ttc_centimes: 1 },
+      });
+      expect((modification.corps as { code?: string }).code).toBe('42501');
+      const suppression = await appelRest(`/rest/v1/factures?id=eq.${facture.id}`, {
+        methode: 'DELETE',
+        session: 'admin',
+      });
+      expect((suppression.corps as { code?: string }).code).toBe('42501');
+      const ligne = await appelRest(`/rest/v1/lignes_commission?facture_id=eq.${facture.id}`, {
+        methode: 'PATCH',
+        session: 'admin',
+        corps: { taux_applique: 10 },
+      });
+      expect((ligne.corps as { code?: string }).code).toBe('42501');
+      expect(((await factureDe(reference('carte-2'))) as Facture).montant_ttc_centimes).toBe(4900);
+    });
+
+    it.each(['factures', 'lignes_commission', 'compteurs_factures', 'tentatives_prelevement'])(
+      'aucun client ne lit %s directement',
+      async (table) => {
+        const { statut, corps } = await appelRest(`/rest/v1/${table}?select=*`, {
+          session: client1,
+        });
+        expect(statut).toBeGreaterThanOrEqual(400);
+        expect((corps as { code?: string }).code).toBe('42501');
+      },
+    );
+
+    it('etat_paiement_abonnement : le client lit le montant et la date de sa dernière facture, rien sur l’abonnement d’un autre', async () => {
+      const { statut, corps } = await transition('etat_paiement_abonnement', client1, {
+        p_abonnement_id: abonnement1,
+      });
+      expect(statut).toBe(200);
+      const etat = (
+        corps as {
+          derniere_facture_montant_centimes: number;
+          derniere_facture_payee_le: string | null;
+          dernier_echec_motif: string | null;
+          prochain_prelevement_le: string;
+        }[]
+      )[0];
+      expect(etat.derniere_facture_montant_centimes).toBe(4900);
+      expect(etat.derniere_facture_payee_le).not.toBeNull();
+      expect(etat.dernier_echec_motif).toBeNull();
+      expect(etat.prochain_prelevement_le).toBe((await lire(abonnement1)).prochain_prelevement_le);
+      // Exactement ces cinq colonnes : ni numéro, ni référence, ni commission, ni parties.
+      expect(Object.keys(etat).sort()).toEqual([
+        'dernier_echec_le',
+        'dernier_echec_motif',
+        'derniere_facture_montant_centimes',
+        'derniere_facture_payee_le',
+        'prochain_prelevement_le',
+      ]);
+
+      const autre = await transition('etat_paiement_abonnement', client2, {
+        p_abonnement_id: abonnement1,
+      });
+      expect(messageDe(autre.corps)).toBe('abonnement_introuvable');
+      const anon = await transition('etat_paiement_abonnement', 'anon', {
+        p_abonnement_id: abonnement1,
+      });
+      expect(JSON.stringify(anon.corps)).toMatch(/permission denied/i);
+    });
+  });
+
+  // -------------------------------------------------------------------------------------------
   // Idempotence des appels sortants (0034 ; docs/backend.md §13)
   // -------------------------------------------------------------------------------------------
   describe('cles_idempotence (0034)', () => {
@@ -4459,6 +4692,48 @@ describe('abonnements — L4 (0033)', () => {
         session: client1,
       });
       expect(statut).toBeGreaterThanOrEqual(400);
+    });
+  });
+
+  // -------------------------------------------------------------------------------------------
+  // Conservation (0036 ; docs/domaine.md §2, §3.5) -- DERNIER bloc de ce describe : il supprime
+  // les comptes de client1 et du coach, dont plus aucun test n'a besoin après lui.
+  // -------------------------------------------------------------------------------------------
+  describe('conservation des pièces comptables (0036)', () => {
+    it('supprimer le compte du client, puis celui du coach, ne supprime aucune facture ni ligne de commission', async () => {
+      const compter = async (table: string, filtre: string): Promise<number> => {
+        const { corps } = await appelRest(`/rest/v1/${table}?${filtre}&select=id`, {
+          session: 'admin',
+        });
+        return (corps as unknown[]).length;
+      };
+      const factures = await compter('factures', `vendeur_profil_coach_id=eq.${profilCoachId}`);
+      const lignes = await compter('lignes_commission', `profil_coach_id=eq.${profilCoachId}`);
+      expect(factures).toBeGreaterThan(0);
+
+      await supprimerCompteReel(client1.compteId);
+      await supprimerCompteReel(coachCompteId);
+
+      // Les comptes ont bien disparu, et leurs abonnements avec eux (cascade de 0033)...
+      const { corps: abonnementsRestants } = await appelRest(
+        `/rest/v1/abonnements?profil_coach_id=eq.${profilCoachId}&select=id`,
+        { session: 'admin' },
+      );
+      expect(abonnementsRestants).toEqual([]);
+      // ... mais pas une facture, pas une ligne, et chacune reste lisible sans eux.
+      expect(await compter('factures', `vendeur_profil_coach_id=eq.${profilCoachId}`)).toBe(
+        factures,
+      );
+      expect(await compter('lignes_commission', `profil_coach_id=eq.${profilCoachId}`)).toBe(
+        lignes,
+      );
+      const { corps } = await appelRest(
+        `/rest/v1/factures?reference_prestataire=eq.${reference('sepa-1')}&select=vendeur_nom,client_prenom,montant_ttc_centimes`,
+        { session: 'admin' },
+      );
+      expect(corps).toEqual([
+        { vendeur_nom: 'Coach', client_prenom: 'Client1', montant_ttc_centimes: 4900 },
+      ]);
     });
   });
 });
