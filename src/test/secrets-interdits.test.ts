@@ -88,20 +88,73 @@ describe('secrets interdits côté application', () => {
 
   // Portée : src/, app/, scripts/, .github/workflows/, plus app.config.js et app.json s'ils
   // existent — les endroits réels où une clé Stripe se glisserait, pas seulement les
-  // composants. docs/backend.md §5 : la clé publiable de Stripe n'a rien à faire dans le code
-  // tant que l'intégration n'est pas construite, au lot L4.
+  // composants. Depuis P4.2 (docs/backend.md §13), l'application n'a aucune raison de nommer
+  // Stripe : la page de paiement est hébergée par Stripe, ouverte par une URL que rend le
+  // serveur. Le SDK serveur `stripe` est accordé aux Edge Functions SEULEMENT.
+  //
+  // supabase/functions/ est exclu NOMMÉMENT, pas par accident de préfixe : c'est le seul
+  // endroit du dépôt où importer `stripe` est légitime. Sans cette liste, l'exclusion ne
+  // tiendrait qu'au fait qu'aucun préfixe balayé ne commence par "supabase/" — le jour où
+  // quelqu'un ajouterait "supabase/" (ou "") aux préfixes, les Edge Functions échoueraient
+  // ce test, et la tentation serait de retirer le préfixe plutôt que de comprendre pourquoi.
+  // Les deux tests du bloc « frontière » ci-dessous prouvent que c'est bien la liste nommée
+  // qui fait le travail.
   describe('Stripe', () => {
     const PREFIXES = ['src/', 'app/', 'scripts/', '.github/workflows/'];
     const FICHIERS_EXACTS = new Set(['app.config.js', 'app.json']);
+    const EXCLUS_NOMMEMENT = ['supabase/functions/'];
+    // Fichiers balayés qui NOMMENT Stripe pour vérifier son absence, sans jamais l'importer —
+    // la doc qui nomme le danger n'est pas le danger (même principe que les exceptions
+    // service_role plus bas). Ils ne sont pas exclus : ils restent soumis à MOTIF_IMPORT_STRIPE,
+    // seule l'interdiction du mot leur est levée.
+    //   - scripts/verifier-bundle-production.mjs : cherche "api.stripe.com" dans le bundle livré
+    const NOMMENT_SANS_IMPORTER = new Set(['scripts/verifier-bundle-production.mjs']);
+    const MOTIF_IMPORT_STRIPE =
+      /(?:from\s+|require\(\s*|import\(\s*)['"](?:stripe|@stripe\/[^'"]*)['"]/;
+
+    function estBalaye(chemin: string, prefixes: string[], exclus: string[]): boolean {
+      if (exclus.some((exclu) => chemin.startsWith(exclu))) return false;
+      return prefixes.some((prefixe) => chemin.startsWith(prefixe)) || FICHIERS_EXACTS.has(chemin);
+    }
+
     const fichiers = contenuDe(
-      fichiersSuivisParGit().filter(
-        (chemin) =>
-          PREFIXES.some((prefixe) => chemin.startsWith(prefixe)) || FICHIERS_EXACTS.has(chemin),
-      ),
+      fichiersSuivisParGit().filter((chemin) => estBalaye(chemin, PREFIXES, EXCLUS_NOMMEMENT)),
     );
 
+    describe('frontière application / Edge Functions', () => {
+      it('balaie app/ et src/ — là où un import de stripe entrerait dans le paquet mobile', () => {
+        expect(
+          estBalaye('app/(client)/souscription/paiement.tsx', PREFIXES, EXCLUS_NOMMEMENT),
+        ).toBe(true);
+        expect(estBalaye('src/services/paiement/port.ts', PREFIXES, EXCLUS_NOMMEMENT)).toBe(true);
+      });
+
+      it('exclut supabase/functions/ par la liste nommée, même si un préfixe venait à le couvrir', () => {
+        const fonction = 'supabase/functions/abonnement-intention/index.ts';
+        // Un préfixe élargi qui couvrirait les Edge Functions : la liste nommée tient seule.
+        expect(estBalaye(fonction, ['supabase/', ''], EXCLUS_NOMMEMENT)).toBe(false);
+        // Sans la liste nommée, ce même préfixe les balaierait : c'est donc elle qui exclut,
+        // pas le hasard des préfixes choisis.
+        expect(estBalaye(fonction, ['supabase/', ''], [])).toBe(true);
+      });
+    });
+
     it('aucun fichier n\'importe un module "stripe"', () => {
-      expect(coupables(fichiers, /stripe/i)).toEqual([]);
+      const ordinaires = fichiers.filter((f) => !NOMMENT_SANS_IMPORTER.has(f.chemin));
+      const nommant = fichiers.filter((f) => NOMMENT_SANS_IMPORTER.has(f.chemin));
+      expect(coupables(ordinaires, /stripe/i)).toEqual([]);
+      expect(coupables(nommant, MOTIF_IMPORT_STRIPE)).toEqual([]);
+    });
+
+    it("le motif d'import reconnaît les trois formes, et pas une simple mention", () => {
+      const poisons = [
+        { chemin: 'a.ts', contenu: "import Stripe from 'stripe';" },
+        { chemin: 'b.js', contenu: 'const s = require("stripe");' },
+        { chemin: 'c.ts', contenu: "await import('@stripe/stripe-js');" },
+      ];
+      expect(coupables(poisons, MOTIF_IMPORT_STRIPE)).toEqual(['a.ts', 'b.js', 'c.ts']);
+      const mention = [{ chemin: 'd.mjs', contenu: 'balayerDist(/api\\.stripe\\.com/);' }];
+      expect(coupables(mention, MOTIF_IMPORT_STRIPE)).toEqual([]);
     });
 
     it('aucun fichier ne lit EXPO_PUBLIC_STRIPE_PK', () => {

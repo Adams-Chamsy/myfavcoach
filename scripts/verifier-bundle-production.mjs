@@ -1,7 +1,7 @@
 // Construit le VRAI bundle de production — web, iOS ET Android en une seule commande
 // (`npx expo export -p all`) — et prouve que ni la clef admin
 // (EXPO_PUBLIC_SUPABASE_ADMIN_ANON_KEY) ni aucune référence à app/(admin)/ n'y figurent, sur
-// AUCUNE des trois plateformes.
+// AUCUNE des trois plateformes — ni, depuis P4.2, le SDK serveur Stripe.
 //
 // Pourquoi ce script existe : metro.config.js retire app/(admin)/ du bundle via
 // resolver.blockList, et src/test/aucun-lien-vers-admin.test.ts prouve qu'aucun écran mobile ne
@@ -139,11 +139,20 @@ for (const plateforme of PLATEFORMES) {
 const contientCleAdmin = balayerDist(new RegExp(CLE_ADMIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 const contientReferenceAdmin = balayerDist(/\(admin\)/);
 const cheminsAdmin = fichiersRecursifs(DOSSIER_DIST).filter((c) => c.includes('(admin)'));
+// Le SDK serveur `stripe` (accordé aux Edge Functions seulement, docs/backend.md §13) embarque
+// l'adresse de l'API Stripe en littéral. src/test/secrets-interdits.test.ts interdit de
+// l'importer depuis app/ et src/ ; ce balayage prouve la même chose dans les octets livrés,
+// sur les trois plateformes — une dépendance transitive qui l'amènerait passerait le premier
+// contrôle, pas celui-ci.
+const contientSdkServeurStripe = balayerDist(/api\.stripe\.com/);
 
 const echecs = [
   ...contientCleAdmin.map((c) => `clef admin trouvée dans ${c.replace(RACINE, '')}`),
   ...contientReferenceAdmin.map((c) => `référence "(admin)" trouvée dans ${c.replace(RACINE, '')}`),
   ...cheminsAdmin.map((c) => `fichier de route (admin) présent : ${c.replace(RACINE, '')}`),
+  ...contientSdkServeurStripe.map(
+    (c) => `SDK serveur Stripe (api.stripe.com) trouvé dans ${c.replace(RACINE, '')}`,
+  ),
 ];
 
 if (echecs.length > 0) {
@@ -155,6 +164,6 @@ if (echecs.length > 0) {
 
 console.log(
   '[verifier-bundle-production] OK — web, iOS, Android : clef mobile présente sur les trois ' +
-    '(balayage prouvé capable sur chacun), clef admin et toute référence à (admin) absentes ' +
-    'du bundle de production, sur les trois.',
+    '(balayage prouvé capable sur chacun), clef admin, toute référence à (admin) et le SDK ' +
+    'serveur Stripe absents du bundle de production, sur les trois.',
 );
