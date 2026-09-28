@@ -16,7 +16,10 @@ sections ci-dessous en ont été conservées ; le reste de ce document (correcti
 
 ---
 
-## Les vingt-deux fonctionnalités
+## Les vingt-quatre fonctionnalités
+
+**24 et 25 ajoutées le 28 septembre 2026**, retirées du lot L4 : codes promo (sans règle de
+domaine) et réponse du coach aux avis.
 
 **La 6, « Import des clients existants du coach » (écran 54), est retirée de cette liste le
 13 septembre 2026** : promue au jalon 1, lot L3bis (`docs/perimetre.md` §2/§4, écrans I-01/I-02)
@@ -33,6 +36,13 @@ suivantes et leurs dépendances croisées (« Dépend de » y référence des nu
 | 3 | Mes rendez-vous — 2ᵉ onglet de « Séance », la barre reste à 5 | 40 | 2 |
 | 4 | Extrait vidéo public de 45 s sur le profil | 52 | modèle média |
 | 5 | Alerte de disponibilité sur recherche vide | 53 | — |
+| 24 | Codes promo et remises à la souscription (« Bienvenue −20 % le 1er mois », maquette 04b) | 04b | règle de domaine à écrire |
+
+Sur la 24 (ajoutée le 28 septembre 2026, retirée du tunnel de L4 et de `docs/api.md` §7) : une
+fonctionnalité sans règle, pas une dette. Avant tout code, `docs/domaine.md` doit dire qui
+finance la remise (le coach, la plateforme, les deux), sur quel montant porte alors la commission
+de 10 % (§5.5 : « le montant TTC encaissé »), combien de mois elle dure, qui crée les codes et
+comment ils expirent.
 
 Sur la 5 : la valeur n'est pas le client retenu, c'est la carte de la demande non servie. Prévoir
 l'export de cette table dès le départ, c'est elle qui pilote le recrutement de coachs.
@@ -100,6 +110,17 @@ Pas de groupe sans responsable identifié. Si le coach ne modère pas, le groupe
 | 19 | Reçus client et total annuel | 49 | prestataire |
 | 20 | Signaler un problème, remboursement, gel du versement | 58 | 19 |
 | 21 | Changer de coach plutôt que résilier | 57 | — |
+| 25 | Réponse du coach à un avis | 27 (réponse sous l'avis) + un écran côté coach, à concevoir | avis (L4), pilotage coach |
+
+Sur la 25 (ajoutée le 28 septembre 2026, retirée de L4) : la colonne `reponseCoach`
+(`docs/domaine.md` §3.11) existe et reste vide au jalon 1 ; la maquette 27 montre déjà la réponse
+sous l'avis. Elle peut revenir plus tôt, avec le pilotage coach, si le produit le décide. Quatre
+règles à écrire dans `docs/domaine.md` **ce jour-là**, avant tout écran :
+1. **Combien** : une seule réponse par avis, ou un échange ?
+2. **Longueur** : quelle borne, et avec ou sans minimum ?
+3. **Modifiable** : jamais, pendant une fenêtre (comme les 14 jours de l'avis), ou toujours ?
+4. **Avis signalé ou masqué** : que devient la réponse — masquée avec lui, conservée, retirée ?
+   (et le signalement d'une réponse elle-même : cible distincte de `Signalement` ou non).
 
 Sur la 20 : sans un montant gelé pour litige en cours, un remboursement après versement sort de
 la trésorerie. Le gel doit exister avant le premier litige, pas après.

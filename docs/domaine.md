@@ -55,6 +55,7 @@ définitivement. La colonne « effet » dit ce que le code doit faire.
 ```
 Compte ──┬── ProfilClient ──── Abonnement ──── Offre ──── ProfilCoach
          │        │                 │                          │
+         │        │                 ├── TentativePrelevement   │
          │        │                 └── Facture ── Versement ───┤
          │        │                                             │
          │        ├── MesureCorporelle                  Verification
@@ -95,6 +96,37 @@ Conversation ── Message        Signalement    Blocage    Consentement
   l'identité — qui existe, quel nom, quel statut. Toute table portant du **contenu** (mesures,
   abonnements, messages, séances, agenda) applique cette règle au sens strict, lecture comprise,
   et le choix inverse doit être justifié table par table.
+- **Magasins d'applications — ce qui autorise le paiement hors achat in-app** (écrit le
+  28 septembre 2026, `docs/prompts/L4.md` point 11). Le client paie **un service rendu par une
+  personne**, jamais l'accès à du contenu numérique. C'est `engagementHumain` (§3.3) qui le
+  porte : sans lui, l'offre deviendrait du contenu, et Apple (*App Review Guidelines* 3.1.1 :
+  « unlock features or functionality », « access to premium content ») comme Google imposeraient
+  leur propre système de paiement. Textes sur lesquels le raisonnement s'appuie : Apple 3.1.3(d)
+  (« real-time person-to-person services between two individuals [...] fitness training ») et
+  3.1.3(e) (services « consumed outside of the app »), Google Play *Payments policy*
+  (« physical services », « gym memberships »).
+  **Ce que le raisonnement ne couvre pas d'office** : 3.1.3(d) vise le *temps réel*, alors que
+  l'ajustement hebdomadaire et la messagerie sont asynchrones et que le programme (L6) est livré
+  dans l'application. **Décidé le 28 septembre 2026 : sur iOS, l'offre n'est probablement pas un
+  service temps réel entre deux personnes** — c'est un **point bloquant nommé** de la soumission
+  iOS, avec un plan B écrit (souscription sur le web, application iOS réduite au suivi), non
+  construit : `docs/perimetre.md` §6. Android et le web ne sont pas concernés au même degré, et
+  le tunnel se construit pour eux. Toute offre « un coach,
+  plusieurs clients à la fois » relève de « one-to-few / one-to-many », achat in-app obligatoire
+  chez Apple : c'est une raison de plus, pas la seule, pour qu'elle reste hors périmètre.
+  **Ce que l'interface ne fait jamais**, dans le tunnel (04a, 04b, 04c, 20) et partout où l'on
+  parle de ce que le client achète : aucune formulation qui vende de l'accès à du contenu,
+  aucun déverrouillage, aucun vocabulaire d'abonnement numérique. Termes interdits : « débloquer »,
+  « déverrouiller », « premium », « illimité », « exclusif », « accès au contenu » / « accéder au
+  contenu », « bibliothèque », « VIP », « version complète ». Ce que le client achète se nomme par
+  le coach et son geste (« suivi », « accompagnement », « ton coach », l'engagement humain de
+  l'offre). « Abonnement » reste permis — c'est le contrat récurrent, au sens d'un abonnement de
+  salle de sport — à condition d'être rattaché au coach, jamais à du contenu. Vérifié par un test
+  de libellés interdits sur les quatre écrans du tunnel (liste unique dans `src/test/`), qui
+  balaie les textes rendus et les libellés d'accessibilité. Un test attrape un mot, pas une
+  tournure : la relecture humaine reste due à chaque texte du tunnel.
+  Conséquence de vocabulaire interne, pas d'interface : §4.3 parle d'« accès au contenu » coupé
+  en `suspendu` — c'est la description d'un droit, jamais un texte à afficher tel quel.
 
 ---
 
@@ -196,7 +228,56 @@ y répond par la même écriture (`retireeLe`), jamais par une suppression de li
 
 `profilClient`, `profilCoach`, `offre`, `prixFigeCentimes`, `jourPrelevement` (1–28, jour de la
 souscription ; 29/30/31 ramenés à 28), `statut`, `debuteLe`, `prochainePrelevementLe`,
-`pauseJusquLe?`, `resilieLe?`, `finAccesLe?`.
+`pauseJusquLe?`, `resilieLe?`, `finAccesLe?`, `actifDepuisLe?`.
+
+`actifDepuisLe` (ajouté le 28 septembre 2026) : date de la **première** entrée en `actif`,
+posée une seule fois, jamais recalculée — y compris après une pause, un impayé ou une
+régularisation. Par carte, elle vaut la date de souscription ; par SEPA, la date de confirmation
+du premier prélèvement (pas celle du mandat, qui fonde `debuteLe`). C'est l'unique base de
+l'éligibilité aux avis et de la durée de suivi affichée (§3.11) : aucun historique d'états à
+tenir.
+
+### 3.4bis TentativePrelevement
+
+**Ajoutée le 28 septembre 2026** (`docs/prompts/L4.md` point 5). La machine §4.4 décrit trois
+tentatives et un motif bancaire par échec, mais aucune entité ne les portait : sans elle, la
+relance ne sait pas combien de tentatives ont déjà eu lieu, et l'écran 20 n'a rien de réel à
+afficher.
+
+Une ligne par tentative de prélèvement d'une échéance — la première exécution comprise, pas
+seulement les relances.
+
+| Champ | Règle |
+|---|---|
+| `abonnement` | L'`Abonnement` prélevé |
+| `echeanceLe` | La date d'échéance visée (la valeur de `prochainePrelevementLe` au moment de la première tentative). Regroupe les tentatives d'une même échéance : c'est elle, pas l'abonnement seul, qui borne le compte à trois |
+| `tentativeNumero` | 1 à 3. 1 = l'exécution à l'échéance ; 2 et 3 = les relances. Unique par (`abonnement`, `echeanceLe`) |
+| `statut` | `en_cours` \| `reussie` \| `echouee` |
+| `motifBanque?` | posé à l'échec seulement, jamais deviné. Valeurs : celles de `docs/api.md` §7 (`fonds_insuffisants`, `carte_expiree`, `opposition`, `plafond_atteint`, `authentification_echouee`, `inconnu`) |
+| `referencePrestataire` | L'identifiant de l'intention de paiement Stripe de cette tentative |
+| `tenteeLe`, `termineeLe?` | |
+
+**Le premier paiement, à la souscription, n'est pas une échéance.** Par carte, §4.3 ne crée
+l'abonnement qu'une fois ce paiement réussi : s'il échoue, il n'y a ni `Abonnement`, ni
+`TentativePrelevement`, ni relance — seulement la réponse 402 de `docs/api.md` §7 et l'écran 20,
+où le client réessaie lui-même. Par prélèvement SEPA, l'abonnement existe dès le mandat, en
+`en_attente_confirmation` (§4.3) ; un rejet de ce premier prélèvement le fait passer en `annule`,
+toujours sans `TentativePrelevement` ni relance. Les tentatives et relances ne concernent que les échéances suivantes, d'un abonnement
+qui existe déjà.
+
+Pas immuable au sens de `Facture` : `statut` passe une fois de `en_cours` à `reussie` ou
+`echouee`, puis ne bouge plus. Aucune suppression. Une tentative `reussie` a exactement une
+`Facture` ; une tentative `echouee` n'en a aucune (« rien n'a été débité », §4.4).
+
+**Nombre de tentatives et calendrier.** §4.4 écrit trois relances (J+1, J+3, J+7) mais « trois
+tentatives » : lu ensemble, ce sont **quatre** prélèvements possibles (l'échéance, puis J+1, J+3,
+J+7) si J+7 en est un, ou **trois** si J+7 n'est que le constat d'abandon. La machine §4.4
+elle-même tranche pour la seconde : `echoue --(relance J+7)--> abandonne` va directement à
+`abandonne`, sans repasser par `en_cours` — J+7 ne prélève pas. Lecture retenue, **à valider**
+au point d'arrêt de P4.1 : trois tentatives au total — échéance (1), J+1 (2), J+3 (3) — et J+7
+est le constat `abandonne`, qui coïncide avec `impaye --(7 jours sans succès)--> suspendu`
+(§4.3). §4.4 est réécrit en conséquence, pour que le libellé « relance J+7 » ne fasse plus croire
+à un quatrième prélèvement.
 
 ### 3.5 Facture
 
@@ -259,12 +340,71 @@ est un abonnement mensuel, pas une vente à l'unité.
 
 ### 3.11 Avis
 
-`profilClient`, `profilCoach`, `note` (1–5), `texte` (30 à 1 200 caractères),
-`etiquettes[]` (0 à 3, liste figée de 8), `statut` (`publie` | `signale` | `masque`),
-`reponseCoach?`.
+`profilClient`, `profilCoach`, `note` (1–5, **seul champ obligatoire**), `texte?`
+(**facultatif**, 600 caractères au plus, aucun minimum), `etiquettes[]` (0 à 3, parmi la liste
+fermée ci-dessous), `statut` (`publie` | `signale` | `masque`), `reponseCoach?` (**toujours vide
+au jalon 1** — voir ci-dessous).
+
+**Révisé le 28 septembre 2026, maquette `maquettes/MyFavCoach-Avis_dc.html` (27a/27b)** :
+- **La note seule suffit.** Le texte, autrefois obligatoire (30 à 1 200 caractères), devient
+  facultatif : exiger une rédaction fait chuter le taux de dépôt, et une note seule vaut mieux
+  qu'un avis jamais écrit. **600 caractères au plus, aucun minimum** (tranché le 28 septembre
+  2026) : un minimum force à meubler, et une note avec deux étiquettes sans phrase vaut mieux
+  qu'un avis jamais déposé. Un texte vide ou fait seulement d'espaces est enregistré comme absent.
+- **Trois étiquettes au plus** : au-delà, elles ne distinguent plus rien et l'agrégation par
+  étiquette sur le profil perd son sens. Plafond vérifié par le serveur.
+- **Ce qui est public, et rien d'autre** : la note, les étiquettes, le texte s'il existe, le
+  prénom et l'initiale du nom de l'auteur, et **la durée de son suivi** (« 7 mois de suivi »),
+  **jamais une date** — l'ancienneté dit ce qui donne du poids à l'avis sans dater précisément un
+  abonnement. Elle est calculée par le serveur, par une lecture étroite (même famille que
+  `docs/backend.md` §11), jamais déduite de `debuteLe` côté application. L'écran de dépôt annonce
+  tout cela **avant** la publication.
+- **Réponse du coach : hors L4** (tranché le 28 septembre 2026). La colonne `reponseCoach` existe
+  et reste vide ; aucun écran ne l'écrit. Elle revient avec le pilotage coach ou au jalon 2
+  (`docs/jalon-2.md`, avec les quatre règles à écrire ce jour-là).
+
+**Étiquettes d'avis — liste fermée de huit** (arbitrage #16 ; liste fixée le 28 septembre 2026) :
+
+| `cle` | `libelle` |
+|---|---|
+| `ecoute` | Écoute |
+| `clarte_explications` | Clarté des explications |
+| `ponctualite` | Ponctualité |
+| `exigence` | Exigence |
+| `programme_adapte` | Programme adapté |
+| `reactivite` | Réactivité |
+| `encouragement` | Encouragement |
+| `professionnalisme` | Professionnalisme |
+
+Table de référence (`etiquettes_avis` : `cle`, `libelle`, `ordreAffichage`), **même mécanisme que
+`Discipline` (§3.2bis) et les langues** (`0025`) : pas une énumération figée dans le schéma, pas un
+texte libre. Un avis référence ses étiquettes par `cle` (clé étrangère) ; renommer un libellé ne
+touche aucun avis déjà écrit. L'ordre du tableau est l'ordre d'affichage. La liste est **fermée** :
+une neuvième étiquette est une décision produit, écrite ici d'abord, jamais une ligne insérée
+pour un besoin d'écran. Aucune colonne `active` tant qu'aucun retrait n'est décidé.
 
 **Conditions de dépôt** : abonnement actif depuis ≥ 30 jours, ou résilié depuis ≤ 60 jours.
 Un seul avis par couple client/coach, modifiable 14 jours.
+
+Précisées le 28 septembre 2026 — toutes calculées par le serveur, sur `actifDepuisLe` (§3.4) :
+
+| Branche | Condition au moment du dépôt |
+|---|---|
+| **En cours** | statut `actif` ou `resiliation_programmee`, **et** au moins 30 jours calendaires écoulés depuis `actifDepuisLe`, pauses et impayés passés compris. En `en_pause`, `impaye`, `suspendu`, `en_attente_confirmation` : pas de dépôt |
+| **Terminé** | statut `resilie`, **et** `finAccesLe` (la fin réelle du service, pas la date du clic de résiliation) il y a au plus 60 jours, **et** au moins 30 jours calendaires entre `actifDepuisLe` et `finAccesLe` |
+
+La troisième condition de la branche « terminé » rend explicite une intention déjà exprimée :
+en dessous d'un mois de suivi, l'avis n'existe pas. Sans elle, un client dont le coach part au
+cinquième jour (`resilie` avec prorata, §4.3) serait éligible avec « 0 mois de suivi ». `annule`
+(SEPA rejeté) n'ouvre jamais de dépôt : il n'y a jamais eu de suivi.
+
+**Durée de suivi affichée** : même base — jours calendaires depuis `actifDepuisLe` jusqu'à
+aujourd'hui (branche en cours) ou jusqu'à `finAccesLe` (branche terminée, **figée** ensuite),
+convertis en mois par **arrondi au plus proche sur une base de 30 jours** (`round(jours / 30)`).
+Comme toute personne éligible compte au moins 30 jours de suivi, la durée affichée vaut au moins
+« 1 mois » : le cas « moins d'un mois » ne se pose pas. Une base de 30 jours plutôt que le mois
+calendaire : du 1er au 31 mars, 30 jours font zéro mois calendaire complet, ce qui aurait
+contredit la règle précédente.
 
 ### 3.12 Consentement
 
@@ -392,8 +532,12 @@ publier une offre ou encaisser, non, avant `verifiee`.
 ### 4.3 Abonnement
 
 ```
-                 (souscription + 1er paiement OK)
+                 (souscription + 1er paiement OK, carte)
         —————————————————————————————————————————> actif
+                 (souscription + mandat SEPA accepté)
+        —————————————————————————————————————————> en_attente_confirmation
+en_attente_confirmation --(1er prélèvement confirmé)--> actif     [facture émise, ligne de commission]
+en_attente_confirmation --(1er prélèvement rejeté)--> annule      [aucune facture, rien débité]
 actif --(pause demandée)--> en_pause          [≤ 60 j, 1 fois / 12 mois]
 en_pause --(reprise ou échéance)--> actif
 actif --(échec de prélèvement)--> impaye
@@ -408,6 +552,18 @@ actif --(coach part / offre supprimée par la plateforme)--> resilie [prorata re
 ```
 
 Règles associées :
+- **`en_attente_confirmation`** (ajouté le 28 septembre 2026, `docs/ecrans/L4-04c-confirmation-abonnement.md`) :
+  un premier prélèvement SEPA n'est confirmé par la banque qu'en différé, parfois plusieurs jours
+  après le mandat. L'abonnement existe pendant ce délai, pour que le client puisse le consulter et
+  le coach le voir arriver, mais **le suivi n'est pas encore ouvert** — même situation qu'avant la
+  souscription : rien n'a été encaissé, et un rejet ne doit pas laisser au coach du travail non
+  payé. Aucune pause, aucune résiliation depuis cet état (rien à résilier : il n'y a pas encore de
+  période payée). `debuteLe`, `jourPrelevement` et `prochainePrelevementLe` se calculent sur la
+  date du **mandat**, pas sur celle de la confirmation : le client choisit son jour de prélèvement
+  en souscrivant, pas au gré du délai bancaire. `annule` est terminal, distinct de `resilie` : il
+  n'y a jamais eu de période payée — aucune facture, aucune ligne de commission, et
+  `commissionOfferteJusquLe` (§5.5) n'est pas posé (« premier abonnement **actif** »). Choix
+  d'ouverture du suivi à réévaluer en L6, quand le suivi aura un contenu réel.
 - **Aucun prorata à la souscription** : le premier prélèvement est plein, l'échéance suivante
   tombe au même jour du mois suivant.
 - En `en_pause`, aucun prélèvement, aucun accès au programme, la place chez le coach est
@@ -419,17 +575,23 @@ Règles associées :
 ### 4.4 Paiement d'une échéance
 
 ```
-programme --(exécution)--> en_cours
-en_cours --(succès)--> paye        [facture émise, ligne de commission créée]
-en_cours --(échec)--> echoue
-echoue --(relance J+1)--> en_cours
-echoue --(relance J+3)--> en_cours
-echoue --(relance J+7)--> abandonne  [abonnement → suspendu]
+programme --(exécution à l'échéance)--> en_cours     [TentativePrelevement n° 1]
+en_cours --(succès)--> paye        [tentative reussie, facture émise, ligne de commission créée]
+en_cours --(échec)--> echoue       [tentative echouee, motifBanque posé ; abonnement actif → impaye]
+echoue --(relance J+1)--> en_cours                   [TentativePrelevement n° 2]
+echoue --(relance J+3)--> en_cours                   [TentativePrelevement n° 3]
+echoue --(J+7, aucune tentative réussie)--> abandonne  [aucun prélèvement ; abonnement → suspendu]
 ```
 
-Trois tentatives, à J+1, J+3, J+7. Chaque échec notifie le client avec **le motif transmis par
-la banque**, et la phrase « rien n'a été débité ». Le coach est informé au premier échec, sans
-détail bancaire.
+Chaque passage par `en_cours` crée une `TentativePrelevement` (§3.4bis) ; l'état de la
+machine se lit sur la dernière tentative de l'échéance, il n'a pas de colonne propre (même
+logique que `Offre`, §3.3). Trois tentatives au plus par échéance : à l'échéance, puis relances
+à J+1 et J+3 ; J+7 constate l'abandon sans prélever (réécrit le 28 septembre 2026, voir §3.4bis —
+l'ancien libellé « relance J+7 » laissait croire à un quatrième prélèvement). Une tentative
+réussie à J+1 ou J+3 fait passer l'abonnement `impaye --(paiement récupéré)--> actif` (§4.3).
+
+Chaque échec notifie le client avec **le motif transmis par la banque**, et la phrase « rien
+n'a été débité ». Le coach est informé au premier échec, sans détail bancaire.
 
 ### 4.5 SeanceProgrammee / ExecutionSeance
 

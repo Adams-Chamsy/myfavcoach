@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+  body { margin: 0; background: #E8E2D8; font-family: Manrope, system-ui, sans-serif; }
+</style>
+</helmet>
+
+<section style="display:flex;flex-direction:column;gap:36px;padding:56px 64px 96px;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+
+  <div style="display:flex;flex-direction:column;gap:14px;max-width:780px">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6B746E">My fav Coach — lot L4</span>
+    <h1 style="margin:0;font-family:'Instrument Serif',serif;font-weight:400;font-size:44px;line-height:1.05">Déposer un avis</h1>
+    <p style="margin:0;font-size:16px;line-height:1.6;color:#55605B">Écran 27a, manquant du dossier. Deux états : le dépôt lui-même, et le cas où la personne n'y a pas encore droit. La condition d'éligibilité — abonnement actif depuis 30 jours, ou résilié depuis moins de 60 — est vérifiée côté serveur ; l'écran ne fait que l'expliquer.</p>
+  </div>
+
+  <div style="display:flex;gap:56px;flex-wrap:wrap;align-items:flex-start">
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <span style="font-size:14px;font-weight:700">27a · Déposer un avis <span style="color:#7C766E;font-weight:500">— iOS</span></span>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+        <div data-screen-label="27a Deposer un avis" style="height:100%;background:#FBF8F4;display:flex;flex-direction:column;padding-top:58px;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+          <div style="padding:8px 20px 16px;display:flex;align-items:center;gap:14px">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            <span style="flex:1;font-size:15px;font-weight:700">Ton avis</span>
+          </div>
+          <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:20px">
+
+            <div style="display:flex;gap:13px;align-items:center">
+              <div style="width:48px;height:48px;border-radius:999px;overflow:hidden;flex-shrink:0"><image-slot id="av-c" shape="circle" placeholder=" "></image-slot></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                <span style="font-size:16px;font-weight:700">Yannick Berthaud</span>
+                <span style="font-size:12px;color:#7C766E">Tu le suis depuis 4 mois</span>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:11px">
+              <span style="font-size:16px;font-weight:700">Comment ça se passe ?</span>
+              <div style="display:flex;gap:10px">
+                <svg width="46" height="46" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg>
+                <svg width="46" height="46" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg>
+                <svg width="46" height="46" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg>
+                <svg width="46" height="46" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg>
+                <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#D6D0C7" stroke-width="1.6"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg>
+              </div>
+              <span style="font-size:13px;font-weight:700;color:#0F5140">Très bien</span>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:11px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline">
+                <span style="font-size:16px;font-weight:700">Ce qui le caractérise</span>
+                <span style="font-size:12px;color:#7C766E">2 sur 3</span>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <span style="padding:9px 13px;border-radius:999px;background:#0F5140;color:#FBF8F4;font-size:13px;font-weight:700;display:flex;gap:7px;align-items:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FBF8F4" stroke-width="2.6" stroke-linecap="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg>Écoute</span>
+                <span style="padding:9px 13px;border-radius:999px;background:#fff;border:1px solid #E7E2DA;font-size:13px;font-weight:600;color:#55605B">Clarté des explications</span>
+                <span style="padding:9px 13px;border-radius:999px;background:#fff;border:1px solid #E7E2DA;font-size:13px;font-weight:600;color:#55605B">Ponctualité</span>
+                <span style="padding:9px 13px;border-radius:999px;background:#0F5140;color:#FBF8F4;font-size:13px;font-weight:700;display:flex;gap:7px;align-items:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FBF8F4" stroke-width="2.6" stroke-linecap="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg>Exigence</span>
+                <span style="padding:9px 13px;border-radius:999px;background:#fff;border:1px solid #E7E2DA;font-size:13px;font-weight:600;color:#55605B">Programme adapté</span>
+                <span style="padding:9px 13px;border-radius:999px;background:#fff;border:1px solid #E7E2DA;font-size:13px;font-weight:600;color:#55605B">Réactivité</span>
+                <span style="padding:9px 13px;border-radius:999px;background:#fff;border:1px solid #E7E2DA;font-size:13px;font-weight:600;color:#55605B">Encouragement</span>
+                <span style="padding:9px 13px;border-radius:999px;background:#fff;border:1px solid #E7E2DA;font-size:13px;font-weight:600;color:#55605B">Professionnalisme</span>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <span style="font-size:16px;font-weight:700">Raconte, si tu veux</span>
+              <div style="min-height:104px;border-radius:14px;background:#fff;border:1px solid #E7E2DA;padding:13px 15px;font-size:14px;line-height:1.55;color:#333B37">Il adapte vraiment le programme quand je lui dis que quelque chose coince. Le genou dont je lui parlais a été pris au sérieux dès la semaine suivante.</div>
+              <div style="display:flex;justify-content:space-between">
+                <span style="font-size:12px;color:#7C766E">Facultatif</span>
+                <span style="font-size:12px;color:#7C766E">168 / 600</span>
+              </div>
+            </div>
+
+            <div style="border-radius:18px;background:#EFE6D8;padding:14px;display:flex;gap:11px;align-items:flex-start">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#8C7A57" stroke-width="1.9" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+              <span style="flex:1;font-size:13px;line-height:1.5;color:#3A3226">Ton avis sera public sur le profil de Yannick, signé de ton prénom et de la durée de ton suivi. Tu peux le modifier pendant 14 jours, puis il se fige.</span>
+            </div>
+          </div>
+          <div style="padding:12px 20px 38px;background:rgba(251,248,244,.96);border-top:1px solid #E7E2DA">
+            <div style="height:52px;border-radius:999px;background:#0F5140;color:#FBF8F4;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700">Publier mon avis</div>
+          </div>
+        </div>
+      </x-import>
+      <span style="max-width:402px;font-size:13px;line-height:1.55;color:#55605B">Trois champs, un seul obligatoire : la note. Les étiquettes sont plafonnées à trois — au-delà, elles ne distinguent plus rien et l'agrégation sur le profil perd son sens. Le texte est facultatif, parce qu'exiger une rédaction fait chuter le taux de dépôt, et qu'une note seule vaut mieux qu'un avis jamais écrit. L'encart dit ce qui sera public <em>avant</em> le geste, y compris la durée du suivi : c'est elle qui donne du poids à l'avis, et la personne doit savoir qu'elle s'affiche.</span>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <span style="font-size:14px;font-weight:700">27b · Pas encore d'avis possible <span style="color:#7C766E;font-weight:500">— Android</span></span>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+        <div data-screen-label="27b Avis pas encore possible" style="height:100%;background:#FBF8F4;display:flex;flex-direction:column;font-family:Manrope,system-ui,sans-serif;color:#17211E">
+          <div style="padding:14px 20px 16px;display:flex;align-items:center;gap:14px">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#17211E" stroke-width="2" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg>
+            <span style="flex:1;font-size:15px;font-weight:700">Yannick Berthaud</span>
+          </div>
+          <div style="padding:0 20px 16px"><div style="display:flex;background:#F1EDE6;border-radius:999px;padding:4px">
+            <div style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#7C766E">Offres</div>
+            <div style="flex:1;height:40px;border-radius:999px;background:#fff;box-shadow:0 1px 2px rgba(38,30,20,.1);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">Avis</div>
+            <div style="flex:1;height:40px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#7C766E">Parcours</div>
+          </div></div>
+          <div style="flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:18px">
+
+            <div style="border-radius:20px;background:#fff;border:1px solid #E7E2DA;padding:16px;display:flex;gap:13px;align-items:flex-start">
+              <div style="width:40px;height:40px;border-radius:12px;background:#EFE6D8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#8C7A57" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3 2"/></svg></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+                <span style="font-size:15px;font-weight:700">Encore 12 jours</span>
+                <span style="font-size:13px;line-height:1.5;color:#55605B">Tu pourras donner ton avis après un mois de suivi. Le temps de savoir ce que tu en penses vraiment.</span>
+              </div>
+            </div>
+
+            <div style="height:1px;background:#E7E2DA"></div>
+
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <span style="font-size:15px;font-weight:700">Ce que disent les autres</span>
+              <div style="display:flex;flex-direction:column;gap:13px">
+                <div style="display:flex;gap:12px;align-items:flex-start">
+                  <div style="width:36px;height:36px;border-radius:999px;overflow:hidden;flex-shrink:0"><image-slot id="av-1" shape="circle" placeholder=" "></image-slot></div>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline">
+                      <span style="font-size:14px;font-weight:700">Marc T.</span>
+                      <span style="font-size:12px;color:#7C766E">7 mois de suivi</span>
+                    </div>
+                    <div style="display:flex;gap:2px">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#E2603C"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z"/></svg>
+                    </div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:1px">
+                      <span style="padding:5px 10px;border-radius:999px;background:#E2EDE8;color:#0F5140;font-size:11px;font-weight:700">Écoute</span>
+                      <span style="padding:5px 10px;border-radius:999px;background:#E2EDE8;color:#0F5140;font-size:11px;font-weight:700">Programme adapté</span>
+                    </div>
+                    <span style="font-size:13px;line-height:1.55;color:#333B37">Je reprenais de zéro après une blessure. Il a construit autour, jamais contre.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:12px 20px 20px;background:rgba(251,248,244,.96);border-top:1px solid #E7E2DA">
+            <div style="height:52px;border-radius:999px;background:#D6D0C7;color:#8C867E;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700">Donner mon avis</div>
+          </div>
+        </div>
+      </x-import>
+      <span style="max-width:412px;font-size:13px;line-height:1.55;color:#55605B">Le bouton reste visible mais inerte, avec le délai restant calculé au-dessus : un bouton absent laisse croire que la fonction n'existe pas, un bouton actif qui échoue est pire. L'ancienneté de suivi s'affiche sous chaque avis plutôt qu'une date — « 7 mois de suivi » dit ce qui compte, et évite de dater précisément un abonnement. Cet écran répond aussi au point laissé ouvert dans L2-13 : c'est l'ancienneté, pas la date.</span>
+    </div>
+
+  </div>
+
+</section>
+</x-dc>
+</body>
+</html>

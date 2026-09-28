@@ -67,11 +67,13 @@ Numérotation du dossier de design. « Fiche » = fiche d'écran à rédiger dan
 | 02 | Recherche + filtres | L3 | filtre « Asynchrone » retiré ; pas de note/tri par note, pas de badge de certification nommé, pas de tag de capacité (inventions de la maquette, sans appui dans `docs/domaine.md`). Référentiel géographique (proximité, §5.7) **manquant du dépôt**, à trancher avant la migration de recherche. Détail : `docs/ecrans/L3-02-recherche-filtres.md` |
 | 03 | Profil coach — offres | L2 | offre « Programme seul » retirée |
 | 27 | Profil coach — avis | L4 | thèmes = étiquettes figées, pas d'extraction. **Replanifié depuis L2 le 12 septembre 2026** : la condition de dépôt (`docs/domaine.md` §3.11 — abonnement actif ≥ 30 jours ou résilié ≤ 60 jours) ne peut être vérifiée avant que `Abonnement` existe (L4) — aucune insertion légitime n'est possible plus tôt, pas seulement « pas encore construite ». Jusque-là, l'état vide honnête de L2-13 (`docs/domaine.md` §5.1) est l'état normal de **tous** les profils, pas une exception à corriger |
+| 27a | Déposer ou modifier un avis | L4 | **Ajouté le 28 septembre 2026.** Maquette : `maquettes/MyFavCoach-Avis_dc.html`, `data-screen-label="27a Deposer un avis"`. Note seule obligatoire, trois étiquettes au plus, texte facultatif. Sans lui, aucun avis ne peut exister. Détail : `docs/ecrans/L4-27a-depot-avis.md` |
+| 27b | Avis pas encore possible (état de l'onglet Avis) | L4 | **Ajouté le 28 septembre 2026.** Même maquette, `data-screen-label="27b Avis pas encore possible"`. Délai restant avant éligibilité, bouton visible mais inactif. Détail : `docs/ecrans/L4-27a-depot-avis.md` |
 | 28 | Profil coach — parcours | L2 | |
-| 04a | Tunnel — choix de l'offre | L4 | une seule nature d'offre |
-| 04b | Tunnel — récapitulatif et paiement | L4 | |
-| 04c | Tunnel — confirmation | L4 | **à concevoir, absent du dossier** |
-| 20 | Paiement refusé | L4 | |
+| 04a | Tunnel — choix de l'offre | L4 | une seule nature d'offre. Détail : `docs/ecrans/L4-04a-choix-offre.md` |
+| 04b | Tunnel — récapitulatif et paiement | L4 | Détail : `docs/ecrans/L4-04b-recapitulatif-paiement.md` |
+| 04c | Tunnel — confirmation | L4 | Maquette : `maquettes/MyFavCoach-L2_dc.html`, `data-screen-label="04c Confirmation abonnement"` (malgré le nom du fichier). Corrigé le 28 septembre 2026 : cette ligne la disait « à concevoir, absent du dossier », à tort. Détail : `docs/ecrans/L4-04c-confirmation-abonnement.md` |
+| 20 | Paiement refusé | L4 | Détail : `docs/ecrans/L4-20-paiement-refuse.md` |
 | 05 | Séance du jour | L6 | |
 | 05a | Questionnaire santé avant la première séance | L6 | **à concevoir.** Contre-indications, blessures, traitements. Portée verrouillée au coach, consentement explicite. Dépend de C-04 |
 | 06 | Suivi chiffré | L7 | sans photos corporelles |
@@ -80,7 +82,8 @@ Numérotation du dossier de design. « Fiche » = fiche d'écran à rédiger dan
 | 15 | Chargement | L0/L3 | motif générique posé en L0 |
 | 21 | Inscription | L1 | ✅ livré |
 | 22 | Onboarding | L1 | ✅ livré |
-| 24 | Compte et réglages | L1 | ✅ livré |
+| 24 | Compte et réglages | L1 | ✅ livré — **sans le bloc abonnements**, faute d'abonnements à ce lot |
+| 24b | Compte — bloc « Mes abonnements » (pause, résiliation, prochain prélèvement) | L4 | **Ajouté le 28 septembre 2026.** Même maquette que 24 (`maquettes/MyFavCoach-Parcours_dc.html`, `data-screen-label="24 Mon compte"`), bloc écarté en L1. Porte la **résiliation en ligne exigée par la loi** et le **point d'entrée vers l'écran 20** pour un échec d'échéance. Détail : `docs/ecrans/L4-24b-mes-abonnements.md` |
 | 17 | Bascule client → coach | L1 | ✅ livré |
 | 18 | Notifications | L10 | |
 
@@ -125,7 +128,7 @@ sont remontés. Les trois autres dépendent réellement de ce qui les précède.
 | C-07 | Export de mes données (portabilité RGPD) | L2 | L1 |
 | C-04 | Gestion des consentements (santé, notifications, communications) | L2 | L1. Le journal `consentements` existe déjà |
 | C-06 | Documents contractuels : CGU, CGV, confidentialité, contrat coach | L2 | L1. Les liens sont des espaces réservés depuis L1-01, c'est une dette inscrite |
-| C-01 | Signalement d'un contenu ou d'un utilisateur | L8 | Il faut du contenu à signaler |
+| C-01 | Signalement d'un contenu ou d'un utilisateur | L8 | Il faut du contenu à signaler. **Doit couvrir la cible « avis »** (`docs/domaine.md` §3.13 la prévoit déjà) : c'est la seule transition d'entrée vers `signale` de la machine §4.9, laissée sans chemin à L4 (décidé le 28 septembre 2026) |
 | C-02 | Blocage d'un utilisateur, et liste des personnes bloquées | L8 | Il faut des échanges à bloquer |
 | C-05 | Factures et reçus, côté client et côté coach | L5 | Il faut des paiements à justifier |
 
@@ -183,11 +186,11 @@ dis-le. Ne propose pas d'« ajouter juste le socle pour plus tard ».
 | **L2** | Profil coach, offres, pièces et vérification, back-office, conformité de base (C-03, C-04, C-06) | L1 |
 | **L3** | Découverte : accueil, recherche, filtres, classement | L2 |
 | **L3bis** | Import des clients existants du coach : invitation (I-01), arrivée par lien (I-02) | L2 |
-| **L4** | Abonnement, paiement, facturation, échecs et relances, **table `avis` et écran L2-13** (§2, remarque de l'écran 27 : replanifiés depuis L2, aucun dépôt légitime possible avant que l'abonnement existe) | L3 |
+| **L4** | Abonnement, paiement, facturation, échecs et relances, **table `avis` et écran L2-13** (§2, remarque de l'écran 27 : replanifiés depuis L2, aucun dépôt légitime possible avant que l'abonnement existe), **dépôt d'avis (27a) et bloc « Mes abonnements » de l'écran 24 (24b)**, ajoutés le 28 septembre 2026 | L3 |
 | **L5** | Commission, soldes, versements, écran revenus, factures et reçus (C-05) | L4 |
 | **L6** | Contenu : studio, programmes, séances, séance du jour, questionnaire santé | L2 |
 | **L7** | Suivi client et métriques calculées | L6 |
-| **L8** | Messagerie texte, signalement et blocage (C-01, C-02) | L1 |
+| **L8** | Messagerie texte, signalement et blocage (C-01, C-02) — le signalement couvre aussi les avis créés en L4 (`docs/domaine.md` §4.9 : `publie --(signalement)--> signale`) | L1 |
 | **L9** | Agenda et réservation | L2 |
 | **L10** | Notifications | L1 |
 | **L12** | Durcissement, tests, fiches de store | tout |
@@ -250,3 +253,36 @@ Ces délais sont externes et bloquent la publication, pas le développement :
   l'accompagnent
 - Photographies de coachs : **le dossier de design n'en fournit aucune**, et la direction
   artistique repose dessus
+- **Droit de rétractation de quatorze jours** (ajouté le 28 septembre 2026, `docs/prompts/L4.md`,
+  fiche `docs/ecrans/L4-04b-recapitulatif-paiement.md`) — **à faire valider par un juriste, pas à
+  trancher dans le code ni en conversation.** Vente à distance d'un service à un consommateur :
+  ce qui doit être affiché avant le paiement, si et comment le client demande que le suivi
+  commence avant la fin du délai, ce qu'il doit s'il se rétracte après ce début, et comment ce
+  droit s'articule avec deux règles déjà écrites qui semblent le contredire — « résiliation
+  toujours en fin de période payée, jamais immédiate » et « aucun prorata »
+  (`docs/domaine.md` §4.3). Question liée, pour la même personne : qui est le vendeur au sens de
+  ce droit, le coach (`docs/domaine.md` §3.5 : « le vendeur porté sur la facture est le coach »)
+  ou la plateforme. **Bloque la mise en production du tunnel**, pas son développement en mode
+  test Stripe.
+  Question jointe, pour la même personne (ajoutée le 28 septembre 2026) : la **fonctionnalité de
+  résiliation en ligne** qu'impose le droit de la consommation pour un contrat souscrit en ligne —
+  le bloc « Mes abonnements » (24b, `docs/ecrans/L4-24b-mes-abonnements.md`) la porte ; reste à
+  confirmer que son parcours (nombre d'écrans, confirmation, accusé de réception) y satisfait.
+- **POINT BLOQUANT — Apple : le paiement hors achat in-app n'est probablement pas permis pour
+  cette offre sur iOS** (ajouté le 28 septembre 2026, décidé en conversation ; raisonnement dans
+  `docs/domaine.md` §2). La seule exception d'Apple qui pourrait s'appliquer, la règle 3.1.3(d),
+  vise les services **en temps réel entre deux personnes**. Un abonnement dont l'essentiel est un
+  programme écrit, livré dans l'application, avec un ajustement hebdomadaire et une messagerie
+  asynchrones, n'en est probablement pas un : pour Apple, c'est plus vraisemblablement du contenu
+  numérique, donc achat in-app obligatoire (règle 3.1.1) — ce que `CLAUDE.md` §2 interdit.
+  Ce n'est pas un risque de rédaction que des libellés prudents suffiraient à couvrir, c'est la
+  nature de l'offre. **Bloque la soumission iOS** tant qu'un juriste (et une relecture des règles
+  en vigueur au moment de la soumission) n'a pas conclu autrement. Ne bloque ni Android (Google
+  Play exempte les « physical services » — même vérification à faire, moins exposée) ni le web.
+  **Plan B, écrit, non construit** : la souscription se fait **hors de l'application**, sur le
+  web ; l'application iOS reste un outil de suivi pour un client déjà abonné — elle n'affiche ni
+  tunnel, ni prix, ni lien ou incitation vers la page de paiement externe (la règle 3.1.1 l'interdit
+  aussi, sauf régime particulier propre à un pays, à vérifier au moment voulu). Conséquences à
+  anticiper si le plan B est retenu, pas à préparer : le bouton « S'abonner » de `L2-12` disparaît
+  sur iOS ; le tunnel 04a/04b/04c/20 sert le web et Android — c'est pourquoi L4 continue de le
+  construire tel quel. **Rien de ce plan B n'est codé au jalon 1 sans nouvelle décision.**

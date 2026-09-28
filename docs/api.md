@@ -233,11 +233,11 @@ Le paiement se fait en trois temps, et l'application ne voit jamais un numéro d
 
 ```
 POST /abonnements/intention
-  { "offreId": "…", "codePromo": "RENTREE10" }
+  { "offreId": "…" }
 → 201 {
     "intentionId": "…",
     "recapitulatif": {
-      "prixCentimes": 4900, "remiseCentimes": 490, "totalCentimes": 4410,
+      "prixCentimes": 4900, "totalCentimes": 4900,
       "prochainPrelevementLe": "2026-09-20T00:00:00Z", "jourPrelevement": 20
     },
     "jetonPrestataire": "…",       // à usage unique, 15 minutes
@@ -251,11 +251,17 @@ paiement et rend un identifiant. Puis :
 ```
 POST /abonnements                       Idempotency-Key obligatoire
   { "intentionId": "…", "moyenPaiementId": "…" }
-→ 201  { "abonnement": { … , "statut": "actif" } }
+→ 201  { "abonnement": { … , "statut": "actif" } }                      // carte
+→ 201  { "abonnement": { … , "statut": "en_attente_confirmation" } }    // SEPA, docs/domaine.md §4.3
 → 202  { "statut": "authentification_requise", "urlAuthentification": "…" }   // 3-D Secure
 → 402  { "code": "paiement_refuse", "motifBanque": "fonds_insuffisants",
          "title": "Ta banque a refusé le paiement", "rienDebite": true }
 ```
+
+**Pas de code promo au jalon 1** (retiré le 28 septembre 2026) : aucune règle de domaine ne dit
+qui finance une remise ni sur quel montant porte alors la commission. Reporté au jalon 2
+(`docs/jalon-2.md`) ; `totalCentimes` vaut `prixCentimes` tant qu'aucune remise n'existe — le
+champ reste distinct pour que le contrat n'ait pas à changer le jour où elle existera.
 
 `motifBanque` alimente l'écran 20. Valeurs : `fonds_insuffisants`, `carte_expiree`,
 `opposition`, `plafond_atteint`, `authentification_echouee`, `inconnu`.

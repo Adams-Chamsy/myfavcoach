@@ -361,3 +361,109 @@ n'apporterait rien à la fonction et ouvrirait un second chemin qui contournerai
 s'accorder), évitée ici en n'en laissant exister qu'un seul. Ce n'est pas un oubli à compléter :
 un futur grant sur `invitations`, ajouté en croyant bien faire (« pour que le coach puisse
 filtrer ses propres invitations directement »), romprait cette fermeture.
+
+---
+
+## 12. Supabase Edge Functions (L4)
+
+Ajoutée le 28 septembre 2026 (`docs/prompts/L4.md` point 3). Première fois que ce dépôt a
+besoin d'un code serveur qui ne soit ni PostgREST ni une fonction SQL : appeler un prestataire
+externe avec une clé secrète (Stripe), et **recevoir** ses appels (webhook). §6 le disait déjà
+(« toute logique qui a besoin de cette clé [...] s'écrit dans une fonction distante ») ; cette
+section dit comment.
+
+**Ce que c'est.** Une Edge Function est un petit programme TypeScript exécuté par Supabase dans
+Deno (pas Node), derrière une URL `https://<projet>.supabase.co/functions/v1/<nom>`. Elle ne fait
+pas partie du paquet mobile : elle vit dans `supabase/functions/<nom>/index.ts`, se déploie à
+part, et l'application l'appelle comme n'importe quelle URL.
+
+### Emplacement et nommage
+
+- Un dossier par fonction : `supabase/functions/<nom>/index.ts`, `<nom>` en `kebab-case`
+  français, même règle que les fichiers de l'application (`CLAUDE.md` §5) — par exemple
+  `abonnement-intention`, `webhook-paiement`. La correspondance avec les chemins de
+  `docs/api.md` §7 (`POST /abonnements/intention`...) s'écrit dans la fiche ou le prompt qui crée
+  la fonction, jamais devinée.
+- Code partagé entre fonctions : `supabase/functions/_partage/` (le préfixe `_` empêche son
+  déploiement comme fonction).
+- **Jamais importé depuis `src/` ni `app/`**, et réciproquement : deux environnements
+  d'exécution différents (Deno / React Native), deux jeux de dépendances. Le `tsconfig`/ESLint
+  de l'application doit exclure `supabase/functions/` — à vérifier au premier prompt qui en crée
+  une, pas supposé.
+- Une bibliothèque importée côté fonction (le SDK serveur de Stripe, par exemple) est une
+  **dépendance au sens de `CLAUDE.md` §4** : demandée avant d'être ajoutée, comme côté mobile.
+
+### Authentification contre Postgres
+
+Deux cas, jamais mélangés dans une même fonction :
+
+1. **Fonction appelée par l'application** (`abonnement-intention`, souscription...).
+   L'application envoie son jeton de session habituel (`Authorization: Bearer <jeton>`,
+   `docs/api.md` §1) ; Supabase vérifie ce jeton avant même d'exécuter la fonction (réglage par
+   défaut, `verify_jwt`). La fonction crée alors son client Postgres **avec ce même jeton** —
+   elle agit en tant que l'utilisateur, `auth.uid()` vaut son identifiant, et toute la RLS
+   s'applique comme pour un appel PostgREST. Les écritures sensibles passent par des fonctions
+   SQL `security definer` déjà soumises à §7 (leurs propres tests de refus), jamais par un
+   contournement de la RLS dans le code TypeScript.
+2. **Fonction appelée par un tiers ou par un planificateur** (`webhook-paiement`, relances,
+   rapprochement). Aucun utilisateur derrière l'appel, donc aucun jeton : la fonction utilise
+   `service_role` — **même mécanisme que le reste du dépôt** (§6, banc RLS) — via la variable
+   `SUPABASE_SERVICE_ROLE_KEY` que Supabase injecte lui-même dans l'environnement de chaque
+   fonction. Cette clé n'est jamais écrite dans le dépôt, ni recopiée ailleurs. Le webhook se
+   déploie **sans** vérification de jeton Supabase (`--no-verify-jwt`) : Stripe n'en a pas.
+   Ce qui le protège à la place, c'est la **vérification de signature Stripe** sur le corps brut
+   de la requête, avant toute autre chose — une requête non signée ou mal signée répond 400 et
+   n'écrit rien. Sans cette vérification, n'importe qui pourrait fabriquer un « paiement
+   réussi ».
+
+### Secrets
+
+- Clé secrète Stripe (`sk_test_…`, puis `sk_live_…`) et secret de signature du webhook
+  (`whsec_…`) : **uniquement** en secrets de fonction, posés par projet —
+  `npx supabase secrets set NOM=valeur --project-ref <réf>`. Un jeu pour le projet de
+  développement (clés de test), un autre pour la production (clés réelles) : même séparation que
+  §1, jamais une clé de production sur le projet de développement.
+- **Jamais dans `.env`** de ce dépôt, jamais préfixés `EXPO_PUBLIC_` (`CLAUDE.md` §2 ; la garde
+  ESLint `CLE_SECRETE` bloque déjà `sk_test_`/`sk_live_` dans le paquet mobile). Aucun fichier de
+  secrets local n'est commité ; s'il en faut un pour un essai, il est ignoré par git avant d'être
+  créé.
+- Lire un secret : `Deno.env.get('NOM')` dans la fonction. Ne jamais l'écrire dans un journal,
+  même tronqué.
+
+### Déploiement
+
+- `npx supabase functions deploy <nom> --project-ref <réf>` — une fonction à la fois, projet de
+  développement d'abord, même ordre que les migrations (§1). Le webhook ajoute `--no-verify-jwt`
+  (voir plus haut) ; **aucune autre fonction** ne le porte.
+- **Pas d'exécution locale sur cette machine** : `supabase functions serve` a besoin de Docker,
+  absent (même contrainte que le banc, `docs/dette.md`). Les essais se font donc contre le projet
+  de développement déployé, avec la Stripe CLI en mode test pour les événements signés
+  (`stripe listen --forward-to <url>`, `stripe trigger <événement>`).
+- Une fonction déployée n'est pas une migration : aucune trace dans `supabase/migrations/`, et la
+  CI ne la rejoue pas. Ce qui la rend reproductible, c'est son code dans le dépôt et la commande
+  ci-dessus — rien n'est modifié à la main dans le tableau de bord.
+
+### Webhook : événements entrants livrés plusieurs fois, dans le désordre
+
+Convention durable pour tout point d'entrée qui reçoit des événements d'un tiers, pas seulement
+Stripe. Stripe relivre un événement tant qu'il n'a pas reçu de 2xx, et ne garantit aucun ordre
+entre deux événements. L'`Idempotency-Key` de `docs/api.md` §1 ne couvre que les appels
+**sortants** ; ces deux règles couvrent les **entrants** :
+
+1. **Mémoriser les identifiants d'événements traités.** Table `evenements_prestataire`
+   (identifiant d'événement du prestataire en clé unique, type, reçu le, traité le). L'insertion
+   de l'identifiant se fait **dans la même transaction** que les écritures métier qu'il
+   déclenche : un événement relivré heurte la contrainte d'unicité et répond 200 sans rien
+   refaire ; un traitement qui échoue annule aussi l'identifiant, et la relivraison suivante le
+   retraite. Aucun grant à `anon` ni `authenticated` sur cette table ; `service_role` explicite
+   (règle 11 de `docs/prompts/L4.md`).
+2. **Ne jamais supposer un ordre d'arrivée.** Un événement est un signal, pas un état à
+   recopier : le traitement relit l'objet concerné chez le prestataire et ne demande que la
+   transition que `docs/domaine.md` §4.3/§4.4 autorise depuis l'état **actuel** en base. Un
+   événement qui arrive « trop tard » (un échec après le succès de la même échéance) ne
+   provoque aucune transition ; un événement qui vise une ligne pas encore créée chez nous
+   répond non-2xx, pour être relivré plus tard — jamais 200 en l'ignorant, ce qui le perdrait.
+
+Les deux se prouvent au banc (relivraison → aucune écriture de plus ; ordre inversé → même état
+final), pas à la lecture du code. Ce qui reste invisible même avec ces deux règles — un
+événement jamais arrivé — relève du rapprochement quotidien (`docs/prompts/L4.md` point 12).
