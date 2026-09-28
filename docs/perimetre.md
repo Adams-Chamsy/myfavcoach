@@ -288,6 +288,16 @@ Ces délais sont externes et bloquent la publication, pas le développement :
   20 € — dont la compatibilité avec la réglementation des services de paiement (encaissement pour
   compte de tiers) est à confirmer, pas à supposer. **Bloque le premier paiement réel (L5)**, pas
   le mode test.
+- **Facturation au nom du coach — deux questions de plus pour le juriste** (ajouté le 28 septembre
+  2026, `docs/domaine.md` §3.5), **non tranchées ici** : (1) **le mandat de facturation** — c'est le
+  coach qui vend, la plateforme émet la facture en son nom et pour son compte : ce mandat doit-il
+  figurer dans le contrat coach (C-06), sous quelle forme, avec quelles mentions sur la facture
+  elle-même ? (2) **les obligations déclaratives de la plateforme** sur les transactions réalisées
+  par ses vendeurs auprès de particuliers (cadre européen dit DAC7 et sa transposition française,
+  dont le cadre a changé cette année d'après le porteur du projet) : ce que la plateforme doit
+  collecter sur chaque coach, déclarer, et transmettre au coach lui-même. Cette seconde question
+  pèse sur l'identité fiscale collectée en L5 (`docs/domaine.md` §3.2) : la liste des champs peut
+  s'allonger. **Bloque le premier paiement réel (L5)**, pas le mode test.
 - **POINT BLOQUANT — Apple : le paiement hors achat in-app n'est probablement pas permis pour
   cette offre sur iOS** (ajouté le 28 septembre 2026, décidé en conversation ; raisonnement dans
   `docs/domaine.md` §2). La seule exception d'Apple qui pourrait s'appliquer, la règle 3.1.3(d),

@@ -168,7 +168,16 @@ appartiennent au même `Compte` est refusé (erreur `auto_abonnement_interdit`).
 `ProfilCoach` : `prenom`, `nom`, `photo?`, `discipline` (une seule, référence `Discipline` ci-
 dessous), `titreCourt`, `bio`, `communeBase?`, `formats` ⊆ {visio, presentiel}, `langues`,
 `statutVerification`, `delaiReponseHeures` (calculé), `note` (calculée), `nombreAvis` (calculé),
-`nombreAbonnes` (calculé), `commissionOfferteJusquLe?`.
+`nombreAbonnes` (calculé), `commissionOfferteJusquLe?`, et son **identité fiscale** (ci-dessous).
+
+**Identité fiscale du coach** (déclarée le 28 septembre 2026, **collectée en L5**, où
+l'identification Stripe du coach en réclame déjà l'essentiel — `docs/api.md` §8) : `siren`,
+`adresseFacturation` (ligne, code postal, commune), `regimeTva` (`franchise_en_base` |
+`assujetti`), et `tauxTvaPourMille` quand `regimeTva = assujetti`. C'est le coach qui vend
+(§3.5) : ce sont les mentions de SA facture, que la plateforme émet en son nom. Aucune de ces
+données n'est publique (même protection que `commissionOfferteJusquLe` : jamais dans les grants de
+lecture de `profils_coach`, `docs/backend.md` §8). À L4, aucune n'existe encore en base : les
+factures de L4, toutes de mode test, portent ces champs **vides** (§3.5).
 
 ### 3.2bis Discipline (catalogue)
 
@@ -229,6 +238,13 @@ une durée indéterminée — ce qu'elle ne doit jamais faire. Deux règles, qui
    moment de payer**, même pour une offre déjà publiée (même code) — la règle 1 ne suffit pas :
    un compte peut perdre ce statut après la publication (Stripe demande une pièce, un
    justificatif expire).
+
+**Étendue le 28 septembre 2026 à l'identité fiscale** : les deux règles ci-dessus exigent aussi
+que l'**identité fiscale du coach soit complète** (§3.2 : `siren`, `adresseFacturation`,
+`regimeTva`, et `tauxTvaPourMille` s'il est assujetti) — 409 `identite_fiscale_incomplete`,
+applicable en L5 au même moment. Raison : une vente réelle produit une facture au nom du coach
+(§3.5) ; sans ces mentions, elle ne serait pas conforme. C'est cette règle, et elle seule, qui
+interdit d'émettre une facture réelle incomplète : à L4, toutes les factures sont de mode test.
 
 « Opérationnel » est lu depuis Stripe par le serveur, jamais déclaré par l'application. Son
 critère exact (capacité `transfers` active, aucune exigence d'identification en retard) s'écrit
@@ -323,6 +339,35 @@ Immuable. `abonnement`, `numero` (séquence annuelle sans trou), `montantTtcCent
 
 Le vendeur porté sur la facture est **le coach** ; la plateforme émet une facture de commission
 distincte au coach. C'est la conséquence directe du statut d'intermédiaire.
+
+**Précisé le 28 septembre 2026 (P4.4)** — règles avant le schéma :
+
+- **Émise au nom et pour le compte du coach.** La plateforme l'émet, le coach en est le vendeur.
+  Cela suppose un **mandat de facturation** dans le contrat coach : question au juriste
+  (`docs/perimetre.md` §6), pas tranchée ici.
+- **Numérotation : une série par coach, par année civile (Europe/Paris), sans trou.** C'est lui
+  l'émetteur, la série lui appartient. Format `AAAA-NNNNNN` (`2026-000001`), unique pour un coach.
+  **Mécanisme** : un compteur par coach et par année, verrouillé et incrémenté **dans la même
+  transaction** que l'insertion de la facture — si l'insertion échoue, l'incrément est annulé avec
+  elle, et le numéro n'est jamais consommé. **Pas une séquence Postgres** : une séquence n'est
+  jamais annulée par un rollback, elle laisserait un trou à chaque transaction échouée.
+- **Elle porte sa propre copie de ce qu'elle prouve** : les parties (vendeur : prénom, nom, et son
+  identité fiscale — vide à L4, §3.2 ; client : prénom, nom), le libellé (titre de l'offre au
+  moment de la vente), la période facturée, les montants. **Aucun lien ne l'entraîne dans une
+  suppression** : l'abonnement, le client, le coach peuvent disparaître (purge à J+30, §2), la
+  facture reste, lisible sans eux, dix ans (§2). C'est ce que l'écran de suppression de compte
+  annonce déjà au client (`docs/ecrans/L2-01-suppression-compte.md`).
+- **Montants HT et TVA** : calculés depuis le `regimeTva` du coach **au moment de l'émission** —
+  franchise en base : HT = TTC, TVA nulle, mention « TVA non applicable, art. 293 B du CGI » ;
+  assujetti : HT = TTC / (1 + taux), arrondi au centime. **Régime inconnu (toutes les factures de
+  L4) : HT et TVA restent vides**, jamais devinés — c'est précisément ce qui en fait des factures de
+  mode test.
+- **Une facture par paiement encaissé**, idempotente par la référence du paiement chez le
+  prestataire (`referencePrestataire`, unique) : le webhook et le constat
+  (`docs/api.md` §7) peuvent tous deux la déclencher, une seule naît.
+- `pdfUrl` : vide jusqu'à L5 (factures et reçus téléchargeables, C-05).
+- **La facture de commission de la plateforme au coach est reportée en L5**, avec les versements
+  (`docs/prompts/L4.md`). L4 ne crée que la `LigneCommission` (§3.10).
 
 ### 3.6 Programme / Seance / SeanceProgrammee / ExecutionSeance
 
@@ -773,6 +818,11 @@ Non affiché en dessous de 5 échanges. **Pas d'indicateur de présence en temps
 seule fois, jamais recalculé.
 La commission porte sur le montant TTC encaissé. Les frais du prestataire sont **à la charge de
 la plateforme**, pas du coach : c'est ce qui rend le taux annonçable simplement.
+Précisé le 28 septembre 2026 (P4.4) : « date » est le **jour civil Europe/Paris du paiement**,
+comparé au jour `commissionOfferteJusquLe` — le jour même de cette date, le taux est déjà de
+10 %. Le montant est arrondi au centime le plus proche (demi-centime vers le haut). Le taux est
+lu une fois, à l'émission de la `LigneCommission`, et copié dans la ligne : une date modifiée plus
+tard ne change jamais une ligne déjà écrite.
 
 ### 5.6 Classement « Pertinence »
 **Révisé le 12 septembre 2026 — ne trie plus sur l'avis.** La version précédente pondérait Note,
