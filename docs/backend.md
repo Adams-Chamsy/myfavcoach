@@ -263,7 +263,7 @@ des pièces d'identité et décide qui peut encaisser. Trois règles, aucune né
     select coalesce(est_examinateur, false) from public.comptes where id = auth.uid();
   $$;
 
-  revoke all on function public.est_examinateur_courant() from public, anon, authenticated;
+  revoke execute on function public.est_examinateur_courant() from public, anon, authenticated;
   grant execute on function public.est_examinateur_courant() to authenticated;
   ```
 
@@ -568,7 +568,7 @@ serveur, portent leur propre clé d'idempotence Stripe (l'identifiant de la
 
 ```sql
 create table public.cles_idempotence (
-  compte_id     uuid not null references public.comptes(id),
+  compte_id     uuid not null references public.comptes(id) on delete cascade,
   cle           uuid not null,
   operation     text not null check (operation in ('intention_souscription')),
   empreinte     text not null,          -- sha256 du corps utile de la requête (offreId)
@@ -579,9 +579,11 @@ create table public.cles_idempotence (
   termine_le    timestamptz,
   primary key (compte_id, cle)
 );
+alter table public.cles_idempotence enable row level security;
 revoke all on table public.cles_idempotence from public, anon, authenticated, service_role;
 -- banc (péremption simulée en reculant reservee_le) et purge des clés de plus de 24 h
-grant select, delete, update (reservee_le) on table public.cles_idempotence to service_role;
+grant select, delete on public.cles_idempotence to service_role;
+grant update (reservee_le) on public.cles_idempotence to service_role;
 
 create or replace function public.reserver_cle_idempotence(
   p_cle uuid, p_operation text, p_empreinte text)
@@ -626,18 +628,27 @@ begin
   if not found then raise exception 'cle_idempotence_inconnue'; end if;
 end $$;
 
-revoke all on function public.reserver_cle_idempotence(uuid, text, text)
+revoke execute on function public.reserver_cle_idempotence(uuid, text, text)
   from public, anon, authenticated, service_role;
 grant execute on function public.reserver_cle_idempotence(uuid, text, text) to authenticated;
-revoke all on function public.terminer_cle_idempotence(uuid, int, jsonb)
+revoke execute on function public.terminer_cle_idempotence(uuid, int, jsonb)
   from public, anon, authenticated, service_role;
 grant execute on function public.terminer_cle_idempotence(uuid, int, jsonb) to authenticated;
 ```
 
+**Corrigé en l'écrivant (P4.3, `0034_creer_cles_idempotence.sql`)** : trois écarts au corps validé
+en P4.2, reportés ci-dessus — `on delete cascade` vers `comptes` (sinon la suppression d'un compte
+qui a une clé échouait), RLS activée explicitement (convention du dépôt), et le grant
+`service_role` scindé en deux (`src/test/conventions-grants-migrations.test.ts`, règle 2, ne
+reconnaît pas un grant de colonnes sur la même ligne).
+
 **Qui l'appelle, avec quel jeton.** L'Edge Function `abonnement-intention`, invoquée par
 l'application avec le jeton de session du client, appelle les deux fonctions **avec ce même
-jeton** (§12, cas 1) — jamais avec `service_role`, sous lequel `auth.uid()` est nul et chaque
-appel lèverait `non_authentifie`. `authenticated` est donc le seul rôle qui reçoit `EXECUTE`.
+jeton** (§12, cas 1) — jamais avec `service_role`. `authenticated` est le seul rôle qui reçoit
+`EXECUTE` : un appel sous `service_role` est refusé par le grant lui-même, avant toute ligne de
+la fonction (constaté au banc en P4.3 ; le commentaire d'en-tête de
+`0034_creer_cles_idempotence.sql`, déjà appliquée donc non modifiée, dit à tort qu'il lèverait
+`non_authentifie`).
 
 **Déroulé, dans l'Edge Function :**
 
@@ -667,7 +678,9 @@ planifiée (P4.8), par `service_role`.
 double appel avec la même clé → une seule réservation, la seconde rend `en_cours` puis `rejouee`
 une fois terminée ; même clé, autre empreinte → `cle_idempotence_reutilisee` ; clé `en_cours`
 reculée de six minutes par le rôle serveur du banc → `reprise` ; reculée de quatre minutes →
-toujours `en_cours` ; appel sans jeton client (`service_role`) → `non_authentifie` ; `anon` →
-refus d'exécution ; le compte B ne voit ni ne reprend jamais la clé du compte A (la clé primaire
+toujours `en_cours` ; appel sans jeton client (`service_role`) ou par `anon` → refus
+d'exécution par le grant (corrigé en P4.3 : ce corps annonçait `non_authentifie` pour
+`service_role`, ce que son propre grant rend impossible — la garde `non_authentifie` reste une
+seconde barrière, inatteignable par un appel PostgREST) ; le compte B ne voit ni ne reprend jamais la clé du compte A (la clé primaire
 inclut `compte_id`).
 

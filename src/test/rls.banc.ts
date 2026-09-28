@@ -3615,15 +3615,14 @@ describe('invitations — L3bis (0026/0027)', () => {
       expect(lignes[0].compte_invite_id).toBe(invite.compteId);
     });
 
-    // Règle 8 (docs/prompts/L3bis.md) : ce test est destiné à devenir FAUX. À ce lot, AUCUN
-    // chemin ne peut faire passer une invitation à 'abonnee' -- ni une fonction (aucune n'existe),
-    // ni un déclencheur (aucun ne référence 'abonnee'), ni une écriture directe accordée
-    // (invitations n'a aucun grant UPDATE, pour aucun rôle, y compris service_role -- voir 0027).
-    // LE JOUR OÙ L4 AJOUTE LA FONCTION DE CRÉATION D'ABONNEMENT : vérifier qu'elle écrit bien
-    // invitations.statut = 'abonnee' (et abonnee_le) quand l'abonné et l'inviteur coïncident,
-    // PUIS remplacer ce test par son inverse -- ne pas se contenter de le supprimer en croyant
-    // nettoyer.
-    it("[Règle 8, deviendra faux à L4] aucun chemin actuel ne peut faire passer une invitation à 'abonnee'", async () => {
+    // Règle 8 (docs/prompts/L3bis.md), INVERSÉE à L4 (P4.3, 0033_creer_abonnements.sql) comme
+    // l'annonçait ce test lui-même. Jusqu'à L4, AUCUN chemin ne faisait passer une invitation à
+    // 'abonnee' ; désormais UN SEUL le fait : la première entrée en 'actif' d'un abonnement du
+    // client invité chez CE coach précisément (entrer_en_actif_premiere_fois, docs/domaine.md
+    // §4.11). Le remplacer plutôt que le supprimer : les trois refus d'écriture directe de la
+    // version d'origine restent vrais et restent vérifiés ci-dessous -- seul le chemin légitime
+    // est nouveau.
+    it("[Règle 8, inversée à L4] l'invitation passe à 'abonnee' quand l'invité s'abonne à SON inviteur, jamais à un autre coach, et par aucun autre chemin", async () => {
       const { corps: avant } = await appelRest('/rest/v1/rpc/mes_invitations', {
         methode: 'POST',
         session: coach.session,
@@ -3631,33 +3630,91 @@ describe('invitations — L3bis (0026/0027)', () => {
       const idInvitation = (avant as { id: string; statut: string }[])[0].id;
       expect((avant as { statut: string }[])[0].statut).toBe('compte_cree');
 
-      // Tentative directe par le coach lui-même, propriétaire de la ligne : aucun grant UPDATE
-      // n'existe sur invitations pour authenticated, quel que soit le propriétaire de la ligne.
-      const tentativeCoach = await appelRest(`/rest/v1/invitations?id=eq.${idInvitation}`, {
-        methode: 'PATCH',
-        session: coach.session,
-        corps: { statut: 'abonnee' },
-      });
-      expect(tentativeCoach.statut).toBeGreaterThanOrEqual(400);
-      expect((tentativeCoach.corps as { code?: string }).code).toBe('42501');
+      // Les trois écritures directes restent refusées (aucun grant UPDATE sur invitations, pour
+      // aucun rôle, 0027/0030) : la seule porte est la fonction, jamais un PATCH.
+      for (const session of [coach.session, invite, 'admin' as const]) {
+        const tentative = await appelRest(`/rest/v1/invitations?id=eq.${idInvitation}`, {
+          methode: 'PATCH',
+          session,
+          corps: { statut: 'abonnee' },
+        });
+        expect(tentative.statut).toBeGreaterThanOrEqual(400);
+      }
 
-      // Tentative par l'invité lui-même : mêmes droits (aucun) sur cette table.
-      const tentativeInvite = await appelRest(`/rest/v1/invitations?id=eq.${idInvitation}`, {
-        methode: 'PATCH',
-        session: invite,
-        corps: { statut: 'abonnee' },
-      });
-      expect(tentativeInvite.statut).toBeGreaterThanOrEqual(400);
-      expect((tentativeInvite.corps as { code?: string }).code).toBe('42501');
+      const hier = new Date(Date.now() - 86_400_000).toISOString();
+      const offreDe = async (coachId: string): Promise<string> => {
+        const { corps } = await appelRest('/rest/v1/offres', {
+          methode: 'POST',
+          session: 'admin',
+          corps: {
+            coach_id: coachId,
+            titre: 'Suivi',
+            prix_centimes: 4900,
+            benefices: ['a', 'b', 'c'],
+            engagement_humain: ['ajustement_hebdomadaire'],
+            publiee_le: hier,
+          },
+        });
+        return (corps as { id: string }[])[0].id;
+      };
+      const offreInviteur = await offreDe(coach.profilId);
+      const offreAutreCoach = await offreDe(coachB.profilId);
+      const { corps: profils } = await appelRest(
+        `/rest/v1/profils_client?compte_id=eq.${invite.compteId}&select=id`,
+        { session: 'admin' },
+      );
+      const profilInvite = (profils as { id: string }[])[0].id;
+      const souscrire = (offre: string, moyen: 'carte' | 'sepa', nom: string) =>
+        appelRest('/rest/v1/rpc/souscrire_abonnement', {
+          methode: 'POST',
+          session: 'admin',
+          corps: {
+            p_profil_client_id: profilInvite,
+            p_offre_id: offre,
+            p_moyen: moyen,
+            p_reference_paiement: `banc-${SUFFIXE_COMPTE}-invitation-${nom}`,
+            p_prix_fige_centimes: 4900,
+            p_intention_creee_le: new Date().toISOString(),
+          },
+        });
+      const statutInvitation = async (): Promise<{ statut: string; abonnee_le: string | null }> => {
+        const { corps } = await appelRest(
+          `/rest/v1/invitations?id=eq.${idInvitation}&select=statut,abonnee_le`,
+          { session: 'admin' },
+        );
+        return (corps as { statut: string; abonnee_le: string | null }[])[0];
+      };
 
-      // service_role lui-même : select + insert seulement (0027), aucun update accordé -- même
-      // une préparation de fixture ne peut pas poser 'abonnee' directement, par construction.
-      const tentativeAdmin = await appelRest(`/rest/v1/invitations?id=eq.${idInvitation}`, {
-        methode: 'PATCH',
+      // Sens illégitime : un abonnement ACTIF chez un AUTRE coach ne change rien.
+      const autre = await souscrire(offreAutreCoach, 'carte', 'autre-coach');
+      expect(autre.statut).toBe(200);
+      expect((await statutInvitation()).statut).toBe('compte_cree');
+
+      // Chez l'inviteur, mais en SEPA non confirmé : toujours rien (§4.3, première entrée en actif).
+      const sepa = await souscrire(offreInviteur, 'sepa', 'inviteur-sepa');
+      expect(sepa.statut).toBe(200);
+      expect((await statutInvitation()).statut).toBe('compte_cree');
+
+      // Sens légitime : confirmation du premier prélèvement -> 'abonnee', abonnee_le posée.
+      const confirmation = await appelRest('/rest/v1/rpc/confirmer_premier_prelevement', {
+        methode: 'POST',
         session: 'admin',
-        corps: { statut: 'abonnee' },
+        corps: { p_abonnement_id: sepa.corps as string },
       });
-      expect(tentativeAdmin.statut).toBeGreaterThanOrEqual(400);
+      expect(confirmation.statut).toBe(204);
+      const apres = await statutInvitation();
+      expect(apres.statut).toBe('abonnee');
+      expect(apres.abonnee_le).not.toBeNull();
+
+      // Le coach le lit par son chemin normal, mes_invitations().
+      const { corps: vuParLeCoach } = await appelRest('/rest/v1/rpc/mes_invitations', {
+        methode: 'POST',
+        session: coach.session,
+      });
+      expect(
+        (vuParLeCoach as { id: string; statut: string }[]).find((l) => l.id === idInvitation)
+          ?.statut,
+      ).toBe('abonnee');
     });
   });
 
@@ -3690,6 +3747,718 @@ describe('invitations — L3bis (0026/0027)', () => {
       );
       expect(corps).toEqual([]);
       await supprimerCompteReel(compteJetonInvalide.compteId);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Abonnements — L4, P4.3 (0033_creer_abonnements.sql ; docs/domaine.md §3.4, §4.3, §5.5)
+// ---------------------------------------------------------------------------------------------
+
+// Jour civil Europe/Paris, au format AAAA-MM-JJ : la même définition que le serveur
+// ((now() at time zone 'Europe/Paris')::date), jamais le jour UTC de la machine de test.
+function aujourdhuiParis(): string {
+  return new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+}
+
+function plusJours(jour: string, jours: number): string {
+  const date = new Date(`${jour}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + jours);
+  return date.toISOString().slice(0, 10);
+}
+
+function messageDe(corps: unknown): string {
+  return (corps as { message?: string } | null)?.message ?? JSON.stringify(corps);
+}
+
+type LigneAbonnement = {
+  id: string;
+  statut: string;
+  actif_depuis_le: string | null;
+  jour_prelevement: number;
+  prochain_prelevement_le: string;
+  pause_jusqu_le: string | null;
+  derniere_pause_le: string | null;
+  resilie_le: string | null;
+  fin_acces_le: string | null;
+  prix_fige_centimes: number;
+};
+
+describe('abonnements — L4 (0033)', () => {
+  // UNE seule connexion de plus pour tout ce describe (plafond de connexions du projet de
+  // développement, docs/dette.md : trouvé en écrivant P4.3, le banc complet ne tenait plus dans
+  // une fenêtre avec trois comptes connectés de plus). Le coach n'a jamais besoin d'une session :
+  // son compte est créé par l'API d'administration SANS connexion, son profil client inséré par
+  // service_role. client2 est le compte A du module (profil client seul, jamais en espace coach,
+  // supprimé par l'afterAll global -- ses abonnements partent en cascade). Seul client1 se
+  // connecte. Le compte de client1 porte AUSSI un profil coach jamais vérifié
+  // (coach_non_verifie), celui du coach un profil client (auto_abonnement_interdit).
+  let coachCompteId: string;
+  let profilCoachId: string;
+  let offreId: string;
+  let offreBrouillonId: string;
+  let offreRetireeId: string;
+  let offreCoachNonVerifieId: string;
+  let profilClientDuCoachId: string;
+  let client1: Session;
+  let profilClient1: string;
+  let client2: Session;
+  let profilClient2: string;
+  let abonnement1: string; // client1, SEPA puis confirmé : sert aux transitions client
+  let commissionPosee: string;
+
+  const reference = (nom: string): string => `banc-${SUFFIXE_COMPTE}-${nom}`;
+
+  async function insererOffre(
+    coachId: string,
+    dates: { publiee_le: string | null; retiree_le?: string | null },
+  ): Promise<string> {
+    const { statut, corps } = await appelRest('/rest/v1/offres', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        coach_id: coachId,
+        titre: 'Suivi complet',
+        prix_centimes: 4900,
+        benefices: ['Programme', 'Visio', 'Messages'],
+        engagement_humain: ['ajustement_hebdomadaire'],
+        ...dates,
+      },
+    });
+    if (statut >= 400) throw new Error(`Préparation du banc : offre refusée (${statut})`);
+    return (corps as { id: string }[])[0].id;
+  }
+
+  async function creerProfilClient(session: Session, prenom: string): Promise<string> {
+    const { statut, corps } = await appelRest('/rest/v1/profils_client', {
+      methode: 'POST',
+      session,
+      corps: { compte_id: session.compteId, prenom, nom: 'Banc' },
+    });
+    if (statut >= 400) throw new Error(`Préparation du banc : profil client refusé (${statut})`);
+    return (corps as { id: string }[])[0].id;
+  }
+
+  async function souscrire(
+    profilClientId: string,
+    offre: string,
+    moyen: 'carte' | 'sepa',
+    ref: string,
+    session: Appelant = 'admin',
+    intentionCreeeLe: string = new Date().toISOString(),
+  ): Promise<{ statut: number; corps: unknown }> {
+    return appelRest('/rest/v1/rpc/souscrire_abonnement', {
+      methode: 'POST',
+      session,
+      corps: {
+        p_profil_client_id: profilClientId,
+        p_offre_id: offre,
+        p_moyen: moyen,
+        p_reference_paiement: ref,
+        p_prix_fige_centimes: 4900,
+        p_intention_creee_le: intentionCreeeLe,
+      },
+    });
+  }
+
+  async function lire(id: string): Promise<LigneAbonnement> {
+    const { corps } = await appelRest(`/rest/v1/abonnements?id=eq.${id}&select=*`, {
+      session: 'admin',
+    });
+    return (corps as LigneAbonnement[])[0];
+  }
+
+  async function commissionDuCoach(): Promise<string | null> {
+    const { corps } = await appelRest(
+      `/rest/v1/profils_coach?id=eq.${profilCoachId}&select=commission_offerte_jusqu_le`,
+      { session: 'admin' },
+    );
+    return (corps as { commission_offerte_jusqu_le: string | null }[])[0]
+      .commission_offerte_jusqu_le;
+  }
+
+  async function transition(
+    fonction: string,
+    session: Appelant,
+    corps: Record<string, unknown>,
+  ): Promise<{ statut: number; corps: unknown }> {
+    return appelRest(`/rest/v1/rpc/${fonction}`, { methode: 'POST', session, corps });
+  }
+
+  beforeAll(async () => {
+    // Création par l'API d'administration seule : même appel que creerCompteReel, sans la
+    // connexion qui suit -- c'est elle, pas la création, que le plafond compte.
+    const creation = await fetch(`${API_URL}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: {
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-abo-coach@${DOMAINE_EMAIL}`,
+        password: MOT_DE_PASSE,
+        email_confirm: true,
+        user_metadata: { date_naissance: '1988-01-01', cgu_version_acceptee: '2026-08-01' },
+      }),
+    });
+    if (!creation.ok) throw new Error(`Préparation du banc : coach refusé (${creation.status})`);
+    coachCompteId = ((await creation.json()) as { id: string }).id;
+    const profil = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { compte_id: coachCompteId, prenom: 'Abo', nom: 'Coach', discipline: 'yoga' },
+    });
+    profilCoachId = (profil.corps as { id: string }[])[0].id;
+    await appelRest(`/rest/v1/profils_coach?id=eq.${profilCoachId}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { statut_verification: 'verifiee' },
+    });
+    const hier = new Date(Date.now() - 86_400_000).toISOString();
+    offreId = await insererOffre(profilCoachId, { publiee_le: hier });
+    offreBrouillonId = await insererOffre(profilCoachId, { publiee_le: null });
+    offreRetireeId = await insererOffre(profilCoachId, {
+      publiee_le: hier,
+      retiree_le: new Date().toISOString(),
+    });
+    const profilDuCoach = await appelRest('/rest/v1/profils_client', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { compte_id: coachCompteId, prenom: 'CoachAussiClient', nom: 'Banc' },
+    });
+    profilClientDuCoachId = (profilDuCoach.corps as { id: string }[])[0].id;
+
+    client1 = await creerCompteReel(`${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-abo-c1@${DOMAINE_EMAIL}`, {
+      date_naissance: '1995-01-01',
+      cgu_version_acceptee: '2026-08-01',
+    });
+    profilClient1 = await creerProfilClient(client1, 'Client1');
+    client2 = A;
+    const profilA = await appelRest(
+      `/rest/v1/profils_client?compte_id=eq.${A.compteId}&select=id`,
+      {
+        session: 'admin',
+      },
+    );
+    profilClient2 = (profilA.corps as { id: string }[])[0].id;
+
+    // Profil coach JAMAIS vérifié, sur le compte de client1, avec une offre marquée publiée par
+    // service_role -- fixture délibérément incohérente (même famille que D, describe('offres')) :
+    // prouve que la souscription revérifie le statut du coach, pas seulement la publication.
+    const nonVerifie = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { compte_id: client1.compteId, prenom: 'Non', nom: 'Verifie', discipline: 'yoga' },
+    });
+    offreCoachNonVerifieId = await insererOffre((nonVerifie.corps as { id: string }[])[0].id, {
+      publiee_le: hier,
+    });
+  }, 60_000);
+
+  afterAll(async () => {
+    if (client1) await supprimerCompteReel(client1.compteId);
+    if (coachCompteId) await supprimerCompteReel(coachCompteId);
+    // client2 = A : supprimé par l'afterAll global.
+  }, 30_000);
+
+  describe('souscription et premier prélèvement : serveur seulement', () => {
+    it('anon ne peut pas exécuter souscrire_abonnement', async () => {
+      const { statut, corps } = await souscrire(
+        profilClient1,
+        offreId,
+        'carte',
+        reference('x'),
+        'anon',
+      );
+      expect(statut).toBeGreaterThanOrEqual(400);
+      expect(JSON.stringify(corps)).toMatch(/permission denied/i);
+    });
+
+    // Sens illégitime qui compte le plus : un client qui pourrait appeler cette fonction se
+    // créerait un abonnement sans rien payer.
+    it('un client ne peut pas se souscrire lui-même un abonnement', async () => {
+      const { statut, corps } = await souscrire(
+        profilClient1,
+        offreId,
+        'carte',
+        reference('x'),
+        client1,
+      );
+      expect(statut).toBeGreaterThanOrEqual(400);
+      expect(JSON.stringify(corps)).toMatch(/permission denied/i);
+    });
+
+    it('SEPA : naît en_attente_confirmation, sans actif_depuis_le ni commission posée', async () => {
+      const { statut, corps } = await souscrire(
+        profilClient1,
+        offreId,
+        'sepa',
+        reference('sepa-1'),
+      );
+      expect(statut).toBe(200);
+      abonnement1 = corps as string;
+      const ligne = await lire(abonnement1);
+      expect(ligne.statut).toBe('en_attente_confirmation');
+      expect(ligne.actif_depuis_le).toBeNull();
+      expect(ligne.prix_fige_centimes).toBe(4900);
+      expect(ligne.jour_prelevement).toBeGreaterThanOrEqual(1);
+      expect(ligne.jour_prelevement).toBeLessThanOrEqual(28);
+      expect(await commissionDuCoach()).toBeNull();
+    });
+
+    it('confirmer_premier_prelevement : en_attente -> actif, pose actif_depuis_le et la commission à J+90', async () => {
+      const { statut } = await transition('confirmer_premier_prelevement', 'admin', {
+        p_abonnement_id: abonnement1,
+      });
+      expect(statut).toBe(204);
+      const ligne = await lire(abonnement1);
+      expect(ligne.statut).toBe('actif');
+      expect(ligne.actif_depuis_le).not.toBeNull();
+      commissionPosee = (await commissionDuCoach()) as string;
+      expect(commissionPosee).toBe(plusJours(aujourdhuiParis(), 90));
+    });
+
+    it('confirmer deux fois, ou rejeter un abonnement actif : transition_interdite', async () => {
+      const deuxieme = await transition('confirmer_premier_prelevement', 'admin', {
+        p_abonnement_id: abonnement1,
+      });
+      expect(messageDe(deuxieme.corps)).toBe('transition_interdite');
+      const rejet = await transition('rejeter_premier_prelevement', 'admin', {
+        p_abonnement_id: abonnement1,
+      });
+      expect(messageDe(rejet.corps)).toBe('transition_interdite');
+      expect((await lire(abonnement1)).statut).toBe('actif');
+    });
+
+    it('carte : naît actif ; la commission du coach, déjà posée, ne bouge plus (§5.5)', async () => {
+      const { statut, corps } = await souscrire(
+        profilClient2,
+        offreId,
+        'carte',
+        reference('carte-2'),
+      );
+      expect(statut).toBe(200);
+      const ligne = await lire(corps as string);
+      expect(ligne.statut).toBe('actif');
+      expect(ligne.actif_depuis_le).not.toBeNull();
+      expect(await commissionDuCoach()).toBe(commissionPosee);
+    });
+
+    it('la même référence de paiement deux fois ne crée qu’un abonnement (webhook et constat)', async () => {
+      const premier = await souscrire(profilClient2, offreId, 'carte', reference('carte-2'));
+      const second = await souscrire(profilClient2, offreId, 'carte', reference('carte-2'));
+      expect(second.corps).toBe(premier.corps);
+      const { corps } = await appelRest(
+        `/rest/v1/abonnements?profil_client_id=eq.${profilClient2}&statut=eq.actif&select=id`,
+        { session: 'admin' },
+      );
+      expect(corps).toHaveLength(1);
+    });
+
+    it('rejeter : en_attente -> annule, état terminal', async () => {
+      const { corps } = await souscrire(profilClient2, offreId, 'sepa', reference('sepa-rejet'));
+      const id = corps as string;
+      const rejet = await transition('rejeter_premier_prelevement', 'admin', {
+        p_abonnement_id: id,
+      });
+      expect(rejet.statut).toBe(204);
+      expect((await lire(id)).statut).toBe('annule');
+      const confirmation = await transition('confirmer_premier_prelevement', 'admin', {
+        p_abonnement_id: id,
+      });
+      expect(messageDe(confirmation.corps)).toBe('transition_interdite');
+    });
+
+    it('une offre en brouillon ne se souscrit pas : offre_indisponible', async () => {
+      const { corps } = await souscrire(
+        profilClient1,
+        offreBrouillonId,
+        'carte',
+        reference('brouillon'),
+      );
+      expect(messageDe(corps)).toBe('offre_indisponible');
+    });
+
+    // docs/domaine.md §3.3 (tranché le 28 septembre 2026) : l'intention fige l'offre. L'offre de
+    // ce test a été retirée « maintenant » (beforeAll) : une intention créée avant ce retrait, il
+    // y a moins de 30 minutes, reste honorée ; une intention créée après le retrait, ou trop
+    // ancienne, ne l'est pas.
+    describe('offre retirée entre l’intention et le paiement (§3.3)', () => {
+      const ilYa = (minutes: number): string =>
+        new Date(Date.now() - minutes * 60_000).toISOString();
+
+      it('intention antérieure au retrait, de moins de 30 minutes : la souscription est honorée', async () => {
+        const { statut, corps } = await souscrire(
+          profilClient1,
+          offreRetireeId,
+          'carte',
+          reference('retiree-honoree'),
+          'admin',
+          ilYa(10),
+        );
+        expect(statut).toBe(200);
+        expect((await lire(corps as string)).statut).toBe('actif');
+      });
+
+      it('intention créée APRÈS le retrait : offre_indisponible', async () => {
+        const { corps } = await souscrire(
+          profilClient1,
+          offreRetireeId,
+          'carte',
+          reference('retiree-apres'),
+          'admin',
+          new Date(Date.now() + 1000).toISOString(),
+        );
+        expect(messageDe(corps)).toBe('offre_indisponible');
+      });
+
+      it('intention de plus de 30 minutes sur une offre retirée depuis : offre_indisponible', async () => {
+        const { corps } = await souscrire(
+          profilClient1,
+          offreRetireeId,
+          'carte',
+          reference('retiree-vieille'),
+          'admin',
+          ilYa(31),
+        );
+        expect(messageDe(corps)).toBe('offre_indisponible');
+      });
+
+      it('sans date d’intention : intention_requise', async () => {
+        const { corps } = await appelRest('/rest/v1/rpc/souscrire_abonnement', {
+          methode: 'POST',
+          session: 'admin',
+          corps: {
+            p_profil_client_id: profilClient1,
+            p_offre_id: offreId,
+            p_moyen: 'carte',
+            p_reference_paiement: reference('sans-intention'),
+            p_prix_fige_centimes: 4900,
+            p_intention_creee_le: null,
+          },
+        });
+        expect(messageDe(corps)).toBe('intention_requise');
+      });
+    });
+
+    it('le coach d’une offre publiée mais non vérifié : coach_non_verifie', async () => {
+      const { corps } = await souscrire(
+        profilClient1,
+        offreCoachNonVerifieId,
+        'carte',
+        reference('non-verifie'),
+      );
+      expect(messageDe(corps)).toBe('coach_non_verifie');
+    });
+
+    it('un compte ne s’abonne jamais à sa propre offre : auto_abonnement_interdit', async () => {
+      const { corps } = await souscrire(profilClientDuCoachId, offreId, 'carte', reference('auto'));
+      expect(messageDe(corps)).toBe('auto_abonnement_interdit');
+    });
+
+    it('jour de prélèvement : 29/30/31 ramenés à 28, échéance au même jour du mois suivant', async () => {
+      const jour = await transition('jour_prelevement_pour', 'admin', { p_jour: '2026-01-31' });
+      expect(jour.corps).toBe(28);
+      const fevrier = await transition('echeance_suivante', 'admin', {
+        p_depuis: '2026-01-31',
+        p_jour: 28,
+      });
+      expect(fevrier.corps).toBe('2026-02-28');
+      const annee = await transition('echeance_suivante', 'admin', {
+        p_depuis: '2026-12-15',
+        p_jour: 15,
+      });
+      expect(annee.corps).toBe('2027-01-15');
+    });
+  });
+
+  describe('lecture et écriture directes', () => {
+    it('chaque client lit ses abonnements, jamais ceux d’un autre', async () => {
+      const lecture1 = await appelRest('/rest/v1/abonnements?select=id', { session: client1 });
+      const ids1 = (lecture1.corps as { id: string }[]).map((l) => l.id);
+      expect(ids1).toContain(abonnement1);
+      expect(ids1).toHaveLength(2); // abonnement1 et l'abonnement honoré sur l'offre retirée
+      const lecture2 = await appelRest('/rest/v1/abonnements?select=id', { session: client2 });
+      const ids2 = (lecture2.corps as { id: string }[]).map((l) => l.id);
+      expect(ids2).toHaveLength(2);
+      expect(ids2).not.toContain(abonnement1);
+    });
+
+    // B (module) : un compte tiers, avec profil client ET profil coach, qui n'est partie à aucun
+    // de ces abonnements. Le coach de ce describe n'a pas de session (voir plus haut) ; aucune
+    // lecture coach n'existe de toute façon à L4 (pilotage : L7).
+    it('un compte tiers (client et coach) ne lit aucun de ces abonnements', async () => {
+      const { corps } = await appelRest('/rest/v1/abonnements?select=id', { session: B });
+      expect(corps).toEqual([]);
+    });
+
+    it('anon ne lit rien', async () => {
+      const { statut, corps } = await appelRest('/rest/v1/abonnements?select=id');
+      expect(statut).toBeGreaterThanOrEqual(400);
+      expect(JSON.stringify(corps)).toMatch(/permission denied/i);
+    });
+
+    it('reference_paiement n’est lisible par aucun client, même sur son propre abonnement', async () => {
+      const { statut, corps } = await appelRest('/rest/v1/abonnements?select=reference_paiement', {
+        session: client1,
+      });
+      expect(statut).toBeGreaterThanOrEqual(400);
+      expect((corps as { code?: string }).code).toBe('42501');
+    });
+
+    it('aucune écriture directe : ni insertion, ni changement de statut, pas même par service_role', async () => {
+      const insertion = await appelRest('/rest/v1/abonnements', {
+        methode: 'POST',
+        session: client1,
+        corps: { profil_client_id: profilClient1, statut: 'actif' },
+      });
+      expect((insertion.corps as { code?: string }).code).toBe('42501');
+      const client = await appelRest(`/rest/v1/abonnements?id=eq.${abonnement1}`, {
+        methode: 'PATCH',
+        session: client1,
+        corps: { statut: 'resilie' },
+      });
+      expect((client.corps as { code?: string }).code).toBe('42501');
+      const admin = await appelRest(`/rest/v1/abonnements?id=eq.${abonnement1}`, {
+        methode: 'PATCH',
+        session: 'admin',
+        corps: { statut: 'resilie' },
+      });
+      expect((admin.corps as { code?: string }).code).toBe('42501');
+      expect((await lire(abonnement1)).statut).toBe('actif');
+    });
+  });
+
+  describe('transitions demandées par le client (§4.3)', () => {
+    it('un autre client, ou anon, ne touche jamais à l’abonnement de client1', async () => {
+      const autre = await transition('demander_resiliation', client2, {
+        p_abonnement_id: abonnement1,
+      });
+      expect(messageDe(autre.corps)).toBe('abonnement_introuvable');
+      const anon = await transition('demander_resiliation', 'anon', {
+        p_abonnement_id: abonnement1,
+      });
+      expect(JSON.stringify(anon.corps)).toMatch(/permission denied/i);
+      expect((await lire(abonnement1)).statut).toBe('actif');
+    });
+
+    it('pause : 61 jours refusés, 30 jours acceptés (actif -> en_pause)', async () => {
+      const trop = await transition('demander_pause', client1, {
+        p_abonnement_id: abonnement1,
+        p_jusqu_au: plusJours(aujourdhuiParis(), 61),
+      });
+      expect(messageDe(trop.corps)).toBe('duree_pause_invalide');
+      const avantPause = (await lire(abonnement1)).actif_depuis_le;
+      const pause = await transition('demander_pause', client1, {
+        p_abonnement_id: abonnement1,
+        p_jusqu_au: plusJours(aujourdhuiParis(), 30),
+      });
+      expect(pause.statut).toBe(204);
+      const ligne = await lire(abonnement1);
+      expect(ligne.statut).toBe('en_pause');
+      expect(ligne.derniere_pause_le).toBe(aujourdhuiParis());
+      expect(ligne.actif_depuis_le).toBe(avantPause);
+    });
+
+    it('reprise : en_pause -> actif, nouveau cycle depuis aujourd’hui, actif_depuis_le inchangée ; reprendre un abonnement actif est refusé', async () => {
+      const avant = (await lire(abonnement1)).actif_depuis_le;
+      const reprise = await transition('reprendre_abonnement', client1, {
+        p_abonnement_id: abonnement1,
+      });
+      expect(reprise.statut).toBe(204);
+      const ligne = await lire(abonnement1);
+      expect(ligne.statut).toBe('actif');
+      expect(ligne.pause_jusqu_le).toBeNull();
+      expect(ligne.actif_depuis_le).toBe(avant);
+      // docs/domaine.md §4.3 (tranché le 28 septembre 2026) : cycle recalculé sur le jour de reprise.
+      const aujourdhui = aujourdhuiParis();
+      expect(ligne.prochain_prelevement_le).toBe(aujourdhui);
+      expect(ligne.jour_prelevement).toBe(Math.min(Number(aujourdhui.slice(8, 10)), 28));
+      const encore = await transition('reprendre_abonnement', client1, {
+        p_abonnement_id: abonnement1,
+      });
+      expect(messageDe(encore.corps)).toBe('transition_interdite');
+    });
+
+    it('une seconde pause dans les 12 mois : pause_deja_utilisee ; possible une fois la dernière vieille de 13 mois', async () => {
+      const refus = await transition('demander_pause', client1, {
+        p_abonnement_id: abonnement1,
+        p_jusqu_au: plusJours(aujourdhuiParis(), 10),
+      });
+      expect(messageDe(refus.corps)).toBe('pause_deja_utilisee');
+
+      // Ancienneté simulée par service_role (point 9 de docs/prompts/L4.md), jamais attendue.
+      await appelRest(`/rest/v1/abonnements?id=eq.${abonnement1}`, {
+        methode: 'PATCH',
+        session: 'admin',
+        corps: { derniere_pause_le: plusJours(aujourdhuiParis(), -400) },
+      });
+      const accepte = await transition('demander_pause', client1, {
+        p_abonnement_id: abonnement1,
+        p_jusqu_au: plusJours(aujourdhuiParis(), 10),
+      });
+      expect(accepte.statut).toBe(204);
+      await transition('reprendre_abonnement', client1, { p_abonnement_id: abonnement1 });
+      expect((await lire(abonnement1)).statut).toBe('actif');
+    });
+
+    it('résiliation : actif -> resiliation_programmee, fin d’accès à la prochaine échéance, jamais immédiate', async () => {
+      const avant = await lire(abonnement1);
+      const { statut } = await transition('demander_resiliation', client1, {
+        p_abonnement_id: abonnement1,
+      });
+      expect(statut).toBe(204);
+      const ligne = await lire(abonnement1);
+      expect(ligne.statut).toBe('resiliation_programmee');
+      expect(ligne.fin_acces_le).toBe(avant.prochain_prelevement_le);
+      expect(ligne.resilie_le).not.toBeNull();
+    });
+
+    it('annulation de la résiliation : -> actif, dates effacées, actif_depuis_le inchangée ; une seconde annulation est refusée', async () => {
+      const avant = (await lire(abonnement1)).actif_depuis_le;
+      const { statut } = await transition('annuler_resiliation', client1, {
+        p_abonnement_id: abonnement1,
+      });
+      expect(statut).toBe(204);
+      const ligne = await lire(abonnement1);
+      expect(ligne.statut).toBe('actif');
+      expect(ligne.fin_acces_le).toBeNull();
+      expect(ligne.resilie_le).toBeNull();
+      expect(ligne.actif_depuis_le).toBe(avant);
+      const encore = await transition('annuler_resiliation', client1, {
+        p_abonnement_id: abonnement1,
+      });
+      expect(messageDe(encore.corps)).toBe('transition_interdite');
+    });
+
+    // docs/domaine.md §4.3 (tranché le 28 septembre 2026) : résilier en ligne reste possible en
+    // pause -- effet le jour même, aucune période payée n'étant en cours de service. Sur
+    // l'abonnement carte de client2, pour ne pas clore abonnement1. impaye et suspendu suivent
+    // la même branche mais ne sont atteignables qu'en P4.8 (échecs de prélèvement) : leurs deux
+    // sens se testent là, pas ici.
+    it('résilier pendant une pause : resilie le jour même, pause effacée ; puis plus rien n’est possible', async () => {
+      const { corps: idCarte } = await souscrire(
+        profilClient2,
+        offreId,
+        'carte',
+        reference('carte-2'),
+      );
+      const id = idCarte as string;
+      await transition('demander_pause', client2, {
+        p_abonnement_id: id,
+        p_jusqu_au: plusJours(aujourdhuiParis(), 20),
+      });
+      expect((await lire(id)).statut).toBe('en_pause');
+      const { statut } = await transition('demander_resiliation', client2, { p_abonnement_id: id });
+      expect(statut).toBe(204);
+      const ligne = await lire(id);
+      expect(ligne.statut).toBe('resilie');
+      expect(ligne.fin_acces_le).toBe(aujourdhuiParis());
+      expect(ligne.pause_jusqu_le).toBeNull();
+      const reprise = await transition('reprendre_abonnement', client2, { p_abonnement_id: id });
+      expect(messageDe(reprise.corps)).toBe('transition_interdite');
+      const annulation = await transition('annuler_resiliation', client2, { p_abonnement_id: id });
+      expect(messageDe(annulation.corps)).toBe('transition_interdite');
+    });
+  });
+
+  // -------------------------------------------------------------------------------------------
+  // Idempotence des appels sortants (0034 ; docs/backend.md §13)
+  // -------------------------------------------------------------------------------------------
+  describe('cles_idempotence (0034)', () => {
+    type Reponse = { etat: string; code_reponse: number | null; corps_reponse: unknown };
+    const reserver = (session: Appelant, cle: string, empreinte = 'offre-1') =>
+      transition('reserver_cle_idempotence', session, {
+        p_cle: cle,
+        p_operation: 'intention_souscription',
+        p_empreinte: empreinte,
+      });
+    const etat = (corps: unknown): string => (corps as Reponse[])[0].etat;
+    const reculer = (cle: string, minutes: number) =>
+      appelRest(`/rest/v1/cles_idempotence?cle=eq.${cle}`, {
+        methode: 'PATCH',
+        session: 'admin',
+        corps: { reservee_le: new Date(Date.now() - minutes * 60_000).toISOString() },
+      });
+
+    it('première réservation : nouvelle ; seconde, avant la fin : en_cours ; après la fin : rejouee, réponse identique', async () => {
+      const cle = randomUUID();
+      expect(etat((await reserver(client1, cle)).corps)).toBe('nouvelle');
+      expect(etat((await reserver(client1, cle)).corps)).toBe('en_cours');
+      const fin = await transition('terminer_cle_idempotence', client1, {
+        p_cle: cle,
+        p_code: 201,
+        p_corps: { urlPaiement: 'https://exemple.test/paiement' },
+      });
+      expect(fin.statut).toBe(204);
+      const rejouee = (await reserver(client1, cle)).corps as Reponse[];
+      expect(rejouee[0].etat).toBe('rejouee');
+      expect(rejouee[0].code_reponse).toBe(201);
+      expect(rejouee[0].corps_reponse).toEqual({ urlPaiement: 'https://exemple.test/paiement' });
+    });
+
+    it('même clé, autre requête : cle_idempotence_reutilisee', async () => {
+      const cle = randomUUID();
+      await reserver(client1, cle, 'offre-1');
+      const { corps } = await reserver(client1, cle, 'offre-2');
+      expect(messageDe(corps)).toBe('cle_idempotence_reutilisee');
+    });
+
+    it('en_cours abandonné depuis 6 minutes : reprise ; depuis 4 minutes : toujours en_cours', async () => {
+      const abandonnee = randomUUID();
+      await reserver(client1, abandonnee);
+      await reculer(abandonnee, 6);
+      expect(etat((await reserver(client1, abandonnee)).corps)).toBe('reprise');
+      // La reprise remet l'horloge à zéro : un second appel immédiat ne reprend pas encore.
+      expect(etat((await reserver(client1, abandonnee)).corps)).toBe('en_cours');
+
+      const recente = randomUUID();
+      await reserver(client1, recente);
+      await reculer(recente, 4);
+      expect(etat((await reserver(client1, recente)).corps)).toBe('en_cours');
+    });
+
+    // Corrigé en l'exécutant (P4.3) : la première version attendait non_authentifie sous
+    // service_role, alors que 0034 n'accorde EXECUTE qu'à authenticated (docs/backend.md §13) --
+    // l'appel est refusé plus tôt, par le grant, avant d'atteindre la garde. C'est ce refus-là
+    // que l'Edge Function rencontrerait si elle appelait avec le mauvais client. La garde
+    // « auth.uid() is null -> non_authentifie » reste une seconde barrière, qu'aucun appel
+    // PostgREST ne peut atteindre (anon n'a pas EXECUTE, authenticated a toujours un uid).
+    it('appelée sous service_role (sans jeton client) ou par anon : refus d’exécution', async () => {
+      const admin = await reserver('admin', randomUUID());
+      expect(JSON.stringify(admin.corps)).toMatch(/permission denied/i);
+      const anon = await reserver('anon', randomUUID());
+      expect(JSON.stringify(anon.corps)).toMatch(/permission denied/i);
+    });
+
+    it('la clé de client1 n’existe pas pour client2 : réservation indépendante, et client2 ne la termine pas', async () => {
+      const cle = randomUUID();
+      await reserver(client1, cle);
+      expect(etat((await reserver(client2, cle)).corps)).toBe('nouvelle');
+      const fin = await transition('terminer_cle_idempotence', client2, {
+        p_cle: cle,
+        p_code: 201,
+        p_corps: {},
+      });
+      expect(fin.statut).toBe(204); // termine SA clé à lui
+      expect(etat((await reserver(client1, cle)).corps)).toBe('en_cours'); // celle de client1 intacte
+    });
+
+    it('terminer une clé inconnue : cle_idempotence_inconnue', async () => {
+      const { corps } = await transition('terminer_cle_idempotence', client1, {
+        p_cle: randomUUID(),
+        p_code: 201,
+        p_corps: {},
+      });
+      expect(messageDe(corps)).toBe('cle_idempotence_inconnue');
+    });
+
+    it('aucune lecture directe de la table, pour aucun client', async () => {
+      const { statut } = await appelRest('/rest/v1/cles_idempotence?select=cle', {
+        session: client1,
+      });
+      expect(statut).toBeGreaterThanOrEqual(400);
     });
   });
 });

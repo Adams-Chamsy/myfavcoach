@@ -238,6 +238,15 @@ avec l'identification du coach en L5 (`docs/api.md` §8).
 appliquées. Aucune offre publiée avant L5 ne peut donc encaisser un euro réel sans être passée
 par la règle 2.
 
+**L'intention de souscription fige l'offre** (tranché le 28 septembre 2026, **appliqué en P4.5**,
+`docs/api.md` §7). L'intention créée au moment où le client choisit l'offre (04a) retient son
+titre et son prix. La souscription honore cette intention **même si l'offre a été retirée
+entretemps, tant que l'intention a moins de 30 minutes** — la durée de validité de la page de
+paiement. Le client a payé ce qu'on lui a montré : rembourser est pire que servir. **Retirer une
+offre ferme la vente future, jamais une vente en cours.** Au-delà de 30 minutes, ou pour une offre
+qui n'était pas publiée au moment de l'intention, la souscription est refusée
+(`offre_indisponible`).
+
 Une offre `retiree` reste facturée aux abonnés existants jusqu'à leur résiliation, mais
 n'apparaît plus à la vente. Le prix d'un abonnement est **figé au moment de la souscription** :
 un changement de prix ne s'applique qu'aux nouveaux abonnés.
@@ -251,7 +260,12 @@ y répond par la même écriture (`retireeLe`), jamais par une suppression de li
 
 `profilClient`, `profilCoach`, `offre`, `prixFigeCentimes`, `jourPrelevement` (1–28, jour de la
 souscription ; 29/30/31 ramenés à 28), `statut`, `debuteLe`, `prochainePrelevementLe`,
-`pauseJusquLe?`, `resilieLe?`, `finAccesLe?`, `actifDepuisLe?`.
+`pauseJusquLe?`, `dernierePauseLe?`, `resilieLe?`, `finAccesLe?`, `actifDepuisLe?`,
+`moyen` (`carte` | `sepa`), `referencePaiement` (serveur seulement, jamais lisible par
+l'application).
+
+`dernierePauseLe` (ajouté le 28 septembre 2026, P4.3) : jour de début de la dernière pause. Sans
+elle, « une fois par période de 12 mois » (§4.3) ne se vérifie pas.
 
 `actifDepuisLe` (ajouté le 28 septembre 2026) : date de la **première** entrée en `actif`,
 posée une seule fois, jamais recalculée — y compris après une pause, un impayé ou une
@@ -562,7 +576,7 @@ publier une offre ou encaisser, non, avant `verifiee`.
 en_attente_confirmation --(1er prélèvement confirmé)--> actif     [facture émise, ligne de commission]
 en_attente_confirmation --(1er prélèvement rejeté)--> annule      [aucune facture, rien débité]
 actif --(pause demandée)--> en_pause          [≤ 60 j, 1 fois / 12 mois]
-en_pause --(reprise ou échéance)--> actif
+en_pause --(reprise ou échéance)--> actif     [nouveau cycle depuis le jour de reprise]
 actif --(échec de prélèvement)--> impaye
 impaye --(paiement récupéré)--> actif
 impaye --(7 jours sans succès)--> suspendu
@@ -571,6 +585,7 @@ suspendu --(30 j)--> resilie
 actif --(résiliation client)--> resiliation_programmee
 resiliation_programmee --(fin de période payée)--> resilie
 resiliation_programmee --(annulation de la résiliation)--> actif
+en_pause|impaye|suspendu --(résiliation client)--> resilie   [effet le jour même, rien de plus facturé]
 actif --(coach part / offre supprimée par la plateforme)--> resilie [prorata remboursé]
 ```
 
@@ -593,7 +608,27 @@ Règles associées :
   conservée. La messagerie reste ouverte.
 - En `impaye`, **l'accès reste ouvert** (période de grâce, 7 jours). En `suspendu`, l'accès au
   contenu est coupé, la messagerie et les données personnelles restent accessibles.
-- La résiliation est toujours **en fin de période payée**, jamais immédiate.
+- **Reprise après pause** (tranché le 28 septembre 2026) : un cycle complet repart du jour de la
+  reprise — qu'elle soit demandée par le client ou atteinte à `pauseJusquLe`. `jourPrelevement`
+  est **recalculé sur ce jour**, borné à 28 comme à la souscription, et `prochainePrelevementLe`
+  vaut ce même jour : le nouveau cycle s'ouvre par son prélèvement (exécuté par la tâche
+  planifiée, P4.8), exactement comme la souscription ouvre le premier. Aucune période non servie
+  n'est facturée, et il n'y a qu'une règle à tenir.
+- La résiliation est toujours **en fin de période payée**, jamais avant — jamais de
+  remboursement d'une période commencée.
+  - Depuis `actif`, la période payée court encore : `resiliation_programmee`, `finAccesLe` = la
+    prochaine échéance, qui ne sera pas prélevée.
+  - **Depuis `en_pause`, `impaye` ou `suspendu`** (ajouté le 28 septembre 2026) : aucune période
+    payée n'est en cours de service — la pause l'a interrompue, ou la nouvelle n'a pas été payée.
+    La « fin de période payée » est donc déjà derrière : l'abonnement passe **directement à
+    `resilie`**, `finAccesLe` = le jour de la demande. Rien n'est facturé de plus : les relances
+    d'un `impaye` ou d'un `suspendu` s'arrêtent, l'échéance restée impayée n'est plus due.
+  - **Raison, qui n'est pas une question de juriste** : quelqu'un en pause, ou en difficulté de
+    paiement, qui ne pourrait pas résilier en ligne est exactement le cas que la loi interdit
+    (résiliation en ligne d'un contrat souscrit en ligne). Le reste de la question — parcours,
+    confirmation, accusé de réception — reste ouvert pour le juriste (`docs/perimetre.md` §6).
+  - `en_attente_confirmation` n'est pas dans la liste : aucune période n'a encore été payée ni
+    servie ; un rejet de la banque la clôt (`annule`).
 
 ### 4.4 Paiement d'une échéance
 
