@@ -220,7 +220,12 @@ anonymous_users = 30
 # Number of sessions that can be refreshed in a 5 minute interval per IP address.
 token_refresh = 150
 # Number of sign up and sign-in requests that can be made in a 5 minute interval per IP address (excludes anonymous users).
-sign_in_sign_ups = 30
+# Relevé de 30 à 150 le 28 septembre 2026 (docs/prompts/L4.md, après P4.3) : le banc RLS
+# (src/test/rls.banc.ts) connecte chaque compte qu'il crée par mot de passe, et en était à 29
+# connexions par exécution -- à une connexion du plafond par défaut. Ce fichier ne règle que la
+# pile LOCALE (supabase start, CI) ; le projet de développement distant se règle à part, dans
+# son tableau de bord (Authentication > Rate Limits).
+sign_in_sign_ups = 150
 # Number of OTP / Magic link verifications that can be made in a 5 minute interval per IP address.
 token_verifications = 30
 # Number of Web3 logins that can be made in a 5 minute interval per IP address.
