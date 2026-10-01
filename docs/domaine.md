@@ -263,6 +263,30 @@ offre ferme la vente future, jamais une vente en cours.** Au-delà de 30 minutes
 qui n'était pas publiée au moment de l'intention, la souscription est refusée
 (`offre_indisponible`).
 
+**Coach dont la vérification change entre l'intention et le paiement** (tranché le 30 septembre
+2026, révisé le 1er octobre 2026, avant la migration de P4.5). L'intention n'a pu être créée que
+pour un coach `verifiee` (§4.2). **Au paiement, seul `verifiee` est honoré.**
+
+Tout autre statut veut dire que la plateforme a écarté ce coach entre-temps : depuis `verifiee`,
+la machine §4.2 n'a qu'une sortie, `revoquee`. Un coach `en_examen` ou `complement_demande` au
+moment du paiement a donc **forcément été révoqué** après l'intention, puis a redéposé un
+dossier — ce n'est pas de la paperasse en cours. (Première rédaction du 30 septembre : honorer
+`en_examen` et `complement_demande` comme une offre retirée. Abandonnée parce qu'elle aurait donné
+un client à un coach révoqué qui avait simplement redéposé son dossier dans la demi-heure.)
+
+Dans tous ces cas (`revoquee`, `refusee`, `en_examen`, `complement_demande`), **l'abonnement
+n'est pas créé** : donner un client à quelqu'un qu'on vient d'écarter serait pire que rembourser.
+Le paiement reçu est **accepté quand même** par le serveur (réponse 200 au prestataire : jamais
+une boucle d'échecs, qui relivrerait l'événement pendant des jours sans rien changer) et le cas
+est enregistré comme **anomalie de paiement** (session, intention, motif `coach_ecarte`, date),
+que le rapprochement quotidien remonte (`docs/prompts/L4.md` point 12). **Le remboursement se
+fait à la main**, dans le tableau de bord du prestataire, au jalon 1 : aucun code de
+remboursement dans L4. Au constat, le client reçoit `souscription_impossible` (`docs/api.md` §7).
+
+La règle ne vaut que **tant qu'aucun abonnement n'existe pour ce paiement**. Un abonnement SEPA
+déjà créé en `en_attente_confirmation` suit sa propre machine (§4.3), même si le coach est révoqué
+avant la confirmation de la banque : cas non tranché, inscrit dans `docs/dette.md`.
+
 Une offre `retiree` reste facturée aux abonnés existants jusqu'à leur résiliation, mais
 n'apparaît plus à la vente. Le prix d'un abonnement est **figé au moment de la souscription** :
 un changement de prix ne s'applique qu'aux nouveaux abonnés.

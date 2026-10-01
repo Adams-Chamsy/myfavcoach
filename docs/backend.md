@@ -508,6 +508,28 @@ Deux conséquences, écrites plutôt que découvertes :
 - **Aucun fonds n'est retenu pour un coach qui ne peut pas le recevoir** : règle écrite dans
   `docs/domaine.md` §3.3 (condition de publication et de souscription), applicable en L5.
 
+### Un lien entre deux objets ne se déclare jamais par le client quand le serveur peut le poser
+
+Règle durable, pas une note de ce lot (écrite le 30 septembre 2026, trouvée en préparant P4.5).
+Quand deux objets doivent être reliés — une intention et la session de paiement qui la règle, un
+compte et l'invitation qui l'a amené, un abonnement et son paiement —, **le lien est posé par le
+serveur**, à partir de ce qu'il a lui-même créé ou relu chez une source de confiance, jamais
+reçu en paramètre d'une fonction que le client peut appeler. Le client ne fournit que
+l'identifiant de l'objet qui est à lui (et que le serveur revérifie comme sien).
+
+Raison : un client qui peut déclarer le lien peut déclarer **le mauvais**. Le cas trouvé : une
+fonction « rattacher cette session à mon intention », appelable avec le jeton du client, lui
+aurait permis d'y rattacher la session de paiement **réglée par quelqu'un d'autre** — et de
+recevoir l'abonnement à sa place. Le lien retenu : l'identifiant de l'intention est posé par le
+serveur dans les métadonnées de la session, avec la clé secrète du prestataire, puis relu chez
+le prestataire ; la fonction qui enregistre la session sur l'intention n'est accordée qu'au rôle
+serveur. Même famille que le lien compte → invitation (L3bis), posé par le déclencheur
+d'inscription à partir du jeton, jamais par une fonction appelée ensuite par le client.
+
+**À vérifier à chaque fonction accordée à `authenticated`** : si l'un de ses paramètres désigne
+un objet qui n'appartient pas à l'appelant (une session, un paiement, un autre compte), c'est ce
+défaut.
+
 ### Pas de Stripe Billing
 
 Aucun objet d'abonnement Stripe (`Subscription`, `Invoice` Stripe, relances automatiques Stripe).

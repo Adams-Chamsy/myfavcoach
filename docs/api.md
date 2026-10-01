@@ -270,6 +270,7 @@ POST /abonnements/intention/{intentionId}/constat     aucun corps, idempotent
 → 200 { "etat": "paiement_recu" }        // Stripe a le paiement, notre abonnement pas encore
 → 200 { "etat": "non_terminee", "urlPaiement": "…" }   // page quittée avant la fin, encore valable
 → 200 { "etat": "expiree" }              // page quittée, plus valable : nouvelle intention
+→ 200 { "etat": "souscription_impossible" }   // payé, mais coach écarté depuis l'intention
 ```
 
 Le serveur **ne se contente pas d'attendre le webhook** : il lit la session Checkout chez Stripe.
@@ -278,6 +279,12 @@ la même fonction, idempotent par identifiant de session (`docs/backend.md` §12
 deux qui arrive crée l'abonnement, le second ne fait rien. `paiement_recu` ne subsiste donc que si
 ce traitement échoue ou est en cours au même instant. Session encore ouverte → `non_terminee`,
 avec la même URL. Session expirée → `expiree`.
+
+`souscription_impossible` (ajouté le 1er octobre 2026, `docs/domaine.md` §3.3) : la session est
+payée, mais le coach n'est plus `verifiee` au moment du traitement. Aucun abonnement n'est créé,
+le paiement est enregistré comme anomalie et remboursé à la main. Le motif précis (révocation,
+refus) n'est jamais transmis au client : c'est une décision d'examen qui concerne le coach. Le
+texte affiché est à écrire avec les écrans de confirmation (P4.7).
 
 **`paiement_recu` et `non_terminee` ne sont pas des états d'abonnement** : aucun abonnement
 n'existe encore. À ne jamais confondre avec `en_attente_confirmation` (SEPA,
