@@ -4737,3 +4737,604 @@ describe('abonnements — L4 (0033)', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+// Intentions et synchronisation d'une session de paiement — L4, P4.5a
+// (0037_creer_intentions_et_evenements.sql ; docs/api.md §7 ; docs/backend.md §12, §13 ;
+// docs/domaine.md §3.3)
+// ---------------------------------------------------------------------------------------------
+
+// Aucun appel au prestataire ici : synchroniser_session_paiement reçoit l'état de la session tel
+// que l'Edge Function (P4.5b) l'aura relu chez lui. Le banc joue ce rôle, en service_role, avec
+// des identifiants d'événement et de session inventés : c'est la fonction SQL qu'on prouve, pas
+// le prestataire.
+//
+// Aucune connexion de plus (plafond du projet de développement, docs/dette.md) : les clients sont
+// A et B, déjà connectés par le beforeAll global ; les deux coachs sont créés par l'API
+// d'administration, sans connexion. Règle 13 (docs/prompts/L4.md) : ce bloc ne suppose rien de
+// l'état que d'autres blocs ont donné à A et B -- il crée leur profil client s'il manque et les
+// bascule lui-même en espace client.
+describe('intentions et synchronisation — L4 (0037)', () => {
+  let coachCompteId: string;
+  let coachEcarteCompteId: string;
+  let offreId: string;
+  let offreBrouillonId: string;
+  let offreCoachEcarteId: string;
+  let profilCoachEcarteId: string;
+  let profilClientA: string;
+
+  // Uniques par exécution : la même base de développement garde les lignes des exécutions
+  // précédentes (evenements_prestataire n'a aucune clé étrangère vers un compte supprimé).
+  const evenement = (nom: string): string => `evt_banc_${SUFFIXE_COMPTE}_${nom}`;
+  const sessionPaiement = (nom: string): string => `cs_banc_${SUFFIXE_COMPTE}_${nom}`;
+
+  async function creerCoachVerifie(suffixe: string): Promise<{ compte: string; profil: string }> {
+    const creation = await fetch(`${API_URL}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: {
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-${suffixe}@${DOMAINE_EMAIL}`,
+        password: MOT_DE_PASSE,
+        email_confirm: true,
+        user_metadata: { date_naissance: '1988-01-01', cgu_version_acceptee: '2026-08-01' },
+      }),
+    });
+    if (!creation.ok) throw new Error(`Préparation du banc : coach refusé (${creation.status})`);
+    const compte = ((await creation.json()) as { id: string }).id;
+    const profil = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { compte_id: compte, prenom: 'Intention', nom: 'Coach', discipline: 'yoga' },
+    });
+    if (profil.statut >= 400) throw new Error(`Préparation du banc : profil coach refusé`);
+    const profilId = (profil.corps as { id: string }[])[0].id;
+    await poserStatutCoach(profilId, 'verifiee');
+    return { compte, profil: profilId };
+  }
+
+  async function poserStatutCoach(profilCoachId: string, statut: string): Promise<void> {
+    const { statut: http } = await appelRest(`/rest/v1/profils_coach?id=eq.${profilCoachId}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { statut_verification: statut },
+    });
+    if (http >= 400) throw new Error(`Préparation du banc : statut ${statut} refusé (${http})`);
+  }
+
+  async function insererOffre(coachId: string, publieeLe: string | null): Promise<string> {
+    const { statut, corps } = await appelRest('/rest/v1/offres', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        coach_id: coachId,
+        titre: 'Suivi intention',
+        prix_centimes: 4900,
+        benefices: ['Programme', 'Visio', 'Messages'],
+        engagement_humain: ['ajustement_hebdomadaire'],
+        publiee_le: publieeLe,
+      },
+    });
+    if (statut >= 400) throw new Error(`Préparation du banc : offre refusée (${statut})`);
+    return (corps as { id: string }[])[0].id;
+  }
+
+  // Profil client présent et espace client actif, créés par la session du compte elle-même (le
+  // chemin légitime), jamais par service_role.
+  async function assurerEspaceClient(session: Session, prenom: string): Promise<string> {
+    const lu = await appelRest(
+      `/rest/v1/profils_client?compte_id=eq.${session.compteId}&select=id`,
+      { session: 'admin' },
+    );
+    let id = (lu.corps as { id: string }[])[0]?.id;
+    if (!id) {
+      const cree = await appelRest('/rest/v1/profils_client', {
+        methode: 'POST',
+        session,
+        corps: { compte_id: session.compteId, prenom, nom: 'Banc' },
+      });
+      if (cree.statut >= 400) throw new Error(`Préparation du banc : profil client refusé`);
+      id = (cree.corps as { id: string }[])[0].id;
+    }
+    const bascule = await appelRest('/rest/v1/rpc/basculer_profil', {
+      methode: 'POST',
+      session,
+      corps: { profil: 'client' },
+    });
+    if (bascule.statut !== 200) throw new Error(`Préparation du banc : bascule client refusée`);
+    return id;
+  }
+
+  async function creerIntention(
+    session: Appelant,
+    offre: string,
+  ): Promise<{ statut: number; corps: unknown }> {
+    return appelRest('/rest/v1/rpc/creer_intention_souscription', {
+      methode: 'POST',
+      session,
+      corps: { p_offre_id: offre },
+    });
+  }
+
+  async function nouvelleIntention(offre: string = offreId): Promise<string> {
+    const { statut, corps } = await creerIntention(A, offre);
+    if (statut !== 200) throw new Error(`Préparation du banc : intention refusée (${statut})`);
+    return (corps as { intention_id: string }[])[0].intention_id;
+  }
+
+  async function attacher(
+    intention: string,
+    session: string,
+    appelant: Appelant = 'admin',
+  ): Promise<{ statut: number; corps: unknown }> {
+    return appelRest('/rest/v1/rpc/attacher_session_intention', {
+      methode: 'POST',
+      session: appelant,
+      corps: { p_intention_id: intention, p_session: session },
+    });
+  }
+
+  type EtatSession = {
+    intention: string;
+    session: string;
+    evenement?: string | null;
+    statut?: 'open' | 'complete' | 'expired';
+    recu?: boolean;
+    echoue?: boolean;
+    moyen?: 'carte' | 'sepa';
+    montant?: number;
+    appelant?: Appelant;
+  };
+
+  // Valeurs par défaut : une carte payée, livrée par le constat (aucun identifiant d'événement).
+  async function synchroniser(etat: EtatSession): Promise<{ statut: number; corps: unknown }> {
+    return appelRest('/rest/v1/rpc/synchroniser_session_paiement', {
+      methode: 'POST',
+      session: etat.appelant ?? 'admin',
+      corps: {
+        p_evenement_id: etat.evenement ?? null,
+        p_evenement_type: 'checkout.session.completed',
+        p_intention_id: etat.intention,
+        p_session: etat.session,
+        p_statut_session: etat.statut ?? 'complete',
+        p_paiement_recu: etat.recu ?? true,
+        p_paiement_echoue: etat.echoue ?? false,
+        p_moyen: etat.moyen ?? 'carte',
+        p_montant_centimes: etat.montant ?? 4900,
+        p_client_prestataire: 'cus_banc',
+      },
+    });
+  }
+
+  async function compter(table: string, filtre: string): Promise<number> {
+    const { corps } = await appelRest(`/rest/v1/${table}?${filtre}&select=*`, {
+      session: 'admin',
+    });
+    return (corps as unknown[]).length;
+  }
+
+  async function abonnementsDe(session: string): Promise<{ id: string; statut: string }[]> {
+    const { corps } = await appelRest(
+      `/rest/v1/abonnements?reference_paiement=eq.${session}&select=id,statut`,
+      { session: 'admin' },
+    );
+    return corps as { id: string; statut: string }[];
+  }
+
+  async function lignesCommissionDe(session: string): Promise<number> {
+    const { corps } = await appelRest(
+      `/rest/v1/factures?reference_prestataire=eq.${session}&select=id`,
+      { session: 'admin' },
+    );
+    const factures = corps as { id: string }[];
+    if (factures.length === 0) return 0;
+    return compter('lignes_commission', `facture_id=in.(${factures.map((f) => f.id).join(',')})`);
+  }
+
+  beforeAll(async () => {
+    const coach = await creerCoachVerifie('int-coach');
+    coachCompteId = coach.compte;
+    const hier = new Date(Date.now() - 86_400_000).toISOString();
+    offreId = await insererOffre(coach.profil, hier);
+    offreBrouillonId = await insererOffre(coach.profil, null);
+
+    const ecarte = await creerCoachVerifie('int-coach-ecarte');
+    coachEcarteCompteId = ecarte.compte;
+    profilCoachEcarteId = ecarte.profil;
+    offreCoachEcarteId = await insererOffre(ecarte.profil, hier);
+
+    profilClientA = await assurerEspaceClient(A, 'ClientIntention');
+    await assurerEspaceClient(B, 'AutreClient');
+  }, 60_000);
+
+  afterAll(async () => {
+    if (coachCompteId) await supprimerCompteReel(coachCompteId);
+    if (coachEcarteCompteId) await supprimerCompteReel(coachEcarteCompteId);
+    // A et B : supprimés par l'afterAll global.
+  }, 30_000);
+
+  describe('creer_intention_souscription : le client, avec son jeton', () => {
+    it('anon ne peut pas créer d’intention', async () => {
+      const { statut, corps } = await creerIntention('anon', offreId);
+      expect(statut).toBeGreaterThanOrEqual(400);
+      expect(JSON.stringify(corps)).toMatch(/permission denied/i);
+    });
+
+    it('fige le titre et le prix, expire dans 30 minutes, au nom du profil client appelant', async () => {
+      const avant = Date.now();
+      const { statut, corps } = await creerIntention(A, offreId);
+      expect(statut).toBe(200);
+      const ligne = (
+        corps as {
+          intention_id: string;
+          titre: string;
+          prix_centimes: number;
+          jour_prelevement: number;
+          expire_le: string;
+        }[]
+      )[0];
+      expect(ligne.titre).toBe('Suivi intention');
+      expect(ligne.prix_centimes).toBe(4900);
+      expect(ligne.jour_prelevement).toBeGreaterThanOrEqual(1);
+      expect(ligne.jour_prelevement).toBeLessThanOrEqual(28);
+      const minutes = (new Date(ligne.expire_le).getTime() - avant) / 60_000;
+      expect(minutes).toBeGreaterThan(29);
+      expect(minutes).toBeLessThan(31);
+
+      const { corps: stocke } = await appelRest(
+        `/rest/v1/intentions_souscription?id=eq.${ligne.intention_id}&select=profil_client_id,titre_fige,prix_fige_centimes,session_prestataire`,
+        { session: 'admin' },
+      );
+      expect(stocke).toEqual([
+        {
+          profil_client_id: profilClientA,
+          titre_fige: 'Suivi intention',
+          prix_fige_centimes: 4900,
+          session_prestataire: null,
+        },
+      ]);
+    });
+
+    it('une offre en brouillon : offre_indisponible, avant toute page de paiement', async () => {
+      const { corps } = await creerIntention(A, offreBrouillonId);
+      expect(messageDe(corps)).toBe('offre_indisponible');
+    });
+
+    it('le client ne lit pas directement la table des intentions, même la sienne', async () => {
+      const { statut, corps } = await appelRest('/rest/v1/intentions_souscription?select=id', {
+        session: A,
+      });
+      expect(statut).toBeGreaterThanOrEqual(400);
+      expect(JSON.stringify(corps)).toMatch(/permission denied/i);
+    });
+  });
+
+  describe('mon_intention : seulement la sienne', () => {
+    it('A lit son intention', async () => {
+      const intention = await nouvelleIntention();
+      const { statut, corps } = await appelRest('/rest/v1/rpc/mon_intention', {
+        methode: 'POST',
+        session: A,
+        corps: { p_intention_id: intention },
+      });
+      expect(statut).toBe(200);
+      expect((corps as { session_prestataire: string | null }[])[0].session_prestataire).toBe(null);
+    });
+
+    // Sens illégitime. B est en espace client, avec un profil client (beforeAll) : le refus
+    // vient de la propriété de l'intention, pas du contrôle d'espace (règle 9).
+    it('B ne lit pas l’intention de A : intention_introuvable', async () => {
+      const intention = await nouvelleIntention();
+      const { corps } = await appelRest('/rest/v1/rpc/mon_intention', {
+        methode: 'POST',
+        session: B,
+        corps: { p_intention_id: intention },
+      });
+      expect(messageDe(corps)).toBe('intention_introuvable');
+    });
+  });
+
+  // docs/backend.md §13 : un lien entre deux objets ne se déclare jamais par le client quand le
+  // serveur peut le poser. Un client qui pourrait attacher une session à SON intention y
+  // attacherait la session payée par quelqu'un d'autre, et recevrait l'abonnement à sa place.
+  describe('le lien intention <-> session ne vient jamais du client', () => {
+    it('A ne peut pas attacher une session à son intention', async () => {
+      const intention = await nouvelleIntention();
+      const { statut, corps } = await attacher(intention, sessionPaiement('volee'), A);
+      expect(statut).toBeGreaterThanOrEqual(400);
+      expect(JSON.stringify(corps)).toMatch(/permission denied/i);
+    });
+
+    it('A ne peut pas synchroniser une session payée vers son intention', async () => {
+      const intention = await nouvelleIntention();
+      const { statut, corps } = await synchroniser({
+        intention,
+        session: sessionPaiement('volee-2'),
+        appelant: A,
+      });
+      expect(statut).toBeGreaterThanOrEqual(400);
+      expect(JSON.stringify(corps)).toMatch(/permission denied/i);
+      expect(await abonnementsDe(sessionPaiement('volee-2'))).toEqual([]);
+    });
+
+    it('le serveur pose la session une fois ; la même pose ne change rien, une autre lève', async () => {
+      const intention = await nouvelleIntention();
+      expect((await attacher(intention, sessionPaiement('pose'))).statut).toBe(204);
+      expect((await attacher(intention, sessionPaiement('pose'))).statut).toBe(204);
+      const autre = await attacher(intention, sessionPaiement('pose-autre'));
+      expect(messageDe(autre.corps)).toBe('session_incoherente');
+    });
+
+    it('synchroniser une autre session que celle posée : session_incoherente, rien d’écrit', async () => {
+      const intention = await nouvelleIntention();
+      await attacher(intention, sessionPaiement('posee'));
+      const { corps } = await synchroniser({
+        intention,
+        session: sessionPaiement('pas-la-bonne'),
+        evenement: evenement('pas-la-bonne'),
+      });
+      expect(messageDe(corps)).toBe('session_incoherente');
+      expect(await abonnementsDe(sessionPaiement('pas-la-bonne'))).toEqual([]);
+      // L'identifiant d'événement est annulé avec le reste : la relivraison sera retraitée.
+      expect(await compter('evenements_prestataire', `id=eq.${evenement('pas-la-bonne')}`)).toBe(0);
+    });
+  });
+
+  describe('synchroniser_session_paiement : webhook et constat, une seule fonction', () => {
+    it('session encore ouverte : non_terminee ; expirée : expiree ; aucun abonnement', async () => {
+      const ouverte = await nouvelleIntention();
+      const r1 = await synchroniser({
+        intention: ouverte,
+        session: sessionPaiement('ouverte'),
+        statut: 'open',
+        recu: false,
+      });
+      expect(r1.corps).toBe('non_terminee');
+      const expiree = await nouvelleIntention();
+      const r2 = await synchroniser({
+        intention: expiree,
+        session: sessionPaiement('expiree'),
+        statut: 'expired',
+        recu: false,
+      });
+      expect(r2.corps).toBe('expiree');
+      expect(await abonnementsDe(sessionPaiement('ouverte'))).toEqual([]);
+      expect(await abonnementsDe(sessionPaiement('expiree'))).toEqual([]);
+    });
+
+    it('le même événement signé livré deux fois : une facture, une ligne de commission', async () => {
+      const intention = await nouvelleIntention();
+      const s = sessionPaiement('doublon');
+      const premier = await synchroniser({
+        intention,
+        session: s,
+        evenement: evenement('doublon'),
+      });
+      const second = await synchroniser({ intention, session: s, evenement: evenement('doublon') });
+      expect(premier.corps).toBe('abonne');
+      expect(second.corps).toBe('deja_traite');
+      expect(await abonnementsDe(s)).toEqual([expect.objectContaining({ statut: 'actif' })]);
+      expect(await compter('factures', `reference_prestataire=eq.${s}`)).toBe(1);
+      expect(await lignesCommissionDe(s)).toBe(1);
+      expect(await compter('evenements_prestataire', `id=eq.${evenement('doublon')}`)).toBe(1);
+    });
+
+    it('deux événements DIFFÉRENTS pour la même session : toujours un seul abonnement', async () => {
+      const intention = await nouvelleIntention();
+      const s = sessionPaiement('deux-evenements');
+      await synchroniser({ intention, session: s, evenement: evenement('de-1') });
+      const second = await synchroniser({ intention, session: s, evenement: evenement('de-2') });
+      expect(second.corps).toBe('abonne');
+      expect(await abonnementsDe(s)).toHaveLength(1);
+      expect(await compter('factures', `reference_prestataire=eq.${s}`)).toBe(1);
+    });
+
+    it('constat puis webhook, webhook puis constat : un seul abonnement chaque fois', async () => {
+      const i1 = await nouvelleIntention();
+      const s1 = sessionPaiement('constat-dabord');
+      await synchroniser({ intention: i1, session: s1 });
+      await synchroniser({ intention: i1, session: s1, evenement: evenement('constat-dabord') });
+      const i2 = await nouvelleIntention();
+      const s2 = sessionPaiement('webhook-dabord');
+      await synchroniser({ intention: i2, session: s2, evenement: evenement('webhook-dabord') });
+      await synchroniser({ intention: i2, session: s2 });
+      expect(await abonnementsDe(s1)).toHaveLength(1);
+      expect(await abonnementsDe(s2)).toHaveLength(1);
+      expect(await compter('factures', `reference_prestataire=eq.${s1}`)).toBe(1);
+      expect(await compter('factures', `reference_prestataire=eq.${s2}`)).toBe(1);
+    });
+
+    it('un montant différent du prix figé : montant_incoherent, rien d’écrit', async () => {
+      const intention = await nouvelleIntention();
+      const s = sessionPaiement('montant');
+      const { corps } = await synchroniser({
+        intention,
+        session: s,
+        montant: 100,
+        evenement: evenement('montant'),
+      });
+      expect(messageDe(corps)).toBe('montant_incoherent');
+      expect(await abonnementsDe(s)).toEqual([]);
+      expect(await compter('evenements_prestataire', `id=eq.${evenement('montant')}`)).toBe(0);
+    });
+
+    it('une intention inconnue lève (le webhook répondra 500, le prestataire relivrera)', async () => {
+      const { corps } = await synchroniser({
+        intention: randomUUID(),
+        session: sessionPaiement('inconnue'),
+        evenement: evenement('inconnue'),
+      });
+      expect(messageDe(corps)).toBe('intention_inconnue');
+      expect(await compter('evenements_prestataire', `id=eq.${evenement('inconnue')}`)).toBe(0);
+    });
+
+    // docs/backend.md §12, règle 2 : aucun ordre d'arrivée supposé. Les événements en retard
+    // portent ici un état ANCIEN (non payé) -- le cas le plus défavorable : l'Edge Function
+    // relira l'état courant, mais la fonction SQL ne doit pas reculer même si elle ne le fait pas.
+    describe('SEPA : même état final dans l’ordre naturel et dans l’ordre inverse', () => {
+      it('ordre naturel : mandat (en_attente), puis prélèvement réussi (actif)', async () => {
+        const intention = await nouvelleIntention();
+        const s = sessionPaiement('sepa-naturel');
+        await synchroniser({
+          intention,
+          session: s,
+          moyen: 'sepa',
+          recu: false,
+          evenement: evenement('sepa-naturel-1'),
+        });
+        expect(await abonnementsDe(s)).toEqual([
+          expect.objectContaining({ statut: 'en_attente_confirmation' }),
+        ]);
+        await synchroniser({
+          intention,
+          session: s,
+          moyen: 'sepa',
+          recu: true,
+          evenement: evenement('sepa-naturel-2'),
+        });
+        expect(await abonnementsDe(s)).toEqual([expect.objectContaining({ statut: 'actif' })]);
+      });
+
+      it('ordre inverse : prélèvement réussi d’abord, puis le mandat en retard -> actif', async () => {
+        const intention = await nouvelleIntention();
+        const s = sessionPaiement('sepa-inverse');
+        await synchroniser({
+          intention,
+          session: s,
+          moyen: 'sepa',
+          recu: true,
+          evenement: evenement('sepa-inverse-2'),
+        });
+        await synchroniser({
+          intention,
+          session: s,
+          moyen: 'sepa',
+          recu: false,
+          evenement: evenement('sepa-inverse-1'),
+        });
+        expect(await abonnementsDe(s)).toEqual([expect.objectContaining({ statut: 'actif' })]);
+        expect(await compter('factures', `reference_prestataire=eq.${s}`)).toBe(1);
+      });
+
+      it('un échec livré après le succès du même prélèvement : toujours actif', async () => {
+        const intention = await nouvelleIntention();
+        const s = sessionPaiement('sepa-echec-tardif');
+        await synchroniser({ intention, session: s, moyen: 'sepa', recu: true });
+        const { statut } = await synchroniser({
+          intention,
+          session: s,
+          moyen: 'sepa',
+          recu: false,
+          echoue: true,
+          evenement: evenement('sepa-echec-tardif'),
+        });
+        expect(statut).toBe(200);
+        expect(await abonnementsDe(s)).toEqual([expect.objectContaining({ statut: 'actif' })]);
+      });
+
+      it('rejet avant le mandat, puis le mandat en retard : annule, sans facture', async () => {
+        const intention = await nouvelleIntention();
+        const s = sessionPaiement('sepa-rejet');
+        await synchroniser({
+          intention,
+          session: s,
+          moyen: 'sepa',
+          recu: false,
+          echoue: true,
+          evenement: evenement('sepa-rejet-2'),
+        });
+        await synchroniser({
+          intention,
+          session: s,
+          moyen: 'sepa',
+          recu: false,
+          evenement: evenement('sepa-rejet-1'),
+        });
+        expect(await abonnementsDe(s)).toEqual([expect.objectContaining({ statut: 'annule' })]);
+        expect(await compter('factures', `reference_prestataire=eq.${s}`)).toBe(0);
+      });
+    });
+  });
+
+  // docs/domaine.md §3.3 (révisé le 1er octobre 2026) : au paiement, seul 'verifiee' est honoré.
+  // Les quatre intentions sont créées pendant que le coach est encore vérifié (seul cas où
+  // creer_intention_souscription l'accepte) ; chaque test pose ensuite le statut qu'il exerce.
+  describe('coach écarté entre l’intention et le paiement (§3.3)', () => {
+    const statutsEcartes = ['revoquee', 'refusee', 'en_examen', 'complement_demande'] as const;
+    const intentions: Record<string, string> = {};
+    let intentionSepa: string;
+
+    beforeAll(async () => {
+      await poserStatutCoach(profilCoachEcarteId, 'verifiee');
+      for (const statut of statutsEcartes) {
+        intentions[statut] = await nouvelleIntention(offreCoachEcarteId);
+      }
+      intentionSepa = await nouvelleIntention(offreCoachEcarteId);
+    }, 30_000);
+
+    it.each(statutsEcartes)(
+      'coach %s : accepté (200), aucun abonnement, une anomalie coach_ecarte',
+      async (statutCoach) => {
+        await poserStatutCoach(profilCoachEcarteId, statutCoach);
+        const s = sessionPaiement(`ecarte-${statutCoach}`);
+        const { statut, corps } = await synchroniser({
+          intention: intentions[statutCoach],
+          session: s,
+          evenement: evenement(`ecarte-${statutCoach}`),
+        });
+        expect(statut).toBe(200);
+        expect(corps).toBe('coach_ecarte');
+        expect(await abonnementsDe(s)).toEqual([]);
+        const { corps: anomalies } = await appelRest(
+          `/rest/v1/anomalies_paiement?session_prestataire=eq.${s}&select=intention_id,motif,statut_coach_constate`,
+          { session: 'admin' },
+        );
+        expect(anomalies).toEqual([
+          {
+            intention_id: intentions[statutCoach],
+            motif: 'coach_ecarte',
+            statut_coach_constate: statutCoach,
+          },
+        ]);
+        // L'événement est mémorisé : accepté une fois pour toutes, jamais relivré en boucle.
+        expect(
+          await compter('evenements_prestataire', `id=eq.${evenement(`ecarte-${statutCoach}`)}`),
+        ).toBe(1);
+      },
+    );
+
+    it('un second événement pour la même session : toujours une seule anomalie', async () => {
+      await poserStatutCoach(profilCoachEcarteId, 'revoquee');
+      const s = sessionPaiement('ecarte-revoquee');
+      const { corps } = await synchroniser({
+        intention: intentions.revoquee,
+        session: s,
+        evenement: evenement('ecarte-revoquee-bis'),
+      });
+      expect(corps).toBe('coach_ecarte');
+      expect(await compter('anomalies_paiement', `session_prestataire=eq.${s}`)).toBe(1);
+    });
+
+    // Règle 8 : ce test deviendra faux quand docs/dette.md (« abonnement SEPA en
+    // en_attente_confirmation dont le coach est révoqué ») sera tranché, en L5. Il fige le
+    // comportement actuel, documenté, pour qu'un changement soit une décision et pas un accident.
+    it('abonnement SEPA déjà créé, coach révoqué ensuite : la confirmation passe (dette L5)', async () => {
+      await poserStatutCoach(profilCoachEcarteId, 'verifiee');
+      const s = sessionPaiement('ecarte-sepa');
+      await synchroniser({ intention: intentionSepa, session: s, moyen: 'sepa', recu: false });
+      await poserStatutCoach(profilCoachEcarteId, 'revoquee');
+      const { corps } = await synchroniser({
+        intention: intentionSepa,
+        session: s,
+        moyen: 'sepa',
+        recu: true,
+      });
+      expect(corps).toBe('abonne');
+      expect(await abonnementsDe(s)).toEqual([expect.objectContaining({ statut: 'actif' })]);
+      expect(await compter('anomalies_paiement', `session_prestataire=eq.${s}`)).toBe(0);
+    });
+  });
+});
