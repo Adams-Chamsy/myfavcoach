@@ -200,6 +200,8 @@ describe('secrets interdits côté application', () => {
   //   - supabase/migrations/0034_creer_cles_idempotence.sql : grants service_role (banc, purge) et commentaires qui expliquent pourquoi les deux fonctions refusent un appel sous ce rôle (auth.uid() nul, docs/backend.md §12)
   //   - supabase/migrations/0036_creer_factures_commissions_tentatives.sql : grants service_role (select sur les pièces comptables et les tentatives pour le banc, update d'une seule colonne de profils_coach pour prouver la bascule au jour 90) et réaffirmation des droits des deux fonctions de 0033 qu'elle remplace
   //   - supabase/migrations/0037_creer_intentions_et_evenements.sql : grants service_role (select sur les intentions, les événements du prestataire et les anomalies pour le banc) et EXECUTE des deux fonctions réservées au serveur (pose de la session sur l'intention, synchronisation partagée webhook/constat) -- jamais à authenticated, le lien intention <-> session ne vient jamais du client (docs/backend.md §13)
+  //   - supabase/migrations/0038_reclasser_refus_webhook.sql : réaffirmation des droits des deux fonctions qu'elle remplace (service_role seul) et EXECUTE de enregistrer_anomalie_paiement, réservée au serveur
+  //   - supabase/functions/_partage/environnement.ts et postgres.ts : le NOM de la variable SUPABASE_SERVICE_ROLE_KEY, injectée par Supabase dans l'environnement de chaque Edge Function et lue par Deno.env.get au moment de la requête (docs/backend.md §12, cas 2) -- jamais une valeur, jamais dans le paquet mobile
   //   - src/test/conventions-grants-migrations.test.ts : balaie supabase/migrations/ pour vérifier que chaque revoke nomme explicitement "service_role" avant un grant à anon/authenticated — le rôle apparaît en donnée de test (littéraux SQL écrits exprès, fautifs et corrects) et dans la liste des rôles requis, jamais comme une clé
   //   - docs/prompts/L3bis.md : règle 11 (cumulative) nomme "service_role" pour que le trou récurrent ci-dessus devienne une règle de conduite, pas une note qui ne survit qu'à ma mémoire
   //   - docs/prompts/L4.md : règle 12 (cumulative) nomme "service_role" pour la même raison, et le point 3 de tête de fichier explique que le webhook Stripe s'authentifie contre Postgres par ce même rôle
@@ -237,6 +239,9 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0034_creer_cles_idempotence.sql',
       'supabase/migrations/0036_creer_factures_commissions_tentatives.sql',
       'supabase/migrations/0037_creer_intentions_et_evenements.sql',
+      'supabase/migrations/0038_reclasser_refus_webhook.sql',
+      'supabase/functions/_partage/environnement.ts',
+      'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',
       'docs/prompts/L4.md',
       'docs/dette.md',

@@ -3796,7 +3796,6 @@ describe('abonnements — L4 (0033)', () => {
   let coachCompteId: string;
   let profilCoachId: string;
   let offreId: string;
-  let offreBrouillonId: string;
   let offreRetireeId: string;
   let offreCoachNonVerifieId: string;
   let profilClientDuCoachId: string;
@@ -3917,7 +3916,6 @@ describe('abonnements — L4 (0033)', () => {
     });
     const hier = new Date(Date.now() - 86_400_000).toISOString();
     offreId = await insererOffre(profilCoachId, { publiee_le: hier });
-    offreBrouillonId = await insererOffre(profilCoachId, { publiee_le: null });
     offreRetireeId = await insererOffre(profilCoachId, {
       publiee_le: hier,
       retiree_le: new Date().toISOString(),
@@ -4075,20 +4073,12 @@ describe('abonnements — L4 (0033)', () => {
       expect(messageDe(confirmation.corps)).toBe('transition_interdite');
     });
 
-    it('une offre en brouillon ne se souscrit pas : offre_indisponible', async () => {
-      const { corps } = await souscrire(
-        profilClient1,
-        offreBrouillonId,
-        'carte',
-        reference('brouillon'),
-      );
-      expect(messageDe(corps)).toBe('offre_indisponible');
-    });
-
-    // docs/domaine.md §3.3 (tranché le 28 septembre 2026) : l'intention fige l'offre. L'offre de
-    // ce test a été retirée « maintenant » (beforeAll) : une intention créée avant ce retrait, il
-    // y a moins de 30 minutes, reste honorée ; une intention créée après le retrait, ou trop
-    // ancienne, ne l'est pas.
+    // docs/domaine.md §3.3 (révisé le 3 octobre 2026, 0038) : l'intention fige l'offre, et
+    // l'offre n'est vérifiée QU'À la création de l'intention (brouillon, retrait : banc de 0037,
+    // creer_intention_souscription). Un paiement encaissé est honoré quel que soit l'état présent
+    // de l'offre et le délai avant son traitement. Deux tests de P4.3 ont été retirés avec la
+    // règle qu'ils prouvaient (« brouillon -> offre_indisponible » et « intention créée après le
+    // retrait -> offre_indisponible » au paiement) ; celui des 31 minutes est inversé.
     describe('offre retirée entre l’intention et le paiement (§3.3)', () => {
       const ilYa = (minutes: number): string =>
         new Date(Date.now() - minutes * 60_000).toISOString();
@@ -4106,20 +4096,11 @@ describe('abonnements — L4 (0033)', () => {
         expect((await lire(corps as string)).statut).toBe('actif');
       });
 
-      it('intention créée APRÈS le retrait : offre_indisponible', async () => {
-        const { corps } = await souscrire(
-          profilClient1,
-          offreRetireeId,
-          'carte',
-          reference('retiree-apres'),
-          'admin',
-          new Date(Date.now() + 1000).toISOString(),
-        );
-        expect(messageDe(corps)).toBe('offre_indisponible');
-      });
-
-      it('intention de plus de 30 minutes sur une offre retirée depuis : offre_indisponible', async () => {
-        const { corps } = await souscrire(
+      // Le cas qui bouclait avant 0038 : un événement relivré plus de 30 minutes après
+      // l'intention, pour une offre retirée entre-temps, levait offre_indisponible -> 5xx ->
+      // relivré pendant des jours, sans jamais pouvoir passer.
+      it('paiement traité plus de 30 minutes après l’intention, offre retirée depuis : honoré', async () => {
+        const { statut, corps } = await souscrire(
           profilClient1,
           offreRetireeId,
           'carte',
@@ -4127,7 +4108,8 @@ describe('abonnements — L4 (0033)', () => {
           'admin',
           ilYa(31),
         );
-        expect(messageDe(corps)).toBe('offre_indisponible');
+        expect(statut).toBe(200);
+        expect((await lire(corps as string)).statut).toBe('actif');
       });
 
       it('sans date d’intention : intention_requise', async () => {
@@ -4183,7 +4165,9 @@ describe('abonnements — L4 (0033)', () => {
       const lecture1 = await appelRest('/rest/v1/abonnements?select=id', { session: client1 });
       const ids1 = (lecture1.corps as { id: string }[]).map((l) => l.id);
       expect(ids1).toContain(abonnement1);
-      expect(ids1).toHaveLength(2); // abonnement1 et l'abonnement honoré sur l'offre retirée
+      // abonnement1 et les deux abonnements honorés sur l'offre retirée (moins de 30 minutes, et
+      // plus de 30 minutes depuis 0038 : l'offre n'est plus revérifiée au paiement).
+      expect(ids1).toHaveLength(3);
       const lecture2 = await appelRest('/rest/v1/abonnements?select=id', { session: client2 });
       const ids2 = (lecture2.corps as { id: string }[]).map((l) => l.id);
       expect(ids2).toHaveLength(2);
@@ -4435,9 +4419,15 @@ describe('abonnements — L4 (0033)', () => {
         `${annee()}-000001`,
         `${annee()}-000002`,
         `${annee()}-000003`,
+        `${annee()}-000004`,
       ]);
       expect(factures.map((f) => f.reference_prestataire).sort()).toEqual(
-        [reference('carte-2'), reference('retiree-honoree'), reference('sepa-1')].sort(),
+        [
+          reference('carte-2'),
+          reference('retiree-honoree'),
+          reference('retiree-vieille'), // honoré depuis 0038
+          reference('sepa-1'),
+        ].sort(),
       );
       expect(await factureDe(reference('sepa-rejet'))).toBeUndefined();
     });
@@ -4522,7 +4512,7 @@ describe('abonnements — L4 (0033)', () => {
       ]);
       // La série du premier coach, elle, a continué sans trou et sans emprunt.
       expect((await facturesDuCoach(profilCoachId)).map((f) => f.numero)).toEqual(
-        [1, 2, 3, 4, 5, 6].map((n) => `${annee()}-00000${n}`),
+        [1, 2, 3, 4, 5, 6, 7].map((n) => `${annee()}-00000${n}`),
       );
     });
 
@@ -4754,7 +4744,7 @@ describe('abonnements — L4 (0033)', () => {
 // d'administration, sans connexion. Règle 13 (docs/prompts/L4.md) : ce bloc ne suppose rien de
 // l'état que d'autres blocs ont donné à A et B -- il crée leur profil client s'il manque et les
 // bascule lui-même en espace client.
-describe('intentions et synchronisation — L4 (0037)', () => {
+describe('intentions et synchronisation — L4 (0037, 0038)', () => {
   let coachCompteId: string;
   let coachEcarteCompteId: string;
   let offreId: string;
@@ -5161,14 +5151,78 @@ describe('intentions et synchronisation — L4 (0037)', () => {
       expect(await compter('evenements_prestataire', `id=eq.${evenement('montant')}`)).toBe(0);
     });
 
-    it('une intention inconnue lève (le webhook répondra 500, le prestataire relivrera)', async () => {
-      const { corps } = await synchroniser({
-        intention: randomUUID(),
-        session: sessionPaiement('inconnue'),
+    // 0038 (docs/backend.md §12, « 5xx seulement quand un nouvel essai pourrait réussir ») :
+    // l'intention est enregistrée avant la session ; introuvable, elle ne reviendra jamais.
+    it('une intention inconnue : acceptée (200), une anomalie, l’événement mémorisé', async () => {
+      const intention = randomUUID();
+      const s = sessionPaiement('inconnue');
+      const { statut, corps } = await synchroniser({
+        intention,
+        session: s,
         evenement: evenement('inconnue'),
       });
-      expect(messageDe(corps)).toBe('intention_inconnue');
-      expect(await compter('evenements_prestataire', `id=eq.${evenement('inconnue')}`)).toBe(0);
+      expect(statut).toBe(200);
+      expect(corps).toBe('intention_inconnue');
+      const { corps: anomalies } = await appelRest(
+        `/rest/v1/anomalies_paiement?session_prestataire=eq.${s}&select=intention_id,motif,statut_coach_constate`,
+        { session: 'admin' },
+      );
+      expect(anomalies).toEqual([
+        { intention_id: intention, motif: 'intention_inconnue', statut_coach_constate: null },
+      ]);
+      expect(await compter('evenements_prestataire', `id=eq.${evenement('inconnue')}`)).toBe(1);
+      const relivre = await synchroniser({
+        intention,
+        session: s,
+        evenement: evenement('inconnue-bis'),
+      });
+      expect(relivre.corps).toBe('intention_inconnue');
+      expect(await compter('anomalies_paiement', `session_prestataire=eq.${s}`)).toBe(1);
+    });
+
+    // Les vraies incohérences restent des erreurs (rien de métier écrit) ; le point d'entrée les
+    // consigne ensuite par cette fonction, dans un second appel, et répond 200 (P4.5b).
+    describe('enregistrer_anomalie_paiement (0038) : le serveur seul, une ligne par session et motif', () => {
+      it('A ne peut pas l’exécuter', async () => {
+        const { statut, corps } = await appelRest('/rest/v1/rpc/enregistrer_anomalie_paiement', {
+          methode: 'POST',
+          session: A,
+          corps: {
+            p_session: sessionPaiement('anomalie-a'),
+            p_intention_id: randomUUID(),
+            p_motif: 'montant_incoherent',
+          },
+        });
+        expect(statut).toBeGreaterThanOrEqual(400);
+        expect(JSON.stringify(corps)).toMatch(/permission denied/i);
+      });
+
+      it('deux enregistrements du même motif pour la même session : une seule ligne', async () => {
+        const s = sessionPaiement('anomalie-doublon');
+        const corps = { p_session: s, p_intention_id: randomUUID(), p_motif: 'montant_incoherent' };
+        for (let i = 0; i < 2; i += 1) {
+          const r = await appelRest('/rest/v1/rpc/enregistrer_anomalie_paiement', {
+            methode: 'POST',
+            session: 'admin',
+            corps,
+          });
+          expect(r.statut).toBe(204);
+        }
+        expect(await compter('anomalies_paiement', `session_prestataire=eq.${s}`)).toBe(1);
+      });
+
+      it('coach_ecarte n’y passe pas : il exige le statut du coach (contrainte)', async () => {
+        const { corps } = await appelRest('/rest/v1/rpc/enregistrer_anomalie_paiement', {
+          methode: 'POST',
+          session: 'admin',
+          corps: {
+            p_session: sessionPaiement('anomalie-ecarte'),
+            p_intention_id: randomUUID(),
+            p_motif: 'coach_ecarte',
+          },
+        });
+        expect(messageDe(corps)).toMatch(/anomalies_paiement_statut_coach_si_ecarte/);
+      });
     });
 
     // docs/backend.md §12, règle 2 : aucun ordre d'arrivée supposé. Les événements en retard
