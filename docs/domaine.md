@@ -254,14 +254,24 @@ avec l'identification du coach en L5 (`docs/api.md` §8).
 appliquées. Aucune offre publiée avant L5 ne peut donc encaisser un euro réel sans être passée
 par la règle 2.
 
-**L'intention de souscription fige l'offre** (tranché le 28 septembre 2026, **appliqué en P4.5**,
-`docs/api.md` §7). L'intention créée au moment où le client choisit l'offre (04a) retient son
-titre et son prix. La souscription honore cette intention **même si l'offre a été retirée
-entretemps, tant que l'intention a moins de 30 minutes** — la durée de validité de la page de
-paiement. Le client a payé ce qu'on lui a montré : rembourser est pire que servir. **Retirer une
-offre ferme la vente future, jamais une vente en cours.** Au-delà de 30 minutes, ou pour une offre
-qui n'était pas publiée au moment de l'intention, la souscription est refusée
-(`offre_indisponible`).
+**L'intention de souscription fige l'offre** (tranché le 28 septembre 2026, **révisé le 3 octobre
+2026**, appliqué en P4.5, `docs/api.md` §7). L'intention créée au moment où le client choisit
+l'offre (04a) retient son titre et son prix : **c'est le contrat**. L'offre est vérifiée **une
+seule fois, à la création de l'intention** (publiée, coach vérifié, pas son propre coach —
+`offre_indisponible` sinon), et la page de paiement est créée dans la foulée, valable 30 minutes.
+
+**La fenêtre de 30 minutes gouverne la création de la page de paiement, jamais le traitement
+d'un paiement déjà encaissé.** Un paiement reçu sur cette page est honoré **quel que soit l'état
+présent de l'offre** — retirée, modifiée, et quel que soit le délai avant son traitement : le
+prestataire relivre ses événements pendant des jours, et aucune relivraison ne doit dépendre de
+l'état présent. Le client a payé ce qu'on lui a montré : rembourser est pire que servir.
+**Retirer une offre ferme la vente future, jamais une vente en cours.** (Première rédaction du
+28 septembre : l'offre était revérifiée au paiement, honorée seulement si l'intention avait moins
+de 30 minutes. Abandonnée : un événement relivré après 30 minutes aurait été refusé pour
+toujours, en boucle.)
+
+Seule exception à « honoré quoi qu'il arrive » : le coach écarté, ci-dessous — ce n'est pas
+l'offre qui a changé, c'est la plateforme qui a jugé le vendeur.
 
 **Coach dont la vérification change entre l'intention et le paiement** (tranché le 30 septembre
 2026, révisé le 1er octobre 2026, avant la migration de P4.5). L'intention n'a pu être créée que

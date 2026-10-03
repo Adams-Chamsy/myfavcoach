@@ -445,9 +445,21 @@ Deux cas, jamais mélangés dans une même fonction :
 
 ### Déploiement
 
-- `npx supabase functions deploy <nom> --project-ref <réf>` — une fonction à la fois, projet de
-  développement d'abord, même ordre que les migrations (§1). Le webhook ajoute `--no-verify-jwt`
-  (voir plus haut) ; **aucune autre fonction** ne le porte.
+- `npx supabase functions deploy <nom> --project-ref <réf> --use-api` — une fonction à la fois,
+  projet de développement d'abord, même ordre que les migrations (§1). `--use-api` : le paquet
+  est construit par Supabase, sans Docker (absent de cette machine). Le webhook est déployé
+  **sans** vérification de jeton : réglage écrit dans `supabase/config.toml`
+  (`[functions.webhook-paiement] verify_jwt = false`, P4.5b) plutôt qu'en option de commande,
+  pour qu'un redéploiement ne puisse pas l'oublier ; **aucune autre fonction** ne le porte.
+- **Avant tout déploiement : `npm run verif:fonctions`** (`deno check` en mode strict, puis
+  `deno lint`). Configuration propre aux fonctions : `supabase/functions/deno.jsonc`, sans
+  laquelle Deno adopte le `package.json` de l'application et cherche ses paquets dans
+  `node_modules`. Hors de `npm run verif` : la CI n'a pas Deno. Deno s'installe par le binaire
+  officiel (`~/.deno/bin/deno`, somme de contrôle vérifiée) ; Homebrew n'a pas de version toute
+  prête pour ce Mac Intel.
+- Versions figées dans `supabase/functions/_partage/` : `npm:stripe@22.6.2` (API
+  `2026-08-26.dahlia`, celle que ce SDK déclare) et `npm:@supabase/supabase-js@2.112.4` (même
+  version que l'application).
 - **Pas d'exécution locale sur cette machine** : `supabase functions serve` a besoin de Docker,
   absent (même contrainte que le banc, `docs/dette.md`). Les essais se font donc contre le projet
   de développement déployé, avec la Stripe CLI en mode test pour les événements signés
@@ -474,12 +486,53 @@ entre deux événements. L'`Idempotency-Key` de `docs/api.md` §1 ne couvre que 
    recopier : le traitement relit l'objet concerné chez le prestataire et ne demande que la
    transition que `docs/domaine.md` §4.3/§4.4 autorise depuis l'état **actuel** en base. Un
    événement qui arrive « trop tard » (un échec après le succès de la même échéance) ne
-   provoque aucune transition ; un événement qui vise une ligne pas encore créée chez nous
-   répond non-2xx, pour être relivré plus tard — jamais 200 en l'ignorant, ce qui le perdrait.
+   provoque aucune transition. Un événement qui vise une ligne **pas encore créée** chez nous
+   répond non-2xx, pour être relivré plus tard ; une ligne qui **n'existera jamais** (supprimée,
+   jamais créée) relève de la règle suivante : 200 et une anomalie, jamais 5xx.
 
 Les deux se prouvent au banc (relivraison → aucune écriture de plus ; ordre inversé → même état
 final), pas à la lecture du code. Ce qui reste invisible même avec ces deux règles — un
 événement jamais arrivé — relève du rapprochement quotidien (`docs/prompts/L4.md` point 12).
+
+### Webhook : 5xx seulement quand un nouvel essai pourrait réussir
+
+Règle générale, écrite le 3 octobre 2026 (P4.5b). Elle vaut pour tout le lot L4 et pour L5
+(versements, identification des coachs), pour tout point d'entrée qui reçoit les événements d'un
+tiers :
+
+> **Un point d'entrée de webhook ne répond 5xx que lorsqu'un nouvel essai pourrait réussir** —
+> une panne de base, un délai dépassé, le prestataire injoignable au moment de relire l'objet.
+> **Tout refus définitif, fondé sur l'état métier, répond 200 et enregistre une anomalie.** Un
+> 5xx qui ne peut jamais devenir un 2xx est une boucle d'échecs déguisée en prudence.
+
+Pourquoi : pour le prestataire, tout code hors 2xx est un échec — il relivre pendant des jours,
+puis signale le point d'entrée comme défaillant, quel que soit le code (4xx compris). Un refus qui
+ne changera jamais n'a rien à attendre d'une relivraison ; ce qui le rend visible, c'est
+l'anomalie, que le rapprochement quotidien remonte (`docs/prompts/L4.md` point 12).
+
+**Classement des refus de `webhook-paiement`** (fonction SQL `synchroniser_session_paiement`,
+0037 puis 0038) :
+
+| Refus | Un nouvel essai peut-il réussir ? | Réponse |
+|---|---|---|
+| Signature absente ou invalide | — (ce n'est pas le prestataire, ou pas un état métier) | 400, rien d'écrit |
+| Base injoignable, délai dépassé, prestataire injoignable pour relire la session | oui | 5xx, relivré |
+| Événement déjà traité (`deja_traite`) | — | 200 |
+| Session qui ne porte pas d'intention de ce dépôt (événement d'un autre usage du compte, `stripe trigger`) | non | 200, ignoré, rien d'écrit |
+| Coach écarté depuis l'intention (`coach_ecarte`, `docs/domaine.md` §3.3) | non | 200 + anomalie |
+| Intention introuvable (`intention_inconnue` : le client a payé puis supprimé son compte — l'intention est toujours enregistrée **avant** la création de la session, elle ne peut pas être « pas encore créée ») | non | 200 + anomalie |
+| Offre retirée ou modifiée depuis l'intention | — | **n'est plus un refus** : l'offre n'est jamais revérifiée au paiement (`docs/domaine.md` §3.3, révisé le 3 octobre 2026) |
+| Vraies incohérences : `montant_incoherent`, `session_incoherente`, `statut_session_inconnu`, `etat_incoherent` | non | la fonction SQL **lève** — rien de métier n'est écrit, ce sont des erreurs ; le point d'entrée enregistre alors l'anomalie **dans un second appel**, journalise le code (jamais le corps) et répond **200** |
+
+Les refus de `souscrire_abonnement` atteignables depuis ce chemin sont tous filtrés en amont :
+`coach_non_verifie` par la règle du coach écarté, `profil_client_inconnu` par
+`intention_inconnue` (même cascade), `auto_abonnement_interdit` et `intention_requise` vérifiés
+à la création de l'intention et immuables ensuite. Ils restent dans la fonction comme
+invariants : s'ils levaient un jour, ce serait un défaut, et le 5xx qui en résulterait le
+rendrait visible.
+
+**À vérifier à chaque nouveau refus** sur un chemin de webhook : « une relivraison pourrait-elle
+le faire passer ? » Non → 200 + anomalie.
 
 ---
 
@@ -572,6 +625,24 @@ l'app. Le retour passe donc par une page de **myfavcoach.fr** (prérequis hors c
 `success_url` dès que le webhook a été acquitté, ou au plus tard dix secondes après le paiement :
 l'écran 04c relit donc l'état serveur, il ne suppose jamais qu'un retour signifie un abonnement
 créé.
+
+### Les trois fonctions (P4.5b)
+
+| Edge Function | Chemin de `docs/api.md` §7 | Appelée par | Clients Postgres |
+|---|---|---|---|
+| `abonnement-intention` | `POST /abonnements/intention` → `POST /functions/v1/abonnement-intention` (corps `{ "offreId" }`, en-tête `Idempotency-Key`) | l'application, jeton du client | `clientDuClient` (idempotence, `creer_intention_souscription`) ; `clientServeur` (`attacher_session_intention`) |
+| `abonnement-constat` | `POST /abonnements/intention/{id}/constat` → `POST /functions/v1/abonnement-constat/{id}` | l'application, jeton du client | `clientDuClient` (`mon_intention`) ; `clientServeur` (`synchroniser_session_paiement`, lecture de l'abonnement créé) |
+| `webhook-paiement` | — (appelée par Stripe) | Stripe, signature vérifiée, `verify_jwt = false` | `clientServeur` seul |
+
+Code commun dans `supabase/functions/_partage/` : client Stripe (version de l'API figée), clients
+Postgres, et **la** lecture d'une session Checkout transmise à `synchroniser_session_paiement` —
+une seule, pour que le constat et le webhook ne puissent pas diverger.
+
+**Secrets attendus** (projet de développement, `npx supabase secrets set`) :
+`STRIPE_SECRET_KEY` (clé restreinte `rk_test_…`), `STRIPE_WEBHOOK_SECRET` (`whsec_…`),
+`URL_RETOUR_PAIEMENT` (adresse de retour de la page Stripe, sans paramètre ; la fonction y ajoute
+`?intention=<id>`). `SUPABASE_URL`, `SUPABASE_ANON_KEY` et `SUPABASE_SERVICE_ROLE_KEY` sont
+injectés par Supabase. Une fonction à qui il manque un secret répond 500 sans rien faire.
 
 ### Dépendances accordées (28 septembre 2026)
 
@@ -676,15 +747,21 @@ la fonction (constaté au banc en P4.3 ; le commentaire d'en-tête de
 
 | `etat` rendu | Ce que fait la fonction |
 |---|---|
-| `nouvelle` ou `reprise` | crée la session Checkout **en transmettant la même clé comme clé d'idempotence Stripe**, puis `terminer_cle_idempotence` avec la réponse (201, URL) |
+| `nouvelle` ou `reprise` | crée l'intention, puis la session Checkout avec la clé d'idempotence Stripe **`intention-<identifiant de l'intention>`**, puis `terminer_cle_idempotence` avec la réponse (201, URL) |
 | `rejouee` | rend la réponse mémorisée telle quelle, sans rien recréer |
 | `en_cours` | 409 `requete_en_cours`, avec `Retry-After` |
 | exception `cle_idempotence_reutilisee` | 422 : même clé, autre requête |
 
 **Pourquoi la péremption est sans danger.** Une clé `en_cours` depuis plus de cinq minutes
-signale une fonction arrêtée en plein traitement ; la reprendre rejoue l'appel à Stripe **avec la
-même clé Stripe**, que Stripe déduplique lui-même (24 h) — la reprise ne crée jamais une seconde
-session. Sans péremption, une seule panne rendrait l'opération impossible à retenter pour
+signale une fonction arrêtée en plein traitement ; la reprendre recrée une intention et une
+session. **Corrigé en P4.5b (3 octobre 2026)** : le corps validé en P4.2 transmettait à Stripe la
+clé du client elle-même. Or la reprise crée une **nouvelle** intention, donc une session aux
+paramètres différents (son identifiant d'intention) : Stripe refuse une clé réutilisée avec
+d'autres paramètres, pendant 24 h — la reprise aurait échoué à chaque essai au lieu de réussir.
+La clé Stripe est donc dérivée de l'intention (`intention-<id>`) : elle empêche deux sessions
+pour une même intention, ce qui est son seul rôle. La session éventuellement créée avant l'arrêt
+n'a jamais été rendue au client (la réponse n'est pas partie) : personne ne peut la payer, elle
+expire seule en 30 minutes. Sans péremption, une seule panne rendrait l'opération impossible à retenter pour
 toujours. Cinq minutes, parce qu'aucun traitement légitime de cette fonction n'approche cette
 durée (un appel Stripe, deux appels SQL) ; une valeur plus courte risquerait de reprendre une
 fonction encore vivante mais lente.
