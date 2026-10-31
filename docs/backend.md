@@ -436,6 +436,14 @@ Deux cas, jamais mélangés dans une même fonction :
   `npx supabase secrets set NOM=valeur --project-ref <réf>`. Un jeu pour le projet de
   développement (clés de test), un autre pour la production (clés réelles) : même séparation que
   §1, jamais une clé de production sur le projet de développement.
+- **Un secret Stripe ne se pose jamais à la main : `scripts/poser-secret-stripe.sh <NOM>`**. Le
+  script demande la valeur masquée (ou la lit sur l'entrée, pour `stripe listen --print-secret`),
+  refuse toute valeur contenant `_live_`, exige le préfixe du bac à sable de test
+  (`rk_test_51U84ZSJxe9krNStw…`, `whsec_…`), et ne vise que le projet de développement. Trouvé le
+  31 octobre 2026 : une clé notée « de test » commençait par `rk_live_`. Posée sur le projet de
+  dev, chaque essai aurait fait des mouvements d'argent réels. La vérification du préfixe ne
+  dépend plus de la vigilance de celui qui colle la clé. La pose en production aura son propre
+  garde-fou, écrit avec la mise en production.
 - **Jamais dans `.env`** de ce dépôt, jamais préfixés `EXPO_PUBLIC_` (`CLAUDE.md` §2 ; la garde
   ESLint `CLE_SECRETE` bloque déjà `sk_test_`/`sk_live_` dans le paquet mobile). Aucun fichier de
   secrets local n'est commité ; s'il en faut un pour un essai, il est ignoré par git avant d'être
@@ -638,7 +646,8 @@ Code commun dans `supabase/functions/_partage/` : client Stripe (version de l'AP
 Postgres, et **la** lecture d'une session Checkout transmise à `synchroniser_session_paiement` —
 une seule, pour que le constat et le webhook ne puissent pas diverger.
 
-**Secrets attendus** (projet de développement, `npx supabase secrets set`) :
+**Secrets attendus** (projet de développement ; les deux secrets Stripe par
+`scripts/poser-secret-stripe.sh`, jamais `supabase secrets set` à la main — §« Secrets ») :
 `STRIPE_SECRET_KEY` (clé restreinte `rk_test_…`), `STRIPE_WEBHOOK_SECRET` (`whsec_…`),
 `URL_RETOUR_PAIEMENT` (adresse de retour de la page Stripe, sans paramètre ; la fonction y ajoute
 `?intention=<id>`). `SUPABASE_URL`, `SUPABASE_ANON_KEY` et `SUPABASE_SERVICE_ROLE_KEY` sont
