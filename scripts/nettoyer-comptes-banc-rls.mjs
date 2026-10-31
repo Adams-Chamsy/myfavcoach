@@ -1,5 +1,6 @@
 // Supprime tous les comptes de test crees par src/test/rls.banc.ts (prefixe "banc-rls-",
-// domaine "banc-rls.test") sur le projet Supabase de developpement. A lancer a la main apres
+// domaine "banc-rls.test") sur le projet Supabase de developpement, et les anomalies de paiement
+// de ses sessions fictives (cs_banc_, 0041). A lancer a la main apres
 // une execution de `npm run test:rls` tuee en cours de route (Ctrl+C, plantage reseau) : dans
 // ce cas le afterAll du banc n'a pas eu l'occasion de nettoyer, et des comptes orphelins
 // restent sur un projet partage avec l'usage manuel du developpeur. Voir
@@ -104,8 +105,31 @@ async function supprimerCompte(apiUrl, cleAdmin, compte) {
   }
 }
 
+// Anomalies de paiement des sessions fictives du banc (cs_banc_..., migration 0041) : toutes
+// executions confondues, y compris celles d'un banc tue avant son afterAll. Jamais rattrapables,
+// elles noieraient une vraie anomalie au releve (npm run anomalies:retraiter). Le prefixe est ecrit
+// dans la fonction SQL elle-meme : ce script ne peut pas viser une session reelle.
+async function purgerAnomaliesDuBanc(apiUrl, cleAdmin) {
+  const reponse = await fetch(`${apiUrl}/rest/v1/rpc/purger_anomalies_banc`, {
+    method: 'POST',
+    headers: {
+      apikey: cleAdmin,
+      Authorization: `Bearer ${cleAdmin}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ p_execution: null }),
+  });
+  if (!reponse.ok) {
+    throw new Error(`Purge des anomalies refusee : ${reponse.status} ${await reponse.text()}`);
+  }
+  return await reponse.json();
+}
+
 async function main() {
   const { apiUrl, cleAdmin } = chargerConfiguration();
+  const purgees = await purgerAnomaliesDuBanc(apiUrl, cleAdmin);
+  console.log(`${purgees} anomalie(s) de paiement du banc (cs_banc_) supprimee(s).`);
+
   const comptes = await listerComptesDeTest(apiUrl, cleAdmin);
 
   if (comptes.length === 0) {

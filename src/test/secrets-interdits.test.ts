@@ -206,6 +206,8 @@ describe('secrets interdits côté application', () => {
   //   - supabase/migrations/0036_creer_factures_commissions_tentatives.sql : grants service_role (select sur les pièces comptables et les tentatives pour le banc, update d'une seule colonne de profils_coach pour prouver la bascule au jour 90) et réaffirmation des droits des deux fonctions de 0033 qu'elle remplace
   //   - supabase/migrations/0037_creer_intentions_et_evenements.sql : grants service_role (select sur les intentions, les événements du prestataire et les anomalies pour le banc) et EXECUTE des deux fonctions réservées au serveur (pose de la session sur l'intention, synchronisation partagée webhook/constat) -- jamais à authenticated, le lien intention <-> session ne vient jamais du client (docs/backend.md §13)
   //   - supabase/migrations/0038_reclasser_refus_webhook.sql : réaffirmation des droits des deux fonctions qu'elle remplace (service_role seul) et EXECUTE de enregistrer_anomalie_paiement, réservée au serveur
+  //   - supabase/migrations/0040_retraiter_anomalies_paiement.sql : EXECUTE des trois fonctions du retraitement des anomalies (enregistrement remplacé, liste des ouvertes, résolution), réservées à service_role -- la liste est ce qui refuse tout autre appelant de l'Edge Function anomalies-retraitement
+  //   - supabase/migrations/0041_purger_anomalies_banc.sql : EXECUTE de purger_anomalies_banc, réservée à service_role (le nettoyage du banc et son afterAll), préfixe cs_banc_ écrit en dur dans la fonction
   //   - supabase/functions/_partage/environnement.ts et postgres.ts : le NOM de la variable SUPABASE_SERVICE_ROLE_KEY, injectée par Supabase dans l'environnement de chaque Edge Function et lue par Deno.env.get au moment de la requête (docs/backend.md §12, cas 2) -- jamais une valeur, jamais dans le paquet mobile
   //   - src/test/conventions-grants-migrations.test.ts : balaie supabase/migrations/ pour vérifier que chaque revoke nomme explicitement "service_role" avant un grant à anon/authenticated — le rôle apparaît en donnée de test (littéraux SQL écrits exprès, fautifs et corrects) et dans la liste des rôles requis, jamais comme une clé
   //   - docs/prompts/L3bis.md : règle 11 (cumulative) nomme "service_role" pour que le trou récurrent ci-dessus devienne une règle de conduite, pas une note qui ne survit qu'à ma mémoire
@@ -245,6 +247,8 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0036_creer_factures_commissions_tentatives.sql',
       'supabase/migrations/0037_creer_intentions_et_evenements.sql',
       'supabase/migrations/0038_reclasser_refus_webhook.sql',
+      'supabase/migrations/0040_retraiter_anomalies_paiement.sql',
+      'supabase/migrations/0041_purger_anomalies_banc.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

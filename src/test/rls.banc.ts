@@ -329,6 +329,13 @@ beforeAll(async () => {
 }, 30_000);
 
 afterAll(async () => {
+  // Les anomalies de paiement de CETTE exécution (sessions fictives cs_banc_<n>_…, 0041) : jamais
+  // rattrapables, elles noieraient une vraie anomalie au relevé (npm run anomalies:retraiter).
+  await appelRest('/rest/v1/rpc/purger_anomalies_banc', {
+    methode: 'POST',
+    session: 'admin',
+    corps: { p_execution: String(SUFFIXE_COMPTE) },
+  });
   if (A) await supprimerCompteReel(A.compteId);
   if (B) await supprimerCompteReel(B.compteId);
   if (C) await supprimerCompteReel(C.compteId);
@@ -5240,6 +5247,133 @@ describe('intentions et synchronisation — L4 (0037, 0038)', () => {
             `session_prestataire=eq.${s}&motif=eq.moyen_indetermine`,
           ),
         ).toBe(1);
+      });
+    });
+
+    // 0040 : ce que l'Edge Function anomalies-retraitement lit et écrit. La liste est appelée
+    // avec le jeton de l'appelant : c'est elle qui refuse quiconque n'est pas le serveur.
+    describe('retraitement des anomalies (0040) : le serveur seul, une résolution une seule fois', () => {
+      const enregistrer = (s: string, motif: string) =>
+        appelRest('/rest/v1/rpc/enregistrer_anomalie_paiement', {
+          methode: 'POST',
+          session: 'admin',
+          corps: { p_session: s, p_intention_id: randomUUID(), p_motif: motif },
+        });
+      const ouvertes = async (s: string): Promise<string[]> => {
+        const { corps } = await appelRest('/rest/v1/rpc/anomalies_paiement_ouvertes', {
+          methode: 'POST',
+          session: 'admin',
+          corps: {},
+        });
+        return (corps as { session_prestataire: string; motif: string }[])
+          .filter((a) => a.session_prestataire === s)
+          .map((a) => a.motif);
+      };
+      const idAnomalie = async (s: string, motif: string): Promise<string> => {
+        const { corps } = await appelRest(
+          `/rest/v1/anomalies_paiement?session_prestataire=eq.${s}&motif=eq.${motif}&select=id`,
+          { session: 'admin' },
+        );
+        return (corps as { id: string }[])[0].id;
+      };
+      const resoudre = (id: string, resolution: string) =>
+        appelRest('/rest/v1/rpc/resoudre_anomalie_paiement', {
+          methode: 'POST',
+          session: 'admin',
+          corps: { p_id: id, p_resolution: resolution },
+        });
+
+      it('A ne peut ni lister les anomalies ouvertes, ni en résoudre une', async () => {
+        const liste = await appelRest('/rest/v1/rpc/anomalies_paiement_ouvertes', {
+          methode: 'POST',
+          session: A,
+          corps: {},
+        });
+        expect(liste.statut).toBeGreaterThanOrEqual(400);
+        expect(JSON.stringify(liste.corps)).toMatch(/permission denied/i);
+        const resolution = await appelRest('/rest/v1/rpc/resoudre_anomalie_paiement', {
+          methode: 'POST',
+          session: A,
+          corps: { p_id: randomUUID(), p_resolution: 'abonne' },
+        });
+        expect(resolution.statut).toBeGreaterThanOrEqual(400);
+        expect(JSON.stringify(resolution.corps)).toMatch(/permission denied/i);
+      });
+
+      it('une anomalie ouverte est listée, intention_inconnue ne l’est pas', async () => {
+        const s = sessionPaiement('retraitement-liste');
+        await enregistrer(s, 'etat_incoherent');
+        await enregistrer(s, 'intention_inconnue');
+        expect(await ouvertes(s)).toEqual(['etat_incoherent']);
+      });
+
+      it('résolue une seule fois, puis absente de la liste', async () => {
+        const s = sessionPaiement('retraitement-resolue');
+        await enregistrer(s, 'etat_incoherent');
+        const id = await idAnomalie(s, 'etat_incoherent');
+        expect((await resoudre(id, 'abonne')).corps).toBe(true);
+        expect((await resoudre(id, 'abonne')).corps).toBe(false);
+        expect(await ouvertes(s)).toEqual([]);
+        const { corps } = await appelRest(
+          `/rest/v1/anomalies_paiement?id=eq.${id}&select=resolution,resolue_le`,
+          { session: 'admin' },
+        );
+        expect((corps as { resolution: string; resolue_le: string | null }[])[0]).toMatchObject({
+          resolution: 'abonne',
+          resolue_le: expect.any(String),
+        });
+      });
+
+      it('une anomalie résolue qui se reproduit est rouverte', async () => {
+        const s = sessionPaiement('retraitement-recidive');
+        await enregistrer(s, 'etat_incoherent');
+        await resoudre(await idAnomalie(s, 'etat_incoherent'), 'abonne');
+        expect((await enregistrer(s, 'etat_incoherent')).statut).toBe(204);
+        expect(await ouvertes(s)).toEqual(['etat_incoherent']);
+        expect(await compter('anomalies_paiement', `session_prestataire=eq.${s}`)).toBe(1);
+      });
+    });
+
+    // 0041 : les anomalies du banc sont sur des sessions fictives, jamais rattrapables. Sans
+    // purge, elles noieraient une vraie anomalie (docs/dette.md). Le préfixe cs_banc_ est en dur
+    // dans la fonction ; l'appelant ne peut que restreindre à une exécution.
+    describe('purge des anomalies du banc (0041) : le serveur seul, le préfixe du banc seul', () => {
+      const purger = (session: Appelant, execution: string | null) =>
+        appelRest('/rest/v1/rpc/purger_anomalies_banc', {
+          methode: 'POST',
+          session,
+          corps: { p_execution: execution },
+        });
+
+      it('A ne peut pas l’exécuter', async () => {
+        const { statut, corps } = await purger(A, null);
+        expect(statut).toBeGreaterThanOrEqual(400);
+        expect(JSON.stringify(corps)).toMatch(/permission denied/i);
+      });
+
+      it('ne purge que l’exécution demandée, au caractère près', async () => {
+        const ici = sessionPaiement('purge');
+        // Une autre exécution dont le numéro COMMENCE par le nôtre : `cs_banc_<n>0_…` ne doit pas
+        // tomber sous `cs_banc_<n>_…`.
+        const voisine = `cs_banc_${SUFFIXE_COMPTE}0_purge`;
+        for (const s of [ici, voisine]) {
+          await appelRest('/rest/v1/rpc/enregistrer_anomalie_paiement', {
+            methode: 'POST',
+            session: 'admin',
+            corps: { p_session: s, p_intention_id: randomUUID(), p_motif: 'etat_incoherent' },
+          });
+        }
+        const { corps } = await purger('admin', String(SUFFIXE_COMPTE));
+        expect(corps).toBeGreaterThanOrEqual(1);
+        expect(await compter('anomalies_paiement', `session_prestataire=eq.${ici}`)).toBe(0);
+        expect(await compter('anomalies_paiement', `session_prestataire=eq.${voisine}`)).toBe(1);
+        await purger('admin', `${SUFFIXE_COMPTE}0`);
+        expect(await compter('anomalies_paiement', `session_prestataire=eq.${voisine}`)).toBe(0);
+      });
+
+      it('un filtre qui n’est pas un numéro d’exécution est refusé', async () => {
+        const { corps } = await purger('admin', '%');
+        expect(messageDe(corps)).toMatch(/execution_invalide/);
       });
     });
 

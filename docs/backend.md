@@ -543,6 +543,31 @@ rendrait visible.
 **À vérifier à chaque nouveau refus** sur un chemin de webhook : « une relivraison pourrait-elle
 le faire passer ? » Non → 200 + anomalie.
 
+**Une anomalie qui vient d'un défaut de NOTRE code se rattrape, elle ne se relivre pas.** Trouvé
+le 31 octobre 2026 (P4.5c) : un prélèvement SEPA rejeté finissait en `etat_incoherent` parce que
+le code ne savait pas lire le moyen de paiement. Répondre 5xx n'aurait rien sauvé : la relecture
+rend le même résultat tant que le code n'a pas changé, et le prestataire ne relivre que 3 jours
+(3 fois en quelques heures en test). Ce qui sauve, c'est que l'information n'est jamais dans
+l'événement, toujours dans la session chez Stripe. Une fois le défaut corrigé et déployé :
+
+```
+npm run anomalies:retraiter              # toutes les anomalies ouvertes du projet de dev
+npm run anomalies:retraiter -- cs_...    # celles d'une seule session
+```
+
+Le script appelle l'Edge Function `anomalies-retraitement` avec la clé d'administration ; elle
+relit chaque session et lui applique `synchroniserSession`, le même traitement que le webhook et
+le constat (chemin du constat, sans identifiant d'événement : rejouable sans risque). Une anomalie
+est marquée résolue (`resoudre_anomalie_paiement`, 0040) seulement si le traitement aboutit
+(`abonne`) ou si la session a expiré (`expiree`) ; sinon elle reste ouverte, la raison au bilan.
+`coach_ecarte` et `intention_inconnue` ne sont jamais retraitées : ce sont des issues décidées
+par la synchronisation elle-même, pas des erreurs de lecture. Une anomalie résolue qui se
+reproduit est rouverte (0040). Code de sortie 2 tant qu'il reste une anomalie ouverte.
+Le banc RLS écrit ses anomalies sur des sessions fictives `cs_banc_…`, jamais rattrapables : il
+les purge dans son `afterAll`, et `npm run test:rls:nettoyage` purge celles d'un banc interrompu
+(`purger_anomalies_banc`, 0041 — préfixe écrit en dur dans la fonction, aucune session réelle
+atteignable).
+
 ---
 
 ## 13. Paiement : architecture retenue (L4)
