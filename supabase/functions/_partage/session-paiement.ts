@@ -27,8 +27,16 @@ function estIncoherence(code: string | null): code is Incoherence {
 }
 
 // Valeurs rendues par synchroniser_session_paiement (0038).
+// abonnement_existant (0043) : payé alors qu'un abonnement est déjà en cours chez ce coach --
+// anomalie, aucun second abonnement (docs/domaine.md §3.2, règle d'abonnement unique).
 export type ResultatSql =
-  'deja_traite' | 'non_terminee' | 'expiree' | 'abonne' | 'coach_ecarte' | 'intention_inconnue';
+  | 'deja_traite'
+  | 'non_terminee'
+  | 'expiree'
+  | 'abonne'
+  | 'coach_ecarte'
+  | 'intention_inconnue'
+  | 'abonnement_existant';
 
 const RESULTATS_SQL: readonly string[] = [
   'deja_traite',
@@ -37,6 +45,7 @@ const RESULTATS_SQL: readonly string[] = [
   'abonne',
   'coach_ecarte',
   'intention_inconnue',
+  'abonnement_existant',
 ];
 
 export type Synchronisation =

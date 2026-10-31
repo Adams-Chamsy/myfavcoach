@@ -10,7 +10,8 @@
 // l'intention est bien la sienne (mon_intention), clientServeur pour la synchronisation, que seul
 // le serveur a le droit de faire.
 import { ConfigurationIncomplete } from '../_partage/environnement.ts';
-import { preflightCors, reponseCode, reponseJson } from '../_partage/http.ts';
+import { preflightCors, reponseJson } from '../_partage/http.ts';
+import { reponseRefus } from '../_partage/refus.ts';
 import { clientDuClient, clientServeur, codeMetier } from '../_partage/postgres.ts';
 import {
   ErreurPassagere,
@@ -53,13 +54,13 @@ async function abonnementCree(idSession: string): Promise<Response> {
 
 async function traiter(requete: Request): Promise<Response> {
   if (requete.method === 'OPTIONS') return preflightCors();
-  if (requete.method !== 'POST') return reponseCode(405, 'methode_interdite');
+  if (requete.method !== 'POST') return reponseRefus(405, 'methode_interdite');
   const autorisation = requete.headers.get('Authorization');
-  if (!autorisation) return reponseCode(401, 'non_authentifie');
+  if (!autorisation) return reponseRefus(401, 'non_authentifie');
 
   // Dernier segment du chemin : /functions/v1/abonnement-constat/<intentionId>
   const intentionId = new URL(requete.url).pathname.split('/').filter(Boolean).pop() ?? '';
-  if (!FORMAT_UUID.test(intentionId)) return reponseCode(404, 'intention_introuvable');
+  if (!FORMAT_UUID.test(intentionId)) return reponseRefus(404, 'intention_introuvable');
 
   // 1. L'intention est-elle la sienne ? Une intention d'autrui et une intention inexistante
   //    rendent la même réponse.
@@ -68,7 +69,7 @@ async function traiter(requete: Request): Promise<Response> {
     .single<LigneIntention>();
   if (error) {
     const code = codeMetier(error);
-    if (code === 'intention_introuvable') return reponseCode(404, code);
+    if (code === 'intention_introuvable') return reponseRefus(404, code);
     throw new ErreurPassagere(code ?? 'intention_illisible');
   }
 
@@ -111,6 +112,9 @@ async function traiter(requete: Request): Promise<Response> {
         // docs/api.md §7 : le motif (coach écarté) n'est jamais transmis au client.
         case 'coach_ecarte':
         case 'intention_inconnue':
+        // 0043 : payé alors qu'un abonnement est déjà en cours chez ce coach -- anomalie, un
+        // remboursement est à faire (docs/domaine.md §3.2).
+        case 'abonnement_existant':
           return reponseJson(200, { etat: 'souscription_impossible' });
         case 'abonne':
         case 'deja_traite':
@@ -128,6 +132,6 @@ Deno.serve(async (requete) => {
         ? erreur.message
         : (descriptionErreurStripe(erreur) ?? 'erreur_passagere');
     console.error(`abonnement-constat : ${code}`);
-    return reponseCode(500, 'erreur_passagere');
+    return reponseRefus(500, 'erreur_passagere');
   }
 });

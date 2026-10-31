@@ -12,7 +12,13 @@
 //      se déclare jamais par le client ») ;
 //   5. terminer la clé avec la réponse, pour qu'un nouvel essai réseau la rejoue telle quelle.
 import { ConfigurationIncomplete, lireSecret } from '../_partage/environnement.ts';
-import { preflightCors, reponseCode, reponseJson } from '../_partage/http.ts';
+import { ENTETES_CORS, preflightCors, reponseJson } from '../_partage/http.ts';
+import {
+  type CodeRefus,
+  corpsRefus,
+  reponseRefus,
+  STATUTS_REFUS_INTENTION,
+} from '../_partage/refus.ts';
 import {
   type ClientPostgres,
   clientDuClient,
@@ -25,14 +31,22 @@ import { clientStripe, descriptionErreurStripe } from '../_partage/stripe.ts';
 const FORMAT_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const OPERATION = 'intention_souscription';
 
-// Refus de creer_intention_souscription (0037) : définitifs pour cette requête, mémorisés avec la
-// clé (un nouvel essai réseau rend la même réponse). docs/api.md §7.
-const REFUS_INTENTION: Record<string, number> = {
-  offre_indisponible: 409,
-  coach_non_verifie: 409,
-  auto_abonnement_interdit: 409,
-  profil_client_requis: 403,
-};
+// Refus de creer_intention_souscription (0037, 0043) : définitifs pour cette requête, mémorisés
+// avec la clé (un nouvel essai réseau rend la même réponse). docs/api.md §7. Leurs statuts et
+// leurs textes vivent dans _partage/refus.ts, source unique (docs/api.md §1).
+function estRefusIntention(code: string | null): code is CodeRefus {
+  return code !== null && code in STATUTS_REFUS_INTENTION;
+}
+
+// Une réponse mémorisée avec la clé (rendue telle quelle à un nouvel essai) : un refus garde son
+// type problem+json (docs/api.md §1), un succès reste du JSON.
+function reponseMemorisee(statut: number, corps: unknown): Response {
+  if (statut < 400) return reponseJson(statut, corps);
+  return new Response(JSON.stringify(corps), {
+    status: statut,
+    headers: { 'Content-Type': 'application/problem+json', ...ENTETES_CORS },
+  });
+}
 
 type Reservation = { etat: string; code_reponse: number | null; corps_reponse: unknown };
 type LigneIntention = {
@@ -61,25 +75,25 @@ async function terminer(
     p_corps: corps,
   });
   if (error) throw new ErreurPassagere(codeMetier(error) ?? 'cle_non_terminee');
-  return reponseJson(statut, corps);
+  return reponseMemorisee(statut, corps);
 }
 
 async function traiter(requete: Request): Promise<Response> {
   if (requete.method === 'OPTIONS') return preflightCors();
-  if (requete.method !== 'POST') return reponseCode(405, 'methode_interdite');
+  if (requete.method !== 'POST') return reponseRefus(405, 'methode_interdite');
   const autorisation = requete.headers.get('Authorization');
-  if (!autorisation) return reponseCode(401, 'non_authentifie');
+  if (!autorisation) return reponseRefus(401, 'non_authentifie');
 
   const cle = requete.headers.get('Idempotency-Key') ?? '';
-  if (!FORMAT_UUID.test(cle)) return reponseCode(400, 'cle_idempotence_requise');
+  if (!FORMAT_UUID.test(cle)) return reponseRefus(400, 'cle_idempotence_requise');
   let offreId: unknown;
   try {
     offreId = ((await requete.json()) as { offreId?: unknown }).offreId;
   } catch {
-    return reponseCode(400, 'corps_invalide');
+    return reponseRefus(400, 'corps_invalide');
   }
   if (typeof offreId !== 'string' || !FORMAT_UUID.test(offreId)) {
-    return reponseCode(400, 'corps_invalide');
+    return reponseRefus(400, 'corps_invalide');
   }
 
   const duClient = clientDuClient(autorisation);
@@ -94,13 +108,15 @@ async function traiter(requete: Request): Promise<Response> {
     .single<Reservation>();
   if (reservation.error) {
     const code = codeMetier(reservation.error);
-    if (code === 'cle_idempotence_reutilisee') return reponseCode(422, code);
+    if (code === 'cle_idempotence_reutilisee') return reponseRefus(422, code);
     throw new ErreurPassagere(code ?? 'reservation_echouee');
   }
   const { etat, code_reponse, corps_reponse } = reservation.data;
-  if (etat === 'rejouee' && code_reponse !== null) return reponseJson(code_reponse, corps_reponse);
+  if (etat === 'rejouee' && code_reponse !== null) {
+    return reponseMemorisee(code_reponse, corps_reponse);
+  }
   if (etat === 'en_cours') {
-    return reponseJson(409, { code: 'requete_en_cours' }, { 'Retry-After': '5' });
+    return reponseRefus(409, 'requete_en_cours', { 'Retry-After': '5' });
   }
   // etat 'nouvelle' ou 'reprise' : on traite.
   //
@@ -115,8 +131,9 @@ async function traiter(requete: Request): Promise<Response> {
     .single<LigneIntention>();
   if (intention.error) {
     const code = codeMetier(intention.error);
-    if (code && code in REFUS_INTENTION) {
-      return terminer(duClient, cle, REFUS_INTENTION[code], { code });
+    if (estRefusIntention(code)) {
+      const statut = STATUTS_REFUS_INTENTION[code] as number;
+      return terminer(duClient, cle, statut, corpsRefus(statut, code));
     }
     throw new ErreurPassagere(code ?? 'intention_echouee');
   }
@@ -188,6 +205,6 @@ Deno.serve(async (requete) => {
         ? erreur.message
         : (descriptionErreurStripe(erreur) ?? 'erreur_passagere');
     console.error(`abonnement-intention : ${code}`);
-    return reponseCode(500, 'erreur_passagere');
+    return reponseRefus(500, 'erreur_passagere');
   }
 });

@@ -208,6 +208,8 @@ describe('secrets interdits côté application', () => {
   //   - supabase/migrations/0038_reclasser_refus_webhook.sql : réaffirmation des droits des deux fonctions qu'elle remplace (service_role seul) et EXECUTE de enregistrer_anomalie_paiement, réservée au serveur
   //   - supabase/migrations/0040_retraiter_anomalies_paiement.sql : EXECUTE des trois fonctions du retraitement des anomalies (enregistrement remplacé, liste des ouvertes, résolution), réservées à service_role -- la liste est ce qui refuse tout autre appelant de l'Edge Function anomalies-retraitement
   //   - supabase/migrations/0041_purger_anomalies_banc.sql : EXECUTE de purger_anomalies_banc, réservée à service_role (le nettoyage du banc et son afterAll), préfixe cs_banc_ écrit en dur dans la fonction
+  //   - supabase/migrations/0042_preparer_abonnement_unique.sql : EXECUTE de clore_abonnements_banc, réservée à service_role (fixture du banc, préfixes cs_banc_/banc- écrits en dur)
+  //   - supabase/migrations/0043_appliquer_abonnement_unique.sql : réaffirmation des droits des trois fonctions qu'elle remplace (souscription et synchronisation réservées à service_role, intention à authenticated) et de anomalies_paiement_ouvertes
   //   - supabase/functions/_partage/environnement.ts et postgres.ts : le NOM de la variable SUPABASE_SERVICE_ROLE_KEY, injectée par Supabase dans l'environnement de chaque Edge Function et lue par Deno.env.get au moment de la requête (docs/backend.md §12, cas 2) -- jamais une valeur, jamais dans le paquet mobile
   //   - src/test/conventions-grants-migrations.test.ts : balaie supabase/migrations/ pour vérifier que chaque revoke nomme explicitement "service_role" avant un grant à anon/authenticated — le rôle apparaît en donnée de test (littéraux SQL écrits exprès, fautifs et corrects) et dans la liste des rôles requis, jamais comme une clé
   //   - docs/prompts/L3bis.md : règle 11 (cumulative) nomme "service_role" pour que le trou récurrent ci-dessus devienne une règle de conduite, pas une note qui ne survit qu'à ma mémoire
@@ -249,6 +251,8 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0038_reclasser_refus_webhook.sql',
       'supabase/migrations/0040_retraiter_anomalies_paiement.sql',
       'supabase/migrations/0041_purger_anomalies_banc.sql',
+      'supabase/migrations/0042_preparer_abonnement_unique.sql',
+      'supabase/migrations/0043_appliquer_abonnement_unique.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

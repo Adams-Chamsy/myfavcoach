@@ -257,9 +257,15 @@ POST /abonnements/intention             Idempotency-Key obligatoire (docs/backen
     "urlPaiement": "https://checkout.stripe.com/…",   // expire après 30 minutes
     "moyensAcceptes": ["carte", "sepa"]
   }
-→ 409 { "code": "auto_abonnement_interdit" | "requete_en_cours" | "compte_versement_non_operationnel" }
-→ 422 { "code": "cle_idempotence_reutilisee" }
+→ 409 { "code": "auto_abonnement_interdit" | "deja_abonne" | "offre_indisponible" | "coach_non_verifie" | "requete_en_cours" | "compte_versement_non_operationnel", "title": "…", "detail": "…" }
+→ 403 { "code": "profil_client_requis", … }
+→ 422 { "code": "cle_idempotence_reutilisee", … }
 ```
+
+Tout refus est un `application/problem+json` qui porte `code`, `title` et `detail` (§1) ; les
+textes vivent dans une seule table côté serveur (`supabase/functions/_partage/refus.ts`).
+`deja_abonne` (0043, 31 octobre 2026) : le client a déjà un abonnement en cours chez ce coach —
+tout statut sauf `resilie` et `annule` (`docs/domaine.md` §3.2, règle d'abonnement unique).
 
 `compte_versement_non_operationnel` : applicable à partir de L5 (`docs/domaine.md` §3.3).
 
@@ -291,7 +297,8 @@ ce traitement échoue ou est en cours au même instant. Session encore ouverte �
 avec la même URL. Session expirée → `expiree`.
 
 `souscription_impossible` (ajouté le 1er octobre 2026, `docs/domaine.md` §3.3) : la session est
-payée, mais le coach n'est plus `verifiee` au moment du traitement. Aucun abonnement n'est créé,
+payée, mais le coach n'est plus `verifiee` au moment du traitement — ou, depuis 0043, le client
+avait déjà un abonnement en cours chez ce coach (deux intentions payées en parallèle). Aucun abonnement n'est créé,
 le paiement est enregistré comme anomalie et remboursé à la main. Le motif précis (révocation,
 refus) n'est jamais transmis au client : c'est une décision d'examen qui concerne le coach. Le
 texte affiché est à écrire avec les écrans de confirmation (P4.7).
