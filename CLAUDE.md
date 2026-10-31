@@ -244,6 +244,18 @@ restent la bonne pente pour ça, plus rapides et plus stables). Trois pièges tr
 
 Pas de test de capture d'écran (snapshot) : ils passent tout seuls et ne prouvent rien.
 
+**Un résultat de test se lit sur TOUTES ses lignes de bilan, jamais sur celle qui répond à la
+question qu'on se pose.** Jest en donne deux : `Test Suites:` et `Tests:`. Un fichier de test qui
+ne se charge pas du tout (import introuvable, erreur de syntaxe) n'apparaît que dans la première —
+ses tests ne sont jamais comptés dans la seconde, qui peut afficher « 599 passed » au-dessus d'un
+échec. Même chose pour `npm run verif` : il s'arrête à la première étape en échec, et les étapes
+suivantes n'ont pas tourné du tout, ce qui n'est pas la même chose qu'avoir réussi. Trouvé deux
+fois le 31 octobre 2026 (P4.5c), deux rapports faux le même soir, du même geste : les chiffres de
+deux suites inversés, puis « un seul test en échec » alors que le bilan disait
+`Test Suites: 3 failed` — Jest essayait de charger les tests Deno de `supabase/functions/`.
+Avant d'annoncer un résultat : lire le bilan entier de chaque étape, et nommer celles qui n'ont
+pas tourné.
+
 **Tests d'écran à état asynchrone — `await` CHAQUE `fireEvent`, `waitFor` + `queryBy` jamais
 `findBy`. Trouvé à P1.13a puis P1.13c.** Sur les écrans qui montent Reanimated et/ou lisent un
 port de façon asynchrone (`src/fonctionnalites/compte/ecran-compte.tsx`,
