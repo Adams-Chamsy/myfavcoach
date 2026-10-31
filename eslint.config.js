@@ -37,6 +37,9 @@ module.exports = [
       'android/**',
       'coverage/**',
       'maquettes/**',
+      // Edge Functions : Deno, pas React Native -- autre environnement, autres dépendances
+      // (docs/backend.md §12). Vérifiées par `deno check`, jamais par l'ESLint de l'application.
+      'supabase/functions/**',
     ],
   },
   ...expoConfig,

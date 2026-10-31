@@ -14,6 +14,7 @@
     "test:rls:nettoyage": "node scripts/nettoyer-comptes-banc-rls.mjs",
     "comptes:test": "node scripts/comptes-test-durables.mjs",
     "comptes:test:supprimer": "node scripts/comptes-test-durables.mjs --supprimer",
+    "verif:fonctions": "cd supabase/functions && deno check --config deno.jsonc --node-modules-dir=none abonnement-intention/index.ts abonnement-constat/index.ts webhook-paiement/index.ts && deno lint --config deno.jsonc",
     "verif:serveur": "node scripts/verifier-serveur-dev.mjs",
     "env:proteger": "node scripts/proteger-env.mjs",
     "verif:bundle": "node scripts/verifier-bundle-production.mjs",

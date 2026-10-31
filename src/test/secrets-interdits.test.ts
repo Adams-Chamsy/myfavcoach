@@ -108,7 +108,12 @@ describe('secrets interdits côté application', () => {
     // service_role plus bas). Ils ne sont pas exclus : ils restent soumis à MOTIF_IMPORT_STRIPE,
     // seule l'interdiction du mot leur est levée.
     //   - scripts/verifier-bundle-production.mjs : cherche "api.stripe.com" dans le bundle livré
-    const NOMMENT_SANS_IMPORTER = new Set(['scripts/verifier-bundle-production.mjs']);
+    //   - scripts/poser-secret-stripe.sh         : pose un secret Stripe sur le projet de dev
+    //     après avoir refusé toute clé _live_ (docs/backend.md §13, « Secrets »)
+    const NOMMENT_SANS_IMPORTER = new Set([
+      'scripts/verifier-bundle-production.mjs',
+      'scripts/poser-secret-stripe.sh',
+    ]);
     const MOTIF_IMPORT_STRIPE =
       /(?:from\s+|require\(\s*|import\(\s*)['"](?:stripe|@stripe\/[^'"]*)['"]/;
 

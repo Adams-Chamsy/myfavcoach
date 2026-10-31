@@ -1,0 +1,16 @@
+// Configuration Deno des Edge Functions, distincte de l'application (docs/backend.md §12).
+{
+  // Sans cette ligne, Deno adopte le package.json de l'application à la racine du dépôt et
+  // cherche Stripe dans son node_modules. Les fonctions utilisent le cache de Deno, jamais les
+  // dépendances de l'application mobile.
+  "nodeModulesDir": "none",
+  "lint": {
+    "rules": {
+      // Imports `npm:paquet@version` écrits dans le code, épinglés à un seul endroit
+      // (_partage/stripe.ts, _partage/postgres.ts) : c'est la forme que le déploiement Supabase
+      // lit sans configuration de plus. Une table d'imports dans ce fichier serait plus propre,
+      // mais sa prise en compte au déploiement n'a pas été vérifiée.
+      "exclude": ["no-import-prefix"],
+    },
+  },
+}

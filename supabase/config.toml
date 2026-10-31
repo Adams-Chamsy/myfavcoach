@@ -430,6 +430,12 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Le webhook du prestataire de paiement n'a pas de jeton Supabase : ce qui le protège, c'est la
+# vérification de la signature Stripe, dans la fonction, avant toute lecture du contenu
+# (docs/backend.md §12). AUCUNE autre fonction ne porte ce réglage.
+[functions.webhook-paiement]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
