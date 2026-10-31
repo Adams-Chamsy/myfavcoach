@@ -68,6 +68,16 @@ GET /coachs?limite=20&curseur=eyJ...
 (tutoiement, factuel, jamais moralisateur). `code` est stable, c'est sur lui que l'application
 branche son comportement — jamais sur `title`.
 
+**Règle (écrite le 31 octobre 2026) : tout refus porte un `code`, un `title` et un `detail`, et
+l'écran affiche ce que le serveur rend.** Un message d'erreur est un texte produit, pas un
+détail technique : s'il vit dans l'écran, il est réécrit différemment dans chaque écran, et on
+finit avec cinq façons de dire « cette offre n'existe plus ». Le serveur en est la source unique.
+L'application n'écrit elle-même que ce que le serveur ne peut pas dire : l'absence de réseau
+(aucune réponse n'est arrivée). Les textes suivent le registre du tableau des messages de
+`docs/ecrans/L1-02-creation-compte.md` : tutoiement, pas de jargon, jamais un code technique à
+l'écran. Hors champ : les réponses du webhook, destinées au prestataire de paiement, jamais à
+une personne. Exception existante, à aligner : `publierOffre` (`docs/dette.md`).
+
 Codes de statut utilisés : 200, 201, 202, 204, 400, 401, 403, 404, 409, 410, 422, 429, 503.
 Un 503 porte toujours `Retry-After`.
 

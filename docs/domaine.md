@@ -162,6 +162,15 @@ l'onboarding. La création d'un profil coach n'efface jamais le profil client.
 **Règle d'auto-abonnement** : un `Abonnement` dont le `profilClient` et le `profilCoach`
 appartiennent au même `Compte` est refusé (erreur `auto_abonnement_interdit`).
 
+**Règle d'abonnement unique** (tranchée le 31 octobre 2026) : un client ne peut pas avoir deux
+abonnements **en cours** chez le même coach. Sinon il paie deux fois le même suivi sans s'en
+rendre compte — un défaut qu'on découvre par une réclamation. « En cours » = tout statut sauf
+les deux statuts terminaux `resilie` et `annule` (§4.3) : un abonnement en pause, impayé,
+suspendu ou dont la résiliation est programmée compte encore. Le refus est décidé par le
+serveur, jamais par l'écran. **Au 31 octobre 2026, le serveur ne l'applique pas encore** : ni
+la création de l'intention ni la souscription ne vérifient un abonnement existant — correctif
+à faire (`docs/dette.md`, `docs/prompts/L4.md` P4.5d), pas une simple documentation.
+
 `ProfilClient` : `prenom`, `nom`, `photo?`, `commune?`, `objectifTexte?`, `poidsDepartGrammes?`,
 `poidsCibleGrammes?`, `consentementSante` (voir 3.12).
 

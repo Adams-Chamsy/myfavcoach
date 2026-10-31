@@ -104,14 +104,17 @@ Le reste :
 ## Ce qui a été inventé pour cette fiche
 
 - **Indicateur d'étape.** La maquette écrit « Étape 1 sur 3 » (04a) puis « Étape 3 sur 3 »
-  (04b) : aucune étape 2 n'existe dans le dossier. Cette fiche propose « Étape 1 sur 2 » /
-  « Étape 2 sur 2 » — **à valider**, ou à retirer.
-- **Visiteur sans session.** Le chemin `anon` → connexion/inscription → retour au tunnel n'est
-  décrit nulle part. Proposition : « S'abonner » ouvre la connexion, puis ramène au profil coach
-  (pas directement au tunnel). **À valider** avant P4.6.
-- **Deuxième abonnement au même coach.** `docs/domaine.md` n'interdit pas qu'un client ait deux
-  abonnements actifs chez le même coach (il n'en parle pas). Rien n'est affiché ni bloqué par
-  cette fiche. **À trancher dans `docs/domaine.md` avant P4.3**, pas par l'écran.
+  (04b) : aucune étape 2 n'existe dans le dossier. **Décidé le 31 octobre 2026 : « Étape 1 sur
+  2 » (04a) et « Étape 2 sur 2 » (04b).** La maquette qui annonce trois étapes et n'en dessine
+  que deux est une erreur de maquette, pas une étape manquante.
+- **Visiteur sans session.** Le chemin `anon` → connexion/inscription n'était décrit nulle part.
+  **Décidé le 31 octobre 2026 : « S'abonner » ouvre la connexion, puis ramène au profil coach,
+  jamais directement au tunnel.** Quelqu'un qui revient d'une inscription n'a plus forcément
+  l'intention d'avant ; le ramener d'office sur un paiement serait présomptueux.
+- **Deuxième abonnement au même coach.** **Tranché le 31 octobre 2026 dans `docs/domaine.md`
+  §3.2 (« Règle d'abonnement unique »)** : refusé par le serveur. L'écran affiche le refus tel
+  que le serveur le rend (`title`/`detail`, `docs/api.md` §1), comme l'auto-abonnement — il ne
+  le calcule pas.
 - Nom de route `souscription/[coachId]`.
 - Texte de l'état « aucune offre publiée ».
 

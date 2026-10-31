@@ -102,6 +102,25 @@ et se teste en mode test Stripe sans ce texte ; il **ne passe pas en production*
   locale — un navigateur fermé ne dit **rien** de ce qui s'est passé : le paiement a pu aboutir
   une seconde avant, être en cours d'authentification, ou n'avoir jamais commencé. Voir
   « Retour sans confirmation » ci-dessous.
+- **Retour sur web (décidé le 31 octobre 2026).** Sur web, « Payer » remplace la page de
+  l'application par la page Stripe, dans le même onglet : au retour, l'application est
+  rechargée, et l'`intentionId` gardé en mémoire n'existe plus. Il revient par l'adresse de
+  retour elle-même, que **le serveur** a posée en créant la session (`?intention={id}`,
+  `abonnement-intention`) : l'accueil lit ce paramètre et ouvre 04b en mode retour, qui appelle
+  le constat avec ce seul identifiant. Ce n'est pas un stockage local : c'est lire ce que Stripe
+  nous rend. Le récapitulatif n'est pas redemandé (le constat ne le rend pas) : l'écran de
+  retour affiche l'état du constat, pas les lignes du récapitulatif. Tant que `myfavcoach.fr`
+  n'existe pas, l'adresse de retour est `http://localhost:8081/?intention={id}` (`docs/dette.md`).
+- **L'identifiant de l'adresse de retour est une donnée non fiable.** Il vient de l'extérieur :
+  n'importe qui peut forger une adresse avec l'identifiant d'une autre personne. L'écran ne
+  vérifie rien lui-même et ne montre rien d'autre que la réponse du constat ; c'est le serveur
+  qui décide (`mon_intention`, 0037 : l'intention n'est rendue que si elle appartient au compte
+  connecté, sous son profil client). **Vérifié le 31 octobre 2026 par de vrais appels HTTP** :
+  un client qui appelle le constat avec l'intention d'un autre reçoit `404
+  intention_introuvable`, exactement la même réponse qu'une intention inexistante ou un
+  identifiant mal formé — rien ne laisse deviner que l'intention existe. L'écran traite ce 404
+  comme « rien à constater » : retour à l'accueil client (l'identifiant seul ne dit pas de
+  quel coach il s'agit), sans message qui distingue les cas.
 - **Retour sans confirmation — navigateur fermé en plein paiement.** Ce n'est **pas** l'état SEPA
   `en_attente_confirmation` : ici, aucun abonnement n'existe. L'écran affiche selon le constat :
 
