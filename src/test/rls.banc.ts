@@ -5223,6 +5223,24 @@ describe('intentions et synchronisation — L4 (0037, 0038)', () => {
         });
         expect(messageDe(corps)).toMatch(/anomalies_paiement_statut_coach_si_ecarte/);
       });
+
+      // 0039 : consigné par le point d'entrée quand aucune source ne donne le moyen de paiement
+      // d'une session terminée (supabase/functions/_partage/session-paiement.ts, moyenUtilise).
+      it('moyen_indetermine (0039) est un motif accepté', async () => {
+        const s = sessionPaiement('anomalie-moyen');
+        const r = await appelRest('/rest/v1/rpc/enregistrer_anomalie_paiement', {
+          methode: 'POST',
+          session: 'admin',
+          corps: { p_session: s, p_intention_id: randomUUID(), p_motif: 'moyen_indetermine' },
+        });
+        expect(r.statut).toBe(204);
+        expect(
+          await compter(
+            'anomalies_paiement',
+            `session_prestataire=eq.${s}&motif=eq.moyen_indetermine`,
+          ),
+        ).toBe(1);
+      });
     });
 
     // docs/backend.md §12, règle 2 : aucun ordre d'arrivée supposé. Les événements en retard

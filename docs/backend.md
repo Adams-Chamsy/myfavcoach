@@ -531,6 +531,7 @@ l'anomalie, que le rapprochement quotidien remonte (`docs/prompts/L4.md` point 1
 | Intention introuvable (`intention_inconnue` : le client a payé puis supprimé son compte — l'intention est toujours enregistrée **avant** la création de la session, elle ne peut pas être « pas encore créée ») | non | 200 + anomalie |
 | Offre retirée ou modifiée depuis l'intention | — | **n'est plus un refus** : l'offre n'est jamais revérifiée au paiement (`docs/domaine.md` §3.3, révisé le 3 octobre 2026) |
 | Vraies incohérences : `montant_incoherent`, `session_incoherente`, `statut_session_inconnu`, `etat_incoherent` | non | la fonction SQL **lève** — rien de métier n'est écrit, ce sont des erreurs ; le point d'entrée enregistre alors l'anomalie **dans un second appel**, journalise le code (jamais le corps) et répond **200** |
+| Moyen de paiement illisible sur une session terminée (`moyen_indetermine`, 0039) : ni `payment_intent.payment_method`, ni `latest_charge.payment_method_details`, ni `last_payment_error.payment_method` ne donnent de type (`_partage/session-paiement.ts`, `moyenUtilise`) | non | constaté **avant** la fonction SQL, rien de métier n'est écrit ; 200 + anomalie. Jamais « SEPA par élimination » |
 
 Les refus de `souscrire_abonnement` atteignables depuis ce chemin sont tous filtrés en amont :
 `coach_non_verifie` par la règle du coach écarté, `profil_client_inconnu` par

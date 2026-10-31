@@ -18,6 +18,10 @@ const INCOHERENCES = [
 ] as const;
 export type Incoherence = (typeof INCOHERENCES)[number];
 
+// Motifs consignés par CE module, sans que la fonction SQL ait levé : le moyen de paiement
+// illisible sur une session terminée (moyenUtilise). Migration 0039.
+export type Motif = Incoherence | 'moyen_indetermine';
+
 function estIncoherence(code: string | null): code is Incoherence {
   return (INCOHERENCES as readonly string[]).includes(code ?? '');
 }
@@ -38,7 +42,7 @@ const RESULTATS_SQL: readonly string[] = [
 export type Synchronisation =
   | { type: 'resultat'; resultat: ResultatSql }
   // Levée par la fonction SQL (ou constatée avant de l'appeler), puis consignée en anomalie.
-  | { type: 'incoherence'; motif: Incoherence }
+  | { type: 'incoherence'; motif: Motif }
   // La session ne porte aucune intention de ce dépôt (autre usage du compte Stripe,
   // `stripe trigger`) : rien à faire, rien d'écrit.
   | { type: 'ignoree' };
@@ -60,26 +64,49 @@ export async function relireSession(
   stripe: Stripe,
   idSession: string,
 ): Promise<Stripe.Checkout.Session> {
-  // payment_intent.payment_method : le moyen EFFECTIVEMENT utilisé (carte ou prélèvement), pas
-  // la liste des moyens proposés.
+  // Le moyen EFFECTIVEMENT utilisé (carte ou prélèvement), pas la liste des moyens proposés :
+  // payment_intent.payment_method, et latest_charge pour le cas où Stripe l'a retiré (moyenUtilise).
   return await stripe.checkout.sessions.retrieve(idSession, {
-    expand: ['payment_intent.payment_method'],
+    expand: ['payment_intent.payment_method', 'payment_intent.latest_charge'],
   });
 }
 
-function moyenUtilise(paiement: Stripe.PaymentIntent | null): 'carte' | 'sepa' | null {
-  const methode = paiement?.payment_method;
-  if (!methode || typeof methode === 'string') return null;
-  if (methode.type === 'card') return 'carte';
-  if (methode.type === 'sepa_debit') return 'sepa';
-  return null;
+// Lu, jamais déduit. Après un prélèvement SEPA rejeté, Stripe retire le moyen de paiement du
+// PaymentIntent (payment_method vaut null, relu sur une vraie session le 31 octobre 2026) ; le
+// type reste lisible à deux autres endroits, essayés dans l'ordre de fiabilité de la
+// documentation de l'API Stripe :
+//   1. payment_method : le moyen attaché, quand il l'est encore ;
+//   2. latest_charge.payment_method_details : « Details about the payment method at the time of
+//      the transaction » -- la trace du débit tenté, que rien n'efface ;
+//   3. last_payment_error.payment_method : « cleared if the PaymentIntent is later updated for
+//      any reason » -- dernier recours.
+// Les trois vides : 'indetermine', consigné sous son propre motif. Jamais « SEPA puisque ce n'est
+// pas une carte » : la page ne propose que ces deux moyens aujourd'hui, pas forcément demain.
+export type MoyenLu = 'carte' | 'sepa' | 'autre' | 'indetermine';
+
+function typeLu(source: unknown): string | null {
+  if (!source || typeof source !== 'object') return null;
+  const type = (source as { type?: unknown }).type;
+  return typeof type === 'string' ? type : null;
+}
+
+export function moyenUtilise(paiement: Stripe.PaymentIntent | null): MoyenLu {
+  const debit = paiement?.latest_charge;
+  const type =
+    typeLu(paiement?.payment_method) ??
+    typeLu(debit && typeof debit !== 'string' ? debit.payment_method_details : null) ??
+    typeLu(paiement?.last_payment_error?.payment_method);
+  if (type === null) return 'indetermine';
+  if (type === 'card') return 'carte';
+  if (type === 'sepa_debit') return 'sepa';
+  return 'autre';
 }
 
 async function consignerIncoherence(
   serveur: ClientPostgres,
   session: string,
   intention: string,
-  motif: Incoherence,
+  motif: Motif,
 ): Promise<Synchronisation> {
   const { error } = await serveur.rpc('enregistrer_anomalie_paiement', {
     p_session: session,
@@ -103,13 +130,20 @@ export async function synchroniserSession(
     session.payment_intent && typeof session.payment_intent !== 'string'
       ? session.payment_intent
       : null;
-  const moyen = moyenUtilise(paiement);
+  const lu = moyenUtilise(paiement);
 
-  // Session terminée sans moyen reconnu (ni carte ni prélèvement SEPA) : la page n'en propose pas
-  // d'autre, c'est une incohérence -- jamais un 5xx, la relecture rendrait la même chose.
-  if (session.status === 'complete' && moyen === null) {
+  // Session terminée sans moyen exploitable -- jamais un 5xx, la relecture rendrait la même chose
+  // (docs/dette.md, « Aucune alerte sur les anomalies de paiement ») :
+  //   - aucun type lisible nulle part : moyen_indetermine ;
+  //   - un type lu, ni carte ni SEPA : la page n'en propose pas d'autre, etat_incoherent.
+  if (session.status === 'complete' && lu === 'indetermine') {
+    return consignerIncoherence(serveur, session.id, intention, 'moyen_indetermine');
+  }
+  if (session.status === 'complete' && lu === 'autre') {
     return consignerIncoherence(serveur, session.id, intention, 'etat_incoherent');
   }
+  // Session non terminée (ouverte, expirée) : aucun moyen à transmettre.
+  const moyen = lu === 'carte' || lu === 'sepa' ? lu : null;
 
   const { data, error } = await serveur.rpc('synchroniser_session_paiement', {
     p_evenement_id: evenement?.id ?? null,

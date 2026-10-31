@@ -23,4 +23,8 @@ module.exports = {
   // suffisamment la machine pour perturber le suivi interne de act() de React -- pas une fuite
   // d'etat entre fichiers precise, une contention CPU reelle une fois la suite assez grosse.
   maxWorkers: 2,
+  // supabase/functions/ : tests Deno (imports `npm:...`, Deno.test), lancés par
+  // npm run verif:fonctions (scripts/verifier-fonctions.mjs), jamais par Jest qui ne sait pas
+  // les charger. Trouvé le 31 octobre 2026 en ajoutant les premiers `*.test.ts` côté fonctions.
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/supabase/functions/'],
 };
