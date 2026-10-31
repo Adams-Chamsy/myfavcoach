@@ -459,10 +459,16 @@ Deux cas, jamais mélangés dans une même fonction :
   **sans** vérification de jeton : réglage écrit dans `supabase/config.toml`
   (`[functions.webhook-paiement] verify_jwt = false`, P4.5b) plutôt qu'en option de commande,
   pour qu'un redéploiement ne puisse pas l'oublier ; **aucune autre fonction** ne le porte.
-- **Avant tout déploiement : `npm run verif:fonctions`** (`deno check` en mode strict, puis
-  `deno lint`). Configuration propre aux fonctions : `supabase/functions/deno.jsonc`, sans
-  laquelle Deno adopte le `package.json` de l'application et cherche ses paquets dans
-  `node_modules`. Hors de `npm run verif` : la CI n'a pas Deno. Deno s'installe par le binaire
+- **Avant tout déploiement : `npm run verif:fonctions`** (`scripts/verifier-fonctions.mjs` :
+  `deno check` en mode strict, `deno lint`, puis `deno test` sur les `*.test.ts` de
+  `supabase/functions/`). Configuration propre aux fonctions : `supabase/functions/deno.jsonc`,
+  sans laquelle Deno adopte le `package.json` de l'application et cherche ses paquets dans
+  `node_modules`. **Dans `npm run verif` depuis le 31 octobre 2026** : avant, il n'y était pas, et
+  `deno` n'était pas dans le PATH du développeur — les tests Deno n'avaient jamais tourné à la
+  porte d'entrée. Le script cherche `deno` dans le PATH puis dans `~/.deno/bin`, et **échoue en le
+  nommant** s'il est introuvable. La CI (`.github/workflows/verif.yml`) installe Deno par le même
+  binaire officiel, somme de contrôle épinglée dans le fichier, sans action tierce, puis lance
+  `verif:fonctions` (décidé le 31 octobre 2026). Deno s'installe par le binaire
   officiel (`~/.deno/bin/deno`, somme de contrôle vérifiée) ; Homebrew n'a pas de version toute
   prête pour ce Mac Intel.
 - Versions figées dans `supabase/functions/_partage/` : `npm:stripe@22.6.2` (API

@@ -15,11 +15,11 @@
     "anomalies:retraiter": "node scripts/retraiter-anomalies-paiement.mjs",
     "comptes:test": "node scripts/comptes-test-durables.mjs",
     "comptes:test:supprimer": "node scripts/comptes-test-durables.mjs --supprimer",
-    "verif:fonctions": "cd supabase/functions && deno check --config deno.jsonc --node-modules-dir=none abonnement-intention/index.ts abonnement-constat/index.ts webhook-paiement/index.ts anomalies-retraitement/index.ts && deno lint --config deno.jsonc && deno test --config deno.jsonc --node-modules-dir=none --allow-env",
+    "verif:fonctions": "node scripts/verifier-fonctions.mjs",
     "verif:serveur": "node scripts/verifier-serveur-dev.mjs",
     "env:proteger": "node scripts/proteger-env.mjs",
     "verif:bundle": "node scripts/verifier-bundle-production.mjs",
-    "verif": "npm run tokens && npm run lint && npm run typecheck && npm test && npm run test:a11y && npm run test:rls && npm run verif:bundle && npm run verif:serveur",
+    "verif": "npm run tokens && npm run lint && npm run typecheck && npm test && npm run test:a11y && npm run test:rls && npm run verif:fonctions && npm run verif:bundle && npm run verif:serveur",
     "reproduire:ci": "bash scripts/reproduire-conditions-ci.sh"
   },
   "dependencies": {
