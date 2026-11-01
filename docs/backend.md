@@ -308,6 +308,12 @@ Attribuer `est_examinateur = true` à un compte reste une opération manuelle, h
 (`service_role`, directement en base) — aucun écran de ce dépôt ne doit permettre à un compte de
 se l'attribuer, ni à un examinateur d'en promouvoir un autre.
 
+**Sur le projet de développement, la promotion passe par `scripts/promouvoir-examinateur.sh
+<adresse>`** (ajouté le 1er novembre 2026), lancé par le développeur : garde de projet, compte
+déjà existant exigé (le script ne choisit jamais de mot de passe), refus d'un compte qui a un
+profil client ou coach (un examinateur est un compte distinct), refus des comptes du banc.
+Relancé sur un compte déjà examinateur, il ne fait rien.
+
 ---
 
 ## 10. Lecture inter-comptes à grande échelle

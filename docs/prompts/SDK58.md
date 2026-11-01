@@ -134,6 +134,32 @@ Ce qui est regardé, et noté (fait / pas fait / défaut constaté, avec capture
 Ce que l'essai ne peut pas couvrir en Expo Go : « Continuer avec Apple », les liens universels
 (domaine absent), les notifications. Ils restent où ils sont dans `docs/dette.md`.
 
+### Résultat de l'essai sur iPhone — partiel (1er novembre 2026, au soir)
+
+Fait par le développeur, Expo Go à jour, contre le projet de développement :
+
+| Point de S58.5 | Résultat |
+|---|---|
+| 1. Démarrage (écran de démarrage, bienvenue, sans écran rouge) | **fait, bon** |
+| 2. Inscription jusqu'à la date de naissance (sélecteur de date) | **pas fait** |
+| 3. Connexion, onboarding, espace | connexion **bonne** ; onboarding coach **ouvert** (son étape 2 a révélé un défaut antérieur au SDK 58, voir plus bas) |
+| 4. Feuille de bascule (Reanimated) | **pas fait** |
+| 5. Profil d'un coach, onglet Avis, puis 04a | **pas fait** ; l'écran de création d'offre s'affiche correctement |
+| 6. Zones sûres | **bonnes** sur les écrans vus : rien sous l'encoche ni sous la barre du bas |
+| Hors liste : la garde de sortie sur « Mes informations » | **pas faite** |
+
+**Défauts trouvés pendant l'essai, aucun n'est dû au SDK 58** : l'enregistrement du profil coach
+refusé en `42501` depuis le 12 septembre, la recherche du profil coach par `limit(1)`, et les
+retours muets de l'écran de création d'offre (`docs/dette.md`, ligne « le coach ne sait pas
+désigner son propre profil »). Ils ont leur propre prompt.
+
+**La porte reste ouverte.** Les quatre points manquants sont précisément ceux que la montée
+touchait au natif : le sélecteur de date (datetimepicker 9.1 → 9.2.1, module natif), la feuille
+de bascule (Reanimated 4.5 → 4.7, worklets 0.10 → 0.13), la garde de sortie (réécrite sur
+`usePreventRemove`, prouvée seulement sur le web) et 04a (navigation d'expo-router 58). Les
+points vus sont les plus génériques. Ils seront faits le 2 novembre, dans la même séance que la
+revalidation du parcours coach de L2.
+
 ---
 
 ## Porte de sortie
