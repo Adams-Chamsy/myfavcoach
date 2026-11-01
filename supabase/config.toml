@@ -432,8 +432,14 @@ deno_version = 2
 
 # Le webhook du prestataire de paiement n'a pas de jeton Supabase : ce qui le protège, c'est la
 # vérification de la signature Stripe, dans la fonction, avant toute lecture du contenu
-# (docs/backend.md §12). AUCUNE autre fonction ne porte ce réglage.
+# (docs/backend.md §12).
 [functions.webhook-paiement]
+verify_jwt = false
+
+# La tâche planifiée (pg_cron + pg_net, P4.8b) n'a pas de jeton Supabase non plus : ce qui la
+# protège, c'est la clé partagée CLE_TACHE_PLANIFIEE (en-tête x-cle-tache), comparée dans la
+# fonction avant toute action. Ces deux fonctions, et elles seules, portent ce réglage.
+[functions.echeances-quotidiennes]
 verify_jwt = false
 
 [analytics]

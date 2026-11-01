@@ -212,6 +212,8 @@ describe('secrets interdits côté application', () => {
   //   - supabase/migrations/0043_appliquer_abonnement_unique.sql : réaffirmation des droits des trois fonctions qu'elle remplace (souscription et synchronisation réservées à service_role, intention à authenticated) et de anomalies_paiement_ouvertes
   //   - supabase/migrations/0044_moteur_echeances.sql : EXECUTE des quatre fonctions du moteur d'échéances (P4.8a) et de anomalies_paiement_ouvertes, réservées à service_role -- la tâche planifiée de P4.8b les appellera, jamais l'application
   //   - supabase/migrations/0045_purger_tentatives_banc.sql : EXECUTE de purger_anomalies_banc remplacée (préfixes cs_banc_ et pi_banc_ écrits en dur), réservée à service_role
+  //   - supabase/migrations/0046_conserver_moyen_paiement.sql : EXECUTE de memoriser_moyen_paiement réservée à service_role, et commentaire sur la lecture de la colonne par ce rôle
+  //   - supabase/migrations/0047_planifier_echeances.sql : revoke de declencher_echeances à tous les rôles, service_role compris (seul pg_cron l'exécute, en tant que propriétaire)
   //   - supabase/functions/_partage/environnement.ts et postgres.ts : le NOM de la variable SUPABASE_SERVICE_ROLE_KEY, injectée par Supabase dans l'environnement de chaque Edge Function et lue par Deno.env.get au moment de la requête (docs/backend.md §12, cas 2) -- jamais une valeur, jamais dans le paquet mobile
   //   - src/test/conventions-grants-migrations.test.ts : balaie supabase/migrations/ pour vérifier que chaque revoke nomme explicitement "service_role" avant un grant à anon/authenticated — le rôle apparaît en donnée de test (littéraux SQL écrits exprès, fautifs et corrects) et dans la liste des rôles requis, jamais comme une clé
   //   - docs/prompts/L3bis.md : règle 11 (cumulative) nomme "service_role" pour que le trou récurrent ci-dessus devienne une règle de conduite, pas une note qui ne survit qu'à ma mémoire
@@ -257,6 +259,8 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0043_appliquer_abonnement_unique.sql',
       'supabase/migrations/0044_moteur_echeances.sql',
       'supabase/migrations/0045_purger_tentatives_banc.sql',
+      'supabase/migrations/0046_conserver_moyen_paiement.sql',
+      'supabase/migrations/0047_planifier_echeances.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

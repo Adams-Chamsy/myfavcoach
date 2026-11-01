@@ -10,7 +10,10 @@ export type NomSecret =
   | 'URL_RETOUR_PAIEMENT'
   | 'SUPABASE_URL'
   | 'SUPABASE_ANON_KEY'
-  | 'SUPABASE_SERVICE_ROLE_KEY';
+  | 'SUPABASE_SERVICE_ROLE_KEY'
+  // P4.8b : la clé partagée entre la tâche planifiée (pg_cron, via Vault) et la fonction
+  // echeances-quotidiennes, posée par scripts/poser-cle-tache-planifiee.sh.
+  | 'CLE_TACHE_PLANIFIEE';
 
 export class ConfigurationIncomplete extends Error {
   constructor(nom: NomSecret) {

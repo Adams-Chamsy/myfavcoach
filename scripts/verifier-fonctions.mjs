@@ -21,6 +21,7 @@ const FONCTIONS = [
   'abonnement-constat/index.ts',
   'webhook-paiement/index.ts',
   'anomalies-retraitement/index.ts',
+  'echeances-quotidiennes/index.ts',
 ];
 
 function trouverDeno() {

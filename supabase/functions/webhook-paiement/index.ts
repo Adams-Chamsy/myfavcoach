@@ -12,7 +12,9 @@
 //   500 -- seulement ce qu'une relivraison peut faire passer : base ou Stripe injoignables,
 //          configuration incomplète.
 import { ConfigurationIncomplete, lireSecret } from '../_partage/environnement.ts';
+import { conclureDepuisPaiement } from '../_partage/prelevement.ts';
 import { clientServeur } from '../_partage/postgres.ts';
+import { paiementDepuisStripe } from '../_partage/prestataire-stripe.ts';
 import {
   ErreurPassagere,
   relireSession,
@@ -30,6 +32,15 @@ const TYPES_TRAITES = new Set([
   'checkout.session.async_payment_succeeded',
   'checkout.session.async_payment_failed',
   'checkout.session.expired',
+]);
+
+// P4.8b : l'issue d'un prélèvement d'échéance hors session (_partage/prelevement.ts). Une carte
+// répond sur-le-champ, à la tâche planifiée elle-même ; un prélèvement SEPA répond en différé,
+// ici. Les paiements de la page de paiement passent aussi par ces événements : sans métadonnées
+// d'échéance, ils sont ignorés (leur session les traite).
+const TYPES_PAIEMENT_ECHEANCE = new Set([
+  'payment_intent.succeeded',
+  'payment_intent.payment_failed',
 ]);
 
 function reponse(statut: number, corps: Record<string, string>): Response {
@@ -67,6 +78,9 @@ async function traiter(requete: Request): Promise<Response> {
 
   // 2. Seulement maintenant, le contenu -- et seulement l'identifiant et le type de l'événement,
   //    et l'identifiant de la session. L'ÉTAT de la session est relu chez Stripe.
+  if (TYPES_PAIEMENT_ECHEANCE.has(evenement.type)) {
+    return traiterPaiementEcheance(stripe, evenement);
+  }
   if (!TYPES_TRAITES.has(evenement.type)) return reponse(200, { resultat: 'type_ignore' });
   const idSession = (evenement.data.object as { id?: unknown }).id;
   if (typeof idSession !== 'string') return reponse(200, { resultat: 'type_ignore' });
@@ -97,6 +111,26 @@ async function traiter(requete: Request): Promise<Response> {
     case 'resultat':
       return reponse(200, { resultat: synchronisation.resultat });
   }
+}
+
+// L'état du paiement est RELU chez Stripe (docs/backend.md §12, règle 2), jamais pris dans
+// l'événement, qui peut être ancien. conclure_tentative ne conclut qu'une fois : un événement
+// relivré ne refait rien.
+async function traiterPaiementEcheance(stripe: Stripe, evenement: Stripe.Event): Promise<Response> {
+  const idPaiement = (evenement.data.object as { id?: unknown }).id;
+  if (typeof idPaiement !== 'string') return reponse(200, { resultat: 'type_ignore' });
+  let paiement: Stripe.PaymentIntent;
+  try {
+    paiement = await stripe.paymentIntents.retrieve(idPaiement);
+  } catch (erreur) {
+    if (erreurStripeDefinitive(erreur)) {
+      console.error(`webhook-paiement ${evenement.id} : paiement illisible, ignoré`);
+      return reponse(200, { resultat: 'paiement_illisible' });
+    }
+    throw erreur;
+  }
+  const resultat = await conclureDepuisPaiement(clientServeur(), paiementDepuisStripe(paiement));
+  return reponse(200, { resultat });
 }
 
 Deno.serve(async (requete) => {

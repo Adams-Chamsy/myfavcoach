@@ -6059,4 +6059,56 @@ describe('intentions et synchronisation — L4 (0037, 0038)', () => {
       expect(JSON.stringify(corps)).toMatch(/permission denied/i);
     });
   });
+
+  // P4.8b (0046) : le moyen de paiement enregistré au premier paiement, que la tâche planifiée
+  // prélèvera hors session à chaque échéance. Réservé au serveur, comme le client du prestataire : jamais
+  // lisible depuis l'application (CLAUDE.md §10), posé une seule fois.
+  describe('moyen de paiement conservé (0046)', () => {
+    const memoriser = (ref: string, moyen: string, appelant: Appelant = 'admin') =>
+      appelRest('/rest/v1/rpc/memoriser_moyen_paiement', {
+        methode: 'POST',
+        session: appelant,
+        corps: { p_reference_paiement: ref, p_moyen_prestataire: moyen },
+      });
+
+    // 0047 : la tâche planifiée déclenche les prélèvements ; seul pg_cron l'exécute (en tant que
+    // propriétaire). Ni un client, ni même la clé serveur de l'API ne peuvent la lancer.
+    it('declencher_echeances (0047) : ni A, ni le serveur par l’API', async () => {
+      for (const appelant of [A, 'admin'] as Appelant[]) {
+        const { statut, corps } = await appelRest('/rest/v1/rpc/declencher_echeances', {
+          methode: 'POST',
+          session: appelant,
+          corps: { p_jour: '2026-12-01' },
+        });
+        expect(statut).toBeGreaterThanOrEqual(400);
+        expect(JSON.stringify(corps)).toMatch(/permission denied/i);
+      }
+    });
+
+    it('posé une fois par le serveur, jamais écrasé ; A ne peut ni le poser ni le lire', async () => {
+      const s = sessionPaiement('moyen-conserve');
+      const intention = await nouvelleIntention();
+      await attacher(intention, s);
+      expect((await synchroniser({ intention, session: s })).corps).toBe('abonne');
+
+      const refus = await memoriser(s, 'pm_banc_vole', A);
+      expect(refus.statut).toBeGreaterThanOrEqual(400);
+      expect(JSON.stringify(refus.corps)).toMatch(/permission denied/i);
+
+      expect((await memoriser(s, 'pm_banc_premier')).statut).toBe(204);
+      expect((await memoriser(s, 'pm_banc_second')).statut).toBe(204);
+      const { corps } = await appelRest(
+        `/rest/v1/abonnements?reference_paiement=eq.${s}&select=reference_moyen_prestataire`,
+        { session: 'admin' },
+      );
+      expect(corps).toEqual([{ reference_moyen_prestataire: 'pm_banc_premier' }]);
+
+      const lecture = await appelRest(
+        `/rest/v1/abonnements?reference_paiement=eq.${s}&select=reference_moyen_prestataire`,
+        { session: A },
+      );
+      expect(lecture.statut).toBeGreaterThanOrEqual(400);
+      expect(JSON.stringify(lecture.corps)).toMatch(/permission denied/i);
+    });
+  });
 });

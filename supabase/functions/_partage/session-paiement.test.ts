@@ -125,3 +125,35 @@ Deno.test('les trois sources vides : anomalie moyen_indetermine, rien de métier
     [['enregistrer_anomalie_paiement', 'moyen_indetermine']],
   );
 });
+
+// P4.8b (0046) : le moyen de paiement du premier paiement est conservé, pour les échéances.
+Deno.test('carte payée : le moyen de paiement est conservé après la synchronisation', async () => {
+  const appels: Appel[] = [];
+  const carte = paiement({
+    status: 'succeeded',
+    payment_method: { id: 'pm_carte', type: 'card' },
+    latest_charge: { payment_method_details: { type: 'card' } },
+    last_payment_error: null,
+  });
+  const s = {
+    ...(session(carte) as unknown as Record<string, unknown>),
+    payment_status: 'paid',
+  } as unknown as Stripe.Checkout.Session;
+  await synchroniserSession(fauxServeur(appels), s, null);
+  deepStrictEqual(
+    appels.map((a) => [a.fonction, a.arguments.p_moyen_prestataire ?? null]),
+    [
+      ['synchroniser_session_paiement', null],
+      ['memoriser_moyen_paiement', 'pm_carte'],
+    ],
+  );
+});
+
+Deno.test('moyen retiré (SEPA rejeté) : rien à conserver, aucun appel', async () => {
+  const appels: Appel[] = [];
+  await synchroniserSession(fauxServeur(appels), session(SEPA_REJETE), null);
+  deepStrictEqual(
+    appels.map((a) => a.fonction),
+    ['synchroniser_session_paiement'],
+  );
+});

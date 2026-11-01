@@ -183,5 +183,22 @@ export async function synchroniserSession(
   if (typeof data !== 'string' || !RESULTATS_SQL.includes(data)) {
     throw new ErreurPassagere('resultat_inattendu');
   }
+
+  // P4.8b (0046) : le moyen de paiement enregistré au premier paiement (setup_future_usage =
+  // off_session) est conservé pour les échéances, prélevées hors session. Seulement quand
+  // l'abonnement existe et que Stripe nomme encore le moyen — un prélèvement SEPA rejeté l'a
+  // retiré, et son abonnement est annulé de toute façon. Posé une fois (la base ignore la suite).
+  const moyenEnregistre =
+    typeof paiement?.payment_method === 'string'
+      ? paiement.payment_method
+      : (paiement?.payment_method?.id ?? null);
+  if ((data === 'abonne' || data === 'deja_traite') && moyenEnregistre) {
+    const conserve = await serveur.rpc('memoriser_moyen_paiement', {
+      p_reference_paiement: session.id,
+      p_moyen_prestataire: moyenEnregistre,
+    });
+    // Un nouvel essai (relivraison, constat suivant) peut réussir : 5xx.
+    if (conserve.error) throw new ErreurPassagere('moyen_non_conserve');
+  }
   return { type: 'resultat', resultat: data as ResultatSql };
 }

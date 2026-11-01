@@ -458,7 +458,8 @@ Deux cas, jamais mélangés dans une même fonction :
   est construit par Supabase, sans Docker (absent de cette machine). Le webhook est déployé
   **sans** vérification de jeton : réglage écrit dans `supabase/config.toml`
   (`[functions.webhook-paiement] verify_jwt = false`, P4.5b) plutôt qu'en option de commande,
-  pour qu'un redéploiement ne puisse pas l'oublier ; **aucune autre fonction** ne le porte.
+  pour qu'un redéploiement ne puisse pas l'oublier. Une seule autre fonction le porte depuis
+  P4.8b : `echeances-quotidiennes`, appelée par la tâche planifiée et protégée par sa clé partagée.
 - **Avant tout déploiement : `npm run verif:fonctions`** (`scripts/verifier-fonctions.mjs` :
   `deno check` en mode strict, `deno lint`, puis `deno test` sur les `*.test.ts` de
   `supabase/functions/`). Configuration propre aux fonctions : `supabase/functions/deno.jsonc`,
@@ -635,6 +636,31 @@ sans aucun grant à `anon`/`authenticated`), jamais exposé à l'application. Ra
 de l'abonnement, `Facture` la seule facture, et nos relances (J+1, J+3, J+7) les seules relances.
 Stripe Billing aurait tenu une seconde machine, une seconde facture et un second calendrier de
 relances, que rien ne garantit de maintenir d'accord avec les nôtres.
+
+**Comment ça tourne (P4.8a, P4.8b — 1er novembre 2026).**
+
+- **Les règles vivent en base** (0044) : `echeances_a_prelever(jour)` dit ce qui doit être tenté,
+  `ouvrir_tentative` et `conclure_tentative` posent chaque tentative et son issue,
+  `appliquer_echeances(jour)` fait les transitions du calendrier (reprise de pause, fin de
+  résiliation programmée, suspension à J+7, résiliation après 30 jours de suspension). Le jour est
+  un paramètre : le banc pose la date qu'il exerce.
+- **Le moyen de paiement est conservé** (0046, `reference_moyen_prestataire`) par la
+  synchronisation de la session, une seule fois — réservé au serveur, jamais lisible par
+  l'application.
+- **Chaque matin à 6 h, heure de Paris** (0047) : `pg_cron` appelle `declencher_echeances`, qui
+  appelle par `pg_net` l'Edge Function `echeances-quotidiennes` avec la clé partagée lue dans
+  Vault. Deux déclenchements (4 h et 5 h UTC) et une garde sur l'heure de Paris : un seul appel par
+  jour, été comme hiver. La fonction applique les transitions, puis prélève chaque échéance due
+  (`_partage/prelevement.ts`, `_partage/prestataire-stripe.ts`) : `PaymentIntent` hors session,
+  confirmé, une clé d'idempotence par tentative (jamais deux prélèvements pour la même).
+- **Carte** : l'issue est connue sur-le-champ, la fonction conclut elle-même. **SEPA** : la
+  tentative reste en cours, le webhook la conclut (`payment_intent.succeeded`,
+  `payment_intent.payment_failed`, état relu chez Stripe). **Le point d'entrée du webhook en
+  production devra être abonné à ces deux événements**, en plus de ceux de la page de paiement.
+- **Clé partagée** `CLE_TACHE_PLANIFIEE` : tirée au hasard et posée aux deux endroits (secret de
+  la fonction, Vault) par `scripts/poser-cle-tache-planifiee.sh`, jamais saisie ni affichée.
+  `echeances-quotidiennes` est déployée sans vérification de jeton (`supabase/config.toml`) : la
+  clé, comparée avant toute action, est ce qui la protège.
 
 ### Collecte du paiement : page Stripe hébergée (Checkout), pas de SDK natif
 
