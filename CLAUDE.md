@@ -214,6 +214,14 @@ manuelle, jamais automatique.
    commit** qui le dit. Trouvé le 1er novembre 2026 : les portes de L1 et de L3bis n'avaient
    jamais été passées, L2 puis L4 s'étaient ouverts quand même, et ça ne s'est vu que deux mois
    plus tard, en faisant le point.
+9. **Une seule main à la fois sur le dossier du projet.** Quand Claude travaille, le développeur
+   ne lance rien dans le dossier (ni `npm`, ni `npx expo`, ni `git`). Quand le développeur lance
+   quelque chose lui-même, il le dit avant. Trouvé le 1er novembre 2026 : deux `npm ci` lancés à
+   une minute d'écart, l'un par chacun, ont laissé un `node_modules` cassé (`react-native` absent)
+   alors que les deux sortaient sans erreur. Chacun commence par supprimer `node_modules`. Plus
+   tôt le même jour, une montée en SDK 58 abandonnée en cours (`npx expo install`) avait déjà fait
+   diverger `package.json` et le lock sans que personne le sache. Dix minutes de diagnostic, pour
+   une commande qui aurait pu être annoncée.
 
 ---
 
