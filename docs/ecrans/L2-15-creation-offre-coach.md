@@ -79,13 +79,49 @@ Le reste des règles :
   aucune récurrence éditable, aucun champ lié à un créneau ou une réduction. Si un prompt futur
   y conduit, arrête-toi — même règle que partout ailleurs dans ce lot.
 
+## Retours à l'écran (ajouté le 1er novembre 2026)
+
+**Trou de la fiche d'origine**, trouvé sur iPhone : elle ne définissait aucun retour pour
+« Enregistrer ». Le brouillon était bien enregistré, l'écran ne disait rien, et le silence a
+été pris pour une panne. Règles :
+
+- **« Enregistrer » dit qu'il a enregistré**, et dit qu'il a échoué. Le message apparaît près
+  de l'action, dans le champ de vision, jamais en bas de la zone de défilement.
+- **« Publier » inactif dit pourquoi** : une ligne sous le bouton nomme ce qui manque. Le
+  compteur « N sur 5 » des bénéfices (tableau du contenu) est affiché.
+- **Un coach non vérifié l'apprend avant d'appuyer**, sur un ton qui n'est pas un reproche : il
+  prépare sa première offre, il n'a rien fait de travers.
+
+**Textes, validés un par un le 1er novembre 2026 :**
+
+| Où | Texte |
+|---|---|
+| « Enregistrer » réussi, près de l'action | « Brouillon enregistré. » |
+| « Enregistrer » en échec, près de l'action | titre « On a un souci de notre côté », détail « Ce n'est pas toi. Réessaie dans un instant. » |
+| Sous les bénéfices | « {n} sur 5 » |
+| Sous « Publier » inactif, titre manquant | « Donne un titre à ton offre pour publier. » |
+| Sous « Publier » inactif, prix hors bornes | « Choisis un prix entre 10 et 500 €. » |
+| Sous « Publier » inactif, bénéfices manquants | « Ajoute encore {n} bénéfice(s) pour publier. », accordé : « encore 1 bénéfice », « encore 2 bénéfices » |
+| Coach non vérifié, aucune pièce envoyée ou dossier à compléter | « Tu pourras publier une fois ton identité vérifiée. » |
+| Coach non vérifié, dossier en examen | « On regarde ton dossier. Tu pourras publier ensuite. » |
+
+**Décisions du même jour :**
+- **Un seul manque à la fois**, dans l'ordre des champs de l'écran : titre, puis prix, puis
+  bénéfices (la description est facultative).
+- **« Publier » est désactivé pour un coach non vérifié**, avec l'une des deux lignes ci-dessus :
+  un bouton qui mène à un refus certain n'est pas actif. Le refus serveur `coach_non_verifie`
+  reste en place (défense), il n'est simplement plus atteignable depuis l'écran.
+
 ---
 
 ## États
 
 | État | Comportement |
 |---|---|
-| Brouillon incomplet | « Enregistrer » (en-tête) actif ; « Publier » (pied) inactif |
+| Brouillon incomplet | « Enregistrer » (en-tête) actif ; « Publier » (pied) inactif, avec une ligne qui nomme ce qui manque |
+| Enregistrement réussi | Confirmation visible près de l'action ; aucun champ ne change |
+| Enregistrement en échec | Message visible près de l'action (jamais en bas de la zone de défilement), aucun champ perdu |
+| Coach non vérifié | « Publier » inactif ; avant tout appui, une ligne dit que la publication viendra après la vérification d'identité |
 | Brouillon complet | « Enregistrer » et « Publier » actifs |
 | Publiée | Champs toujours modifiables (sauf ce que `docs/modele-offres.md` §2.2 protège), bouton « Retirer » remplace « Publier » en pied |
 | Retirée | Bandeau : « Cette offre n'est plus en vente. Tes abonnés en cours gardent l'accès. » Bouton « Republier » — **non tranché**, voir Ce qui a été inventé |
@@ -112,10 +148,15 @@ Le reste des règles :
 
 ## Critères d'acceptation
 
-1. Un coach non vérifié peut enregistrer un brouillon complet ; la publication échoue avec
-   `coach_non_verifie`.
+1. Un coach non vérifié peut enregistrer un brouillon complet ; il ne peut pas publier
+   (« Publier » inactif, révisé le 1er novembre 2026), et le serveur refuse quand même par
+   `coach_non_verifie` si on l'appelle directement.
 2. Une offre sans engagement humain ne se publie pas : `engagement_humain_requis`.
 3. Le retrait n'efface aucune ligne, ne touche à aucun abonnement en cours.
 4. Aucune offre autre qu'un abonnement mensuel n'est constructible depuis cet écran.
 5. Galerie, deux thèmes.
 6. `npm run verif` passe.
+7. « Enregistrer » produit un retour visible, en réussite comme en échec, sans défilement.
+8. « Publier » inactif est accompagné d'une ligne qui nomme ce qui manque ; le compteur
+   « N sur 5 » est affiché.
+9. Un coach non vérifié voit, avant d'appuyer, que la publication suivra la vérification.
