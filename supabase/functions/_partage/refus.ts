@@ -43,9 +43,11 @@ export const TEXTES_REFUS = {
     title: 'Cette demande est incomplète',
     detail: 'Reviens au choix de la formule pour recommencer.',
   },
+  // corps_invalide et methode_interdite : PARTAGÉS entre la souscription et les avis (texte
+  // neutre validé le 1er novembre 2026). Au troisième usage, vérifier que le texte tient encore.
   corps_invalide: {
-    title: 'Cette demande est incomplète',
-    detail: 'Reviens au choix de la formule pour recommencer.',
+    title: "Cette demande n'a pas abouti",
+    detail: 'Reviens en arrière et recommence.',
   },
   // abonnement-constat
   intention_introuvable: {
@@ -84,9 +86,10 @@ export const TEXTES_REFUS = {
     title: 'Ta session a expiré',
     detail: 'Reconnecte-toi pour continuer.',
   },
+  // Partagé, voir corps_invalide.
   methode_interdite: {
-    title: "Cette demande n'est pas reconnue",
-    detail: 'Reviens au choix de la formule pour recommencer.',
+    title: "Cette demande n'a pas abouti",
+    detail: 'Reviens en arrière et recommence.',
   },
   // Jamais « rien n'a été débité » ici : au constat, un paiement a pu aboutir.
   erreur_passagere: {

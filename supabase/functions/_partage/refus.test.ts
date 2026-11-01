@@ -55,3 +55,14 @@ Deno.test('abonnement_existant (0043) est un résultat reconnu de la synchronisa
     resultat: 'abonnement_existant',
   });
 });
+
+// corps_invalide et methode_interdite servent la souscription ET les avis (1er novembre 2026) :
+// un texte neutre, qui tient dans les deux. Au troisième usage, vérifier qu'il tient encore.
+Deno.test('les deux refus partagés ont un texte neutre, sans contexte', () => {
+  for (const code of ['corps_invalide', 'methode_interdite'] as const) {
+    deepStrictEqual(TEXTES_REFUS[code], {
+      title: "Cette demande n'a pas abouti",
+      detail: 'Reviens en arrière et recommence.',
+    });
+  }
+});

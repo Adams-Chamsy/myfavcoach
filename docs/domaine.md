@@ -518,6 +518,12 @@ Précisé le 1er novembre 2026 (P4.9a) :
 - **Les 14 jours courent depuis la première publication**, en jours calendaires de Paris :
   publié le 1er, modifiable jusqu'au 14 inclus, figé le 15. Une modification ne relance rien. Un
   avis signalé ou masqué n'est pas modifiable.
+- **Suivi interrompu : jamais de décompte.** En `en_pause`, `impaye` ou `suspendu`, l'état est
+  « suivi interrompu », quelle que soit l'ancienneté, même sous 30 jours : un décompte qui
+  tournerait pendant que le suivi est arrêté mentirait. Le message dit seulement que l'avis sera
+  possible quand le suivi aura repris (validé le 1er novembre 2026).
+- **En attente de confirmation (SEPA) : « pas encore », 30 jours restants.** Le suivi n'a pas
+  commencé : les 30 jours de suivi sont tous devant (validé le 1er novembre 2026).
 
 Précisées le 28 septembre 2026 — toutes calculées par le serveur, sur `actifDepuisLe` (§3.4) :
 
