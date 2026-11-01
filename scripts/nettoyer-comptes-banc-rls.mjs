@@ -105,7 +105,8 @@ async function supprimerCompte(apiUrl, cleAdmin, compte) {
   }
 }
 
-// Anomalies de paiement des sessions fictives du banc (cs_banc_..., migration 0041) : toutes
+// Anomalies de paiement des sessions et tentatives fictives du banc (cs_banc_..., pi_banc_...,
+// migrations 0041 et 0045) : toutes
 // executions confondues, y compris celles d'un banc tue avant son afterAll. Jamais rattrapables,
 // elles noieraient une vraie anomalie au releve (npm run anomalies:retraiter). Le prefixe est ecrit
 // dans la fonction SQL elle-meme : ce script ne peut pas viser une session reelle.
@@ -128,7 +129,7 @@ async function purgerAnomaliesDuBanc(apiUrl, cleAdmin) {
 async function main() {
   const { apiUrl, cleAdmin } = chargerConfiguration();
   const purgees = await purgerAnomaliesDuBanc(apiUrl, cleAdmin);
-  console.log(`${purgees} anomalie(s) de paiement du banc (cs_banc_) supprimee(s).`);
+  console.log(`${purgees} anomalie(s) de paiement du banc (cs_banc_, pi_banc_) supprimee(s).`);
 
   const comptes = await listerComptesDeTest(apiUrl, cleAdmin);
 

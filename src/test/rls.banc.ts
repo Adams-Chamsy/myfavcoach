@@ -5739,6 +5739,30 @@ describe('intentions et synchronisation — L4 (0037, 0038)', () => {
         const { corps } = await purger('admin', '%');
         expect(messageDe(corps)).toMatch(/execution_invalide/);
       });
+
+      // 0045 : les tentatives de prélèvement du banc (P4.8a) portent des références `pi_banc_…`
+      // (un paiement, pas une session) ; leurs anomalies doivent partir avec le reste. Même motif
+      // que les 82 anomalies `cs_banc_` du 31 octobre : un préfixe oublié par la purge s'accumule.
+      it('purge aussi les anomalies des tentatives du banc (pi_banc_), au caractère près', async () => {
+        const ici = `pi_banc_${SUFFIXE_COMPTE}_purge`;
+        const voisine = `pi_banc_${SUFFIXE_COMPTE}0_purge`;
+        for (const s of [ici, voisine]) {
+          await appelRest('/rest/v1/rpc/enregistrer_anomalie_paiement', {
+            methode: 'POST',
+            session: 'admin',
+            corps: {
+              p_session: s,
+              p_intention_id: randomUUID(),
+              p_motif: 'paiement_hors_abonnement',
+            },
+          });
+        }
+        await purger('admin', String(SUFFIXE_COMPTE));
+        expect(await compter('anomalies_paiement', `session_prestataire=eq.${ici}`)).toBe(0);
+        expect(await compter('anomalies_paiement', `session_prestataire=eq.${voisine}`)).toBe(1);
+        await purger('admin', `${SUFFIXE_COMPTE}0`);
+        expect(await compter('anomalies_paiement', `session_prestataire=eq.${voisine}`)).toBe(0);
+      });
     });
 
     // docs/backend.md §12, règle 2 : aucun ordre d'arrivée supposé. Les événements en retard
