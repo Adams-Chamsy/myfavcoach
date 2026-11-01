@@ -4747,6 +4747,298 @@ describe('abonnements — L4 (0033)', () => {
   });
 
   // -------------------------------------------------------------------------------------------
+  // Échéances, échecs et relances (P4.8a ; docs/domaine.md §4.3, §4.4) -- la base seule, aucun
+  // appel au prestataire. Le jour de traitement est un PARAMÈTRE de chaque fonction : le banc pose
+  // la date qu'il exerce, jamais une attente réelle (point 9 de docs/prompts/L4.md). Chaque test
+  // part d'un abonnement carte neuf de client2 (A), échéance E = son prochain_prelevement_le.
+  // -------------------------------------------------------------------------------------------
+  describe('échéances, échecs et relances (P4.8a)', () => {
+    type Due = {
+      abonnement_id: string;
+      echeance_le: string;
+      tentative_numero: number;
+      montant_centimes: number;
+    };
+    const appeler = (
+      fonction: string,
+      corps: Record<string, unknown>,
+      session: Appelant = 'admin',
+    ) => appelRest(`/rest/v1/rpc/${fonction}`, { methode: 'POST', session, corps });
+    const dues = async (jour: string, abonnement: string): Promise<Due[]> => {
+      const { statut, corps } = await appeler('echeances_a_prelever', { p_jour: jour });
+      if (statut !== 200)
+        throw new Error(`echeances_a_prelever : ${statut} ${JSON.stringify(corps)}`);
+      return (corps as Due[]).filter((d) => d.abonnement_id === abonnement);
+    };
+    const ouvrir = (
+      abonnement: string,
+      echeance: string,
+      numero: number,
+      ref: string,
+      jour: string,
+    ) =>
+      appeler('ouvrir_tentative', {
+        p_abonnement_id: abonnement,
+        p_echeance_le: echeance,
+        p_tentative_numero: numero,
+        p_reference: ref,
+        p_jour: jour,
+      });
+    const conclure = (ref: string, reussie: boolean, motif: string | null = null) =>
+      appeler('conclure_tentative', { p_reference: ref, p_reussie: reussie, p_motif: motif });
+    const appliquer = (jour: string) => appeler('appliquer_echeances', { p_jour: jour });
+    const facturesDe = async (abonnement: string) => {
+      const { corps } = await appelRest(
+        `/rest/v1/factures?abonnement_id=eq.${abonnement}&select=reference_prestataire,periode_du,periode_au`,
+        { session: 'admin' },
+      );
+      return corps as { reference_prestataire: string; periode_du: string; periode_au: string }[];
+    };
+    const tentative = (nom: string) => `pi_banc_${SUFFIXE_COMPTE}_${nom}`;
+
+    async function nouvelAbonnement(nom: string): Promise<{ id: string; E: string }> {
+      await clore(profilClient2);
+      const { statut, corps } = await souscrire(profilClient2, offreId, 'carte', reference(nom));
+      if (statut !== 200) throw new Error(`Préparation du banc : souscription refusée (${statut})`);
+      const id = corps as string;
+      return { id, E: (await lire(id)).prochain_prelevement_le };
+    }
+
+    // Échoue la tentative `numero` de l'échéance E, ouverte le jour où elle est due.
+    async function echouer(id: string, E: string, numero: 1 | 2 | 3, nom: string) {
+      const jour = plusJours(E, numero === 1 ? 0 : numero === 2 ? 1 : 3);
+      expect((await ouvrir(id, E, numero, tentative(`${nom}-${numero}`), jour)).statut).toBe(200);
+      expect(
+        (await conclure(tentative(`${nom}-${numero}`), false, 'fonds_insuffisants')).statut,
+      ).toBe(200);
+    }
+
+    it('A ne peut exécuter aucune des quatre fonctions du moteur d’échéances', async () => {
+      const jour = aujourdhuiParis();
+      for (const r of [
+        await appeler('echeances_a_prelever', { p_jour: jour }, A),
+        await appeler('appliquer_echeances', { p_jour: jour }, A),
+        await appeler(
+          'ouvrir_tentative',
+          {
+            p_abonnement_id: randomUUID(),
+            p_echeance_le: jour,
+            p_tentative_numero: 1,
+            p_reference: tentative('a'),
+            p_jour: jour,
+          },
+          A,
+        ),
+        await appeler(
+          'conclure_tentative',
+          { p_reference: tentative('a'), p_reussie: true, p_motif: null },
+          A,
+        ),
+      ]) {
+        expect(r.statut).toBeGreaterThanOrEqual(400);
+        expect(JSON.stringify(r.corps)).toMatch(/permission denied/i);
+      }
+    });
+
+    it('l’échéance n’est due qu’à son jour : la veille rien, le jour même la tentative n° 1', async () => {
+      const { id, E } = await nouvelAbonnement('p48-due');
+      expect(await dues(plusJours(E, -1), id)).toEqual([]);
+      expect(await dues(E, id)).toEqual([
+        { abonnement_id: id, echeance_le: E, tentative_numero: 1, montant_centimes: 4900 },
+      ]);
+    });
+
+    it('réussite à l’échéance : facture de la période, échéance suivante, plus rien de dû', async () => {
+      const { id, E } = await nouvelAbonnement('p48-reussite');
+      expect((await ouvrir(id, E, 1, tentative('reussite'), E)).statut).toBe(200);
+      expect((await conclure(tentative('reussite'), true)).statut).toBe(200);
+      const ligne = await lire(id);
+      expect(ligne.statut).toBe('actif');
+      const suivante = (
+        await transition('echeance_suivante', 'admin', {
+          p_depuis: E,
+          p_jour: ligne.jour_prelevement,
+        })
+      ).corps as string;
+      expect(ligne.prochain_prelevement_le).toBe(suivante);
+      expect(
+        (await facturesDe(id)).filter((f) => f.reference_prestataire === tentative('reussite')),
+      ).toEqual([
+        {
+          reference_prestataire: tentative('reussite'),
+          periode_du: E,
+          periode_au: plusJours(suivante, -1),
+        },
+      ]);
+      expect(await dues(E, id)).toEqual([]);
+    });
+
+    it('échec : impaye, motif posé ; relance n° 2 due à J+1 seulement, n° 3 à J+3 seulement', async () => {
+      const { id, E } = await nouvelAbonnement('p48-relances');
+      await echouer(id, E, 1, 'relances');
+      expect((await lire(id)).statut).toBe('impaye');
+      const { corps } = await appelRest(
+        `/rest/v1/tentatives_prelevement?reference_prestataire=eq.${tentative('relances-1')}&select=statut,motif_banque`,
+        { session: 'admin' },
+      );
+      expect(corps).toEqual([{ statut: 'echouee', motif_banque: 'fonds_insuffisants' }]);
+      expect(await dues(E, id)).toEqual([]);
+      expect((await dues(plusJours(E, 1), id)).map((d) => d.tentative_numero)).toEqual([2]);
+      await echouer(id, E, 2, 'relances');
+      expect(await dues(plusJours(E, 2), id)).toEqual([]);
+      expect((await dues(plusJours(E, 3), id)).map((d) => d.tentative_numero)).toEqual([3]);
+      await echouer(id, E, 3, 'relances');
+      // Trois tentatives au plus par échéance (§4.4) : rien de plus, jamais.
+      expect(await dues(plusJours(E, 6), id)).toEqual([]);
+    });
+
+    it('une tentative qui n’est pas due ne s’ouvre pas', async () => {
+      const { id, E } = await nouvelAbonnement('p48-non-due');
+      const { corps } = await ouvrir(id, E, 1, tentative('non-due'), plusJours(E, -1));
+      expect(messageDe(corps)).toBe('tentative_non_due');
+    });
+
+    it('réussite à la relance : impaye -> actif, une seule facture, échéance suivante', async () => {
+      const { id, E } = await nouvelAbonnement('p48-recuperee');
+      await echouer(id, E, 1, 'recuperee');
+      expect((await ouvrir(id, E, 2, tentative('recuperee-2'), plusJours(E, 1))).statut).toBe(200);
+      expect((await conclure(tentative('recuperee-2'), true)).statut).toBe(200);
+      const ligne = await lire(id);
+      expect(ligne.statut).toBe('actif');
+      expect(ligne.prochain_prelevement_le > E).toBe(true);
+      expect((await facturesDe(id)).map((f) => f.reference_prestataire)).toContain(
+        tentative('recuperee-2'),
+      );
+      expect((await facturesDe(id)).filter((f) => f.periode_du === E)).toHaveLength(1);
+    });
+
+    it('J+7 sans succès : suspendu, pas un jour avant ; aucune facture pour l’échéance', async () => {
+      const { id, E } = await nouvelAbonnement('p48-suspendu');
+      for (const n of [1, 2, 3] as const) await echouer(id, E, n, 'suspendu');
+      expect((await appliquer(plusJours(E, 6))).statut).toBe(200);
+      expect((await lire(id)).statut).toBe('impaye');
+      expect((await appliquer(plusJours(E, 7))).statut).toBe(200);
+      expect((await lire(id)).statut).toBe('suspendu');
+      expect((await facturesDe(id)).filter((f) => f.periode_du === E)).toEqual([]);
+      expect(await dues(plusJours(E, 7), id)).toEqual([]);
+    });
+
+    it('J+7 avec une tentative encore en cours (SEPA) : pas de suspension avant son issue', async () => {
+      const { id, E } = await nouvelAbonnement('p48-en-cours');
+      await echouer(id, E, 1, 'en-cours');
+      await echouer(id, E, 2, 'en-cours');
+      expect((await ouvrir(id, E, 3, tentative('en-cours-3'), plusJours(E, 3))).statut).toBe(200);
+      await appliquer(plusJours(E, 7));
+      expect((await lire(id)).statut).toBe('impaye');
+    });
+
+    it('suspendu 30 jours : resilie, pas un jour avant ; fin d’accès ce jour-là', async () => {
+      const { id, E } = await nouvelAbonnement('p48-trente');
+      for (const n of [1, 2, 3] as const) await echouer(id, E, n, 'trente');
+      await appliquer(plusJours(E, 7));
+      await appliquer(plusJours(E, 36));
+      expect((await lire(id)).statut).toBe('suspendu');
+      await appliquer(plusJours(E, 37));
+      const ligne = await lire(id);
+      expect(ligne.statut).toBe('resilie');
+      expect(ligne.fin_acces_le).toBe(plusJours(E, 37));
+    });
+
+    it('résiliation pendant un impayé : resilie le jour même, plus aucune relance ne s’ouvre', async () => {
+      const { id, E } = await nouvelAbonnement('p48-res-impaye');
+      await echouer(id, E, 1, 'res-impaye');
+      expect(
+        (await transition('demander_resiliation', client2, { p_abonnement_id: id })).statut,
+      ).toBe(204);
+      expect((await lire(id)).statut).toBe('resilie');
+      expect(await dues(plusJours(E, 1), id)).toEqual([]);
+      const { corps } = await ouvrir(id, E, 2, tentative('res-impaye-2'), plusJours(E, 1));
+      expect(messageDe(corps)).toBe('tentative_non_due');
+    });
+
+    it('résiliation pendant une suspension : resilie le jour même, le délai de 30 jours ne s’applique plus', async () => {
+      const { id, E } = await nouvelAbonnement('p48-res-suspendu');
+      for (const n of [1, 2, 3] as const) await echouer(id, E, n, 'res-suspendu');
+      await appliquer(plusJours(E, 7));
+      expect(
+        (await transition('demander_resiliation', client2, { p_abonnement_id: id })).statut,
+      ).toBe(204);
+      const avant = await lire(id);
+      expect(avant.statut).toBe('resilie');
+      await appliquer(plusJours(E, 37));
+      expect((await lire(id)).fin_acces_le).toBe(avant.fin_acces_le);
+    });
+
+    it('un paiement qui aboutit après la résiliation : aucune facture, une anomalie à rembourser', async () => {
+      const { id, E } = await nouvelAbonnement('p48-apres-resiliation');
+      await echouer(id, E, 1, 'apres-res');
+      expect((await ouvrir(id, E, 2, tentative('apres-res-2'), plusJours(E, 1))).statut).toBe(200);
+      await transition('demander_resiliation', client2, { p_abonnement_id: id });
+      expect((await conclure(tentative('apres-res-2'), true)).statut).toBe(200);
+      expect((await lire(id)).statut).toBe('resilie');
+      expect(await facturesDe(id)).toEqual(
+        expect.not.arrayContaining([expect.objectContaining({ periode_du: E })]),
+      );
+      const { corps } = await appelRest(
+        `/rest/v1/anomalies_paiement?session_prestataire=eq.${tentative('apres-res-2')}&select=motif`,
+        { session: 'admin' },
+      );
+      expect(corps).toEqual([{ motif: 'paiement_hors_abonnement' }]);
+      // Remboursée à la main : le retraitement des anomalies ne la touche jamais (0044).
+      const { corps: ouvertes } = await appeler('anomalies_paiement_ouvertes', {});
+      expect(
+        (ouvertes as { session_prestataire: string }[]).filter(
+          (o) => o.session_prestataire === tentative('apres-res-2'),
+        ),
+      ).toEqual([]);
+    });
+
+    it('pause atteinte : reprise automatique, cycle depuis pause_jusqu_le, prélevé ce jour-là', async () => {
+      const { id } = await nouvelAbonnement('p48-pause');
+      const P = plusJours(aujourdhuiParis(), 20);
+      expect(
+        (await transition('demander_pause', client2, { p_abonnement_id: id, p_jusqu_au: P }))
+          .statut,
+      ).toBe(204);
+      await appliquer(plusJours(P, -1));
+      expect((await lire(id)).statut).toBe('en_pause');
+      await appliquer(P);
+      const ligne = await lire(id);
+      expect(ligne.statut).toBe('actif');
+      expect(ligne.pause_jusqu_le).toBeNull();
+      expect(ligne.prochain_prelevement_le).toBe(P);
+      const jour = (await transition('jour_prelevement_pour', 'admin', { p_jour: P })).corps;
+      expect(ligne.jour_prelevement).toBe(jour);
+      expect((await dues(P, id)).map((d) => [d.echeance_le, d.tentative_numero])).toEqual([[P, 1]]);
+    });
+
+    it('résiliation programmée : jamais prélevée ; resilie à la fin de la période payée, pas avant', async () => {
+      const { id, E } = await nouvelAbonnement('p48-programmee');
+      await transition('demander_resiliation', client2, { p_abonnement_id: id });
+      expect((await lire(id)).statut).toBe('resiliation_programmee');
+      expect(await dues(E, id)).toEqual([]);
+      await appliquer(plusJours(E, -1));
+      expect((await lire(id)).statut).toBe('resiliation_programmee');
+      await appliquer(E);
+      expect((await lire(id)).statut).toBe('resilie');
+    });
+
+    it('conclure deux fois ne change rien la seconde ; un échec exige son motif', async () => {
+      const { id, E } = await nouvelAbonnement('p48-deux-fois');
+      await ouvrir(id, E, 1, tentative('deux-fois'), E);
+      expect(messageDe((await conclure(tentative('deux-fois'), false, null)).corps)).toBe(
+        'motif_requis',
+      );
+      await conclure(tentative('deux-fois'), true);
+      const apres = await lire(id);
+      await conclure(tentative('deux-fois'), true);
+      await conclure(tentative('deux-fois'), false, 'fonds_insuffisants');
+      expect(await lire(id)).toEqual(apres);
+      expect((await facturesDe(id)).filter((f) => f.periode_du === E)).toHaveLength(1);
+    });
+  });
+
+  // -------------------------------------------------------------------------------------------
   // Conservation (0036 ; docs/domaine.md §2, §3.5) -- DERNIER bloc de ce describe : il supprime
   // les comptes de client1 et du coach, dont plus aucun test n'a besoin après lui.
   // -------------------------------------------------------------------------------------------
