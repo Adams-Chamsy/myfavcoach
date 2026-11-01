@@ -122,7 +122,10 @@ export const offresDemonstration: OffreDemonstration[] = [
     benefices: [
       'Programme adapté chaque semaine',
       '1 visio de 30 min par mois',
-      'Messagerie illimitée, réponse en 24 h',
+      // Corrigé le 1er novembre 2026 : la maquette écrit « Messagerie illimitée », et « illimité »
+      // est un terme interdit (docs/domaine.md §2). « Réponse en 24 h » est une promesse
+      // vérifiable ; « illimité » n'en était pas une.
+      'Messagerie avec ton coach, réponse en 24 h',
     ],
   },
   {
