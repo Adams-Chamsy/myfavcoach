@@ -119,6 +119,8 @@ function creerPortDonneesEnAttente(promesse: Promise<EtatProfils>): PortDonnees 
     lireNombreInvitationsEnAttente: jest.fn(),
     ajouterInvitationEnAttente: jest.fn(),
     lireCoachParJetonInvitation: jest.fn(),
+    demanderIntention: jest.fn(),
+    constaterIntention: jest.fn(),
   };
 }
 
@@ -245,6 +247,8 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       lireNombreInvitationsEnAttente: jest.fn(),
       ajouterInvitationEnAttente: jest.fn(),
       lireCoachParJetonInvitation: jest.fn(),
+      demanderIntention: jest.fn(),
+      constaterIntention: jest.fn(),
     };
 
     await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);

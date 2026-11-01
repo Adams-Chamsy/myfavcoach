@@ -244,6 +244,43 @@ export type ProfilCoachPublic = {
   langues: string[];
 };
 
+// L4 (docs/api.md §1, règle du 31 octobre 2026) : un refus du serveur, AFFICHABLE TEL QUEL.
+// L'écran montre `title` et `detail`, et branche son comportement sur `code`, jamais sur le texte.
+// Les textes vivent côté serveur (supabase/functions/_partage/refus.ts), source unique.
+export type RefusServeur = { code: string; title: string; detail: string };
+
+// docs/api.md §7, « Intention » : tout vient du serveur, rien n'est calculé par l'application.
+export type RecapitulatifIntention = {
+  prixCentimes: number;
+  totalCentimes: number;
+  prochainPrelevementLe: string;
+  jourPrelevement: number;
+};
+
+// Trois issues, jamais confondues :
+// - `creee` : la page de paiement existe ;
+// - `refusee` : le serveur a répondu non, avec son texte ;
+// - `sans_reponse` : aucune réponse exploitable n'est arrivée (réseau). Seul cas où l'écran
+//   écrit son propre texte : le serveur ne peut rien dire d'une requête qu'il n'a pas reçue.
+export type ResultatIntention =
+  | {
+      issue: 'creee';
+      intentionId: string;
+      recapitulatif: RecapitulatifIntention;
+      urlPaiement: string;
+      moyensAcceptes: ('carte' | 'sepa')[];
+    }
+  | { issue: 'refusee'; refus: RefusServeur }
+  | { issue: 'sans_reponse' };
+
+// docs/api.md §7, « Constat » : seul le serveur conclut, jamais l'écran.
+export type ResultatConstat =
+  | { issue: 'constat'; etat: 'abonne'; statutAbonnement: string }
+  | { issue: 'constat'; etat: 'non_terminee'; urlPaiement: string }
+  | { issue: 'constat'; etat: 'paiement_recu' | 'expiree' | 'souscription_impossible' }
+  | { issue: 'refusee'; refus: RefusServeur }
+  | { issue: 'sans_reponse' };
+
 export type PortDonnees = {
   lireEtatProfils(): Promise<EtatProfils>;
 
@@ -448,6 +485,17 @@ export type PortDonnees = {
   // coach non vérifié), jamais une erreur : un jeton presque valide se comporte comme un jeton
   // absent (docs/ecrans/L3bis-I02-arrivee-par-invitation.md, Règles).
   lireCoachParJetonInvitation(jeton: string): Promise<string | null>;
+
+  // L4-04a : POST /abonnements/intention (Edge Function abonnement-intention, docs/api.md §7).
+  // `cleIdempotence` naît dans l'écran, une par appui sur « Continuer », réutilisée pour un nouvel
+  // essai de la même demande après une absence de réponse (docs/backend.md §13). Jamais l'URL de
+  // paiement dans un journal ni un stockage local (CLAUDE.md §10).
+  demanderIntention(offreId: string, cleIdempotence: string): Promise<ResultatIntention>;
+
+  // L4-04b (P4.6b) : POST /abonnements/intention/{id}/constat. L'identifiant peut venir de
+  // l'adresse de retour, donc de l'extérieur : c'est le serveur qui décide s'il appartient au
+  // compte connecté (docs/ecrans/L4-04b-recapitulatif-paiement.md), jamais l'application.
+  constaterIntention(intentionId: string): Promise<ResultatConstat>;
 };
 
 // Les trois écritures qui changent EtatProfils. Elles ne sont JAMAIS appelées sur un `port`

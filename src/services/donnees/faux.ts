@@ -14,7 +14,9 @@ import type {
   PortDonnees,
   ProfilCoachPublic,
   ProfilOnboarding,
+  ResultatConstat,
   ResultatEcriture,
+  ResultatIntention,
   ResultatRecherche,
   TypePiece,
 } from './port';
@@ -118,6 +120,15 @@ export type FauxPortDonnees = PortDonnees & {
   // I-02 lit un jeton qu'aucun compte connecté ne possède (visiteur anonyme) : la table jeton ->
   // coachId simule coach_par_jeton_invitation() sans dépendre de l'état du coach courant.
   definirCoachParJetonPourTest(table: Record<string, string>): void;
+
+  // L4 : la réponse que rendra la prochaine demande d'intention, ou une fonction qui la calcule
+  // (pour une réponse qui n'arrive qu'à un moment choisi par le test : double appui).
+  definirReponseIntentionPourTest(
+    reponse: ResultatIntention | (() => Promise<ResultatIntention>),
+  ): void;
+  // Chaque demande reçue, dans l'ordre : un double appui, une clé réutilisée se voient ici.
+  lireDemandesIntentionPourTest(): { offreId: string; cleIdempotence: string }[];
+  definirReponseConstatPourTest(reponse: ResultatConstat): void;
 };
 
 // docs/api.md §3 : un compte neuf a toujours profilActif = 'client' (colonne NOT NULL, défaut
@@ -178,6 +189,12 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     version: null,
   };
   let prochaineEcritureEchoue: string | null = null;
+  // Par défaut, aucun serveur : jamais une page de paiement inventée (prix, date, URL).
+  let reponseIntention: ResultatIntention | (() => Promise<ResultatIntention>) = {
+    issue: 'sans_reponse',
+  };
+  let demandesIntention: { offreId: string; cleIdempotence: string }[] = [];
+  let reponseConstat: ResultatConstat = { issue: 'sans_reponse' };
   let dossierVerification: DossierVerification = { statut: 'absente', deposeLe: null, motif: null };
   let piecesDeposees: PieceDeposee[] = [];
   let offres: Offre[] = [];
@@ -638,6 +655,23 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     },
     definirCoachParJetonPourTest(table) {
       coachsParJetonPourTest = table;
+    },
+
+    async demanderIntention(offreId, cleIdempotence) {
+      demandesIntention = [...demandesIntention, { offreId, cleIdempotence }];
+      return typeof reponseIntention === 'function' ? reponseIntention() : reponseIntention;
+    },
+    definirReponseIntentionPourTest(reponse) {
+      reponseIntention = reponse;
+    },
+    lireDemandesIntentionPourTest() {
+      return demandesIntention;
+    },
+    async constaterIntention() {
+      return reponseConstat;
+    },
+    definirReponseConstatPourTest(reponse) {
+      reponseConstat = reponse;
     },
   } satisfies FauxPortDonnees;
 }

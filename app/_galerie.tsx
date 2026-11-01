@@ -62,6 +62,7 @@ import Documents from './(compte)/documents';
 import Export from './(compte)/export';
 import { CorpsDocumentLegal } from './(public)/documents/[type]';
 import { CorpsProfilCoachPublic } from './(client)/coach/[id]';
+import { EcranChoixOffre } from '@/fonctionnalites/abonnement/ecran-choix-offre';
 import Accueil from './(client)/(tabs)/accueil';
 import { CorpsExplorer } from './(client)/(tabs)/explorer';
 import Invitations from './(coach)/invitations';
@@ -137,6 +138,7 @@ function Corps({
       <SectionEcransL2 />
       <SectionEcransL3 />
       <SectionEcransL3bis />
+      <SectionEcransL4 />
       <PiedGalerie
         themeClair={themeClair}
         onChangeThemeClair={onChangeThemeClair}
@@ -1805,5 +1807,105 @@ function Interrupteur({
       />
       <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.principal }}>{libelle}</Text>
     </View>
+  );
+}
+
+// L4 (P4.6a) : 04a, exercé dans les deux thèmes par l'interrupteur du pied. Données :
+// src/fixtures/demonstration.ts (Yannick Berthaud, « Suivi complet », 49 €/mois, mis en avant) ;
+// l'engagement humain reprend les catégories de docs/domaine.md §3.3 que la maquette 04a décrit
+// (« réajusté chaque semaine, 1 visio par mois »). Aucune intention n'est demandée ici : le faux
+// port ne répond pas (aucune page de paiement inventée), « Continuer » montre l'absence de
+// réponse.
+function ChoixOffreAvecFixture({ avecOffre }: { avecOffre: boolean }) {
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    p.definirProfilsCoachPublicsPourTest({
+      'coach-yannick': {
+        id: 'coach-yannick',
+        prenom: 'Yannick',
+        nom: 'Berthaud',
+        photoUrl: null,
+        discipline: 'préparation physique',
+        titreCourt: null,
+        bio: null,
+        verifiee: true,
+        verifieeDepuisLe: null,
+        parcoursTexte: null,
+        langues: [],
+      },
+    });
+    p.definirOffresPubliquesPourTest({
+      'coach-yannick': avecOffre
+        ? [
+            {
+              id: 'offre-suivi',
+              titre: 'Suivi complet',
+              description: null,
+              prixCentimes: 4900,
+              benefices: [],
+              engagementHumain: ['ajustement hebdomadaire', 'visio mensuelle'],
+              estMiseEnAvant: true,
+              publieeLe: '2026-01-01T00:00:00.000Z',
+              retireeLe: null,
+            },
+          ]
+        : [],
+    });
+    return p;
+  });
+  return (
+    <FournisseurDonnees port={port}>
+      <EcranChoixOffre coachId="coach-yannick" onRetour={() => {}} onIntentionCreee={() => {}} />
+    </FournisseurDonnees>
+  );
+}
+
+const ECRANS_L4: { titre: string; rendu: () => ReactNode }[] = [
+  { titre: 'L4-04a · Choix de l’offre', rendu: () => <ChoixOffreAvecFixture avecOffre /> },
+  {
+    titre: 'L4-04a · Aucune offre ouverte',
+    rendu: () => <ChoixOffreAvecFixture avecOffre={false} />,
+  },
+];
+
+function SectionEcransL4() {
+  const theme = useTheme();
+  const [session, setSession] = useState<Awaited<
+    ReturnType<typeof creerSessionDemonstration>
+  > | null>(null);
+
+  useEffect(() => {
+    let monte = true;
+    void creerSessionDemonstration().then((s) => {
+      if (monte) setSession(s);
+    });
+    return () => {
+      monte = false;
+    };
+  }, []);
+
+  if (!session) return null;
+
+  return (
+    <Section titre="18 · Écrans du lot L4">
+      {ECRANS_L4.map(({ titre, rendu }) => (
+        <View key={titre} style={{ gap: theme.espace[2] }}>
+          <SousTitre texte={titre} />
+          <View
+            style={{
+              height: 620,
+              overflow: 'hidden',
+              borderRadius: theme.rayon.saisie,
+              borderWidth: 1,
+              borderColor: theme.couleur.bordure.discrete,
+            }}
+          >
+            {/* Même raison que SectionEcransL3bis : chaque écran porte sa propre fixture de
+                données, mais FournisseurDonnees a besoin d'une session ambiante. */}
+            <FournisseurSession port={session.portAuth}>{rendu()}</FournisseurSession>
+          </View>
+        </View>
+      ))}
+    </Section>
   );
 }

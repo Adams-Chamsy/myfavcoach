@@ -10,6 +10,7 @@ jest.mock('@/services/supabase/client', () => ({
     auth: { getSession: jest.fn() },
     rpc: jest.fn(),
     from: jest.fn(),
+    functions: { invoke: jest.fn() },
   },
 }));
 
@@ -40,7 +41,21 @@ const supabaseMock = supabase as unknown as {
   auth: { getSession: jest.Mock };
   rpc: jest.Mock;
   from: jest.Mock;
+  functions: { invoke: jest.Mock };
 };
+
+// Ce que supabase-js rend pour une réponse non 2xx d'une Edge Function (FunctionsHttpError) :
+// la réponse elle-même dans `context`. Une erreur réseau (FunctionsFetchError) n'en a pas.
+function refusHttp(statut: number, corps: unknown) {
+  return {
+    data: null,
+    error: {
+      name: 'FunctionsHttpError',
+      context: { status: statut, json: () => Promise.resolve(corps) },
+    },
+  };
+}
+const SANS_REPONSE = { data: null, error: { name: 'FunctionsFetchError', context: undefined } };
 
 const SESSION_A = { data: { session: { user: { id: 'compte-a' } } }, error: null };
 
@@ -387,6 +402,133 @@ describe('portDonneesSupabase', () => {
       expect(resultat).toEqual({
         succes: false,
         erreur: 'On a un souci de notre côté. Réessaie dans un instant.',
+      });
+    });
+  });
+
+  // L4-04a (P4.6a) : docs/api.md §7 ; refus affichables tels quels (§1, règle du 31 octobre 2026).
+  describe('demanderIntention', () => {
+    const CREEE = {
+      intentionId: 'int-1',
+      recapitulatif: {
+        prixCentimes: 4900,
+        totalCentimes: 4900,
+        prochainPrelevementLe: '2026-12-01',
+        jourPrelevement: 1,
+      },
+      urlPaiement: 'https://paiement.exemple/session-x',
+      moyensAcceptes: ['carte', 'sepa'],
+    };
+
+    it('appelle abonnement-intention avec la clé d’idempotence et l’offre, rend la page créée', async () => {
+      supabaseMock.functions.invoke.mockResolvedValue({ data: CREEE, error: null });
+      const resultat = await portDonneesSupabase.demanderIntention('offre-1', 'cle-1');
+      expect(supabaseMock.functions.invoke).toHaveBeenCalledWith('abonnement-intention', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'cle-1' },
+        body: { offreId: 'offre-1' },
+      });
+      expect(resultat).toEqual({ issue: 'creee', ...CREEE });
+    });
+
+    it('un refus du serveur rend son code, son titre et son détail, tels quels', async () => {
+      supabaseMock.functions.invoke.mockResolvedValue(
+        refusHttp(409, {
+          code: 'deja_abonne',
+          title: 'Tu as déjà un abonnement avec ce coach',
+          detail: 'Rien n’a été débité.',
+          status: 409,
+        }),
+      );
+      expect(await portDonneesSupabase.demanderIntention('offre-1', 'cle-1')).toEqual({
+        issue: 'refusee',
+        refus: {
+          code: 'deja_abonne',
+          title: 'Tu as déjà un abonnement avec ce coach',
+          detail: 'Rien n’a été débité.',
+        },
+      });
+    });
+
+    it('un refus sans texte affichable n’est pas un refus exploitable : sans_reponse', async () => {
+      supabaseMock.functions.invoke.mockResolvedValue(refusHttp(502, { message: 'Bad Gateway' }));
+      expect(await portDonneesSupabase.demanderIntention('offre-1', 'cle-1')).toEqual({
+        issue: 'sans_reponse',
+      });
+    });
+
+    it('aucune réponse (réseau) : sans_reponse', async () => {
+      supabaseMock.functions.invoke.mockResolvedValue(SANS_REPONSE);
+      expect(await portDonneesSupabase.demanderIntention('offre-1', 'cle-1')).toEqual({
+        issue: 'sans_reponse',
+      });
+    });
+
+    it('une réponse 201 incomplète n’est jamais prise pour une page créée', async () => {
+      supabaseMock.functions.invoke.mockResolvedValue({
+        data: { intentionId: 'int-1' },
+        error: null,
+      });
+      expect(await portDonneesSupabase.demanderIntention('offre-1', 'cle-1')).toEqual({
+        issue: 'sans_reponse',
+      });
+    });
+  });
+
+  describe('constaterIntention', () => {
+    it('appelle abonnement-constat sur l’intention, identifiant encodé dans le chemin', async () => {
+      supabaseMock.functions.invoke.mockResolvedValue({ data: { etat: 'expiree' }, error: null });
+      await portDonneesSupabase.constaterIntention('../autre/chemin');
+      expect(supabaseMock.functions.invoke).toHaveBeenCalledWith(
+        'abonnement-constat/..%2Fautre%2Fchemin',
+        { method: 'POST' },
+      );
+    });
+
+    it('rend chaque état du constat', async () => {
+      const cas: [unknown, unknown][] = [
+        [
+          { etat: 'abonne', abonnement: { statut: 'en_attente_confirmation' } },
+          { issue: 'constat', etat: 'abonne', statutAbonnement: 'en_attente_confirmation' },
+        ],
+        [
+          { etat: 'non_terminee', urlPaiement: 'https://paiement.exemple/session-ouverte' },
+          {
+            issue: 'constat',
+            etat: 'non_terminee',
+            urlPaiement: 'https://paiement.exemple/session-ouverte',
+          },
+        ],
+        [{ etat: 'paiement_recu' }, { issue: 'constat', etat: 'paiement_recu' }],
+        [{ etat: 'expiree' }, { issue: 'constat', etat: 'expiree' }],
+        [
+          { etat: 'souscription_impossible' },
+          { issue: 'constat', etat: 'souscription_impossible' },
+        ],
+        [{ etat: 'inconnu_du_contrat' }, { issue: 'sans_reponse' }],
+      ];
+      for (const [corps, attendu] of cas) {
+        supabaseMock.functions.invoke.mockResolvedValue({ data: corps, error: null });
+        expect(await portDonneesSupabase.constaterIntention('int-1')).toEqual(attendu);
+      }
+    });
+
+    it('l’intention d’un autre (404) : le refus du serveur, rien de plus', async () => {
+      supabaseMock.functions.invoke.mockResolvedValue(
+        refusHttp(404, {
+          code: 'intention_introuvable',
+          title: 'Ce paiement est introuvable',
+          detail: 'Reviens au profil du coach pour recommencer.',
+          status: 404,
+        }),
+      );
+      expect(await portDonneesSupabase.constaterIntention('int-autre')).toEqual({
+        issue: 'refusee',
+        refus: {
+          code: 'intention_introuvable',
+          title: 'Ce paiement est introuvable',
+          detail: 'Reviens au profil du coach pour recommencer.',
+        },
       });
     });
   });

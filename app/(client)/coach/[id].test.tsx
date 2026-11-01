@@ -8,8 +8,10 @@ import { creerFauxPortDonnees } from '@/services/donnees/faux';
 import { FournisseurTheme } from '@/theme/fournisseur';
 import ProfilCoachPublicEcran from './[id]';
 
+const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ id: 'coach-1' }),
+  useRouter: () => ({ push: mockPush }),
 }));
 
 const METRIQUES_ZONES_SURES: Metrics = {
@@ -130,5 +132,83 @@ describe('L2-12 · Profil coach public', () => {
     await fireEvent.press(screen.getByText('Avis'));
     await waitFor(() => expect(screen.queryByText('Aucun avis pour l’instant')).toBeTruthy());
     expect(screen.queryByText('Nouveau')).toBeNull();
+  });
+
+  // P4.6a (docs/ecrans/L4-04a-choix-offre.md, critère 1) : « S'abonner », inerte depuis L2, ouvre
+  // enfin le tunnel — seul point d'entrée. Sans session : la connexion d'abord (décidé le
+  // 31 octobre 2026), jamais le tunnel directement.
+  describe('« S’abonner »', () => {
+    function profilAvecOffre() {
+      const portDonnees = creerFauxPortDonnees();
+      portDonnees.definirProfilsCoachPublicsPourTest({
+        'coach-1': {
+          id: 'coach-1',
+          prenom: 'Nadia',
+          nom: 'Belkacem',
+          photoUrl: null,
+          discipline: 'Cybersécurité',
+          titreCourt: null,
+          bio: null,
+          verifiee: true,
+          verifieeDepuisLe: null,
+          parcoursTexte: null,
+          langues: [],
+        },
+      });
+      portDonnees.definirOffresPubliquesPourTest({
+        'coach-1': [
+          {
+            id: 'o1',
+            titre: 'Suivi complet',
+            description: null,
+            prixCentimes: 4900,
+            benefices: [],
+            engagementHumain: ['ajustement hebdomadaire'],
+            estMiseEnAvant: true,
+            publieeLe: '2026-09-01T00:00:00.000Z',
+            retireeLe: null,
+          },
+        ],
+      });
+      return portDonnees;
+    }
+
+    async function rendre(portAuth: ReturnType<typeof creerFauxPortAuth>) {
+      await render(
+        <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
+          <FournisseurTheme>
+            <FournisseurSession port={portAuth}>
+              <FournisseurDonnees port={profilAvecOffre()}>
+                <ProfilCoachPublicEcran />
+              </FournisseurDonnees>
+            </FournisseurSession>
+          </FournisseurTheme>
+        </SafeAreaProvider>,
+      );
+      await waitFor(() => expect(screen.queryByText('Nadia Belkacem')).toBeTruthy());
+    }
+
+    afterEach(() => mockPush.mockClear());
+
+    it('avec une session : ouvre le choix de l’offre de ce coach', async () => {
+      const portAuth = creerFauxPortAuth();
+      await portAuth.inscrire('camille@exemple.fr', 'bon-mot-de-passe', '2000-01-01');
+      portAuth.verifierEmailPourTest('camille@exemple.fr');
+      await portAuth.connecter('camille@exemple.fr', 'bon-mot-de-passe');
+      await rendre(portAuth);
+      await fireEvent.press(screen.getByRole('button', { name: 'S’abonner · 49 €/mois' }));
+      expect(mockPush).toHaveBeenCalledWith('/(client)/souscription/coach-1');
+    });
+
+    it('sans session : ouvre la connexion, jamais le tunnel', async () => {
+      await rendre(creerFauxPortAuth());
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: 'S’abonner · 49 €/mois' }).props.accessibilityState,
+        ).toMatchObject({ disabled: false }),
+      );
+      await fireEvent.press(screen.getByRole('button', { name: 'S’abonner · 49 €/mois' }));
+      expect(mockPush).toHaveBeenCalledWith('/(public)/connexion');
+    });
   });
 });

@@ -14,11 +14,102 @@ import type {
   ProfilActif,
   ProfilCoachPublic,
   ProfilOnboarding,
+  RefusServeur,
   ResultatCoachRecherche,
+  ResultatConstat,
   ResultatEcriture,
+  ResultatIntention,
   ResultatRecherche,
   TypePiece,
 } from './port';
+
+// L4 : ce que supabase-js rend pour l'appel d'une Edge Function. Une réponse non 2xx arrive en
+// `error` (FunctionsHttpError) avec la réponse dans `context` ; une absence de réponse (réseau)
+// arrive en `error` sans `context` lisible (FunctionsFetchError, FunctionsRelayError).
+type AppelFonction = { data: unknown; error: unknown };
+
+// Le refus du serveur, s'il en porte un AFFICHABLE (docs/api.md §1 : code, title, detail). Une
+// réponse d'erreur sans ces trois champs (passerelle, page HTML) n'en est pas un : null.
+async function refusDe(erreur: unknown): Promise<RefusServeur | null> {
+  const contexte = (erreur as { context?: { json?: () => Promise<unknown> } } | null)?.context;
+  if (!contexte || typeof contexte.json !== 'function') return null;
+  try {
+    const corps = (await contexte.json()) as Partial<RefusServeur> | null;
+    if (
+      typeof corps?.code === 'string' &&
+      typeof corps.title === 'string' &&
+      typeof corps.detail === 'string'
+    ) {
+      return { code: corps.code, title: corps.title, detail: corps.detail };
+    }
+  } catch {
+    // Corps illisible : pas un refus affichable.
+  }
+  return null;
+}
+
+function estTexte(valeur: unknown): valeur is string {
+  return typeof valeur === 'string' && valeur.length > 0;
+}
+
+function intentionCreee(data: unknown): ResultatIntention {
+  const d = data as Partial<{
+    intentionId: unknown;
+    urlPaiement: unknown;
+    moyensAcceptes: unknown;
+    recapitulatif: Partial<Record<string, unknown>>;
+  }> | null;
+  const r = d?.recapitulatif;
+  if (
+    !estTexte(d?.intentionId) ||
+    !estTexte(d?.urlPaiement) ||
+    !Array.isArray(d?.moyensAcceptes) ||
+    typeof r?.prixCentimes !== 'number' ||
+    typeof r.totalCentimes !== 'number' ||
+    !estTexte(r.prochainPrelevementLe) ||
+    typeof r.jourPrelevement !== 'number'
+  ) {
+    return { issue: 'sans_reponse' };
+  }
+  return {
+    issue: 'creee',
+    intentionId: d.intentionId,
+    recapitulatif: {
+      prixCentimes: r.prixCentimes,
+      totalCentimes: r.totalCentimes,
+      prochainPrelevementLe: r.prochainPrelevementLe,
+      jourPrelevement: r.jourPrelevement,
+    },
+    urlPaiement: d.urlPaiement,
+    moyensAcceptes: (d.moyensAcceptes as unknown[]).filter(
+      (m): m is 'carte' | 'sepa' => m === 'carte' || m === 'sepa',
+    ),
+  };
+}
+
+function constat(data: unknown): ResultatConstat {
+  const d = data as Partial<{
+    etat: unknown;
+    urlPaiement: unknown;
+    abonnement: Partial<{ statut: unknown }>;
+  }> | null;
+  switch (d?.etat) {
+    case 'abonne':
+      return estTexte(d.abonnement?.statut)
+        ? { issue: 'constat', etat: 'abonne', statutAbonnement: d.abonnement.statut }
+        : { issue: 'sans_reponse' };
+    case 'non_terminee':
+      return estTexte(d.urlPaiement)
+        ? { issue: 'constat', etat: 'non_terminee', urlPaiement: d.urlPaiement }
+        : { issue: 'sans_reponse' };
+    case 'paiement_recu':
+    case 'expiree':
+    case 'souscription_impossible':
+      return { issue: 'constat', etat: d.etat };
+    default:
+      return { issue: 'sans_reponse' };
+  }
+}
 
 const COMPARTIMENT_PIECES = 'pieces-verification';
 
@@ -848,5 +939,34 @@ export const portDonneesSupabase: PortDonnees = {
     const { data, error } = await supabase.rpc('coach_par_jeton_invitation', { p_jeton: jeton });
     if (error) throw error;
     return (data as string | null) ?? null;
+  },
+
+  // L4-04a : docs/api.md §7. Jeton de session joint par supabase-js ; aucune donnée de paiement
+  // journalisée ici, l'URL de paiement comprise (CLAUDE.md §10).
+  async demanderIntention(offreId: string, cleIdempotence: string): Promise<ResultatIntention> {
+    const { data, error } = (await supabase.functions.invoke('abonnement-intention', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': cleIdempotence },
+      body: { offreId },
+    })) as AppelFonction;
+    if (error) {
+      const refus = await refusDe(error);
+      return refus ? { issue: 'refusee', refus } : { issue: 'sans_reponse' };
+    }
+    return intentionCreee(data);
+  },
+
+  // L4-04b : l'identifiant est encodé dans le chemin — il peut venir de l'adresse de retour,
+  // donc de l'extérieur ; le serveur décide s'il appartient au compte (mon_intention, 0037).
+  async constaterIntention(intentionId: string): Promise<ResultatConstat> {
+    const { data, error } = (await supabase.functions.invoke(
+      `abonnement-constat/${encodeURIComponent(intentionId)}`,
+      { method: 'POST' },
+    )) as AppelFonction;
+    if (error) {
+      const refus = await refusDe(error);
+      return refus ? { issue: 'refusee', refus } : { issue: 'sans_reponse' };
+    }
+    return constat(data);
   },
 } satisfies PortDonnees;

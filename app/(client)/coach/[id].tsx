@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
@@ -7,6 +7,7 @@ import { Bouton } from '@/composants/bouton';
 import { EtatVide } from '@/composants/etats/etat-vide';
 import { Onglets } from '@/composants/onglets';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
+import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import type { Offre, ProfilCoachPublic } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
 
@@ -24,6 +25,8 @@ type Onglet = 'offres' | 'avis' | 'parcours';
 export function CorpsProfilCoachPublic({ id }: { id: string | undefined }) {
   const theme = useTheme();
   const { port } = useDonnees();
+  const { session, chargement: sessionEnChargement } = useSession();
+  const router = useRouter();
   const [profil, setProfil] = useState<ProfilCoachPublic | null | undefined>(undefined);
   const [offres, setOffres] = useState<Offre[]>([]);
   const [onglet, setOnglet] = useState<Onglet>('offres');
@@ -113,8 +116,10 @@ export function CorpsProfilCoachPublic({ id }: { id: string | undefined }) {
           borderTopColor: theme.couleur.bordure.discrete,
         }}
       >
-        {/* Affiché mais inatteignable (L2-12, Règles) : le tunnel (04a) est L4. Aucun appel
-            réseau de paiement n'est déclenché par ce bouton à ce lot. */}
+        {/* Le seul point d'entrée du tunnel (docs/ecrans/L4-04a-choix-offre.md, critère 1 ;
+            P4.6a). Sans session : la connexion d'abord, jamais le tunnel directement (décidé le
+            31 octobre 2026). Aucune offre publiée : rien à quoi s'abonner, bouton inactif — 04a
+            garde son propre état vide pour une offre retirée pendant la lecture du profil. */}
         <Bouton
           libelle={
             offres[0]
@@ -122,8 +127,14 @@ export function CorpsProfilCoachPublic({ id }: { id: string | undefined }) {
               : 'S’abonner'
           }
           variante="primaire"
-          onPress={() => {}}
-          desactive
+          onPress={() =>
+            router.push(
+              (session ? `/(client)/souscription/${profil.id}` : '/(public)/connexion') as Href,
+            )
+          }
+          // Tant que la session n'est pas connue, on ne sait pas où mener : jamais une personne
+          // connectée envoyée vers la connexion parce qu'elle a appuyé trop tôt.
+          desactive={offres.length === 0 || sessionEnChargement}
         />
       </View>
     </View>

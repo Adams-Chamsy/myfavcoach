@@ -33,6 +33,7 @@ import OnboardingPoids from '../../app/(onboarding)/3-poids';
 import OnboardingCestParti from '../../app/(onboarding)/4-cest-parti';
 import { creerSessionDemonstration } from '@/fixtures/session-demonstration';
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
+import { EcranChoixOffre } from '@/fonctionnalites/abonnement/ecran-choix-offre';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
 import { creerFauxPortDonnees } from '@/services/donnees/faux';
@@ -128,6 +129,8 @@ const ECRANS_CHROME_HAUT = new Set([
   'app/(compte)/suppression.tsx',
   'app/(compte)/documents.tsx',
   'app/(compte)/export.tsx',
+  // L4-04a (P4.6a) : en-tête (retour, titre, étape) posé contre insets.top.
+  'app/(client)/souscription/[coachId].tsx',
 ]);
 
 type OffsetHaut = { ancre: boolean; offset: number };
@@ -411,6 +414,41 @@ type EntreeCorpus = {
   fondReference?: (theme: ThemeAVerifier) => string;
 };
 
+function portDonneesChoixOffre() {
+  const p = creerFauxPortDonnees();
+  p.definirProfilsCoachPublicsPourTest({
+    'coach-yannick': {
+      id: 'coach-yannick',
+      prenom: 'Yannick',
+      nom: 'Berthaud',
+      photoUrl: null,
+      discipline: 'préparation physique',
+      titreCourt: null,
+      bio: null,
+      verifiee: true,
+      verifieeDepuisLe: null,
+      parcoursTexte: null,
+      langues: [],
+    },
+  });
+  p.definirOffresPubliquesPourTest({
+    'coach-yannick': [
+      {
+        id: 'offre-suivi',
+        titre: 'Suivi complet',
+        description: null,
+        prixCentimes: 4900,
+        benefices: [],
+        engagementHumain: ['ajustement hebdomadaire', 'visio mensuelle'],
+        estMiseEnAvant: true,
+        publieeLe: '2026-01-01T00:00:00.000Z',
+        retireeLe: null,
+      },
+    ],
+  });
+  return p;
+}
+
 const CORPUS: EntreeCorpus[] = [
   {
     nom: 'app/_galerie.tsx',
@@ -442,6 +480,23 @@ const CORPUS: EntreeCorpus[] = [
       <FournisseurSession key="explorer" port={portAuthOnboarding}>
         <FournisseurDonnees port={portDonneesOnboarding}>
           <CorpsExplorer />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    // P4.6a : rendu par son composant, comme CorpsExplorer et CorpsProfilCoachPublic — la route
+    // lit useLocalSearchParams, qui ne se résout pas hors vraie route. Fixture :
+    // src/fixtures/demonstration.ts (Yannick Berthaud, « Suivi complet », 49 €/mois).
+    nom: 'app/(client)/souscription/[coachId].tsx',
+    creerElement: () => (
+      <FournisseurSession key="choix-offre" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesChoixOffre()}>
+          <EcranChoixOffre
+            coachId="coach-yannick"
+            onRetour={() => {}}
+            onIntentionCreee={() => {}}
+          />
         </FournisseurDonnees>
       </FournisseurSession>
     ),
