@@ -188,11 +188,11 @@ dis-le. Ne propose pas d'« ajouter juste le socle pour plus tard ».
 | **L3bis** | Import des clients existants du coach : invitation (I-01), arrivée par lien (I-02) | L2 |
 | **L4** | Abonnement, paiement, facturation, échecs et relances, **table `avis` et écran L2-13** (§2, remarque de l'écran 27 : replanifiés depuis L2, aucun dépôt légitime possible avant que l'abonnement existe), **dépôt d'avis (27a) et bloc « Mes abonnements » de l'écran 24 (24b)**, ajoutés le 28 septembre 2026 | L3 |
 | **L5** | Commission, soldes, versements, écran revenus, factures et reçus (C-05) | L4 |
-| **L6** | Contenu : studio, programmes, séances, séance du jour, questionnaire santé | L2 |
-| **L7** | Suivi client et métriques calculées | L6 |
-| **L8** | Messagerie texte, signalement et blocage (C-01, C-02) — le signalement couvre aussi les avis créés en L4 (`docs/domaine.md` §4.9 : `publie --(signalement)--> signale`) | L1 |
-| **L9** | Agenda et réservation | L2 |
-| **L10** | Notifications | L1 |
+| **L6** | Contenu : studio, programmes, séances, séance du jour, questionnaire santé | L2, **L4** (corrigé le 1er novembre 2026) |
+| **L7** | Suivi client et métriques calculées | L6, L4 |
+| **L8** | Messagerie texte, signalement et blocage (C-01, C-02) — le signalement couvre aussi les avis créés en L4 (`docs/domaine.md` §4.9 : `publie --(signalement)--> signale`) | L1, L4 (P4.9 : les avis à signaler) |
+| **L9** | Agenda et réservation | L2, L4 |
+| **L10** | Notifications | L1, **et après L8 et L9** (corrigé le 1er novembre 2026) |
 | **L12** | Durcissement, tests, fiches de store | tout |
 
 L0 à L2 précèdent tout paiement : il faut des coachs vérifiés et des profils avant de pouvoir
@@ -206,6 +206,47 @@ réels avant que l'abonnement n'existe.
 
 Le lot L11 disparaît : son contenu est réparti selon les dépendances réelles de chaque écran.
 Un travail qui ne dépend de rien et qui bloque la publication n'a pas sa place en fin de projet.
+
+### Dépendances corrigées et regroupement de L5 à L12 (1er novembre 2026)
+
+**Deux colonnes « Dépend de » étaient fausses**, corrigées dans le tableau ci-dessus :
+
+- **L6 dépend aussi de L4** : « en `en_pause`, aucun accès au programme », « en `suspendu`,
+  l'accès au contenu est coupé » (`docs/domaine.md` §4.3). Sans les statuts d'abonnement, le
+  contenu n'a pas de règle d'accès. L7 et L9 en dépendent pour la même raison (la liste des
+  clients, ce sont les abonnés ; on réserve chez un coach auquel on est abonné), et L8 parce que
+  le signalement doit couvrir les avis, nés en P4.9.
+- **L10 vient après L8 et L9** : une notification a besoin d'un événement à annoncer (message,
+  séance, échec de prélèvement). Commencé avant, il n'aurait rien à envoyer.
+
+**Groupes, sur le modèle de L4** — enchaîner ce qui est de même nature, isoler ce qui touche à
+l'argent, à un service extérieur ou à la présence du développeur :
+
+| Ordre | Groupe | Pourquoi seul ou ensemble | Présence du développeur (estimation) |
+|---|---|---|---|
+| 1 | **L5**, coupé en **L5a** (serveur : Stripe Connect Express, versements, soldes, commission) puis **L5b** (écrans : revenus 13, factures et reçus C-05) | le seul lot où l'argent SORT, et un service extérieur nouveau (Connect) ; juste après L4, contexte Stripe frais | activer Connect dans le tableau de bord, onboarding de test de deux coachs, un versement de test : 1 à 2 h en deux séances |
+| 2 | **L6, arrêt, puis L7** | nos tables et nos écrans, ni argent ni service extérieur ; **arrêt obligatoire entre les deux** : L6 pose les données de santé (catégorie 9 RGPD), L7 les calcule — un défaut de calcul ne doit jamais se mêler à un défaut de saisie ou de consentement | décisions avant le code sur le questionnaire santé (05a, « à concevoir ») : ~1 h ; vérifications d'écran : ~1 h |
+| 3 | **L8** seul | temps réel (Supabase Realtime, jamais utilisé dans le dépôt) et modération, une règle produit nouvelle | deux comptes réels qui se parlent : ~45 min ; décision sur le traitement des signalements |
+| 4 | **L9** seul | fuseaux horaires et créneaux, la logique la plus piégeuse du jalon (le défaut des 18 ans en UTC l'a montré) | règles de réservation à trancher, vérifications : ~1 h |
+| 5 | **L10** seul | service extérieur (Apple, Google, Expo), appareil réel, build de développement, coût (compte Apple Developer) | mise en place : 2 à 3 h, puis essais sur appareil |
+| 6 | **L12** | la seule étape qui touche la production et de vrais utilisateurs | la plus lourde, avec de l'attente réelle (revue des stores, en jours) |
+
+**L'ordre du tableau est gardé** (décidé le 1er novembre 2026). Placer L8 avant L6 rendrait
+l'application plus cohérente plus tôt — la messagerie est l'un des trois engagements humains
+qu'une offre vend —, mais rien n'est vendu en mode test, et déplacer un lot pour une cohérence de
+démonstration coûterait plus qu'il ne rapporte.
+
+**Risque, à tenir tant que L8 n'existe pas : aucun coach ne doit pouvoir publier une offre qui
+promet une réponse sous 24 h.** L'engagement « messagerie avec délai de réponse annoncé »
+(`docs/domaine.md` §3.3) se publie aujourd'hui sans que la messagerie existe : la promesse serait
+invérifiable, exactement ce que la règle des magasins interdit de vendre (§2). Même sujet que les
+termes interdits non contrôlés à la saisie d'une offre (`docs/dette.md`) : un contrôle serveur à
+la publication, à trancher à la porte de sortie de L4.
+
+**Ce qui court en parallèle a des échéances** (`docs/dette.md`, une ligne chacune, avec son lot
+bloquant) : Supabase Pro avant la porte de sortie de L4 ; la montée en SDK 58 avant L10 ; les
+textes du juriste avant L12 ; le domaine myfavcoach.fr avant L12, et avant toute preuve du retour
+depuis la page de paiement.
 
 ---
 
