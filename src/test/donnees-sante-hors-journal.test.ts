@@ -106,4 +106,57 @@ describe('la donnée de santé du lot n’atteint ni journal ni rapport de plant
     });
     expect(coupables).toEqual([]);
   });
+
+  // 5 · Le poids (poids_depart_grammes, poids_cible_grammes et leurs noms côté application) : ni
+  // dans un console.*, ni dans un paramètre de navigation (router.push/replace/navigate/setParams,
+  // useLocalSearchParams, href), ni dans une URL de requête. Ajouté le 1er novembre 2026 (revue de
+  // la porte de sortie de L1, point 6) : jusque-là seule une lecture du code le garantissait.
+  // Un nom de route qui contient le mot (« 3-poids ») n'est pas une donnée : seuls les
+  // IDENTIFIANTS de poids sont cherchés (poidsDepart…, poids_depart_…, saisiePoids…).
+  describe('le poids n’atteint ni un journal, ni la navigation, ni une URL', () => {
+    it('le détecteur voit chaque fuite, et ignore un nom de route', () => {
+      expect(fuitesPoids("console.log('départ', poidsDepartGrammes);")).toEqual(['journal']);
+      expect(
+        fuitesPoids("router.push({ pathname: '/x', params: { poids_cible_grammes: 72000 } });"),
+      ).toEqual(['navigation']);
+      expect(
+        fuitesPoids('const { saisiePoids } = useLocalSearchParams<{ saisiePoids: string }>();'),
+      ).toEqual(['navigation']);
+      expect(fuitesPoids('fetch(`/rest?poids_depart_grammes=${v}`);')).toEqual(['url']);
+      expect(fuitesPoids("router.push('/(onboarding)/3-poids');")).toEqual([]);
+    });
+
+    it('aucun fichier de src/ ou app/ ne laisse fuir un poids', () => {
+      const coupables = fichiersSuivis(['src', 'app'])
+        .map((c) => [c, fuitesPoids(readFileSync(join(RACINE_DEPOT, c), 'utf8'))] as const)
+        .filter(([, fuites]) => fuites.length > 0)
+        .map(([c, fuites]) => `${c} : ${fuites.join(', ')}`);
+      expect(coupables).toEqual([]);
+    });
+  });
 });
+
+// Un identifiant de poids : « poids » suivi d'une majuscule ou d'un tiret bas (poidsDepartGrammes,
+// poids_cible_grammes, saisiePoidsDepart), ou un nom en camelCase qui finit par « Poids »
+// (saisiePoids) — jamais le mot seul d'un nom de route (« 3-poids »).
+const IDENTIFIANT_POIDS = String.raw`(?:[pP]oids(?:_[a-z]|[A-Z])|[a-z]Poids\b)`;
+
+// Rend les familles de fuite trouvées dans un texte source : journal, navigation, url.
+function fuitesPoids(contenu: string): string[] {
+  const fuites: string[] = [];
+  // Jusqu'au point-virgule : un appel peut s'étaler sur plusieurs lignes.
+  if (new RegExp(String.raw`console\.[a-z]+\([^;]*?${IDENTIFIANT_POIDS}`).test(contenu)) {
+    fuites.push('journal');
+  }
+  if (
+    new RegExp(
+      String.raw`\.(push|replace|navigate|setParams)\([^;]*?${IDENTIFIANT_POIDS}|useLocalSearchParams<[^>]*${IDENTIFIANT_POIDS}|href=\{?[^}>]*${IDENTIFIANT_POIDS}`,
+    ).test(contenu)
+  ) {
+    fuites.push('navigation');
+  }
+  if (new RegExp(String.raw`[?&]${IDENTIFIANT_POIDS}[a-zA-Z0-9_]*=`).test(contenu)) {
+    fuites.push('url');
+  }
+  return fuites;
+}
