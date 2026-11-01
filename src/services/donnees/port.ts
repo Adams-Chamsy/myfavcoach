@@ -281,6 +281,55 @@ export type ResultatConstat =
   | { issue: 'refusee'; refus: RefusServeur }
   | { issue: 'sans_reponse' };
 
+// L4, avis (P4.9a ; docs/domaine.md §3.11, §5.1 ; docs/ecrans/L2-13-avis.md, L4-27a-depot-avis.md).
+// Tout est calculé par le serveur : la durée de suivi (jamais une date), la moyenne (à partir de 5
+// avis publiés seulement, sinon null), l'éligibilité et le nombre de jours restants.
+export type EtiquetteAvis = { cle: string; libelle: string };
+
+export type AvisPublic = {
+  id: string;
+  prenom: string;
+  initialeNom: string | null;
+  dureeSuiviMois: number;
+  note: number;
+  // Clés de etiquettes_avis, dans leur ordre d'affichage.
+  etiquettes: string[];
+  texte: string | null;
+};
+
+export type SyntheseAvis = {
+  nombre: number;
+  moyenne: number | null;
+  // Nombre d'avis par note, de 1 à 5 étoiles.
+  distribution: number[];
+  // Les étiquettes portées par au moins un avis publié : le filtre de L2-13.
+  etiquettesPortees: string[];
+};
+
+export type AvisDuCoach = { avis: AvisPublic[]; synthese: SyntheseAvis };
+
+export type MonAvis = {
+  note: number;
+  etiquettes: string[];
+  texte: string | null;
+  statut: 'publie' | 'signale' | 'masque';
+};
+
+// L'état du client connecté pour ce coach (27a, 27b). `aucun` : ni encart ni bouton.
+export type EtatMonAvis =
+  | { etat: 'aucun' | 'possible' | 'suivi_interrompu' }
+  | { etat: 'pas_encore'; joursRestants: number }
+  | { etat: 'modifiable' | 'fige'; avis: MonAvis };
+
+export type SaisieAvis = { note: number; etiquettes: string[]; texte: string | null };
+
+// Mêmes trois issues que ResultatIntention : le refus porte son texte, l'absence de réponse est
+// le seul cas où l'écran écrit le sien.
+export type ResultatAvis =
+  | { issue: 'enregistre'; avisId: string }
+  | { issue: 'refusee'; refus: RefusServeur }
+  | { issue: 'sans_reponse' };
+
 export type PortDonnees = {
   lireEtatProfils(): Promise<EtatProfils>;
 
@@ -496,6 +545,17 @@ export type PortDonnees = {
   // l'adresse de retour, donc de l'extérieur : c'est le serveur qui décide s'il appartient au
   // compte connecté (docs/ecrans/L4-04b-recapitulatif-paiement.md), jamais l'application.
   constaterIntention(intentionId: string): Promise<ResultatConstat>;
+
+  // L4, avis (P4.9a). Lectures publiques (anon compris) : etiquettes_avis (table), avis_du_coach
+  // et synthese_avis_du_coach (fonctions de base, 0049). Un coach non vérifié rend une liste vide.
+  lireEtiquettesAvis(): Promise<EtiquetteAvis[]>;
+  lireAvisDuCoach(coachId: string): Promise<AvisDuCoach>;
+  // Compte connecté : mon_avis_possible (0049). Hors espace client : { etat: 'aucun' }.
+  lireMonAvis(coachId: string): Promise<EtatMonAvis>;
+  // Edge Function `avis` : POST pour un dépôt, PATCH pour une modification. Le serveur tranche
+  // l'éligibilité, la forme et le délai de 14 jours ; l'écran affiche son refus tel quel.
+  deposerAvis(coachId: string, saisie: SaisieAvis): Promise<ResultatAvis>;
+  modifierAvis(coachId: string, saisie: SaisieAvis): Promise<ResultatAvis>;
 };
 
 // Les trois écritures qui changent EtatProfils. Elles ne sont JAMAIS appelées sur un `port`

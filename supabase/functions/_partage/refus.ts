@@ -52,7 +52,34 @@ export const TEXTES_REFUS = {
     title: 'Ce paiement est introuvable',
     detail: 'Reviens au profil du coach pour recommencer.',
   },
-  // les deux
+  // avis (textes validés le 1er novembre 2026). « {n} jours » : le nombre vient du serveur
+  // (0049, DETAIL de la levée), accordé par corpsRefus ; sans lui, detailSansNombre.
+  avis_pas_encore: {
+    title: "Pas encore d'avis possible",
+    detail: 'Il te reste {n} jours de suivi avant de pouvoir donner ton avis.',
+    detailSansNombre: 'Encore quelques jours de suivi avant de pouvoir donner ton avis.',
+  },
+  avis_suivi_interrompu: {
+    title: "Pas d'avis pour le moment",
+    detail: 'Tu pourras donner ton avis quand ton suivi aura repris.',
+  },
+  avis_impossible: {
+    title: "Tu ne peux pas donner d'avis à ce coach",
+    detail: 'Un avis se donne pendant ton suivi, ou dans les 60 jours après sa fin.',
+  },
+  avis_deja_donne: {
+    title: 'Tu as déjà donné ton avis',
+    detail: 'Tu peux le modifier pendant 14 jours après sa publication.',
+  },
+  avis_fige: {
+    title: 'Cet avis ne peut plus être modifié',
+    detail: 'Un avis se modifie pendant 14 jours après sa publication.',
+  },
+  avis_invalide: {
+    title: "Ton avis n'a pas pu être enregistré",
+    detail: 'Choisis une note, 3 étiquettes au plus, et un texte de 600 caractères au plus.',
+  },
+  // tous
   non_authentifie: {
     title: 'Ta session a expiré',
     detail: 'Reconnecte-toi pour continuer.',
@@ -72,11 +99,26 @@ export type CodeRefus = keyof typeof TEXTES_REFUS;
 
 export type CorpsRefus = { code: CodeRefus; title: string; detail: string; status: number };
 
-export function corpsRefus(statut: number, code: CodeRefus): CorpsRefus {
+// Un texte qui porte « {n} jours » reçoit le nombre rendu par le serveur, accordé (« 1 jour ») ;
+// sans nombre utilisable, son texte de repli, sans chiffre.
+function detailDe(code: CodeRefus, nombre: number | null): string {
+  const texte: { detail: string; detailSansNombre?: string } = TEXTES_REFUS[code];
+  if (!texte.detail.includes('{n} jours')) return texte.detail;
+  if (nombre === null || !Number.isInteger(nombre) || nombre < 1) {
+    return texte.detailSansNombre ?? texte.detail;
+  }
+  return texte.detail.replace('{n} jours', nombre === 1 ? '1 jour' : `${nombre} jours`);
+}
+
+export function corpsRefus(
+  statut: number,
+  code: CodeRefus,
+  nombre: number | null = null,
+): CorpsRefus {
   return {
     code,
     title: TEXTES_REFUS[code].title,
-    detail: TEXTES_REFUS[code].detail,
+    detail: detailDe(code, nombre),
     status: statut,
   };
 }
@@ -87,8 +129,9 @@ export function reponseRefus(
   statut: number,
   code: CodeRefus,
   entetes: Record<string, string> = {},
+  nombre: number | null = null,
 ): Response {
-  return new Response(JSON.stringify(corpsRefus(statut, code)), {
+  return new Response(JSON.stringify(corpsRefus(statut, code, nombre)), {
     status: statut,
     headers: { 'Content-Type': 'application/problem+json', ...ENTETES_CORS, ...entetes },
   });
@@ -101,5 +144,16 @@ export const STATUTS_REFUS_INTENTION: Partial<Record<CodeRefus, number>> = {
   coach_non_verifie: 409,
   auto_abonnement_interdit: 409,
   deja_abonne: 409,
+  profil_client_requis: 403,
+};
+
+// Les refus MÉTIER des fonctions d'avis (0049) et leur statut HTTP, même principe.
+export const STATUTS_REFUS_AVIS: Partial<Record<CodeRefus, number>> = {
+  avis_pas_encore: 403,
+  avis_suivi_interrompu: 403,
+  avis_impossible: 403,
+  avis_deja_donne: 409,
+  avis_fige: 409,
+  avis_invalide: 422,
   profil_client_requis: 403,
 };

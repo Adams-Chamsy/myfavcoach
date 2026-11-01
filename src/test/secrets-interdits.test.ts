@@ -261,6 +261,8 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0045_purger_tentatives_banc.sql',
       'supabase/migrations/0046_conserver_moyen_paiement.sql',
       'supabase/migrations/0047_planifier_echeances.sql',
+      'supabase/migrations/0048_creer_avis.sql',
+      'supabase/migrations/0049_appliquer_regles_avis.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

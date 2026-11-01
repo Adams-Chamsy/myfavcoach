@@ -576,6 +576,22 @@ les purge dans son `afterAll`, et `npm run test:rls:nettoyage` purge celles d'un
 (`purger_anomalies_banc`, 0041 — préfixe écrit en dur dans la fonction, aucune session réelle
 atteignable).
 
+### Une Edge Function qui ne fait que traduire un refus de la base
+
+Écrit le 1er novembre 2026 (P4.9a). **Deux endroits appliquent ce motif** : la création de
+l'intention de souscription (`abonnement-intention`, `creer_intention_souscription`) et le dépôt
+d'un avis (`avis`, `deposer_avis`/`modifier_avis`, 0049). La fonction SQL décide de tout, sous le
+jeton du client, et lève un code (`raise exception 'avis_fige'`) ; l'Edge Function le traduit en
+`code`, `title`, `detail` par `_partage/refus.ts` (`docs/api.md` §1), avec une table de statuts
+HTTP par famille (`STATUTS_REFUS_INTENTION`, `STATUTS_REFUS_AVIS`). Une levée absente de la table
+n'est pas un refus : 5xx. Une exécution refusée par les grants (42501, appel avec la seule clé
+anonyme) est une session absente : 401 `non_authentifie`, jamais « on a un souci ». Un nombre
+utile au texte passe en DETAIL de la levée (`using detail = …`), jamais dans le message.
+
+**Si un troisième endroit arrive, ce motif devient une règle écrite ici** (décidé le 1er novembre
+2026), pas une exception de plus. `publierOffre`, qui rend un code sans texte, en est le candidat
+(`docs/dette.md`).
+
 ---
 
 ## 13. Paiement : architecture retenue (L4)

@@ -1,8 +1,11 @@
 import type {
+  AvisDuCoach,
   CommuneReference,
   Discipline,
   DossierVerification,
+  EtatMonAvis,
   EtatProfils,
+  EtiquetteAvis,
   InformationsCompte,
   Invitation,
   Langue,
@@ -14,10 +17,12 @@ import type {
   PortDonnees,
   ProfilCoachPublic,
   ProfilOnboarding,
+  ResultatAvis,
   ResultatConstat,
   ResultatEcriture,
   ResultatIntention,
   ResultatRecherche,
+  SaisieAvis,
   TypePiece,
 } from './port';
 
@@ -56,6 +61,25 @@ export const LANGUES_FIGEES: Langue[] = [
   { cle: 'arabe', libelle: 'Arabe' },
   { cle: 'portugais', libelle: 'Portugais' },
 ];
+
+// docs/domaine.md §3.11 : la liste fermée des huit, dans l'ordre d'affichage (même contenu que
+// 0048_creer_avis.sql).
+export const ETIQUETTES_AVIS_FIGEES: EtiquetteAvis[] = [
+  { cle: 'ecoute', libelle: 'Écoute' },
+  { cle: 'clarte_explications', libelle: 'Clarté des explications' },
+  { cle: 'ponctualite', libelle: 'Ponctualité' },
+  { cle: 'exigence', libelle: 'Exigence' },
+  { cle: 'programme_adapte', libelle: 'Programme adapté' },
+  { cle: 'reactivite', libelle: 'Réactivité' },
+  { cle: 'encouragement', libelle: 'Encouragement' },
+  { cle: 'professionnalisme', libelle: 'Professionnalisme' },
+];
+
+// L'état de tous les profils au lancement (L2-13, critère 1) : aucun avis.
+export const AUCUN_AVIS: AvisDuCoach = {
+  avis: [],
+  synthese: { nombre: 0, moyenne: null, distribution: [0, 0, 0, 0, 0], etiquettesPortees: [] },
+};
 
 export type FauxPortDonnees = PortDonnees & {
   // Réservé aux tests d'écran, jamais dans PortDonnees ni appelé par un écran — même
@@ -129,6 +153,15 @@ export type FauxPortDonnees = PortDonnees & {
   // Chaque demande reçue, dans l'ordre : un double appui, une clé réutilisée se voient ici.
   lireDemandesIntentionPourTest(): { offreId: string; cleIdempotence: string }[];
   definirReponseConstatPourTest(reponse: ResultatConstat): void;
+  // Avis (P4.9a) : par coach ; sans réglage, aucun avis et l'état « aucun ».
+  definirAvisDuCoachPourTest(table: Record<string, AvisDuCoach>): void;
+  definirMonAvisPourTest(table: Record<string, EtatMonAvis>): void;
+  definirReponseAvisPourTest(reponse: ResultatAvis): void;
+  lireEcrituresAvisPourTest(): {
+    operation: 'depot' | 'modification';
+    coachId: string;
+    saisie: SaisieAvis;
+  }[];
 };
 
 // docs/api.md §3 : un compte neuf a toujours profilActif = 'client' (colonne NOT NULL, défaut
@@ -238,6 +271,14 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
   let invitations: Invitation[] = [];
   let nombreInvitationsEnAttente = 0;
   let coachsParJetonPourTest: Record<string, string> = {};
+  let avisDuCoach: Record<string, AvisDuCoach> = {};
+  let monAvis: Record<string, EtatMonAvis> = {};
+  let reponseAvis: ResultatAvis = { issue: 'sans_reponse' };
+  let ecrituresAvis: {
+    operation: 'depot' | 'modification';
+    coachId: string;
+    saisie: SaisieAvis;
+  }[] = [];
 
   // true : applique nouvelEtat/nouveauProfil et rend { succes: true } ; false : consomme
   // l'échec programmé et ne change rien (docs/ecrans/L1-05, États : "l'étape n'avance pas et
@@ -672,6 +713,36 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     },
     definirReponseConstatPourTest(reponse) {
       reponseConstat = reponse;
+    },
+
+    async lireEtiquettesAvis() {
+      return ETIQUETTES_AVIS_FIGEES;
+    },
+    async lireAvisDuCoach(coachId) {
+      return avisDuCoach[coachId] ?? AUCUN_AVIS;
+    },
+    async lireMonAvis(coachId) {
+      return monAvis[coachId] ?? { etat: 'aucun' };
+    },
+    async deposerAvis(coachId, saisie) {
+      ecrituresAvis = [...ecrituresAvis, { operation: 'depot', coachId, saisie }];
+      return reponseAvis;
+    },
+    async modifierAvis(coachId, saisie) {
+      ecrituresAvis = [...ecrituresAvis, { operation: 'modification', coachId, saisie }];
+      return reponseAvis;
+    },
+    definirAvisDuCoachPourTest(table) {
+      avisDuCoach = table;
+    },
+    definirMonAvisPourTest(table) {
+      monAvis = table;
+    },
+    definirReponseAvisPourTest(reponse) {
+      reponseAvis = reponse;
+    },
+    lireEcrituresAvisPourTest() {
+      return ecrituresAvis;
     },
   } satisfies FauxPortDonnees;
 }

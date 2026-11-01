@@ -179,12 +179,32 @@ faire passer le statut à `publiee`.
 |---|---|---|
 | `GET` | `/coachs/{id}` | profil public : bio, badges, note, délai de réponse |
 | `GET` | `/coachs/{id}/offres` | offres publiées uniquement |
-| `GET` | `/coachs/{id}/avis` | paginé, `?etiquette=pedagogie` |
+| `GET` | `/coachs/{id}/avis` | voir « Avis » ci-dessous (P4.9a) |
 | `GET` | `/coachs/{id}/parcours` | diplômes, chronologie, méthode |
 | `POST` | `/coach/offres` | 422 `engagement_humain_requis` si le champ est vide |
 | `PATCH` | `/coach/offres/{id}` | |
 | `POST` | `/coach/offres/{id}/publication` | 409 `coach_non_verifie` |
 | `DELETE` | `/coach/offres/{id}` | passe en `retiree`, les abonnés en cours continuent |
+
+**Avis (L4, P4.9a, 1er novembre 2026).** Servi par deux fonctions de base pour la lecture et une
+Edge Function pour l'écriture (`docs/backend.md` §12, « Une Edge Function qui ne fait que
+traduire un refus de la base »). Aucune lecture directe de la table `avis`.
+
+| Appel | Servi par | Rend |
+|---|---|---|
+| Liste publique d'un coach | `avis_du_coach(p_coach_id)`, anon compris | avis **publiés** d'un coach **vérifié** : `id`, `prenom`, `initiale_nom`, `duree_suivi_mois` (jamais une date), `note`, `etiquettes` (clés, ordre d'affichage), `texte` ; du plus récent au plus ancien |
+| Synthèse | `synthese_avis_du_coach(p_coach_id)`, anon compris | `nombre`, `moyenne` (**null sous 5 avis**, `docs/domaine.md` §5.1), `distribution` (5 entiers, de 1 à 5 étoiles), `etiquettes_portees` |
+| Mon état | `mon_avis_possible(p_coach_id)`, compte connecté | `etat` (`aucun`, `possible`, `pas_encore`, `suivi_interrompu`, `modifiable`, `fige`), `jours_restants` (pour `pas_encore`), et mon avis s'il existe, même signalé ou masqué |
+| Dépôt | `POST /functions/v1/avis` `{ coachId, note, etiquettes?, texte? }` | 201 `{ avisId }` |
+| Modification | `PATCH /functions/v1/avis`, même corps | 200 `{ avisId }` |
+
+Refus (problem+json, textes dans `_partage/refus.ts`) : 403 `avis_pas_encore` (le nombre de jours
+restants est dans le `detail`), 403 `avis_suivi_interrompu`, 403 `avis_impossible`, 409
+`avis_deja_donne`, 409 `avis_fige`, 422 `avis_invalide`, 403 `profil_client_requis`, 401
+`non_authentifie`. **Écart avec la forme d'origine de ce tableau** (`?etiquette=`, paginé) : pas de
+pagination au jalon 1, et le filtre par étiquette s'applique à la liste reçue, sur les étiquettes
+que rend la synthèse. Les volumes du jalon 1 (zéro avis au lancement) ne justifient pas encore un
+curseur.
 
 ---
 

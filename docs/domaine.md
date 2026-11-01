@@ -511,6 +511,14 @@ pour un besoin d'écran. Aucune colonne `active` tant qu'aucun retrait n'est dé
 **Conditions de dépôt** : abonnement actif depuis ≥ 30 jours, ou résilié depuis ≤ 60 jours.
 Un seul avis par couple client/coach, modifiable 14 jours.
 
+Précisé le 1er novembre 2026 (P4.9a) :
+- **Un avis garde l'abonnement qui l'a rendu possible.** La durée de suivi se calcule sur lui, et
+  se fige à sa fin d'accès. Un client qui se réabonne un an plus tard ne réécrit pas un avis
+  portant sur une période qu'il n'a pas vécue.
+- **Les 14 jours courent depuis la première publication**, en jours calendaires de Paris :
+  publié le 1er, modifiable jusqu'au 14 inclus, figé le 15. Une modification ne relance rien. Un
+  avis signalé ou masqué n'est pas modifiable.
+
 Précisées le 28 septembre 2026 — toutes calculées par le serveur, sur `actifDepuisLe` (§3.4) :
 
 | Branche | Condition au moment du dépôt |

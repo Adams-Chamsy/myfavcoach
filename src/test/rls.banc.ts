@@ -6112,3 +6112,498 @@ describe('intentions et synchronisation — L4 (0037, 0038)', () => {
     });
   });
 });
+
+// Les avis -- L4, P4.9a (0048 décor, 0049 règles). docs/domaine.md §3.11, §4.9, §5.1 ;
+// docs/ecrans/L2-13-avis.md (critères 5 à 7) ; docs/ecrans/L4-27a-depot-avis.md (critères 1 à 7).
+// L'ancienneté se pose par service_role (actif_depuis_le, fin_acces_le, publie_le), jamais
+// attendue (point 9 de docs/prompts/L4.md). Une seule connexion de plus (X) : chaque cas
+// d'éligibilité a son propre coach, créé sans connexion, pour que X puisse déposer à chaque fois
+// (un avis par couple). Les quatre comptes du module (A, B, C, D) ne servent qu'au seuil de cinq
+// avis, avec leur espace client vérifié et créé ici s'il manque (règle 13).
+describe('avis — L4 (0048, 0049)', () => {
+  let X: Session;
+  let profilX: string;
+  const comptesCoachs: string[] = [];
+
+  const reference = (nom: string): string => `banc-${SUFFIXE_COMPTE}-avis-${nom}`;
+  const ilYa = (jours: number): string => `${plusJours(aujourdhuiParis(), -jours)}T12:00:00Z`;
+
+  async function nouveauCoach(nom: string): Promise<{ profil: string; offre: string }> {
+    const creation = await fetch(`${API_URL}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: {
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-avis-${nom}@${DOMAINE_EMAIL}`,
+        password: MOT_DE_PASSE,
+        email_confirm: true,
+        user_metadata: { date_naissance: '1988-01-01', cgu_version_acceptee: '2026-08-01' },
+      }),
+    });
+    if (!creation.ok) throw new Error(`Préparation du banc : coach ${nom} refusé`);
+    const compte = ((await creation.json()) as { id: string }).id;
+    comptesCoachs.push(compte);
+    const profil = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { compte_id: compte, prenom: 'Avis', nom: 'Coach', discipline: 'yoga' },
+    });
+    if (profil.statut >= 400) throw new Error(`Préparation du banc : profil coach ${nom} refusé`);
+    const profilId = (profil.corps as { id: string }[])[0].id;
+    await poserStatutCoach(profilId, 'verifiee');
+    const offre = await appelRest('/rest/v1/offres', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        coach_id: profilId,
+        titre: 'Suivi avis',
+        prix_centimes: 4900,
+        benefices: ['Programme', 'Visio', 'Messages'],
+        engagement_humain: ['ajustement_hebdomadaire'],
+        publiee_le: new Date(Date.now() - 86_400_000).toISOString(),
+      },
+    });
+    if (offre.statut >= 400) throw new Error(`Préparation du banc : offre ${nom} refusée`);
+    return { profil: profilId, offre: (offre.corps as { id: string }[])[0].id };
+  }
+
+  async function poserStatutCoach(profilCoachId: string, statut: string): Promise<void> {
+    const { statut: http } = await appelRest(`/rest/v1/profils_coach?id=eq.${profilCoachId}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { statut_verification: statut },
+    });
+    if (http >= 400) throw new Error(`Préparation du banc : statut ${statut} refusé (${http})`);
+  }
+
+  // Profil client et espace client actif, par la session du compte elle-même (chemin légitime).
+  async function assurerEspaceClient(session: Session, prenom: string): Promise<string> {
+    const lu = await appelRest(
+      `/rest/v1/profils_client?compte_id=eq.${session.compteId}&select=id`,
+      { session: 'admin' },
+    );
+    let id = (lu.corps as { id: string }[])[0]?.id;
+    if (!id) {
+      const cree = await appelRest('/rest/v1/profils_client', {
+        methode: 'POST',
+        session,
+        corps: { compte_id: session.compteId, prenom, nom: 'Banc' },
+      });
+      if (cree.statut >= 400) throw new Error(`Préparation du banc : profil client refusé`);
+      id = (cree.corps as { id: string }[])[0].id;
+    }
+    const bascule = await appelRest('/rest/v1/rpc/basculer_profil', {
+      methode: 'POST',
+      session,
+      corps: { profil: 'client' },
+    });
+    if (bascule.statut !== 200) throw new Error(`Préparation du banc : bascule client refusée`);
+    return id;
+  }
+
+  // Abonnement par carte (actif dès l'insertion), puis ancienneté posée par service_role.
+  async function abonner(
+    profilClient: string,
+    offre: string,
+    nom: string,
+    joursDeSuivi: number,
+  ): Promise<string> {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/souscrire_abonnement', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        p_profil_client_id: profilClient,
+        p_offre_id: offre,
+        p_moyen: 'carte',
+        p_reference_paiement: reference(nom),
+        p_prix_fige_centimes: 4900,
+        p_intention_creee_le: new Date().toISOString(),
+      },
+    });
+    if (statut >= 400) throw new Error(`Préparation du banc : souscription ${nom} (${statut})`);
+    const id = corps as string;
+    await poserDates(id, { actif_depuis_le: ilYa(joursDeSuivi) });
+    return id;
+  }
+
+  async function poserDates(abonnement: string, dates: Record<string, string>): Promise<void> {
+    const { statut } = await appelRest(`/rest/v1/abonnements?id=eq.${abonnement}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: dates,
+    });
+    if (statut >= 400) throw new Error(`Préparation du banc : dates refusées (${statut})`);
+  }
+
+  // Résilié (fixture 0042, abonnements du banc seulement), fin d'accès il y a N jours.
+  async function resilier(profilClient: string, abonnement: string, finIlYa: number) {
+    const { statut } = await appelRest('/rest/v1/rpc/clore_abonnements_banc', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { p_profil_client_id: profilClient },
+    });
+    if (statut >= 400) throw new Error(`Préparation du banc : clôture refusée (${statut})`);
+    await poserDates(abonnement, { fin_acces_le: plusJours(aujourdhuiParis(), -finIlYa) });
+  }
+
+  type Saisie = { note: number; etiquettes?: string[]; texte?: string | null };
+
+  function ecrire(fonction: string, session: Appelant, coach: string, saisie: Saisie) {
+    return appelRest(`/rest/v1/rpc/${fonction}`, {
+      methode: 'POST',
+      session,
+      corps: {
+        p_coach_id: coach,
+        p_note: saisie.note,
+        p_etiquettes: saisie.etiquettes ?? [],
+        p_texte: saisie.texte ?? null,
+      },
+    });
+  }
+  const deposer = (session: Appelant, coach: string, saisie: Saisie) =>
+    ecrire('deposer_avis', session, coach, saisie);
+  const modifier = (session: Appelant, coach: string, saisie: Saisie) =>
+    ecrire('modifier_avis', session, coach, saisie);
+
+  type EtatAvis = {
+    etat: string;
+    jours_restants: number | null;
+    note: number | null;
+    etiquettes: string[] | null;
+    texte: string | null;
+    statut: string | null;
+  };
+  async function monAvis(session: Session, coach: string): Promise<EtatAvis> {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/mon_avis_possible', {
+      methode: 'POST',
+      session,
+      corps: { p_coach_id: coach },
+    });
+    if (statut !== 200) throw new Error(`mon_avis_possible : ${statut} ${messageDe(corps)}`);
+    return (corps as EtatAvis[])[0];
+  }
+
+  type AvisPublic = {
+    id: string;
+    prenom: string;
+    initiale_nom: string | null;
+    duree_suivi_mois: number;
+    note: number;
+    etiquettes: string[];
+    texte: string | null;
+  };
+  async function avisDuCoach(session: Appelant, coach: string): Promise<AvisPublic[]> {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/avis_du_coach', {
+      methode: 'POST',
+      session,
+      corps: { p_coach_id: coach },
+    });
+    if (statut !== 200) throw new Error(`avis_du_coach : ${statut} ${messageDe(corps)}`);
+    return corps as AvisPublic[];
+  }
+
+  type Synthese = {
+    nombre: number;
+    moyenne: number | null;
+    distribution: number[];
+    etiquettes_portees: string[];
+  };
+  async function synthese(session: Appelant, coach: string): Promise<Synthese> {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/synthese_avis_du_coach', {
+      methode: 'POST',
+      session,
+      corps: { p_coach_id: coach },
+    });
+    if (statut !== 200) throw new Error(`synthese_avis_du_coach : ${statut} ${messageDe(corps)}`);
+    return (corps as Synthese[])[0];
+  }
+
+  async function poserAvis(coach: string, auteur: string, champs: Record<string, string>) {
+    const { statut } = await appelRest(
+      `/rest/v1/avis?profil_coach_id=eq.${coach}&profil_client_id=eq.${auteur}`,
+      { methode: 'PATCH', session: 'admin', corps: champs },
+    );
+    if (statut >= 400) throw new Error(`Préparation du banc : avis non modifié (${statut})`);
+  }
+
+  const detailsDe = (corps: unknown): string | undefined =>
+    (corps as { details?: string } | null)?.details;
+
+  beforeAll(async () => {
+    X = await creerCompteReel(`${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-avis-x@${DOMAINE_EMAIL}`, {
+      date_naissance: '1994-01-01',
+      cgu_version_acceptee: '2026-08-01',
+    });
+    profilX = await assurerEspaceClient(X, 'Xavière');
+    await appelRest(`/rest/v1/profils_client?id=eq.${profilX}`, {
+      methode: 'PATCH',
+      session: X,
+      corps: { nom: 'Ravel' },
+    });
+  }, 30_000);
+
+  afterAll(async () => {
+    if (X) await supprimerCompteReel(X.compteId);
+    for (const compte of comptesCoachs) await supprimerCompteReel(compte);
+  }, 60_000);
+
+  describe('dépôt : éligibilité tranchée par le serveur (27a, critères 1 et 2)', () => {
+    it('note seule, sans texte ni étiquette, après 30 jours de suivi : acceptée', async () => {
+      const coach = await nouveauCoach('note-seule');
+      await abonner(profilX, coach.offre, 'note-seule', 30);
+      const { statut, corps } = await deposer(X, coach.profil, { note: 4 });
+      expect([statut, messageDe(corps)]).toEqual([200, expect.any(String)]);
+      expect((await monAvis(X, coach.profil)).etat).toBe('modifiable');
+    });
+
+    it('actif depuis 29 jours : refusé, avis_pas_encore, il reste 1 jour — et mon état le dit', async () => {
+      const coach = await nouveauCoach('j29');
+      await abonner(profilX, coach.offre, 'j29', 29);
+      expect(await monAvis(X, coach.profil)).toMatchObject({
+        etat: 'pas_encore',
+        jours_restants: 1,
+      });
+      const { statut, corps } = await deposer(X, coach.profil, { note: 5 });
+      expect([statut, messageDe(corps), detailsDe(corps)]).toEqual([400, 'avis_pas_encore', '1']);
+    });
+
+    it('résilié, fin d’accès il y a 60 jours, 40 jours de suivi : accepté', async () => {
+      const coach = await nouveauCoach('fin-60');
+      const abo = await abonner(profilX, coach.offre, 'fin-60', 100);
+      await resilier(profilX, abo, 60);
+      await poserDates(abo, { actif_depuis_le: ilYa(100) });
+      expect((await monAvis(X, coach.profil)).etat).toBe('possible');
+      const { statut } = await deposer(X, coach.profil, { note: 3 });
+      expect(statut).toBe(200);
+    });
+
+    it('résilié, fin d’accès il y a 61 jours : refusé, avis_impossible — et mon état est « aucun »', async () => {
+      const coach = await nouveauCoach('fin-61');
+      const abo = await abonner(profilX, coach.offre, 'fin-61', 120);
+      await resilier(profilX, abo, 61);
+      expect((await monAvis(X, coach.profil)).etat).toBe('aucun');
+      const { statut, corps } = await deposer(X, coach.profil, { note: 3 });
+      expect([statut, messageDe(corps)]).toEqual([400, 'avis_impossible']);
+    });
+
+    it('résilié après 29 jours de suivi seulement : refusé, avis_impossible', async () => {
+      const coach = await nouveauCoach('suivi-29');
+      const abo = await abonner(profilX, coach.offre, 'suivi-29', 39);
+      await resilier(profilX, abo, 10);
+      const { statut, corps } = await deposer(X, coach.profil, { note: 3 });
+      expect([statut, messageDe(corps)]).toEqual([400, 'avis_impossible']);
+    });
+
+    it('en pause, 40 jours de suivi : refusé, avis_suivi_interrompu — et mon état le dit', async () => {
+      const coach = await nouveauCoach('pause');
+      const abo = await abonner(profilX, coach.offre, 'pause', 40);
+      const pause = await appelRest('/rest/v1/rpc/demander_pause', {
+        methode: 'POST',
+        session: X,
+        corps: { p_abonnement_id: abo, p_jusqu_au: plusJours(aujourdhuiParis(), 20) },
+      });
+      expect(pause.statut).toBe(204);
+      expect(await monAvis(X, coach.profil)).toMatchObject({
+        etat: 'suivi_interrompu',
+        jours_restants: null,
+      });
+      const { statut, corps } = await deposer(X, coach.profil, { note: 3 });
+      expect([statut, messageDe(corps)]).toEqual([400, 'avis_suivi_interrompu']);
+    });
+
+    it('aucun abonnement chez ce coach : refusé, avis_impossible', async () => {
+      const coach = await nouveauCoach('sans-abo');
+      const { statut, corps } = await deposer(X, coach.profil, { note: 3 });
+      expect([statut, messageDe(corps)]).toEqual([400, 'avis_impossible']);
+    });
+
+    it('anon ne peut ni déposer, ni lire son état', async () => {
+      const coach = await nouveauCoach('anon');
+      expect((await deposer('anon', coach.profil, { note: 3 })).statut).toBeGreaterThanOrEqual(400);
+      const etat = await appelRest('/rest/v1/rpc/mon_avis_possible', {
+        methode: 'POST',
+        corps: { p_coach_id: coach.profil },
+      });
+      expect(etat.statut).toBeGreaterThanOrEqual(400);
+    });
+  });
+
+  describe('un avis par couple, modifiable 14 jours depuis la première publication (critère 3)', () => {
+    let coach: { profil: string; offre: string };
+
+    beforeAll(async () => {
+      coach = await nouveauCoach('quatorze');
+      await abonner(profilX, coach.offre, 'quatorze', 45);
+      const { statut, corps } = await deposer(X, coach.profil, { note: 2, texte: 'Premier jet' });
+      if (statut !== 200) throw new Error(`Préparation du banc : dépôt ${messageDe(corps)}`);
+    });
+
+    it('un second dépôt pour le même couple : refusé, avis_deja_donne', async () => {
+      const { statut, corps } = await deposer(X, coach.profil, { note: 5 });
+      expect([statut, messageDe(corps)]).toEqual([400, 'avis_deja_donne']);
+    });
+
+    it('au treizième jour : modification acceptée, la date de publication ne bouge pas', async () => {
+      await poserAvis(coach.profil, profilX, { publie_le: ilYa(13) });
+      const { statut } = await modifier(X, coach.profil, {
+        note: 4,
+        etiquettes: ['ecoute'],
+        texte: 'Revu',
+      });
+      expect(statut).toBe(200);
+      const { corps } = await appelRest(
+        `/rest/v1/avis?profil_coach_id=eq.${coach.profil}&select=note,texte,publie_le`,
+        { session: 'admin' },
+      );
+      const ligne = (corps as { note: number; texte: string; publie_le: string }[])[0];
+      expect([ligne.note, ligne.texte]).toEqual([4, 'Revu']);
+      expect(ligne.publie_le.slice(0, 10)).toBe(plusJours(aujourdhuiParis(), -13));
+    });
+
+    it('au quatorzième jour révolu : modification refusée, avis_fige — et mon état est « fige »', async () => {
+      await poserAvis(coach.profil, profilX, { publie_le: ilYa(14) });
+      const { statut, corps } = await modifier(X, coach.profil, { note: 5 });
+      expect([statut, messageDe(corps)]).toEqual([400, 'avis_fige']);
+      expect((await monAvis(X, coach.profil)).etat).toBe('fige');
+    });
+  });
+
+  describe('forme de la saisie, refusée par le serveur (critère 4)', () => {
+    let coach: { profil: string; offre: string };
+
+    beforeAll(async () => {
+      coach = await nouveauCoach('forme');
+      await abonner(profilX, coach.offre, 'forme', 35);
+    });
+
+    it.each([
+      ['une note de 6', { note: 6 }],
+      ['une note de 0', { note: 0 }],
+      [
+        'quatre étiquettes',
+        { note: 4, etiquettes: ['ecoute', 'exigence', 'reactivite', 'ponctualite'] },
+      ],
+      ['une étiquette hors de la liste', { note: 4, etiquettes: ['pedagogie'] }],
+      ['un texte de 601 caractères', { note: 4, texte: 'a'.repeat(601) }],
+    ])('%s : refusé, avis_invalide, rien n’est enregistré', async (_cas, saisie) => {
+      const { statut, corps } = await deposer(X, coach.profil, saisie);
+      expect([statut, messageDe(corps)]).toEqual([400, 'avis_invalide']);
+      expect((await monAvis(X, coach.profil)).etat).toBe('possible');
+    });
+
+    it('une note avec un texte d’un caractère et trois étiquettes : acceptée, étiquettes dans l’ordre d’affichage', async () => {
+      const { statut } = await deposer(X, coach.profil, {
+        note: 5,
+        etiquettes: ['professionnalisme', 'ecoute', 'exigence'],
+        texte: 'A',
+      });
+      expect(statut).toBe(200);
+      expect(await monAvis(X, coach.profil)).toMatchObject({
+        etiquettes: ['ecoute', 'exigence', 'professionnalisme'],
+        texte: 'A',
+      });
+    });
+  });
+
+  describe('lecture publique : statut, seuil de cinq, durée de suivi (L2-13, critères 5 à 7)', () => {
+    let coach: { profil: string; offre: string };
+    const auteurs: { session: Session; profil: string; note: number }[] = [];
+
+    beforeAll(async () => {
+      coach = await nouveauCoach('public');
+      const notes = [5, 4, 4, 3, 5];
+      const sessions = [X, A, B, C, D];
+      for (let i = 0; i < sessions.length; i += 1) {
+        const profil =
+          sessions[i] === X ? profilX : await assurerEspaceClient(sessions[i], `Auteur${i}`);
+        await abonner(profil, coach.offre, `public-${i}`, 40 + i * 30);
+        auteurs.push({ session: sessions[i], profil, note: notes[i] });
+      }
+      // Les quatre premiers seulement : le cinquième est déposé dans un test.
+      for (const auteur of auteurs.slice(0, 4)) {
+        const { statut, corps } = await deposer(auteur.session, coach.profil, {
+          note: auteur.note,
+          etiquettes: auteur.note === 5 ? ['ecoute'] : [],
+        });
+        if (statut !== 200) throw new Error(`Préparation du banc : dépôt ${messageDe(corps)}`);
+      }
+    }, 120_000);
+
+    it('à quatre avis : compteur et distribution, jamais de moyenne', async () => {
+      expect(await synthese('anon', coach.profil)).toEqual({
+        nombre: 4,
+        moyenne: null,
+        distribution: [0, 0, 1, 2, 1],
+        etiquettes_portees: ['ecoute'],
+      });
+    });
+
+    it('au cinquième : la moyenne apparaît, arrondie au dixième', async () => {
+      const cinquieme = auteurs[4];
+      expect((await deposer(cinquieme.session, coach.profil, { note: 5 })).statut).toBe(200);
+      expect(await synthese('anon', coach.profil)).toMatchObject({ nombre: 5, moyenne: 4.2 });
+    });
+
+    it('chaque avis : prénom, initiale, durée de suivi en mois — jamais une date, jamais le nom', async () => {
+      const liste = await avisDuCoach('anon', coach.profil);
+      const deX = liste.find((a) => a.prenom === 'Xavière');
+      expect(deX).toEqual({
+        id: expect.any(String),
+        prenom: 'Xavière',
+        initiale_nom: 'R',
+        duree_suivi_mois: 1,
+        note: 5,
+        etiquettes: ['ecoute'],
+        texte: null,
+      });
+      expect(JSON.stringify(liste)).not.toMatch(/Ravel|\d{4}-\d{2}-\d{2}/);
+    });
+
+    it('la durée de suivi se fige à la fin d’accès : 150 jours de suivi font 5 mois, pas 7', async () => {
+      const abo = await appelRest(
+        `/rest/v1/abonnements?profil_client_id=eq.${profilX}&profil_coach_id=eq.${coach.profil}&select=id`,
+        { session: 'admin' },
+      );
+      const id = (abo.corps as { id: string }[])[0].id;
+      await resilier(profilX, id, 50);
+      await poserDates(id, { actif_depuis_le: ilYa(200) });
+      const deX = (await avisDuCoach('anon', coach.profil)).find((a) => a.prenom === 'Xavière');
+      expect(deX?.duree_suivi_mois).toBe(5);
+    });
+
+    it('un avis signalé ou masqué n’apparaît ni pour anon, ni pour un autre client — son auteur le voit encore', async () => {
+      await poserAvis(coach.profil, profilX, { statut: 'signale' });
+      await poserAvis(coach.profil, auteurs[1].profil, { statut: 'masque' });
+      for (const lecteur of ['anon', C] as Appelant[]) {
+        const liste = await avisDuCoach(lecteur, coach.profil);
+        expect(liste.map((a) => a.note).sort()).toEqual([3, 4, 5]);
+        expect(liste.some((a) => a.prenom === 'Xavière')).toBe(false);
+        expect(await synthese(lecteur, coach.profil)).toMatchObject({ nombre: 3, moyenne: null });
+      }
+      expect(await monAvis(X, coach.profil)).toMatchObject({ statut: 'signale', note: 5 });
+    });
+
+    it('un avis signalé n’est pas modifiable, même dans ses 14 jours', async () => {
+      const { statut, corps } = await modifier(X, coach.profil, { note: 1 });
+      expect([statut, messageDe(corps)]).toEqual([400, 'avis_fige']);
+    });
+
+    it('un coach qui n’est plus vérifié : ses avis ne sont plus lisibles', async () => {
+      await poserStatutCoach(coach.profil, 'complement_demande');
+      expect(await avisDuCoach('anon', coach.profil)).toEqual([]);
+      expect((await synthese('anon', coach.profil)).nombre).toBe(0);
+      await poserStatutCoach(coach.profil, 'verifiee');
+    });
+
+    it('la table avis elle-même : ni anon ni un client ne la lisent directement', async () => {
+      for (const lecteur of ['anon', X] as Appelant[]) {
+        const { statut, corps } = await appelRest(`/rest/v1/avis?select=id`, { session: lecteur });
+        expect(statut).toBeGreaterThanOrEqual(400);
+        expect(JSON.stringify(corps)).toMatch(/permission denied/i);
+      }
+    });
+  });
+});

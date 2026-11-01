@@ -121,6 +121,11 @@ function creerPortDonneesEnAttente(promesse: Promise<EtatProfils>): PortDonnees 
     lireCoachParJetonInvitation: jest.fn(),
     demanderIntention: jest.fn(),
     constaterIntention: jest.fn(),
+    lireEtiquettesAvis: jest.fn(),
+    lireAvisDuCoach: jest.fn(),
+    lireMonAvis: jest.fn(),
+    deposerAvis: jest.fn(),
+    modifierAvis: jest.fn(),
   };
 }
 
@@ -249,6 +254,11 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       lireCoachParJetonInvitation: jest.fn(),
       demanderIntention: jest.fn(),
       constaterIntention: jest.fn(),
+      lireEtiquettesAvis: jest.fn(),
+      lireAvisDuCoach: jest.fn(),
+      lireMonAvis: jest.fn(),
+      deposerAvis: jest.fn(),
+      modifierAvis: jest.fn(),
     };
 
     await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);

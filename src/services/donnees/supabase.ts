@@ -1,12 +1,16 @@
 import { supabase } from '@/services/supabase/client';
 import type {
+  AvisDuCoach,
   CommuneReference,
   Discipline,
   DossierVerification,
+  EtatMonAvis,
   EtatProfils,
+  EtiquetteAvis,
   InformationsCompte,
   Invitation,
   Langue,
+  MonAvis,
   Offre,
   ParametresRecherche,
   PieceDeposee,
@@ -17,9 +21,11 @@ import type {
   RefusServeur,
   ResultatCoachRecherche,
   ResultatConstat,
+  ResultatAvis,
   ResultatEcriture,
   ResultatIntention,
   ResultatRecherche,
+  SaisieAvis,
   TypePiece,
 } from './port';
 
@@ -46,6 +52,50 @@ async function refusDe(erreur: unknown): Promise<RefusServeur | null> {
     // Corps illisible : pas un refus affichable.
   }
   return null;
+}
+
+// Avis (P4.9a) : les lignes rendues par 0049, en snake_case.
+type LigneAvisPublic = {
+  id: string;
+  prenom: string;
+  initiale_nom: string | null;
+  duree_suivi_mois: number;
+  note: number;
+  etiquettes: string[];
+  texte: string | null;
+};
+type LigneSyntheseAvis = {
+  nombre: number;
+  moyenne: number | string | null;
+  distribution: number[];
+  etiquettes_portees: string[];
+};
+type LigneMonAvis = {
+  etat: 'aucun' | 'possible' | 'suivi_interrompu' | 'pas_encore' | 'modifiable' | 'fige';
+  jours_restants: number | null;
+  note: number | null;
+  etiquettes: string[] | null;
+  texte: string | null;
+  statut: string | null;
+};
+
+// Dépôt (POST) ou modification (PATCH) par l'Edge Function `avis`. Une réponse 2xx sans
+// identifiant n'est pas un avis enregistré : rien ne permet de le dire à la personne.
+async function ecrireAvis(
+  methode: 'POST' | 'PATCH',
+  coachId: string,
+  saisie: SaisieAvis,
+): Promise<ResultatAvis> {
+  const { data, error } = (await supabase.functions.invoke('avis', {
+    method: methode,
+    body: { coachId, ...saisie },
+  })) as AppelFonction;
+  if (error) {
+    const refus = await refusDe(error);
+    return refus ? { issue: 'refusee', refus } : { issue: 'sans_reponse' };
+  }
+  const avisId = (data as { avisId?: unknown } | null)?.avisId;
+  return estTexte(avisId) ? { issue: 'enregistre', avisId } : { issue: 'sans_reponse' };
 }
 
 function estTexte(valeur: unknown): valeur is string {
@@ -968,5 +1018,69 @@ export const portDonneesSupabase: PortDonnees = {
       return refus ? { issue: 'refusee', refus } : { issue: 'sans_reponse' };
     }
     return constat(data);
+  },
+
+  async lireEtiquettesAvis() {
+    const { data, error } = await supabase
+      .from('etiquettes_avis')
+      .select('cle, libelle')
+      .order('ordre_affichage', { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as EtiquetteAvis[];
+  },
+
+  async lireAvisDuCoach(coachId: string): Promise<AvisDuCoach> {
+    const [liste, synthese] = await Promise.all([
+      supabase.rpc('avis_du_coach', { p_coach_id: coachId }),
+      supabase.rpc('synthese_avis_du_coach', { p_coach_id: coachId }),
+    ]);
+    if (liste.error) throw liste.error;
+    if (synthese.error) throw synthese.error;
+    const s = (synthese.data as LigneSyntheseAvis[])[0];
+    return {
+      avis: ((liste.data ?? []) as LigneAvisPublic[]).map((a) => ({
+        id: a.id,
+        prenom: a.prenom,
+        initialeNom: a.initiale_nom,
+        dureeSuiviMois: a.duree_suivi_mois,
+        note: a.note,
+        etiquettes: a.etiquettes,
+        texte: a.texte,
+      })),
+      synthese: {
+        nombre: s.nombre,
+        moyenne: s.moyenne === null ? null : Number(s.moyenne),
+        distribution: s.distribution,
+        etiquettesPortees: s.etiquettes_portees,
+      },
+    };
+  },
+
+  async lireMonAvis(coachId: string): Promise<EtatMonAvis> {
+    const { data, error } = await supabase.rpc('mon_avis_possible', { p_coach_id: coachId });
+    if (error) throw error;
+    const l = (data as LigneMonAvis[])[0];
+    if (l.etat === 'pas_encore')
+      return { etat: 'pas_encore', joursRestants: l.jours_restants as number };
+    if (l.etat === 'modifiable' || l.etat === 'fige') {
+      return {
+        etat: l.etat,
+        avis: {
+          note: l.note as number,
+          etiquettes: l.etiquettes ?? [],
+          texte: l.texte,
+          statut: l.statut as MonAvis['statut'],
+        },
+      };
+    }
+    return { etat: l.etat };
+  },
+
+  deposerAvis(coachId: string, saisie: SaisieAvis): Promise<ResultatAvis> {
+    return ecrireAvis('POST', coachId, saisie);
+  },
+
+  modifierAvis(coachId: string, saisie: SaisieAvis): Promise<ResultatAvis> {
+    return ecrireAvis('PATCH', coachId, saisie);
   },
 } satisfies PortDonnees;

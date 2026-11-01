@@ -532,4 +532,159 @@ describe('portDonneesSupabase', () => {
       });
     });
   });
+
+  describe('avis (P4.9a)', () => {
+    const SAISIE = { note: 4, etiquettes: ['ecoute'], texte: 'Bien' };
+
+    it('lireEtiquettesAvis lit la table dans son ordre d’affichage', async () => {
+      const order = jest.fn(() =>
+        Promise.resolve({ data: [{ cle: 'ecoute', libelle: 'Écoute' }], error: null }),
+      );
+      const select = jest.fn(() => ({ order }));
+      supabaseMock.from.mockReturnValue({ select });
+      expect(await portDonneesSupabase.lireEtiquettesAvis()).toEqual([
+        { cle: 'ecoute', libelle: 'Écoute' },
+      ]);
+      expect(supabaseMock.from).toHaveBeenCalledWith('etiquettes_avis');
+      expect(select).toHaveBeenCalledWith('cle, libelle');
+      expect(order).toHaveBeenCalledWith('ordre_affichage', { ascending: true });
+    });
+
+    it('lireAvisDuCoach : la liste et la synthèse du serveur, en camelCase, rien de recalculé', async () => {
+      supabaseMock.rpc.mockImplementation((fonction: string) =>
+        Promise.resolve(
+          fonction === 'avis_du_coach'
+            ? {
+                data: [
+                  {
+                    id: 'avis-1',
+                    prenom: 'Marc',
+                    initiale_nom: 'T',
+                    duree_suivi_mois: 7,
+                    note: 5,
+                    etiquettes: ['ecoute'],
+                    texte: null,
+                  },
+                ],
+                error: null,
+              }
+            : {
+                data: [
+                  {
+                    nombre: 1,
+                    moyenne: null,
+                    distribution: [0, 0, 0, 0, 1],
+                    etiquettes_portees: ['ecoute'],
+                  },
+                ],
+                error: null,
+              },
+        ),
+      );
+      expect(await portDonneesSupabase.lireAvisDuCoach('coach-1')).toEqual({
+        avis: [
+          {
+            id: 'avis-1',
+            prenom: 'Marc',
+            initialeNom: 'T',
+            dureeSuiviMois: 7,
+            note: 5,
+            etiquettes: ['ecoute'],
+            texte: null,
+          },
+        ],
+        synthese: {
+          nombre: 1,
+          moyenne: null,
+          distribution: [0, 0, 0, 0, 1],
+          etiquettesPortees: ['ecoute'],
+        },
+      });
+      expect(supabaseMock.rpc).toHaveBeenCalledWith('avis_du_coach', { p_coach_id: 'coach-1' });
+      expect(supabaseMock.rpc).toHaveBeenCalledWith('synthese_avis_du_coach', {
+        p_coach_id: 'coach-1',
+      });
+    });
+
+    it('lireMonAvis rend chaque état du serveur', async () => {
+      const cas: [unknown, unknown][] = [
+        [{ etat: 'aucun' }, { etat: 'aucun' }],
+        [{ etat: 'possible' }, { etat: 'possible' }],
+        [{ etat: 'suivi_interrompu' }, { etat: 'suivi_interrompu' }],
+        [
+          { etat: 'pas_encore', jours_restants: 3 },
+          { etat: 'pas_encore', joursRestants: 3 },
+        ],
+        [
+          { etat: 'fige', note: 4, etiquettes: ['ecoute'], texte: null, statut: 'signale' },
+          {
+            etat: 'fige',
+            avis: { note: 4, etiquettes: ['ecoute'], texte: null, statut: 'signale' },
+          },
+        ],
+      ];
+      for (const [ligne, attendu] of cas) {
+        supabaseMock.rpc.mockResolvedValue({
+          data: [
+            {
+              jours_restants: null,
+              note: null,
+              etiquettes: null,
+              texte: null,
+              statut: null,
+              ...(ligne as object),
+            },
+          ],
+          error: null,
+        });
+        expect(await portDonneesSupabase.lireMonAvis('coach-1')).toEqual(attendu);
+      }
+      expect(supabaseMock.rpc).toHaveBeenCalledWith('mon_avis_possible', { p_coach_id: 'coach-1' });
+    });
+
+    it('deposerAvis : POST sur la fonction avis, rend l’identifiant', async () => {
+      supabaseMock.functions.invoke.mockResolvedValue({ data: { avisId: 'avis-1' }, error: null });
+      expect(await portDonneesSupabase.deposerAvis('coach-1', SAISIE)).toEqual({
+        issue: 'enregistre',
+        avisId: 'avis-1',
+      });
+      expect(supabaseMock.functions.invoke).toHaveBeenCalledWith('avis', {
+        method: 'POST',
+        body: { coachId: 'coach-1', ...SAISIE },
+      });
+    });
+
+    it('modifierAvis : PATCH sur la fonction avis', async () => {
+      supabaseMock.functions.invoke.mockResolvedValue({ data: { avisId: 'avis-1' }, error: null });
+      await portDonneesSupabase.modifierAvis('coach-1', SAISIE);
+      expect(supabaseMock.functions.invoke).toHaveBeenCalledWith('avis', {
+        method: 'PATCH',
+        body: { coachId: 'coach-1', ...SAISIE },
+      });
+    });
+
+    it('un refus du serveur rend son texte tel quel ; aucune réponse : sans_reponse', async () => {
+      const refus = {
+        code: 'avis_pas_encore',
+        title: "Pas encore d'avis possible",
+        detail: 'Il te reste 3 jours de suivi avant de pouvoir donner ton avis.',
+      };
+      supabaseMock.functions.invoke.mockResolvedValue(refusHttp(403, { ...refus, status: 403 }));
+      expect(await portDonneesSupabase.deposerAvis('coach-1', SAISIE)).toEqual({
+        issue: 'refusee',
+        refus,
+      });
+      supabaseMock.functions.invoke.mockResolvedValue(SANS_REPONSE);
+      expect(await portDonneesSupabase.modifierAvis('coach-1', SAISIE)).toEqual({
+        issue: 'sans_reponse',
+      });
+    });
+
+    it('une réponse 2xx sans identifiant n’est jamais prise pour un avis enregistré', async () => {
+      supabaseMock.functions.invoke.mockResolvedValue({ data: {}, error: null });
+      expect(await portDonneesSupabase.deposerAvis('coach-1', SAISIE)).toEqual({
+        issue: 'sans_reponse',
+      });
+    });
+  });
 });
