@@ -538,9 +538,12 @@ Revue de fin de lot L3bis. Ne modifie rien avant que je valide.
 6. Vérifie qu'aucune ligne du lot ne touche à Stripe, aux avis, à la messagerie, au studio, à
    l'agenda ou à une donnée de santé.
 7. Vérifie que les migrations sont rejouables de zéro. La CI fait foi.
-8. Vérifie que la transition vers `abonnee` n'a toujours aucun chemin d'écriture réel (règle 8) —
-   si un chemin existe déjà, c'est soit une anticipation de L4 à documenter explicitement, soit
-   une fuite à corriger, jamais une ambiguïté à laisser courir.
+8. Vérifie que la transition vers `abonnee` a un chemin d'écriture, et UN SEUL : l'abonnement
+   d'un compte invité à l'offre de son inviteur (L4, P4.3, « le fil de L3bis refermé »). Un
+   abonnement à un autre coach ne la déclenche jamais ; aucune écriture directe n'existe.
+   **Corrigé le 1er novembre 2026, avant de rejouer cette porte** : ce point exigeait à
+   l'origine « aucun chemin d'écriture réel » — vrai à la fin de L3bis, rendu faux par L4, qui a
+   construit ce chemin volontairement. Une porte dont un point ment ne peut pas être passée.
 9. Vérifie qu'aucun élément hors périmètre (docs/perimetre.md §3) n'a été préparé.
 10. Propose les entrées de docs/dette.md à ajouter ou corriger — NE LES ÉCRIS PAS : cette revue
     ne modifie rien (voir la première ligne, et la règle 10). Une fois ma validation reçue,

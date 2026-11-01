@@ -207,6 +207,13 @@ manuelle, jamais automatique.
    phrases sur le « pourquoi » valent mieux que dix lignes de commentaire.
 6. **Signale les dettes** que tu crées volontairement en les ajoutant à `docs/dette.md`, avec
    le lot où elles devront être traitées.
+7. **Une porte de sortie ne se passe que si chaque dette échue est soldée, ou explicitement
+   reportée par une décision écrite** (dans `docs/dette.md`, avec sa date et sa nouvelle
+   échéance). Un report sans décision n'est pas un report, c'est un oubli.
+8. **Un lot ne s'ouvre pas tant que la porte de sortie du précédent n'est pas close par un
+   commit** qui le dit. Trouvé le 1er novembre 2026 : les portes de L1 et de L3bis n'avaient
+   jamais été passées, L2 puis L4 s'étaient ouverts quand même, et ça ne s'est vu que deux mois
+   plus tard, en faisant le point.
 
 ---
 
@@ -243,6 +250,16 @@ restent la bonne pente pour ça, plus rapides et plus stables). Trois pièges tr
   pour cette méthode précise, jamais le reste du module.
 
 Pas de test de capture d'écran (snapshot) : ils passent tout seuls et ne prouvent rien.
+
+**Une politique RLS se prouve dans les DEUX sens, chacun par un test nommé : l'accès légitime
+qui rend la donnée, l'accès illégitime qui ne rend rien.** Une politique dont seul le refus est
+prouvé peut être trop restrictive sans que personne le voie : RLS ne lève jamais d'erreur, elle
+rend une liste vide ou zéro ligne modifiée, silencieusement (`docs/backend.md` §5) — l'écran
+afficherait « aucune donnée » au lieu d'une erreur. C'est le piège connu depuis P1.3, et il
+s'est reformé : la revue de la porte de sortie de L1 (1er novembre 2026) a trouvé quatre
+politiques de 0002 dont l'accès légitime n'était prouvé que par la préparation du banc, jamais
+par un test qui le nomme (`docs/dette.md`). Un `beforeAll` qui réussit n'est pas une preuve : il
+n'a pas de nom, et personne ne le relira comme tel.
 
 **Un résultat de test se lit sur TOUTES ses lignes de bilan, jamais sur celle qui répond à la
 question qu'on se pose.** Jest en donne deux : `Test Suites:` et `Tests:`. Un fichier de test qui
