@@ -25,7 +25,15 @@ tout appareil de test). **Il resservira à la prochaine montée** : les sections
    puis `npx expo install --fix`, et `npx expo-doctor` pour la liste des écarts. Une version qu'on
    voudrait autre que celle d'Expo est une décision, écrite avant d'être appliquée.
 4. **Jamais `--legacy-peer-deps` ni `--force`.** Un conflit de pairs se comprend avant de se
-   résoudre. Une résolution forcée accepte un arbre peut-être cassé sans le dire.
+   résoudre. Une résolution forcée accepte un arbre peut-être cassé sans le dire. **Un ERESOLVE
+   n'est pas forcément un conflit de versions** (leçon du SDK 58, 1er novembre 2026) : npm résout
+   de façon INCRÉMENTALE à partir du lock existant, et peut échouer à placer ensemble deux paquets
+   qui changent dans le même `npm install`, alors que les mêmes versions se résolvent de zéro. Le
+   diagnostic se fait à part, dans un dossier jetable, sans toucher au projet :
+   `npm install --package-lock-only --ignore-scripts` (1) de zéro, sans lock ; (2) depuis le lock
+   du dépôt. Si (1) passe et (2) échoue, c'est l'ordre de placement : monter en deux temps, le
+   paquet du conflit en dernier, plutôt que de régénérer tout le lock (qui fait bouger des
+   centaines de dépendances transitives sans rapport avec la montée).
 5. **Un test qui rougit n'est pas réécrit pour passer** (`CLAUDE.md` §4). S'il rougit à cause
    d'un changement d'API d'une bibliothèque, on corrige l'APPEL dans le code, et on le dit ; si
    c'est le test qui dépendait d'un détail interne, on le dit aussi, avant de le toucher.
@@ -54,6 +62,38 @@ directement), `react-native-screens` 4.30.x, `react-native-safe-area-context` 5.
 | **Reanimated** 4.5 → 4.7 | 7 composants : `bouton`, `bouton-icone`, `modale`, `feuille-basse`, `squelette`, `progression`, `onglets` | tests d'écran et `test:a11y` ; à l'œil sur iPhone (feuille basse, bascule de profil) |
 | **jest-expo** 58 | attend `@react-native/jest-preset ^0.88` ; `jest` est figé en 29 (`docs/dette.md`, première ligne sur jest) | `npm test` se charge : `Test Suites:` sans échec de chargement |
 | **Paquet de production** | `scripts/verifier-bundle-production.mjs` | web, iOS et Android, clé admin absente des trois |
+
+### Ce que la montée 57 → 58 a appris (1er novembre 2026)
+
+À relire avant la prochaine montée : chaque point a coûté un rouge, ou en aurait coûté un sur
+appareil.
+
+1. **ERESOLVE de npm** : un placement incrémental, pas un conflit de versions (Méthode, point 4).
+   Monter en trois temps, depuis le lock du dépôt, dans un dossier jetable : les dépendances
+   (datetimepicker gardé à l'ancienne version), puis datetimepicker, puis les outils de
+   développement ; ne rapporter dans le projet que le `package.json` et le lock finaux (`npm ci`).
+   `npx expo install` fait deux `npm install` successifs et laisse un lock intermédiaire.
+2. **Reanimated 4.7** appelle `runOnUISync` dès son import : Jest doit utiliser
+   `react-native-reanimated/jest/resolver`, plus seulement celui de worklets.
+3. **`renderRouter` est asynchrone** (expo-router 58) : `await renderRouter(...)`.
+4. **La navigation passe par une file d'attente** en état React : chaque `router.push`/`back`,
+   chaque `fireEvent`, chaque avance de minuteurs dans un test de pile se fait dans un `act`
+   ATTENDU. Un seul `act` non attendu qui chevauche un `act` asynchrone laisse une portée ouverte,
+   et plus AUCUNE mise à jour n'est appliquée ensuite, dans tout l'arbre (« overlapping act()
+   calls » dans la console). Le symptôme ressemble à un gel de l'écran ; c'est le harnais.
+5. **`beforeRemove` n'existe plus** : la garde de sortie est passée à `usePreventRemove`
+   (`expo-router/react-navigation`), forme documentée (`repeat()`).
+6. **Une barre d'onglets personnalisée ne reçoit plus `navigation`**, mais `emitter` et
+   `navigateToTab(cleRoute)`.
+7. **react-native 0.88** : `TextInput` est le type du composant ; l'objet d'une ref est
+   `TextInputInstance`.
+8. **Les doubles de bibliothèque ont caché deux de ces ruptures** (5 et 6) : seuls `tsc` et les
+   tests `renderRouter` les ont vues (`CLAUDE.md` §8).
+9. **Méthode de diagnostic qui a tranché « artefact de test ou vrai comportement »** : le même
+   scénario sur le serveur web, piloté par Chrome sans tête (protocole DevTools, WebSocket natif
+   de Node : aucune dépendance), sur une route temporaire. Attention : Jest suit le chemin
+   NATIF (fichiers `.ios`/`.native`), le web non ; un vert sur le web ne vaut pas preuve sur
+   l'appareil, d'où l'essai sur iPhone de la porte de sortie.
 
 ---
 

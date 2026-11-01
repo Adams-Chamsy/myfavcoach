@@ -269,6 +269,26 @@ politiques de 0002 dont l'accès légitime n'était prouvé que par la préparat
 par un test qui le nomme (`docs/dette.md`). Un `beforeAll` qui réussit n'est pas une preuve : il
 n'a pas de nom, et personne ne le relira comme tel.
 
+**Un test qui fabrique lui-même ce qu'une bibliothèque lui passerait ne prouve rien sur le
+contrat réel de cette bibliothèque. Seule la vérification de types l'attrape, et seulement si
+le double n'est pas converti en bloc.** Trouvé le 1er novembre 2026, à la montée du SDK 58 :
+expo-router 58 ne passe plus `navigation` à une barre d'onglets personnalisée (il passe
+`emitter` et `navigateToTab`). `src/fonctionnalites/navigation/barre-onglets.test.tsx`
+fabriquait un `navigation` et le convertissait par `as unknown as BottomTabBarProps` : il
+testait son propre faux, et passait. Sur l'iPhone, appuyer sur un onglet aurait planté. Seul
+`tsc` l'a signalé, côté composant. Même famille, le même jour : `useGardeSortie` écoutait
+`beforeRemove`, un événement que le SDK 58 a supprimé ; les tests d'écran stubbaient
+`useNavigation` et passaient. Règles qui en découlent :
+- un double d'objet de bibliothèque passe par `satisfies <TypeDeLaBibliothèque>`, jamais par
+  `as unknown as` sur l'objet entier : les NOMS des propriétés restent vérifiés ; seule une forme
+  interne précise peut être convertie, champ par champ ;
+- `tsc` fait partie de la preuve : « aucune erreur de type » ne s'écrit qu'après l'avoir lancé.
+  Le même jour, Claude l'a affirmé en lisant le code, sans lancer `tsc`, et c'était faux. C'est
+  la règle « la preuve, pas l'affirmation » (règle 4 des prompts de lot), pas un oubli de lecture ;
+- le contrat réel d'une bibliothèque ne se prouve que contre la vraie bibliothèque : un test
+  `renderRouter`, un essai contre le vrai service (le banc, les essais Stripe réels), ou
+  l'appareil. La liste des doubles du dépôt à revoir sous cet angle est dans `docs/dette.md`.
+
 **Un résultat de test se lit sur TOUTES ses lignes de bilan, jamais sur celle qui répond à la
 question qu'on se pose.** Jest en donne deux : `Test Suites:` et `Tests:`. Un fichier de test qui
 ne se charge pas du tout (import introuvable, erreur de syntaxe) n'apparaît que dans la première —
