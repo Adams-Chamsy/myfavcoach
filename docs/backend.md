@@ -178,6 +178,32 @@ politique de la table qu'elle écrit. Conséquence concrète pour le lot L2 : `c
 devra avoir ses propres tests de refus (par exemple : refus si un profil coach existe déjà pour
 ce compte), indépendants du banc RLS de `profils_client`/`profils_coach`.
 
+### L'application ne cherche jamais sa propre ligne : elle la demande au serveur
+
+Écrit le 1er novembre 2026, après deux défauts sur la même question, « quel est MON profil
+coach ? », chacun invisible aux tests :
+
+- **un filtre côté client suppose un droit de lecture, qui peut disparaître.** L'application
+  modifiait son profil coach par `UPDATE profils_coach … WHERE compte_id = …`. Depuis 0008
+  (12 septembre), `compte_id` n'est plus lisible par `authenticated` sur cette table (les profils
+  vérifiés sont publics, l'identifiant de compte ne doit pas en sortir) : Postgres exige le droit
+  de lire une colonne pour la mettre dans un `WHERE`, et l'écriture échouait en `42501`. Sept
+  semaines sans que rien ne rougisse, trouvé sur iPhone ;
+- **une recherche sans filtre peut rendre la ligne de quelqu'un d'autre.** Le téléversement d'une
+  pièce et la création d'une offre trouvaient le profil coach par `select('id').limit(1)`. Un
+  coach lit son profil ET ceux de tous les coachs vérifiés : la requête rend plusieurs lignes, et
+  `limit(1)` en prend une sans ordre garanti. Elle rendait la bonne par chance, sur un projet de
+  développement à un seul coach vérifié. En production, un coach aurait pu recevoir
+  l'identifiant d'un autre.
+
+**Règle : une ligne qui appartient à l'appelant se désigne côté serveur, par `auth.uid()`, dans
+une fonction (`mon_profil_coach_id()`, `mes_invitations()`, `mon_avis_possible()`...), jamais
+par une recherche côté application.** Ni filtre sur une colonne qui identifie le compte, ni
+lecture sans filtre en comptant sur RLS pour ne rendre « que la mienne » : RLS peut légitimement
+en rendre d'autres (une politique de lecture publique s'ajoute à la politique propriétaire).
+Une seule fonction répond à « quelle est ma ligne » par table concernée, et toutes les
+écritures de l'application l'utilisent.
+
 ---
 
 ## 8. Lectures inter-comptes

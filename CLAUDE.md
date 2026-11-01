@@ -289,6 +289,15 @@ testait son propre faux, et passait. Sur l'iPhone, appuyer sur un onglet aurait 
   `renderRouter`, un essai contre le vrai service (le banc, les essais Stripe réels), ou
   l'appareil. La liste des doubles du dépôt à revoir sous cet angle est dans `docs/dette.md`.
 
+**Le banc emprunte le chemin de l'application, jamais un chemin équivalent.** Même famille que
+la règle précédente, côté base. Trouvé le 1er novembre 2026 : l'application modifiait un profil
+coach par `compte_id`, le banc par `id` ; le chemin du banc passait, celui de l'application
+échouait en `42501` depuis sept semaines. Écrire par `id` quand l'application écrit par
+`compte_id`, c'est tester autre chose. Pour chaque écriture de l'application, au moins un test
+du banc envoie EXACTEMENT la même requête (même table, même filtre, même fonction, avec la
+session d'un utilisateur, jamais `service_role`), ou appelle la même fonction serveur que
+l'application. Une préparation faite par `service_role` est un décor, pas un chemin couvert.
+
 **Un résultat de test se lit sur TOUTES ses lignes de bilan, jamais sur celle qui répond à la
 question qu'on se pose.** Jest en donne deux : `Test Suites:` et `Tests:`. Un fichier de test qui
 ne se charge pas du tout (import introuvable, erreur de syntaxe) n'apparaît que dans la première —
