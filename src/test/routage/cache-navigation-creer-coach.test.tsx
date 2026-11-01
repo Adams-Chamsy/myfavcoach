@@ -53,7 +53,7 @@ it('retour depuis « Créer une offre », poussé depuis l’onglet Clients : re
   await compteConnecteEtVerifie(portAuth);
   const portDonnees = creerFauxPortDonnees();
 
-  const rendu = renderRouter(
+  const rendu = await renderRouter(
     {
       appDir: './app',
       overrides: { _layout: creerRacineFaux(portAuth, portDonnees) },
@@ -68,11 +68,15 @@ it('retour depuis « Créer une offre », poussé depuis l’onglet Clients : re
   await act(() => jest.runAllTimersAsync());
   await waitFor(() => expect(rendu.getPathname()).toBe('/clients'));
 
-  act(() => router.push('/(coach)/creer/offre'));
+  await act(async () => {
+    router.push('/(coach)/creer/offre');
+  });
   await act(() => jest.runAllTimersAsync());
   await waitFor(() => expect(rendu.getPathname()).toBe('/creer/offre'));
 
-  act(() => router.back());
+  await act(async () => {
+    router.back();
+  });
   await act(() => jest.runAllTimersAsync());
   await waitFor(() => expect(rendu.getPathname()).toBe('/clients'));
 });

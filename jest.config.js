@@ -5,7 +5,7 @@ module.exports = {
   },
   // Sans ce resolveur, react-native-worklets charge son module natif meme sous Jest et
   // plante (aucun natif charge en test) : voir node_modules/react-native-worklets/jest.
-  resolver: 'react-native-worklets/jest/resolver.js',
+  resolver: 'react-native-reanimated/jest/resolver',
   // Defaut Jest (5000 ms) trouve trop juste en CI : reproduit en clonant f73044c dans un
   // worktree propre (npm ci a froid, aucun cache Jest/Metro) — neuf suites basees sur
   // renderRouter (deja documentees fragiles, CLAUDE.md §8) ont depasse 5000 ms a froid alors

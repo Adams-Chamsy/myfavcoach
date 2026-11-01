@@ -1,5 +1,5 @@
 import { forwardRef, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Text, TextInput, type TextInputInstance, View } from 'react-native';
 
 import { BoutonIcone } from '@/composants/bouton-icone';
 import { useTheme } from '@/theme/fournisseur';
@@ -36,7 +36,9 @@ export type ProprietesChamp = {
 // donc portée par l'écran, jamais par Champ lui-même). Distinct de l'annonce lecteur d'écran
 // (critère 6, "sans voler le focus") : ce ref ne déplace QUE le focus clavier/visuel, jamais le
 // curseur d'accessibilité — c'est announceForAccessibility qui porte l'annonce, ailleurs.
-export const Champ = forwardRef<TextInput, ProprietesChamp>(function Champ(
+// SDK 58 (react-native 0.88) : `TextInput` est le type du COMPOSANT ; l'objet reçu par la ref
+// (focus, blur...) est `TextInputInstance`.
+export const Champ = forwardRef<TextInputInstance, ProprietesChamp>(function Champ(
   {
     libelle,
     valeur,

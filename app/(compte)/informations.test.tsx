@@ -11,18 +11,22 @@ import Informations from './informations';
 
 const mockRetour = jest.fn();
 
-// Spread du vrai module + stubs : l'écran rend Modale (garde de sortie) et appelle
-// useNavigation().addListener('beforeRemove', …), qui lève hors d'un vrai conteneur de
-// navigation. Le comportement de pile (garde de sortie, retour propre) est couvert par
-// informations.routage.test.tsx avec renderRouter — ici, rendu isolé (CLAUDE.md §8).
+// Spread du vrai module + stubs : l'écran rend Modale (garde de sortie), dont le hook
+// usePreventRemove (expo-router/react-navigation, SDK 58) lève hors d'un vrai conteneur de
+// navigation. Stub inerte : il ne prouve RIEN sur la garde (CLAUDE.md §8, doubles de
+// bibliothèque). Le comportement réel (blocage, puis reprise) est couvert par
+// src/test/routage/garde-sortie-informations.test.tsx avec renderRouter — ici, rendu isolé.
 jest.mock('expo-router', () => {
   const reel = jest.requireActual('expo-router');
   return {
     ...reel,
     useRouter: () => ({ ...reel.useRouter(), back: mockRetour, canGoBack: () => true }),
-    useNavigation: () => ({ addListener: () => () => {}, dispatch: () => {} }),
   };
 });
+jest.mock('expo-router/react-navigation', () => ({
+  ...jest.requireActual('expo-router/react-navigation'),
+  usePreventRemove: () => () => {},
+}));
 
 const METRIQUES_ZONES_SURES: Metrics = {
   insets: { top: 59, right: 0, bottom: 34, left: 0 },

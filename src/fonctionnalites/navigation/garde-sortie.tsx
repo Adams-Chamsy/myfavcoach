@@ -1,8 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
-import { useNavigation } from 'expo-router';
+import { useState } from 'react';
+import { usePreventRemove } from 'expo-router/react-navigation';
 
 // Première interception de navigation du dépôt (docs/prompts/L1.md, P1.13b). S'appuie sur
-// l'événement `beforeRemove` de React Navigation, atteint via `useNavigation()` d'expo-router.
+// `usePreventRemove` de React Navigation (embarqué par expo-router, `expo-router/react-navigation`).
+// Jusqu'au SDK 57, c'était l'événement `beforeRemove` via `useNavigation().addListener` : le SDK
+// 58 l'a SUPPRIMÉ, et l'ancien code écoutait silencieusement un événement qui n'arrivait plus —
+// la sortie passait sans confirmation (trouvé le 1er novembre 2026 par
+// src/test/routage/garde-sortie-informations.test.tsx et par tsc, docs/prompts/SDK58.md).
 // Réutilisée telle quelle par L5 (édition d'offre) et L8 (rédaction de message).
 //
 // PÉRIMÈTRE — ne couvre que les sorties « retour » : chevron, geste iOS, retour matériel
@@ -23,30 +27,21 @@ export function useGardeSortie(actif: boolean): {
   sortieEnAttente: SortieEnAttente;
   annulerSortie: () => void;
 } {
-  const navigation = useNavigation();
   const [sortieEnAttente, setSortieEnAttente] = useState<SortieEnAttente>(null);
-  // Une fois la sortie confirmée, on relance la MÊME action de navigation ; sans ce drapeau,
-  // le listener la ré-intercepterait et la boucle serait infinie. L'écran se démonte juste
-  // après, la valeur n'a pas à être remise à false.
-  const sortieAutorisee = useRef(false);
+  // Une fois la sortie confirmée, la prévention est levée dans le même geste que `repeat()`, qui
+  // rejoue l'action bloquée : c'est la forme documentée de usePreventRemove. L'écran se démonte
+  // juste après, la valeur n'a pas à revenir à false.
+  const [sortieAutorisee, setSortieAutorisee] = useState(false);
 
-  useEffect(() => {
-    if (!actif) return;
-
-    const retirer = navigation.addListener('beforeRemove', (evenement) => {
-      if (sortieAutorisee.current) return;
-      evenement.preventDefault();
-      setSortieEnAttente({
-        reprendre: () => {
-          sortieAutorisee.current = true;
-          setSortieEnAttente(null);
-          navigation.dispatch(evenement.data.action);
-        },
-      });
+  usePreventRemove(actif && !sortieAutorisee, ({ repeat }) => {
+    setSortieEnAttente({
+      reprendre: () => {
+        setSortieAutorisee(true);
+        setSortieEnAttente(null);
+        repeat();
+      },
     });
-
-    return retirer;
-  }, [actif, navigation]);
+  });
 
   return {
     sortieEnAttente,

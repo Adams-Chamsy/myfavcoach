@@ -41,7 +41,8 @@ export function BarreOngletsRoute({
   entrees,
   actionCentrale,
   state,
-  navigation,
+  emitter,
+  navigateToTab,
   insets,
 }: ProprietesBarreOngletsRoute) {
   const elements: ElementNavigation[] = entrees.map((entree) => {
@@ -58,13 +59,15 @@ export function BarreOngletsRoute({
       actif: estActif,
       pastilleNonLus: entree.pastilleNonLus,
       onPress: () => {
-        const evenement = navigation.emit({
+        // SDK 58 (expo-router 58) : la barre reçoit `emitter` et `navigateToTab(cleRoute)` à la
+        // place de l'objet `navigation` de React Navigation, qui n'est plus passé.
+        const evenement = emitter.emit({
           type: 'tabPress',
           target: route.key,
           canPreventDefault: true,
         });
         if (!estActif && !evenement.defaultPrevented) {
-          navigation.navigate(route.name);
+          navigateToTab(route.key);
         }
       },
     };

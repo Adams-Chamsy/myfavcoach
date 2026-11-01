@@ -18,7 +18,18 @@ import { spawn } from 'node:child_process';
 const PORT = 8098;
 const DELAI_MAX_DEMARRAGE_MS = 90_000;
 const INTERVALLE_SONDAGE_MS = 1_500;
-const DELAI_REQUETE_MS = 5_000;
+// Délai par requête, une fois le serveur démarré. 30 s, relevé de 5 s le 1er novembre 2026 à la
+// montée du SDK 58 (docs/prompts/SDK58.md) : mesuré ce jour-là sur la machine du développeur,
+// /_galerie met 8,0 s à compiler à froid (le cache de Metro vient d'être vidé par verif:bundle,
+// lancé juste avant avec --clear) et 1,7 s à chaud ; sous le SDK 57, moins de 5 s.
+// Pourquoi 30 et pas 10 : la marge couvre une machine chargée. Le même jour, un disque presque
+// plein a multiplié les temps de compilation par plus de dix (le paquet de production est passé
+// d'environ 1 minute à 14 minutes par plateforme, docs/dette.md, ligne « marge de la machine »).
+// CE QUE CE DÉLAI NE DÉTECTE PLUS : une route qui met de 5 à 30 s à répondre. Ce contrôle ne
+// mesure PAS la performance : il prouve qu'une page se construit, sans marqueur d'erreur, et que
+// le serveur ne plante ni ne se bloque (au-delà de 30 s). Un temps de compilation qui dérive se
+// voit ailleurs : dans les durées du paquet de production affichées par verif:bundle.
+const DELAI_REQUETE_MS = 30_000;
 const MARQUEUR_ERREUR_BUILD = '_expo-static-error';
 const ROUTES_A_VERIFIER = ['/', '/_galerie'];
 

@@ -24,15 +24,21 @@ function creerBottomTabBarProps(indexActif = 0, emetDefaultPrevented = false) {
   const emit = jest.fn(() => ({ defaultPrevented: emetDefaultPrevented }));
 
   return {
-    // Double minimal de BottomTabBarProps : seuls state.index/routes, navigation.navigate/emit
-    // et insets.bottom sont lus par BarreOngletsRoute. Le reste de l'interface de React
-    // Navigation (des dizaines de champs) n'a pas de sens pour ce test.
+    // Double minimal de BottomTabBarProps : seuls state.index/routes, emitter.emit,
+    // navigateToTab et insets.bottom sont lus par BarreOngletsRoute.
+    //
+    // `satisfies BottomTabBarProps`, jamais `as unknown as` sur l'objet entier : les NOMS des
+    // propriétés sont vérifiés contre le vrai type de la bibliothèque. Avant le SDK 58, ce double
+    // fabriquait un `navigation` que expo-router ne passait plus, et le cast global le cachait :
+    // le test passait en testant le faux (CLAUDE.md §8). Seules les formes internes (l'état, le
+    // type de l'émetteur) restent converties, champ par champ.
     props: {
-      state: { index: indexActif, routes },
+      state: { index: indexActif, routes } as unknown as BottomTabBarProps['state'],
       descriptors: {},
-      navigation: { navigate, emit },
+      emitter: { emit } as unknown as BottomTabBarProps['emitter'],
+      navigateToTab: navigate,
       insets: { top: 0, left: 0, right: 0, bottom: 34 },
-    } as unknown as BottomTabBarProps,
+    } satisfies BottomTabBarProps,
     navigate,
     emit,
   };
@@ -68,7 +74,7 @@ describe('BarreOngletsRoute', () => {
       target: 'clients-key',
       canPreventDefault: true,
     });
-    expect(navigate).toHaveBeenCalledWith('clients');
+    expect(navigate).toHaveBeenCalledWith('clients-key');
   });
 
   // docs/ecrans/L0-01-coquille-client.md : "l'appui sur l'onglet deja actif" doit tout de meme

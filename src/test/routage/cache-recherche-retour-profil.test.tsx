@@ -119,7 +119,7 @@ it('retour depuis un profil coach : aucun nouvel appel à rechercherCoachs, la l
   // bascule d'espace), puis rejoint Explorer par un vrai push : partir directement sur Explorer
   // construit un historique de pile différent de celui d'un vrai parcours (trouvé en écrivant ce
   // test) — jamais représentatif de ce qu'un utilisateur vit.
-  const rendu = renderRouter(
+  const rendu = await renderRouter(
     {
       appDir: './app',
       overrides: {
@@ -138,11 +138,15 @@ it('retour depuis un profil coach : aucun nouvel appel à rechercherCoachs, la l
   // — jamais via fireEvent.press, connu instable sous les minuteurs factices de renderRouter
   // (bascule-client-vers-coach.test.tsx, activation-espace-coach.test.tsx) : l'appel direct à
   // router prouve la même propriété de pile sans dépendre de la fiabilité d'une pression simulée.
-  act(() => router.push('/(client)/coach/c1'));
+  await act(async () => {
+    router.push('/(client)/coach/c1');
+  });
   await act(() => jest.runAllTimersAsync());
   await waitFor(() => expect(rendu.getPathname()).toBe('/coach/c1'));
 
-  act(() => router.back());
+  await act(async () => {
+    router.back();
+  });
   await act(() => jest.runAllTimersAsync());
   await waitFor(() => expect(rendu.getPathname()).toBe('/explorer'));
 

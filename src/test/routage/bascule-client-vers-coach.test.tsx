@@ -87,7 +87,7 @@ it('la bascule client → coach réinitialise la pile client : elle disparaît d
     attentesCoach: 0,
   });
 
-  const rendu = renderRouter(
+  const rendu = await renderRouter(
     {
       appDir: './app',
       overrides: {

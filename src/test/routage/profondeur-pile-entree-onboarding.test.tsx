@@ -68,7 +68,7 @@ it("l'entrée dans l'onboarding depuis la racine (Redirect/replace) laisse une p
   await compteConnecteEtVerifie(portAuth);
   const portDonnees = creerFauxPortDonnees(); // clientExiste: false par défaut → étape 1
 
-  const rendu = renderRouter(
+  const rendu = await renderRouter(
     { appDir: './app', overrides: { _layout: creerRacineFaux(portAuth, portDonnees) } },
     { initialUrl: '/' },
   );

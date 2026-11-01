@@ -70,7 +70,7 @@ it('router.push(...) depuis un écran monté (comme surContinuer) AJOUTE une ent
     return null;
   }
 
-  const rendu = renderRouter(
+  const rendu = await renderRouter(
     {
       appDir: './app',
       overrides: {

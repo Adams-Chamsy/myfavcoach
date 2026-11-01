@@ -82,7 +82,7 @@ it('après validation, l’application est dans l’espace coach et la pile est 
     attentesCoach: 0,
   });
 
-  const rendu = renderRouter(
+  const rendu = await renderRouter(
     {
       appDir: './app',
       overrides: {

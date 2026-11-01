@@ -97,7 +97,7 @@ it('04a s’empile sur le profil du coach, et « Retour » y ramène', async () 
     ],
   });
 
-  const rendu = renderRouter(
+  const rendu = await renderRouter(
     {
       appDir: './app',
       overrides: {
@@ -120,7 +120,7 @@ it('04a s’empile sur le profil du coach, et « Retour » y ramène', async () 
       screen.getByRole('button', { name: 'S’abonner · 49 €/mois' }).props.accessibilityState,
     ).toMatchObject({ disabled: false }),
   );
-  fireEvent.press(screen.getByRole('button', { name: 'S’abonner · 49 €/mois' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'S’abonner · 49 €/mois' }));
   await act(() => jest.runAllTimersAsync());
   await waitFor(() => expect(rendu.getPathname()).toBe('/souscription/coach-yannick'));
   // L'en-tête de 04a, rendu sans attendre de lecture : la propriété exercée ici est la pile, pas
@@ -129,7 +129,7 @@ it('04a s’empile sur le profil du coach, et « Retour » y ramène', async () 
 
   // Le bouton « Retour » de 04a lui-même, pas un router.back() du test : c'est SON chemin qui
   // doit trouver le profil derrière lui.
-  fireEvent.press(screen.getByRole('button', { name: 'Retour' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Retour' }));
   await act(() => jest.runAllTimersAsync());
   await waitFor(() => expect(rendu.getPathname()).toBe('/coach/coach-yannick'));
 });

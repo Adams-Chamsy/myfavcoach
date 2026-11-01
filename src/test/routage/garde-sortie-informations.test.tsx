@@ -88,7 +88,7 @@ it('un retour depuis « Mes informations » avec modifications est intercepté, 
   await portAuth.connecter('camille@exemple.fr', 'bon-mot-de-passe');
   const portDonnees = creerFauxPortDonnees();
 
-  const rendu = renderRouter(
+  const rendu = await renderRouter(
     {
       appDir: './app',
       overrides: {
@@ -100,16 +100,22 @@ it('un retour depuis « Mes informations » avec modifications est intercepté, 
     { initialUrl: '/' },
   );
 
-  act(() => jest.runOnlyPendingTimers());
+  await act(async () => {
+    jest.runOnlyPendingTimers();
+  });
   await waitFor(() => expect(rendu.getPathname()).toBe('/informations'));
 
   // Le router.back() du montage a été tenté : la garde doit l'avoir bloqué.
-  act(() => jest.runOnlyPendingTimers());
+  await act(async () => {
+    jest.runOnlyPendingTimers();
+  });
   expect(rendu.getPathname()).toBe('/informations');
   expect(poignee.sortie).not.toBeNull();
 
   // Reprise confirmée (« Quitter ») : la même action de navigation est rejouée, cette fois
   // laissée passer.
-  act(() => poignee.sortie?.reprendre());
+  await act(async () => {
+    poignee.sortie?.reprendre();
+  });
   await waitFor(() => expect(rendu.getPathname()).not.toBe('/informations'));
 });

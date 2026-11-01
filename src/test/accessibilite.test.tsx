@@ -53,14 +53,20 @@ jest.mock('expo-router', () => {
   const reel = jest.requireActual('expo-router');
   return {
     ...reel,
-    useRouter: () => ({ ...reel.useRouter(), canGoBack: () => false }),
-    // useGardeSortie (app/(compte)/informations.tsx) appelle useNavigation().addListener
-    // ('beforeRemove', ...) — l'implémentation réelle lève hors d'un vrai conteneur de
-    // navigation, qu'aucun écran de ce corpus n'a. Stub inerte : le listener n'est jamais
-    // notifié ici (aucune sortie n'est jouée), on vérifie seulement le rendu.
-    useNavigation: () => ({ addListener: () => () => {}, dispatch: () => {} }),
+    // SDK 58 : une navigation hors d'un ExpoRoot lève (« navigate from a component rendered
+    // outside the Expo Router root »), et ce corpus rend les écrans isolés. `replace` est appelé
+    // au montage par app/(public)/verification.tsx : stub inerte, on vérifie seulement le rendu.
+    useRouter: () => ({ ...reel.useRouter(), canGoBack: () => false, replace: () => {} }),
   };
 });
+// useGardeSortie (app/(compte)/informations.tsx) appelle usePreventRemove, qui lève hors d'un
+// vrai conteneur de navigation, qu'aucun écran de ce corpus n'a. Stub inerte : on vérifie
+// seulement le rendu ; la garde elle-même est prouvée par
+// src/test/routage/garde-sortie-informations.test.tsx.
+jest.mock('expo-router/react-navigation', () => ({
+  ...jest.requireActual('expo-router/react-navigation'),
+  usePreventRemove: () => () => {},
+}));
 
 // npm run test:a11y (docs/prompts/L0.md, P0.14). Parcourt un corpus de rendu couvrant
 // src/composants/ (la galerie, app/_galerie.tsx, en exerce a peu pres 100 %) et app/ (les

@@ -61,7 +61,9 @@ async function rendre(portDonnees: ReturnType<typeof creerFauxPortDonnees>) {
 describe('Invitations (docs/ecrans/L3bis-I01-inviter-mes-clients.md)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' });
+    jest
+      .spyOn(Share, 'share')
+      .mockResolvedValue({ action: 'sharedAction', activityType: undefined });
     jest.spyOn(Clipboard, 'setStringAsync').mockResolvedValue(true);
   });
 
@@ -265,7 +267,9 @@ describe('Invitations (docs/ecrans/L3bis-I01-inviter-mes-clients.md)', () => {
 
     // Annulation (react-native, Share.js) : résout avec dismissedAction, ne rejette JAMAIS —
     // aucun bandeau ne doit apparaître.
-    jest.spyOn(Share, 'share').mockResolvedValueOnce({ action: 'dismissedAction' });
+    jest
+      .spyOn(Share, 'share')
+      .mockResolvedValueOnce({ action: 'dismissedAction', activityType: undefined });
     await fireEvent.press(screen.getByText('Relancer'));
     await waitFor(() => expect(Share.share).toHaveBeenCalledTimes(1));
     expect(screen.queryByText('On a un souci de notre côté.')).toBeNull();

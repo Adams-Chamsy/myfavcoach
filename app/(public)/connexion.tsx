@@ -1,7 +1,14 @@
 import type { Href } from 'expo-router';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { AccessibilityInfo, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  Pressable,
+  ScrollView,
+  Text,
+  type TextInputInstance,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
@@ -34,7 +41,7 @@ export default function Connexion() {
 
   // docs/ecrans/L1-04, États : "le focus va au mot de passe" — geste clavier réel, distinct de
   // l'annonce lecteur d'écran ci-dessous (critère 6, "sans voler le focus").
-  const refMotDePasse = useRef<TextInput>(null);
+  const refMotDePasse = useRef<TextInputInstance>(null);
 
   const formulaireRempli = email.trim() !== '' && motDePasse !== '';
 
