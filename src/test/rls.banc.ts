@@ -6607,3 +6607,160 @@ describe('avis — L4 (0048, 0049)', () => {
     });
   });
 });
+
+// Défaut trouvé sur iPhone le 1er novembre 2026 (docs/prompts/defauts-L2-iphone.md, partie A).
+// Le banc emprunte le CHEMIN DE L'APPLICATION (CLAUDE.md §8) : chaque requête ci-dessous est
+// celle que src/services/donnees/supabase.ts envoie, même table, même filtre, même `Prefer` que
+// supabase-js, avec la session d'un coach créé par creer_profil_coach (le chemin de l'application,
+// jamais service_role). Verts par construction côté serveur : mon_profil_coach_id() marche depuis
+// 0011 ; ce bloc prouve que le chemin de l'application est couvert, et pourquoi l'ancien a changé.
+describe('mon profil coach, par le chemin de l’application (0011, défaut iPhone)', () => {
+  let X: Session;
+  let profilX: string;
+  let compteVerifie: string;
+
+  beforeAll(async () => {
+    X = await creerCompteReel(`${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-moncoach-x@${DOMAINE_EMAIL}`, {
+      date_naissance: '1991-02-02',
+      cgu_version_acceptee: '2026-08-01',
+    });
+    const cree = await appelRest('/rest/v1/rpc/creer_profil_coach', {
+      methode: 'POST',
+      session: X,
+      corps: { discipline: 'yoga', telephone: '0601020304', prenom: 'Moncoach', nom: 'X' },
+    });
+    if (cree.statut !== 204) throw new Error(`Préparation du banc : profil coach (${cree.statut})`);
+    const lu = await appelRest(`/rest/v1/profils_coach?compte_id=eq.${X.compteId}&select=id`, {
+      session: 'admin',
+    });
+    profilX = (lu.corps as { id: string }[])[0].id;
+
+    // Un coach vérifié à côté (créé sans connexion) : avec lui, une lecture de profils_coach sans
+    // filtre rend plusieurs lignes pour X -- la situation qui rendait select('id').limit(1) faux.
+    const creation = await fetch(`${API_URL}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: {
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-moncoach-verifie@${DOMAINE_EMAIL}`,
+        password: MOT_DE_PASSE,
+        email_confirm: true,
+        user_metadata: { date_naissance: '1988-01-01', cgu_version_acceptee: '2026-08-01' },
+      }),
+    });
+    compteVerifie = ((await creation.json()) as { id: string }).id;
+    const profil = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { compte_id: compteVerifie, prenom: 'Verifie', nom: 'Voisin', discipline: 'yoga' },
+    });
+    const idVerifie = (profil.corps as { id: string }[])[0].id;
+    await appelRest(`/rest/v1/profils_coach?id=eq.${idVerifie}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { statut_verification: 'verifiee' },
+    });
+  }, 30_000);
+
+  afterAll(async () => {
+    if (X) await supprimerCompteReel(X.compteId);
+    if (compteVerifie) await supprimerCompteReel(compteVerifie);
+  }, 30_000);
+
+  async function monProfil(session: Appelant): Promise<{ statut: number; corps: unknown }> {
+    return appelRest('/rest/v1/rpc/mon_profil_coach_id', { methode: 'POST', session, corps: {} });
+  }
+
+  it('mon_profil_coach_id() rend le profil de l’appelant, alors qu’une lecture sans filtre en rend plusieurs', async () => {
+    const lecture = await appelRest('/rest/v1/profils_coach?select=id', { session: X });
+    expect((lecture.corps as { id: string }[]).length).toBeGreaterThan(1);
+    const { statut, corps } = await monProfil(X);
+    expect([statut, corps]).toEqual([200, profilX]);
+  });
+
+  it('enregistrement du profil, chemin de l’application : profil demandé au serveur, puis UPDATE par id — accepté', async () => {
+    const { corps: id } = await monProfil(X);
+    const ecriture = await appelRest(`/rest/v1/profils_coach?id=eq.${id as string}`, {
+      methode: 'PATCH',
+      session: X,
+      prefer: 'return=minimal',
+      corps: {
+        prenom: 'Moncoach',
+        nom: 'X',
+        titre_court: 'Préparateur physique',
+        bio: 'Je t’accompagne.',
+        commune_base_insee: null,
+        formats: [],
+        parcours_texte: null,
+        langues: [],
+      },
+    });
+    expect(ecriture.statut).toBe(204);
+    const relu = await appelRest(`/rest/v1/profils_coach?id=eq.${profilX}&select=titre_court,bio`, {
+      session: 'admin',
+    });
+    expect(relu.corps).toEqual([{ titre_court: 'Préparateur physique', bio: 'Je t’accompagne.' }]);
+  });
+
+  it('l’ancien chemin (UPDATE … WHERE compte_id) est refusé en 42501 : la raison du changement', async () => {
+    const { statut, corps } = await appelRest(`/rest/v1/profils_coach?compte_id=eq.${X.compteId}`, {
+      methode: 'PATCH',
+      session: X,
+      prefer: 'return=minimal',
+      corps: { bio: 'Ancien chemin' },
+    });
+    expect(statut).toBe(403);
+    expect((corps as { code?: string }).code).toBe('42501');
+  });
+
+  it('création d’offre, chemin de l’application : le coach_id demandé au serveur est le sien', async () => {
+    const { corps: id } = await monProfil(X);
+    const { statut, corps } = await appelRest('/rest/v1/offres?select=id', {
+      methode: 'POST',
+      session: X,
+      corps: {
+        coach_id: id,
+        titre: 'Suivi complet',
+        description: null,
+        prix_centimes: 4900,
+        benefices: ['Programme'],
+        engagement_humain: ['bilan_mensuel'],
+        est_mise_en_avant: false,
+      },
+    });
+    expect(statut).toBe(201);
+    const offre = (corps as { id: string }[])[0].id;
+    const relu = await appelRest(`/rest/v1/offres?id=eq.${offre}&select=coach_id`, {
+      session: 'admin',
+    });
+    expect(relu.corps).toEqual([{ coach_id: profilX }]);
+  });
+
+  it('dépôt d’une pièce, chemin de l’application : profil demandé au serveur, chemin par nouveau_chemin_stockage, ligne insérée', async () => {
+    const { corps: id } = await monProfil(X);
+    const chemin = await appelRest('/rest/v1/rpc/nouveau_chemin_stockage', {
+      methode: 'POST',
+      session: X,
+      corps: {},
+    });
+    expect(chemin.statut).toBe(200);
+    // Le téléversement lui-même (Storage) n'est pas rejoué ici : docs/dette.md, « deux chemins de
+    // l'application que le banc n'emprunte pas ».
+    const { statut } = await appelRest('/rest/v1/pieces_verification', {
+      methode: 'POST',
+      session: X,
+      prefer: 'return=minimal',
+      corps: { coach_id: id, type: 'identite', chemin_stockage: chemin.corps },
+    });
+    expect(statut).toBe(201);
+  });
+
+  it('sens illégitime : un compte sans profil coach reçoit null, anon est refusé', async () => {
+    expect(await monProfil(C)).toEqual({ statut: 200, corps: null });
+    const anonyme = await monProfil('anon');
+    expect(anonyme.statut).toBeGreaterThanOrEqual(400);
+  });
+});

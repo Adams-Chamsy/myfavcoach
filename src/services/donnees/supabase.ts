@@ -236,6 +236,16 @@ function echec(erreur: unknown): ResultatEcriture {
   };
 }
 
+// Le profil coach de l'appelant, DEMANDÉ au serveur (mon_profil_coach_id, 0011 : par
+// auth.uid(), security definer). Jamais cherché côté application (docs/backend.md §7) : par
+// compte_id, la colonne n'est pas lisible par authenticated sur profils_coach depuis 0008
+// (42501) ; par select('id').limit(1), la lecture rend aussi les coachs vérifiés, donc parfois
+// le profil d'un autre. Trouvé sur iPhone le 1er novembre 2026. null : aucun profil coach.
+async function monProfilCoachId(): Promise<{ id: string | null; erreur: unknown }> {
+  const { data, error } = await supabase.rpc('mon_profil_coach_id');
+  return { id: (data as string | null) ?? null, erreur: error };
+}
+
 export const portDonneesSupabase: PortDonnees = {
   async lireEtatProfils() {
     // Trois appels, jamais une nouvelle vue/migration pour ce lot : profil_actif_courant() est
@@ -497,6 +507,9 @@ export const portDonneesSupabase: PortDonnees = {
     const compteId = await compteIdCourant();
 
     if (modifs.profil === 'coach') {
+      const coach = await monProfilCoachId();
+      if (coach.erreur) return echec(coach.erreur);
+      if (!coach.id) return echec(new Error('Aucun profil coach pour ce compte.'));
       const { error } = await supabase
         .from('profils_coach')
         .update({
@@ -509,7 +522,7 @@ export const portDonneesSupabase: PortDonnees = {
           parcours_texte: modifs.parcoursTexte,
           langues: modifs.langues,
         })
-        .eq('compte_id', compteId);
+        .eq('id', coach.id);
       if (error) return echec(error);
       return { succes: true };
     }
@@ -611,12 +624,9 @@ export const portDonneesSupabase: PortDonnees = {
   },
 
   async deposerPieceVerification(type, fichier) {
-    const { data: coach, error: erreurCoach } = await supabase
-      .from('profils_coach')
-      .select('id')
-      .limit(1);
-    if (erreurCoach) return echec(erreurCoach);
-    const coachId = (coach?.[0] as { id: string } | undefined)?.id;
+    const coach = await monProfilCoachId();
+    if (coach.erreur) return echec(coach.erreur);
+    const coachId = coach.id;
     if (!coachId) return echec(new Error('Aucun profil coach pour ce compte.'));
 
     const { data: chemin, error: erreurChemin } = await supabase.rpc('nouveau_chemin_stockage');
@@ -653,12 +663,9 @@ export const portDonneesSupabase: PortDonnees = {
   },
 
   async creerOffreBrouillon(modifs) {
-    const { data: coach, error: erreurCoach } = await supabase
-      .from('profils_coach')
-      .select('id')
-      .limit(1);
-    if (erreurCoach) return echec(erreurCoach) as { succes: false; erreur: string };
-    const coachId = (coach?.[0] as { id: string } | undefined)?.id;
+    const coach = await monProfilCoachId();
+    if (coach.erreur) return echec(coach.erreur) as { succes: false; erreur: string };
+    const coachId = coach.id;
     if (!coachId)
       return { succes: false, erreur: 'On a un souci de notre côté. Réessaie dans un instant.' };
 

@@ -10,6 +10,7 @@ jest.mock('@/services/supabase/client', () => ({
     auth: { getSession: jest.fn() },
     rpc: jest.fn(),
     from: jest.fn(),
+    storage: { from: jest.fn() },
     functions: { invoke: jest.fn() },
   },
 }));
@@ -41,6 +42,7 @@ const supabaseMock = supabase as unknown as {
   auth: { getSession: jest.Mock };
   rpc: jest.Mock;
   from: jest.Mock;
+  storage: { from: jest.Mock };
   functions: { invoke: jest.Mock };
 };
 
@@ -685,6 +687,118 @@ describe('portDonneesSupabase', () => {
       expect(await portDonneesSupabase.deposerAvis('coach-1', SAISIE)).toEqual({
         issue: 'sans_reponse',
       });
+    });
+  });
+
+  // Défaut trouvé sur iPhone le 1er novembre 2026 (docs/prompts/defauts-L2-iphone.md, partie A).
+  // Le profil coach de l'appelant se DEMANDE au serveur (rpc mon_profil_coach_id, 0011), il ne se
+  // cherche jamais : ni par compte_id (illisible par authenticated sur profils_coach depuis 0008,
+  // refusé en 42501), ni par select('id').limit(1) (rend aussi les coachs vérifiés, donc parfois
+  // le profil d'un autre). docs/backend.md §7.
+  describe('profil coach désigné par le serveur', () => {
+    // L'ancien chemin reste joignable dans cette doublure, et rend le profil d'UN AUTRE coach
+    // (ce que select('id').limit(1) pouvait faire pour de vrai) : un test qui le prendrait encore
+    // rougit sur son assertion, pas sur une méthode absente de la doublure.
+    function tableAvecAncienChemin(extra: Record<string, unknown>) {
+      return {
+        select: () => ({
+          limit: () => Promise.resolve({ data: [{ id: 'coach-autre' }], error: null }),
+        }),
+        ...extra,
+      };
+    }
+
+    const SAISIE_COACH = {
+      profil: 'coach' as const,
+      prenom: 'Adams',
+      nom: 'C',
+      titreCourt: 'Préparateur physique',
+      bio: 'Je t’accompagne.',
+      communeBaseInsee: null,
+      formats: [],
+      parcoursTexte: null,
+      langues: [],
+    };
+
+    it('enregistrerInformations (coach) : demande le profil au serveur, puis écrit PAR ID', async () => {
+      supabaseMock.auth.getSession.mockResolvedValue(SESSION_A);
+      supabaseMock.rpc.mockResolvedValue({ data: 'coach-1', error: null });
+      const eq = jest.fn(() => Promise.resolve({ error: null }));
+      const update = jest.fn(() => ({ eq }));
+      supabaseMock.from.mockReturnValue(tableAvecAncienChemin({ update }));
+
+      expect(await portDonneesSupabase.enregistrerInformations(SAISIE_COACH)).toEqual({
+        succes: true,
+      });
+      expect(supabaseMock.rpc).toHaveBeenCalledWith('mon_profil_coach_id');
+      expect(supabaseMock.from).toHaveBeenCalledWith('profils_coach');
+      expect(eq).toHaveBeenCalledWith('id', 'coach-1');
+      expect(eq).not.toHaveBeenCalledWith('compte_id', expect.anything());
+    });
+
+    it('enregistrerInformations (coach) sans profil coach : échec, aucune écriture', async () => {
+      supabaseMock.auth.getSession.mockResolvedValue(SESSION_A);
+      supabaseMock.rpc.mockResolvedValue({ data: null, error: null });
+      const eq = jest.fn(() => Promise.resolve({ error: null }));
+      const update = jest.fn(() => ({ eq }));
+      supabaseMock.from.mockReturnValue(tableAvecAncienChemin({ update }));
+
+      expect((await portDonneesSupabase.enregistrerInformations(SAISIE_COACH)).succes).toBe(false);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('creerOffreBrouillon : le coach_id vient du serveur, profils_coach n’est jamais lu', async () => {
+      supabaseMock.rpc.mockResolvedValue({ data: 'coach-1', error: null });
+      const select = jest.fn(() => Promise.resolve({ data: [{ id: 'offre-1' }], error: null }));
+      const insert = jest.fn(() => ({ select }));
+      supabaseMock.from.mockReturnValue(tableAvecAncienChemin({ insert }));
+
+      expect(
+        await portDonneesSupabase.creerOffreBrouillon({
+          titre: 'Suivi',
+          description: null,
+          prixCentimes: 4900,
+          benefices: ['A'],
+          engagementHumain: ['bilan_mensuel'],
+          estMiseEnAvant: false,
+        }),
+      ).toEqual({ succes: true, id: 'offre-1' });
+      expect(supabaseMock.rpc).toHaveBeenCalledWith('mon_profil_coach_id');
+      expect(insert).toHaveBeenCalledWith(expect.objectContaining({ coach_id: 'coach-1' }));
+      expect(supabaseMock.from).not.toHaveBeenCalledWith('profils_coach');
+    });
+
+    it('deposerPieceVerification : le coach_id vient du serveur, profils_coach n’est jamais lu', async () => {
+      supabaseMock.rpc.mockImplementation((fonction: string) =>
+        Promise.resolve({
+          data: fonction === 'mon_profil_coach_id' ? 'coach-1' : 'chemin-1',
+          error: null,
+        }),
+      );
+      const fetchOrigine = global.fetch;
+      global.fetch = jest.fn(() =>
+        Promise.resolve({ blob: () => Promise.resolve('contenu') }),
+      ) as unknown as typeof fetch;
+      supabaseMock.storage.from.mockReturnValue({
+        upload: jest.fn(() => Promise.resolve({ error: null })),
+      });
+      const insert = jest.fn(() => Promise.resolve({ error: null }));
+      supabaseMock.from.mockReturnValue(tableAvecAncienChemin({ insert }));
+
+      try {
+        expect(
+          await portDonneesSupabase.deposerPieceVerification('identite', {
+            uri: 'file:///piece.jpg',
+            nom: 'piece.jpg',
+            typeMime: 'image/jpeg',
+          }),
+        ).toEqual({ succes: true });
+      } finally {
+        global.fetch = fetchOrigine;
+      }
+      expect(supabaseMock.rpc).toHaveBeenCalledWith('mon_profil_coach_id');
+      expect(insert).toHaveBeenCalledWith(expect.objectContaining({ coach_id: 'coach-1' }));
+      expect(supabaseMock.from).not.toHaveBeenCalledWith('profils_coach');
     });
   });
 });
