@@ -51,7 +51,9 @@ export default function Export() {
   const { port, profils } = useDonnees();
 
   const [chargement, setChargement] = useState(true);
-  const [erreur, setErreur] = useState<string | null>(null);
+  // Deux refus de nature différente (2 novembre 2026) : une panne du serveur, qui se réessaie, et
+  // le quota d'un export par mois, une règle du produit, qui ne se réessaie pas.
+  const [erreur, setErreur] = useState<'serveur' | 'quota_mensuel' | null>(null);
   const [export_, setExport] = useState<DernierExport>(null);
   const [demandeEnCours, setDemandeEnCours] = useState(false);
 
@@ -67,7 +69,7 @@ export default function Export() {
       })
       .catch(() => {
         if (monte) {
-          setErreur(textesRepliErreur.serveur.explication);
+          setErreur('serveur');
           setChargement(false);
         }
       });
@@ -82,11 +84,7 @@ export default function Export() {
     const resultat = await port.demanderExportDonnees();
     if (!resultat.succes) {
       setDemandeEnCours(false);
-      setErreur(
-        resultat.code === 'export_trop_recent'
-          ? 'Un export par mois maximum : réessaie plus tard.'
-          : textesRepliErreur.serveur.explication,
-      );
+      setErreur(resultat.code === 'export_trop_recent' ? 'quota_mensuel' : 'serveur');
       return;
     }
     const nouveau = await port.lireDernierExport();
@@ -166,15 +164,27 @@ export default function Export() {
               <CarteExport etat={etat} export_={export_} />
             )}
 
-            {erreur ? (
+            {erreur === 'serveur' ? (
               <View accessibilityLiveRegion="polite">
                 <EtatErreur
                   titre={textesRepliErreur.serveur.titre}
-                  explication={erreur}
+                  explication={textesRepliErreur.serveur.explication}
                   nombreEchecs={0}
                   onReessayer={() => void surDemander()}
                   onNousEcrire={() => {}}
                 />
+              </View>
+            ) : null}
+            {/* Textes validés le 2 novembre 2026 : une règle du produit, dite comme telle, sans
+                « Réessayer » (un nouvel essai mènerait au même refus). */}
+            {erreur === 'quota_mensuel' ? (
+              <View accessibilityLiveRegion="polite" style={{ gap: theme.espace[1] }}>
+                <Text style={{ ...theme.texte.label, color: theme.couleur.texte.principal }}>
+                  Tu as déjà demandé un export ce mois-ci
+                </Text>
+                <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+                  Tu pourras en redemander un le mois prochain.
+                </Text>
               </View>
             ) : null}
           </>

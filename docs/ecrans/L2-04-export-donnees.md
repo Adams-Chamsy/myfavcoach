@@ -50,6 +50,11 @@ initial) — **une fois par mois** (voir Règles).
   (`CLAUDE.md` §10).
 - **Un export par mois maximum.** Protection, pas une contrainte technique arbitraire : un
   fichier contenant du poids et des mesures ne doit pas être régénérable sans limite.
+  **Textes validés le 2 novembre 2026** pour un export demandé moins d'un mois après le
+  précédent (`export_trop_recent`) : titre « Tu as déjà demandé un export ce mois-ci », détail
+  « Tu pourras en redemander un le mois prochain. ». Une règle du produit, dite comme telle :
+  jamais sous le titre du repli serveur (« On a un souci de notre côté »), et sans « Réessayer »,
+  qui mènerait au même refus.
 - Aucune donnée n'est affichée ni téléchargée **dans** l'application au-delà du bouton qui
   déclenche l'envoi : le fichier part par lien signé, jamais par un flux géré côté client.
 - L'avertissement sur le contenu sensible est **explicite sur ce qu'il contient**, pas une

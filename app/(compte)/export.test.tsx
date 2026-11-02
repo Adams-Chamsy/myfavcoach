@@ -84,15 +84,21 @@ describe('Export de mes données (docs/ecrans/L2-04-export-donnees.md)', () => {
   });
 
   // Critère 4 : une nouvelle demande est refusée avant qu'un mois se soit écoulé.
-  it('refuse une nouvelle demande trop rapprochée avec un message explicite', async () => {
+  // Textes validés le 2 novembre 2026 : un quota mensuel est une règle du produit, pas une panne.
+  // Avant, la règle s'affichait sous le titre du repli serveur (« On a un souci de notre côté »),
+  // et « Réessayer » relançait une demande promise à un nouveau refus.
+  it('refuse une nouvelle demande trop rapprochée : la règle du produit, jamais le repli serveur', async () => {
     const { portDonnees } = await rendre();
     portDonnees.echouerProchainExportPourTest('export_trop_recent');
 
     await fireEvent.press(screen.getByText('Demander mon export'));
 
     await waitFor(() =>
-      expect(screen.queryByText('Un export par mois maximum : réessaie plus tard.')).toBeTruthy(),
+      expect(screen.queryByText('Tu as déjà demandé un export ce mois-ci')).toBeTruthy(),
     );
+    expect(screen.getByText('Tu pourras en redemander un le mois prochain.')).toBeTruthy();
+    expect(screen.queryByText('On a un souci de notre côté')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Réessayer' })).toBeNull();
     expect(screen.queryByText('EN PRÉPARATION')).toBeNull();
   });
 
