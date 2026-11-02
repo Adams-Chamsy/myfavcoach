@@ -64,6 +64,24 @@ describe('EtatErreur', () => {
       expect(screen.queryByText('Réessayer')).toBeNull();
     });
 
+    // 2 novembre 2026 : « Nous écrire » n'apparaît que si l'écran fournit un vrai moyen de
+    // contact. Deux écrans branchaient ce bouton sur un nouvel essai : son libellé mentait. Tant
+    // qu'aucune adresse de support n'existe (docs/dette.md), « Réessayer » reste.
+    it('sans moyen de contact fourni, « Réessayer » reste au troisième échec, jamais « Nous écrire »', async () => {
+      await render(
+        <FournisseurTheme>
+          <EtatErreur
+            titre="On a un souci de notre côté"
+            explication="Ce n'est pas toi. Réessaie dans un instant."
+            nombreEchecs={3}
+            onReessayer={() => {}}
+          />
+        </FournisseurTheme>,
+      );
+      expect(screen.getByText('Réessayer')).toBeTruthy();
+      expect(screen.queryByText('Nous écrire')).toBeNull();
+    });
+
     it('appelle onReessayer aux deux premiers echecs, onNousEcrire au troisieme', async () => {
       const onReessayer = jest.fn();
       const onNousEcrire = jest.fn();

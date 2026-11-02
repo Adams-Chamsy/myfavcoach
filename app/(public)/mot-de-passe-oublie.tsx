@@ -68,7 +68,6 @@ export default function MotDePasseOublie() {
             explication={messageErreur(erreur)}
             nombreEchecs={nombreEchecs}
             onReessayer={surEnvoyer}
-            onNousEcrire={() => {}}
             code={erreur.code}
           />
         ) : null}

@@ -187,7 +187,6 @@ export default function Confidentialite() {
                   explication={textesRepliErreur.serveur.explication}
                   nombreEchecs={0}
                   onReessayer={() => {}}
-                  onNousEcrire={() => {}}
                 />
               </View>
             ) : (

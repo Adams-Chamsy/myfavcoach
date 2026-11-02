@@ -104,7 +104,6 @@ export default function DevenirCoachProfil() {
               explication={textesRepliErreur.serveur.explication}
               nombreEchecs={0}
               onReessayer={() => void surValider()}
-              onNousEcrire={() => {}}
             />
           </View>
         ) : null}

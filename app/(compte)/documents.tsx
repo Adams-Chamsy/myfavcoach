@@ -123,7 +123,6 @@ export default function Documents() {
             explication={textesRepliErreur.serveur.explication}
             nombreEchecs={0}
             onReessayer={() => {}}
-            onNousEcrire={() => {}}
           />
         ) : (
           <>

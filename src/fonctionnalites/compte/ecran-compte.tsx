@@ -175,7 +175,6 @@ export function EcranCompte() {
                     explication={textesRepliErreur.serveur.explication}
                     nombreEchecs={0}
                     onReessayer={() => {}}
-                    onNousEcrire={() => {}}
                   />
                 ) : null}
 

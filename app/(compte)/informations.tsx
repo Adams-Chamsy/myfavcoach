@@ -280,7 +280,6 @@ export default function Informations() {
               explication={textesRepliErreur.serveur.explication}
               nombreEchecs={0}
               onReessayer={() => {}}
-              onNousEcrire={() => {}}
             />
           </View>
         ) : (

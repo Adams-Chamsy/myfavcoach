@@ -162,7 +162,6 @@ export function FeuilleBascule({ ouverte, onFermer, children }: ProprietesFeuill
               explication={textesRepliErreur.serveur.explication}
               nombreEchecs={nombreEchecs}
               onReessayer={reessayer}
-              onNousEcrire={reessayer}
             />
           ) : null}
 

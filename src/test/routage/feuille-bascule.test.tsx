@@ -97,6 +97,29 @@ describe('FeuilleBascule (docs/ecrans/L1-06-bascule-espace.md)', () => {
     expect(screen.queryByLabelText('Espace coach, espace actif')).toBeNull();
   });
 
+  // 2 novembre 2026 : au troisième échec, le bouton « Nous écrire » de la feuille relançait la
+  // bascule (onNousEcrire={reessayer}) : son libellé mentait. Aucune adresse de support n'existe
+  // encore ; « Réessayer » reste, et réessaie vraiment.
+  it('au troisième échec de bascule, aucun « Nous écrire » qui réessaierait : « Réessayer » reste', async () => {
+    const portDonnees = creerFauxPortDonnees();
+    portDonnees.definirEtatProfilsPourTest(
+      etatProfilsParDefaut({ profilActif: 'coach', coachExiste: true }),
+    );
+    await rendreFeuille(portDonnees);
+    await waitFor(() => expect(screen.getByLabelText('Espace client')).toBeTruthy());
+
+    portDonnees.echouerProchaineEcriturePourTest();
+    await fireEvent.press(screen.getByLabelText('Espace client'));
+    for (let echec = 2; echec <= 3; echec += 1) {
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Réessayer' })).toBeTruthy());
+      portDonnees.echouerProchaineEcriturePourTest();
+      await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
+    }
+    await waitFor(() => expect(screen.queryByText('On a un souci de notre côté')).toBeTruthy());
+    expect(screen.queryByText('Nous écrire')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toBeTruthy();
+  });
+
   // Critère 2.
   it('sans profil coach, la deuxième ligne devient "Devenir coach" et mène à L1-08 sans tenter de bascule', async () => {
     const portDonnees = creerFauxPortDonnees();

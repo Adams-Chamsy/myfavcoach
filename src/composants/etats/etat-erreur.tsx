@@ -11,9 +11,11 @@ export type ProprietesEtatErreur = {
   // Ce qui marche encore, la partie que tout le monde oublie.
   resteAccessible?: string;
   onReessayer: () => void;
-  // Adresse de support, pas de formulaire au jalon 1. Toujours fourni : l'action y bascule
-  // au troisieme echec sans que l'ecran appelant ait a le savoir a l'avance.
-  onNousEcrire: () => void;
+  // Adresse de support, pas de formulaire au jalon 1. FACULTATIF depuis le 2 novembre 2026 :
+  // « Nous écrire » n'apparaît que si l'écran fournit un VRAI moyen de contact. Deux écrans
+  // branchaient ce bouton sur un nouvel essai, et son libellé mentait. Tant qu'aucune adresse de
+  // support n'existe (docs/dette.md), « Réessayer » reste au-delà du troisième échec.
+  onNousEcrire?: () => void;
   // Echecs consecutifs de la meme action. Sans logique metier dans ce composant : c'est
   // l'ecran appelant qui compte, EtatErreur se contente de decider quelle action montrer.
   nombreEchecs: number;
@@ -36,7 +38,7 @@ export function EtatErreur({
   code,
 }: ProprietesEtatErreur) {
   const theme = useTheme();
-  const proposeNousEcrire = nombreEchecs >= SEUIL_NOUS_ECRIRE;
+  const proposeNousEcrire = onNousEcrire !== undefined && nombreEchecs >= SEUIL_NOUS_ECRIRE;
 
   // Annonce l'erreur au lecteur d'ecran des son apparition, sans deplacer le focus dessus
   // (docs/ecrans/L0-03-etats-systeme.md, critere 6). accessibilityLiveRegion couvre Android,

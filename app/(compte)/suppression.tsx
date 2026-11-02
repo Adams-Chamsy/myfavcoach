@@ -171,7 +171,6 @@ export default function Suppression() {
               explication={textesRepliErreur.serveur.explication}
               nombreEchecs={0}
               onReessayer={() => void surSupprimer()}
-              onNousEcrire={() => {}}
             />
           </View>
         ) : null}

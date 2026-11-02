@@ -290,7 +290,6 @@ export default function Inscription() {
             explication={messageErreurGlobale(erreurGlobale)}
             nombreEchecs={nombreEchecs}
             onReessayer={surCreerCompte}
-            onNousEcrire={() => {}}
             code={erreurGlobale.code}
           />
         ) : null}

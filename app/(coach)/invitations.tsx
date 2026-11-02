@@ -236,7 +236,6 @@ export default function Invitations() {
                   setChargement(true);
                   setTentative((n) => n + 1);
                 }}
-                onNousEcrire={() => {}}
               />
             </View>
           ) : (

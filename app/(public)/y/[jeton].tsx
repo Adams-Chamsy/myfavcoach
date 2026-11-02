@@ -126,7 +126,6 @@ export function CorpsArriveeParInvitation({ jeton }: { jeton: string | undefined
           explication={textesRepliErreur.serveur.explication}
           nombreEchecs={0}
           onReessayer={() => {}}
-          onNousEcrire={() => {}}
         />
       </View>
     );

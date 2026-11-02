@@ -82,7 +82,11 @@ Props : `titre`, `explication`, `resteAccessible?`, `onReessayer`, `code?`.
    `ActivityIndicator` plein écran apparaît dans le rendu.
 3. En mouvement réduit, la pulsation des squelettes s'arrête ; le contenu reste lisible.
 4. `EtatErreur` affiche « Réessayer » aux deux premiers échecs, « Nous écrire » au troisième —
-   testé.
+   testé. **Amendé le 2 novembre 2026** : « Nous écrire » n'apparaît que si l'écran fournit un
+   vrai moyen de contact. Deux écrans (la feuille de bascule, l'écran de démarrage) le
+   branchaient sur un nouvel essai : le libellé mentait. Tant qu'aucune adresse de support
+   n'existe (`docs/dette.md`), « Réessayer » reste au-delà du troisième échec, et réessaie
+   vraiment.
 5. Un test vérifie qu'aucun des cinq textes de repli ne contient les mots « erreur »,
    « problème technique » ou « veuillez ».
 6. Le lecteur d'écran annonce l'erreur à son apparition (région active), sans voler le focus.

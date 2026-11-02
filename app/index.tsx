@@ -138,10 +138,6 @@ export default function Index() {
             setPhase('lecture');
             setCleTentative((c) => c + 1);
           }}
-          onNousEcrire={() => {
-            setPhase('lecture');
-            setCleTentative((c) => c + 1);
-          }}
         />
       </View>
     );

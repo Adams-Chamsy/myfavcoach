@@ -171,7 +171,6 @@ export default function Export() {
                   explication={textesRepliErreur.serveur.explication}
                   nombreEchecs={0}
                   onReessayer={() => void surDemander()}
-                  onNousEcrire={() => {}}
                 />
               </View>
             ) : null}
