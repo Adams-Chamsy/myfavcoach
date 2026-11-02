@@ -191,6 +191,51 @@ describe('portDonneesSupabase', () => {
     });
   });
 
+  describe('lireDossierVerification', () => {
+    // A1 (2 novembre 2026) : le dossier de l'appelant vient de mon_dossier_verification(),
+    // désigné par auth.uid() côté serveur (docs/backend.md §7). Une lecture de profils_coach
+    // peut rendre la ligne d'un autre coach (tout coach vérifié est lisible) : la table offerte
+    // ici en rend justement une, qui ne doit jamais être lue.
+    function tableAutreCoachVerifie() {
+      const limit = jest.fn(() =>
+        Promise.resolve({ data: [{ id: 'autre', statut_verification: 'verifiee' }], error: null }),
+      );
+      const order = jest.fn(() => ({ limit }));
+      const eq = jest.fn(() => ({ order }));
+      const select = jest.fn(() => ({ limit, eq }));
+      return { select };
+    }
+
+    it('lit mon_dossier_verification, jamais profils_coach : statut et date de soumission', async () => {
+      supabaseMock.from.mockReturnValue(tableAutreCoachVerifie());
+      supabaseMock.rpc.mockResolvedValue({
+        data: [{ statut: 'en_examen', soumis_le: '2026-11-02T10:00:00.000Z' }],
+        error: null,
+      });
+
+      const dossier = await portDonneesSupabase.lireDossierVerification();
+
+      expect(supabaseMock.rpc).toHaveBeenCalledWith('mon_dossier_verification');
+      expect(supabaseMock.from).not.toHaveBeenCalled();
+      expect(dossier).toEqual({
+        statut: 'en_examen',
+        deposeLe: '2026-11-02T10:00:00.000Z',
+        motif: null,
+      });
+    });
+
+    it('aucun dossier (pas de profil coach) : absent, sans date', async () => {
+      supabaseMock.from.mockReturnValue(tableAutreCoachVerifie());
+      supabaseMock.rpc.mockResolvedValue({ data: [], error: null });
+
+      expect(await portDonneesSupabase.lireDossierVerification()).toEqual({
+        statut: 'absente',
+        deposeLe: null,
+        motif: null,
+      });
+    });
+  });
+
   describe('creerProfilClient', () => {
     // Une table qui accepterait l'écriture directe : si l'adaptateur y écrivait encore, il
     // réussirait — c'est l'assertion sur la fonction appelée qui doit le refuser, pas un plantage.

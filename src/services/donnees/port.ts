@@ -113,6 +113,9 @@ export type StatutVerification =
 // 48 h ouvrées (fiche L2-09) — null tant qu'aucun document n'a été déposé.
 export type DossierVerification = {
   statut: StatutVerification;
+  // Date de SOUMISSION du dossier (profils_coach.dossier_soumis_le, 0053), d'où part le délai de
+  // 48 h ouvrées : posée au passage en examen, inchangée au remplacement d'une pièce ou au retour
+  // d'un complément (docs/domaine.md §4.2). null tant que le dossier n'a jamais été soumis.
   deposeLe: string | null;
   motif: string | null;
 };

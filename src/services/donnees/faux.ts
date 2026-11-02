@@ -230,6 +230,10 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
   let reponseConstat: ResultatConstat = { issue: 'sans_reponse' };
   let dossierVerification: DossierVerification = { statut: 'absente', deposeLe: null, motif: null };
   let piecesDeposees: PieceDeposee[] = [];
+  // Types déposés depuis la dernière décision : miroir du « nouveau dossier » de 0053, où un
+  // dossier refusé ne repart en examen qu'avec les trois pièces redéposées APRÈS la décision.
+  // Remis à zéro quand un test pose un dossier (définir un dossier = une décision prise).
+  let typesDepuisDecision = new Set<TypePiece>();
   let offres: Offre[] = [];
   let prochainePublicationEchoue: string | null = null;
   let profilsCoachPublics: Record<string, ProfilCoachPublic> = {};
@@ -464,6 +468,7 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
 
     definirDossierVerificationPourTest(dossier) {
       dossierVerification = dossier;
+      typesDepuisDecision = new Set();
     },
     async lireDossierVerification() {
       return dossierVerification;
@@ -482,10 +487,25 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
         prochaineEcritureEchoue = null;
         return { succes: false, erreur };
       }
+      const maintenant = new Date().toISOString();
       piecesDeposees = [
         ...piecesDeposees.filter((p) => p.type !== type),
-        { type, deposeLe: new Date().toISOString() },
+        { type, deposeLe: maintenant },
       ];
+      typesDepuisDecision.add(type);
+      // Miroir de soumettre_dossier_si_complet (0053).
+      const { statut } = dossierVerification;
+      const typesDeposes = new Set(piecesDeposees.map((p) => p.type));
+      if (statut === 'absente' && typesDeposes.size === 3) {
+        dossierVerification = { ...dossierVerification, statut: 'en_examen', deposeLe: maintenant };
+      } else if (statut === 'complement_demande') {
+        dossierVerification = { ...dossierVerification, statut: 'en_examen' };
+      } else if (
+        (statut === 'refusee' || statut === 'revoquee') &&
+        typesDepuisDecision.size === 3
+      ) {
+        dossierVerification = { ...dossierVerification, statut: 'en_examen', deposeLe: maintenant };
+      }
       return { succes: true };
     },
 

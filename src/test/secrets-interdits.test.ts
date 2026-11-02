@@ -265,6 +265,8 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0049_appliquer_regles_avis.sql',
       'supabase/migrations/0050_preparer_creer_profil_client.sql',
       'supabase/migrations/0051_creer_profil_client_regle.sql',
+      'supabase/migrations/0052_preparer_soumission_dossier.sql',
+      'supabase/migrations/0053_soumettre_dossier_regle.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bouton } from '@/composants/bouton';
 import { Icone } from '@/composants/icones';
 import { EnteteOnboarding } from '@/fonctionnalites/identite/entete-onboarding';
+import { echeanceQuaranteHuitHeuresOuvrees } from '@/fonctionnalites/coach/echeance-verification';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import type { PieceDeposee, TypePiece } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
@@ -49,12 +50,17 @@ export default function DevenirCoachVerification() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { lirePiecesDeposees, deposerPieceVerification } = useDonnees().port;
+  const { lirePiecesDeposees, deposerPieceVerification, lireDossierVerification } =
+    useDonnees().port;
 
   const [pieces, setPieces] = useState<PieceDeposee[]>([]);
   const [enCours, setEnCours] = useState<TypePiece | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [chargement, setChargement] = useState(true);
+  // A1 (2 novembre 2026) : le dossier part en examen tout seul au troisième document (0053).
+  // L'écran le dit au moment où ça arrive, avec l'échéance — sinon le coach ne sait pas ce
+  // qu'il vient de déclencher (trouvé sur iPhone le même jour). Texte validé par le développeur.
+  const [echeanceSoumission, setEcheanceSoumission] = useState<Date | null>(null);
 
   useEffect(() => {
     let monte = true;
@@ -88,6 +94,7 @@ export default function DevenirCoachVerification() {
     }
 
     setEnCours(type);
+    const statutAvant = await lireStatutDossier();
     const resultatDepot = await deposerPieceVerification(type, {
       uri: fichier.uri,
       nom: fichier.name,
@@ -100,6 +107,25 @@ export default function DevenirCoachVerification() {
     }
     const misesAJour = await lirePiecesDeposees();
     setPieces(misesAJour);
+
+    // Le serveur a pu soumettre le dossier : on le relit. Une lecture qui échoue ne montre rien
+    // (le dépôt, lui, a réussi), jamais une panne à la place d'un succès.
+    try {
+      const apres = await lireDossierVerification();
+      if (statutAvant !== 'en_examen' && apres.statut === 'en_examen' && apres.deposeLe) {
+        setEcheanceSoumission(echeanceQuaranteHuitHeuresOuvrees(apres.deposeLe));
+      }
+    } catch {
+      // Rien : voir ci-dessus.
+    }
+  }
+
+  async function lireStatutDossier() {
+    try {
+      return (await lireDossierVerification()).statut;
+    } catch {
+      return null;
+    }
   }
 
   return (
@@ -192,6 +218,18 @@ export default function DevenirCoachVerification() {
           gap: theme.espace[2],
         }}
       >
+        {/* Hors de la zone de défilement, au-dessus de « Continuer » : dans le champ de vision au
+            moment où le troisième document arrive. */}
+        {echeanceSoumission ? (
+          <View accessibilityLiveRegion="polite" style={{ gap: theme.espace[1] }}>
+            <Text style={{ ...theme.texte.label, color: theme.couleur.texte.principal }}>
+              Ton dossier est complet, il part en examen.
+            </Text>
+            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+              {`On te répond sous 48 h ouvrées, d’ici le ${echeanceSoumission.toLocaleDateString('fr-FR')}.`}
+            </Text>
+          </View>
+        ) : null}
         <Bouton
           libelle="Continuer"
           variante="primaire"

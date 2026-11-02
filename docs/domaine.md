@@ -667,6 +667,22 @@ exposée ; ce n'est pas une nuance d'écran, c'est une condition du dossier.
 
 Objectif de délai annoncé : **48 h ouvrées**, pour l'ensemble du dossier.
 
+**La soumission est automatique** (décidé le 2 novembre 2026, `0053_soumettre_dossier_regle.sql`).
+Aucun geste « J'envoie mon dossier » : à chaque pièce déposée, le serveur applique la machine
+ci-dessus.
+- `absente` → `en_examen` dès que les **trois** types sont déposés. Un coach qui ferme
+  l'application ne reste jamais « absent » avec un dossier complet.
+- `complement_demande` → `en_examen` dès qu'une pièce est fournie.
+- `refusee | revoquee` → `en_examen` seulement quand les **trois** types sont redéposés **après**
+  la décision : un seul document ne relance pas l'examen d'un dossier incomplet.
+- `en_examen` (une pièce remplacée pendant l'examen) et `verifiee` : rien ne change.
+
+**Le délai part de la soumission** (`dossier_soumis_le`), posée au passage en examen depuis
+`absente`, `refusee` ou `revoquee`, et inchangée ensuite : ni le remplacement d'une pièce pendant
+l'examen, ni le retour d'un complément ne la déplacent. Redémarrer le délai punirait un coach qui
+corrige. L'écran de dépôt dit au coach, au moment où la troisième pièce arrive, que son dossier
+part en examen et quand il aura sa réponse.
+
 **Un seul statut par dossier, jamais un statut par pièce.** Les six valeurs ci-dessus qualifient
 le dossier entier, pas un document. Quand une seule pièce bloque un dossier par ailleurs
 complet, le statut reste `complement_demande` et **le motif rédigé par l'examinateur nomme la

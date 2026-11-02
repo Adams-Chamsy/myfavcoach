@@ -68,6 +68,73 @@ describe('creerFauxPortDonnees', () => {
     });
   });
 
+  // A1 (2 novembre 2026) : miroir de soumettre_dossier_si_complet (0053).
+  describe('soumission automatique du dossier', () => {
+    const TROIS = ['identite', 'diplome_ou_certification', 'assurance_rc_pro'] as const;
+
+    it('absent : reste absent à deux types, passe en examen au troisième, daté', async () => {
+      const port = creerFauxPortDonnees();
+      await port.deposerPieceVerification('identite', { uri: 'f', nom: 'f', typeMime: 'x' });
+      await port.deposerPieceVerification('diplome_ou_certification', {
+        uri: 'f',
+        nom: 'f',
+        typeMime: 'x',
+      });
+      expect((await port.lireDossierVerification()).statut).toBe('absente');
+
+      await port.deposerPieceVerification('assurance_rc_pro', {
+        uri: 'f',
+        nom: 'f',
+        typeMime: 'x',
+      });
+      const dossier = await port.lireDossierVerification();
+      expect(dossier.statut).toBe('en_examen');
+      expect(dossier.deposeLe).not.toBeNull();
+    });
+
+    it('complément demandé : une pièce fournie le remet en examen, date inchangée', async () => {
+      const port = creerFauxPortDonnees();
+      port.definirDossierVerificationPourTest({
+        statut: 'complement_demande',
+        deposeLe: '2026-11-01T10:00:00.000Z',
+        motif: null,
+      });
+      await port.deposerPieceVerification('identite', { uri: 'f', nom: 'f', typeMime: 'x' });
+      expect(await port.lireDossierVerification()).toMatchObject({
+        statut: 'en_examen',
+        deposeLe: '2026-11-01T10:00:00.000Z',
+      });
+    });
+
+    it('refusé : deux pièces ne suffisent pas, les trois redéposées le remettent en examen', async () => {
+      const port = creerFauxPortDonnees();
+      port.definirDossierVerificationPourTest({
+        statut: 'refusee',
+        deposeLe: '2026-11-01T10:00:00.000Z',
+        motif: null,
+      });
+      await port.deposerPieceVerification(TROIS[0], { uri: 'f', nom: 'f', typeMime: 'x' });
+      await port.deposerPieceVerification(TROIS[1], { uri: 'f', nom: 'f', typeMime: 'x' });
+      expect((await port.lireDossierVerification()).statut).toBe('refusee');
+      await port.deposerPieceVerification(TROIS[2], { uri: 'f', nom: 'f', typeMime: 'x' });
+      const dossier = await port.lireDossierVerification();
+      expect(dossier.statut).toBe('en_examen');
+      expect(dossier.deposeLe).not.toBe('2026-11-01T10:00:00.000Z');
+    });
+
+    it('en examen : une pièce remplacée ne change ni le statut ni la date', async () => {
+      const port = creerFauxPortDonnees();
+      const enExamen = {
+        statut: 'en_examen' as const,
+        deposeLe: '2026-11-01T10:00:00.000Z',
+        motif: null,
+      };
+      port.definirDossierVerificationPourTest(enExamen);
+      await port.deposerPieceVerification('identite', { uri: 'f', nom: 'f', typeMime: 'x' });
+      expect(await port.lireDossierVerification()).toEqual(enExamen);
+    });
+  });
+
   describe("écritures d'onboarding", () => {
     it('creerProfilClient fait passer clientExiste à true, onboarding_etape à 2, et se relit', async () => {
       const port = creerFauxPortDonnees();

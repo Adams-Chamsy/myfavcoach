@@ -562,34 +562,24 @@ export const portDonneesSupabase: PortDonnees = {
     return { succes: true };
   },
 
+  // mon_dossier_verification (0053, A1 du 2 novembre 2026) : le dossier de l'appelant, désigné
+  // par auth.uid() côté serveur (docs/backend.md §7). Remplace une lecture de profils_coach ...
+  // limit(1), qui pouvait rendre la ligne d'un AUTRE coach (tout coach vérifié est lisible) —
+  // même défaut que celui corrigé le même jour pour monProfilCoachId. `deposeLe` est désormais
+  // la date de SOUMISSION du dossier (dossier_soumis_le), d'où part le délai de 48 h ouvrées,
+  // et non plus la date de la plus ancienne pièce, fausse après un refus.
+  //
+  // Le motif exact d'une décision n'est lisible nulle part côté application
+  // (decisions_verification n'a aucun GRANT, 0015) : L2-09 l'affiche quand le back-office
+  // (L2-10) le transmettra par un autre canal — non construit à ce lot, voir le rapport.
   async lireDossierVerification() {
-    // profil_actif_courant() n'est pas requis ici : profils_coach_select_proprietaire admet
-    // la propre ligne du coach quel que soit son espace actif (L2-09, "consultable pendant
-    // l'attente"). decisions_verification n'a AUCUNE politique de lecture (0015) — le motif
-    // vient donc de pieces_verification/profils_coach seuls, jamais d'une lecture directe du
-    // journal, qui échouerait de toute façon.
-    const { data, error } = await supabase
-      .from('profils_coach')
-      .select('id, statut_verification')
-      .limit(1);
+    const { data, error } = await supabase.rpc('mon_dossier_verification');
     if (error) throw error;
-    const ligne = data?.[0] as
-      { id: string; statut_verification: DossierVerification['statut'] } | undefined;
+    const ligne = (
+      data as { statut: DossierVerification['statut']; soumis_le: string | null }[] | null
+    )?.[0];
     if (!ligne) return { statut: 'absente', deposeLe: null, motif: null };
-
-    const pieces = await supabase
-      .from('pieces_verification')
-      .select('depose_le')
-      .eq('coach_id', ligne.id)
-      .order('depose_le', { ascending: true })
-      .limit(1);
-    if (pieces.error) throw pieces.error;
-    const premierDepot = (pieces.data?.[0] as { depose_le: string } | undefined)?.depose_le ?? null;
-
-    // Le motif exact d'une décision n'est lisible nulle part côté application
-    // (decisions_verification n'a aucun GRANT, 0015) : L2-09 l'affiche quand le back-office
-    // (L2-10) le transmettra par un autre canal — non construit à ce lot, voir le rapport.
-    return { statut: ligne.statut_verification, deposeLe: premierDepot, motif: null };
+    return { statut: ligne.statut, deposeLe: ligne.soumis_le, motif: null };
   },
 
   async lirePiecesDeposees() {

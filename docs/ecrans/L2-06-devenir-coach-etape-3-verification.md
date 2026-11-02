@@ -49,6 +49,18 @@ Chaque ligne affiche son propre état, **inline**, pas un écran séparé :
 Bandeau verrouillé : « Une fois envoyé, un document n'est plus consultable ici — ni par toi, ni
 par personne d'autre que l'examinateur. Tu peux le remplacer, pas le rouvrir. »
 
+**Soumission** (ajouté le 2 novembre 2026, `docs/domaine.md` §4.2) : le dossier part en examen
+tout seul au dépôt du troisième document. Au moment où ça arrive, au-dessus de « Continuer », hors
+de la zone de défilement :
+
+> **Ton dossier est complet, il part en examen.**
+> On te répond sous 48 h ouvrées, d'ici le {date}.
+
+Texte validé par le développeur le 2 novembre 2026. « Une personne le regarde » et « Tu peux
+continuer pendant ce temps » ont été retirés : le premier promet un humain nommément, le second
+encombre un message dont le seul rôle est de dire ce qui vient de se passer (« Continuer », juste
+dessous, le dit déjà).
+
 Pied fixe : « Continuer » (mène à l'étape 4, `L2-07`) — actif seulement quand **les trois**
 documents sont déposés ; sinon, texte sous le bouton nommant précisément ce qui manque
 (« Il manque l'attestation d'assurance. »).

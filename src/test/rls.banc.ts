@@ -6814,3 +6814,199 @@ describe('mon profil coach, par le chemin de l’application (0011, défaut iPho
     expect(anonyme.statut).toBeGreaterThanOrEqual(400);
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+// Soumission du dossier de vérification (0052/0053, A1, 2 novembre 2026)
+// ---------------------------------------------------------------------------------------------
+//
+// Trouvé sur iPhone le 2 novembre 2026 : après le dépôt des trois pièces, le dossier restait
+// `absente`, et aucun coach passé par l'application n'avait jamais pu être vérifié. Le banc ne
+// l'avait pas vu : describe('decider_verification_coach') force `en_examen` par service_role.
+// Ici, CHAQUE dépôt emprunte le chemin de l'application (CLAUDE.md §8) : mon_profil_coach_id,
+// nouveau_chemin_stockage, puis la ligne insérée par la session du coach. Le statut est relu par
+// mon_dossier_verification(), la lecture de l'application. Seule la promotion de l'examinateur
+// passe par service_role : c'est un décor, comme dans le reste du banc (docs/backend.md §9).
+describe('soumission du dossier de vérification', () => {
+  let coach: Session;
+  let coachId: string;
+  let examinateur: Session;
+
+  async function deposerPiece(session: Session, idCoach: string, type: string) {
+    const chemin = await appelRest('/rest/v1/rpc/nouveau_chemin_stockage', {
+      methode: 'POST',
+      session,
+      corps: {},
+    });
+    if (chemin.statut >= 400) throw new Error(`Préparation : chemin refusé (${chemin.statut})`);
+    return appelRest('/rest/v1/pieces_verification', {
+      methode: 'POST',
+      session,
+      prefer: 'return=minimal',
+      corps: { coach_id: idCoach, type, chemin_stockage: chemin.corps },
+    });
+  }
+
+  async function monDossier(session: Session) {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/mon_dossier_verification', {
+      methode: 'POST',
+      session,
+      corps: {},
+    });
+    expect(statut).toBe(200);
+    // Une ligne et une seule : le dossier de l'appelant (assertion, jamais un TypeError plus loin).
+    expect(corps).toHaveLength(1);
+    return (corps as { statut: string; soumis_le: string | null }[])[0];
+  }
+
+  async function decider(idCoach: string, decision: string) {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/decider_verification_coach', {
+      methode: 'POST',
+      session: examinateur,
+      corps: { p_coach_id: idCoach, p_decision: decision, p_motif: `Banc : ${decision}` },
+    });
+    // Assertion, pas une exception : la décision acceptée fait partie de ce qui est prouvé.
+    expect({ decision, statut, corps }).toEqual({ decision, statut: 204, corps: null });
+  }
+
+  // Un coach neuf, par le chemin de l'application : sa session, creer_profil_coach.
+  async function nouveauCoach(suffixe: string): Promise<{ session: Session; id: string }> {
+    const session = await creerCompteReel(
+      `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-dossier-${suffixe}@${DOMAINE_EMAIL}`,
+      { date_naissance: '1990-01-01', cgu_version_acceptee: '2026-08-01' },
+    );
+    const creation = await appelRest('/rest/v1/rpc/creer_profil_coach', {
+      methode: 'POST',
+      session,
+      corps: { discipline: 'yoga', telephone: '0612345678', prenom: 'Dossier', nom: suffixe },
+    });
+    if (creation.statut >= 400) throw new Error(`Préparation : coach refusé (${creation.statut})`);
+    const id = await appelRest('/rest/v1/rpc/mon_profil_coach_id', {
+      methode: 'POST',
+      session,
+      corps: {},
+    });
+    return { session, id: id.corps as string };
+  }
+
+  const comptesCrees: Session[] = [];
+
+  beforeAll(async () => {
+    const principal = await nouveauCoach('principal');
+    coach = principal.session;
+    coachId = principal.id;
+    comptesCrees.push(coach);
+    examinateur = await creerCompteReel(
+      `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-dossier-examinateur@${DOMAINE_EMAIL}`,
+      { date_naissance: '1988-01-01', cgu_version_acceptee: '2026-08-01' },
+    );
+    comptesCrees.push(examinateur);
+    const promotion = await appelRest(`/rest/v1/comptes?id=eq.${examinateur.compteId}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { est_examinateur: true },
+    });
+    if (promotion.statut >= 400) throw new Error(`Préparation : promotion refusée`);
+  }, 60_000);
+
+  afterAll(async () => {
+    for (const compte of comptesCrees) await supprimerCompteReel(compte.compteId);
+  });
+
+  it('deux types déposés, dont un deux fois : le dossier reste absent, sans date de soumission', async () => {
+    expect((await deposerPiece(coach, coachId, 'identite')).statut).toBe(201);
+    expect((await deposerPiece(coach, coachId, 'identite')).statut).toBe(201);
+    expect((await deposerPiece(coach, coachId, 'diplome_ou_certification')).statut).toBe(201);
+    expect(await monDossier(coach)).toEqual({ statut: 'absente', soumis_le: null });
+  });
+
+  // Accès légitime, test NOMMÉ : la transition qui n'avait jamais existé.
+  it('le troisième type déposé : le dossier passe en examen, daté de la soumission', async () => {
+    expect((await deposerPiece(coach, coachId, 'assurance_rc_pro')).statut).toBe(201);
+    const dossier = await monDossier(coach);
+    expect(dossier.statut).toBe('en_examen');
+    expect(dossier.soumis_le).not.toBeNull();
+  });
+
+  it('une pièce remplacée pendant l’examen : toujours en examen, date de soumission inchangée', async () => {
+    const avant = await monDossier(coach);
+    expect((await deposerPiece(coach, coachId, 'diplome_ou_certification')).statut).toBe(201);
+    expect(await monDossier(coach)).toEqual(avant);
+  });
+
+  it('complément demandé, puis une pièce fournie : de nouveau en examen, date inchangée', async () => {
+    const avant = await monDossier(coach);
+    await decider(coachId, 'complement_demande');
+    expect((await monDossier(coach)).statut).toBe('complement_demande');
+    expect((await deposerPiece(coach, coachId, 'identite')).statut).toBe(201);
+    expect(await monDossier(coach)).toEqual(avant);
+  });
+
+  // La boucle jamais prouvée jusqu'ici : un coach passé par l'application, vérifié par un
+  // examinateur. Avant 0053, la décision était refusée (« transition_invalide : absente »).
+  it('un coach passé par l’application est vérifié par l’examinateur, puis une pièce ne change rien', async () => {
+    await decider(coachId, 'verifiee');
+    const verifie = await monDossier(coach);
+    expect(verifie.statut).toBe('verifiee');
+    expect((await deposerPiece(coach, coachId, 'identite')).statut).toBe(201);
+    expect(await monDossier(coach)).toEqual(verifie);
+  });
+
+  it('un dossier refusé ne repart en examen qu’avec les TROIS pièces redéposées, à une nouvelle date', async () => {
+    const refuse = await nouveauCoach('refuse');
+    comptesCrees.push(refuse.session);
+    for (const type of ['identite', 'diplome_ou_certification', 'assurance_rc_pro']) {
+      expect((await deposerPiece(refuse.session, refuse.id, type)).statut).toBe(201);
+    }
+    const premiere = await monDossier(refuse.session);
+    expect(premiere.statut).toBe('en_examen');
+    await decider(refuse.id, 'refusee');
+
+    expect((await deposerPiece(refuse.session, refuse.id, 'identite')).statut).toBe(201);
+    expect((await deposerPiece(refuse.session, refuse.id, 'diplome_ou_certification')).statut).toBe(
+      201,
+    );
+    expect((await monDossier(refuse.session)).statut).toBe('refusee');
+
+    expect((await deposerPiece(refuse.session, refuse.id, 'assurance_rc_pro')).statut).toBe(201);
+    const nouvelle = await monDossier(refuse.session);
+    expect(nouvelle.statut).toBe('en_examen');
+    expect(new Date(nouvelle.soumis_le as string).getTime()).toBeGreaterThan(
+      new Date(premiere.soumis_le as string).getTime(),
+    );
+  }, 60_000);
+
+  it('une pièce d’un type inconnu est refusée (contrainte, 23514)', async () => {
+    const { statut, corps } = await deposerPiece(coach, coachId, 'passeport_lunaire');
+    expect(statut).toBe(400);
+    expect((corps as { code?: string }).code).toBe('23514');
+  });
+
+  // Sens illégitime de la nouvelle colonne : seul le serveur écrit le statut et la date.
+  it('le coach ne peut écrire ni son statut ni sa date de soumission (aucun grant UPDATE)', async () => {
+    const { statut, corps } = await appelRest(`/rest/v1/profils_coach?id=eq.${coachId}`, {
+      methode: 'PATCH',
+      session: coach,
+      prefer: 'return=minimal',
+      corps: { statut_verification: 'en_examen', dossier_soumis_le: '2020-01-01T00:00:00Z' },
+    });
+    expect(statut).toBe(403);
+    expect((corps as { code?: string }).code).toBe('42501');
+  });
+
+  // mon_dossier_verification désigne le dossier par auth.uid() (docs/backend.md §7) : un coach
+  // qui n'est pas vérifié lit le sien, jamais celui du coach vérifié ci-dessus, pourtant lisible
+  // par tous. C'est le défaut de profils_coach ... limit(1) qu'elle remplace.
+  it('un autre coach lit SON dossier, jamais celui d’un coach vérifié', async () => {
+    const autre = await nouveauCoach('autre');
+    comptesCrees.push(autre.session);
+    expect(await monDossier(autre.session)).toEqual({ statut: 'absente', soumis_le: null });
+  });
+
+  it('anon ne peut pas appeler mon_dossier_verification', async () => {
+    const { statut } = await appelRest('/rest/v1/rpc/mon_dossier_verification', {
+      methode: 'POST',
+      corps: {},
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+  });
+});

@@ -112,6 +112,43 @@ describe('L2-06 · Devenir coach — étape 3/4 (vérification)', () => {
     );
   });
 
+  // A1 (2 novembre 2026), décision du développeur : la soumission est automatique, et l'écran le
+  // dit au moment où elle arrive — « sinon il ne sait pas ce qu'il vient de déclencher ». Texte
+  // validé le même jour.
+  it('le troisième document déposé : l’écran dit que le dossier part en examen, avec l’échéance', async () => {
+    mockGetDocumentAsync.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///tmp/a.pdf', name: 'a.pdf', mimeType: 'application/pdf', size: 1 }],
+    });
+    await rendre([
+      { type: 'identite', deposeLe: '2026-11-02T10:00:00.000Z' },
+      { type: 'diplome_ou_certification', deposeLe: '2026-11-02T10:01:00.000Z' },
+    ]);
+    expect(screen.queryByText('Ton dossier est complet, il part en examen.')).toBeNull();
+
+    await fireEvent.press(screen.getByText('Choisir un fichier'));
+
+    await waitFor(() =>
+      expect(screen.queryByText('Ton dossier est complet, il part en examen.')).toBeTruthy(),
+    );
+    expect(
+      screen.getByText(/^On te répond sous 48 h ouvrées, d’ici le \d{2}\/\d{2}\/\d{4}\.$/),
+    ).toBeTruthy();
+  });
+
+  it('un document déposé sans compléter le dossier : aucun message de soumission', async () => {
+    mockGetDocumentAsync.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///tmp/a.pdf', name: 'a.pdf', mimeType: 'application/pdf', size: 1 }],
+    });
+    await rendre([]);
+
+    await fireEvent.press(screen.getAllByText('Choisir un fichier')[0]);
+
+    await waitFor(() => expect(screen.getByText(/Déposée le/)).toBeTruthy());
+    expect(screen.queryByText('Ton dossier est complet, il part en examen.')).toBeNull();
+  });
+
   it('« Continuer » devient actif une fois les trois documents déposés', async () => {
     await rendre([
       { type: 'identite', deposeLe: '2026-09-10T10:00:00.000Z' },
