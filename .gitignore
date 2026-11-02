@@ -39,6 +39,9 @@ yarn-error.*
 # réservée par Expo — voir le commentaire de scripts/verifier-serveur-dev.mjs et docs/dette.md,
 # collision trouvée à P1.8 (.env.test.local faisait planter `expo start --web`).
 .secrets-rls.local
+# comptes de scénario du projet de développement (scripts/comptes-scenarios.mjs) : contient le
+# mot de passe commun en clair, lisible par le développeur, jamais commité.
+comptes-scenarios.local.md
 
 # TypeScript
 *.tsbuildinfo

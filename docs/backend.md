@@ -24,6 +24,21 @@ même : un projet gratuit inactif est **mis en pause** (son adresse ne résout p
 `npm run test:rls` — et un webhook qui y pointerait — indisponibles jusqu'à sa reprise manuelle
 depuis le tableau de bord.
 
+**Comptes de test du projet de développement** — trois familles, trois préfixes, jamais mêlés
+(chacun a son propre nettoyage, qui ne touche pas aux autres) :
+- `banc-rls-*` : créés et supprimés par chaque exécution du banc (`src/test/rls.banc.ts`).
+- `compte-test-*` : `npm run comptes:test` (P1.5), cinq comptes de base, profils posés par le
+  rôle serveur.
+- `scenario-*` : `npm run comptes:scenarios` (2 novembre 2026), un compte par état à éprouver à
+  la main (coach à chaque étape de sa vérification, client à chaque étape de son abonnement,
+  examinateur, avis). **Tout passe par le chemin de l'application**, avec la session de chaque
+  compte ; le rôle serveur ne fait que créer les comptes déjà confirmés et LIRE l'état. Une seule
+  exception, fabriquée et étiquetée comme telle dans le script et dans le fichier qu'il écrit :
+  la date de début du suivi de l'abonnement résilié, antidatée pour rendre l'avis possible.
+  Trois états demandent un vrai paiement de test par le développeur
+  (`npm run comptes:scenarios:paiements`). Adresses et mot de passe : `comptes-scenarios.local.md`,
+  ignoré par git.
+
 ---
 
 ## 2. Migrations
