@@ -1,50 +1,22 @@
 import { type Href, useRouter } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Avatar } from '@/composants/avatar';
 import { Carte } from '@/composants/carte';
 import { Icone } from '@/composants/icones';
 import { useTheme } from '@/theme/fournisseur';
-import { themes } from '@/theme/tokens';
 
 export type LigneMiseEnRoute = { libelle: string; fait: boolean; route: Href };
 
 // L2-11 : écran 19, premier lancement coach. Compteur « N sur 3 » dynamique (fiche, "Ce qui a
 // été inventé") — jamais figé à "1 sur 3" comme la maquette le montre pour son cas de
 // démonstration.
-export function PremierLancement({
-  prenom,
-  lignes,
-}: {
-  prenom: string;
-  lignes: LigneMiseEnRoute[];
-}) {
+export function PremierLancement({ lignes }: { lignes: LigneMiseEnRoute[] }) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const nombreFaits = lignes.filter((l) => l.fait).length;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      {/* Île fixe, toujours sombre (CLAUDE.md §5) : themes.sombre lu explicitement. */}
-      <View
-        style={{
-          backgroundColor: themes.sombre.fond.canevas,
-          paddingTop: insets.top + theme.espace[3],
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[4],
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.espace[3],
-        }}
-      >
-        <Avatar nom={prenom} taille="md" />
-        <Text style={{ ...theme.texte.titre2, color: themes.sombre.texte.surSombre }}>
-          Bienvenue {prenom}
-        </Text>
-      </View>
-
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: theme.espace.gouttiere,

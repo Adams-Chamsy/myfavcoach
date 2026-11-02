@@ -51,6 +51,7 @@ import DevenirCoachProfil from './(onboarding)/devenir-coach-profil';
 import DevenirCoachVerification from './(onboarding)/devenir-coach-verification';
 import DevenirCoachRecapitulatif from './(onboarding)/devenir-coach-recapitulatif';
 import { AttenteVerification } from '@/fonctionnalites/coach/attente-verification';
+import { EnTeteEspaceCoach } from '@/fonctionnalites/coach/en-tete-espace-coach';
 import { CarteImporterClients } from '@/fonctionnalites/coach/carte-importer-clients';
 import { PremierLancement } from '@/fonctionnalites/coach/premier-lancement';
 import { EcranCreationOffre } from '@/fonctionnalites/offres/ecran-creation-offre';
@@ -1137,6 +1138,17 @@ function SectionFeuilleBascule() {
 // hauteur : bornés ici dans un cadre fixe qui rogne. C'est une vignette pour vérifier le rendu
 // et les contrastes, pas la géométrie grandeur nature — celle-ci reste une vérification sur
 // appareil (docs/dette.md, zones sûres).
+// L'en-tête unique de l'espace coach (en-tete-espace-coach.tsx), rendu par le pilotage au-dessus
+// de ses états : la galerie le remet autour des sous-écrans pour les montrer tels qu'en vrai.
+function AvecEnTeteCoach({ titre, children }: { titre: string; children: ReactNode }) {
+  return (
+    <View style={{ flex: 1 }}>
+      <EnTeteEspaceCoach titre={titre} nomAvatar="Nadia Coach" onOuvrirBascule={() => {}} />
+      {children}
+    </View>
+  );
+}
+
 const ECRANS_L1: { titre: string; rendu: () => ReactNode }[] = [
   { titre: 'L1-01 · Bienvenue', rendu: () => <Bienvenue /> },
   { titre: 'L1-02 · Création de compte', rendu: () => <Inscription /> },
@@ -1277,46 +1289,53 @@ const ECRANS_L2: { titre: string; rendu: () => ReactNode }[] = [
   {
     titre: 'L2-09 · En attente de vérification — en_examen',
     rendu: () => (
-      <AttenteVerification
-        dossier={{ statut: 'en_examen', deposeLe: '2026-09-10T09:00:00.000Z', motif: null }}
-      />
+      <AvecEnTeteCoach titre="Espace coach">
+        <AttenteVerification
+          dossier={{ statut: 'en_examen', deposeLe: '2026-09-10T09:00:00.000Z', motif: null }}
+        />
+      </AvecEnTeteCoach>
     ),
   },
   {
     titre: 'L2-09 · En attente de vérification — complement_demande',
     rendu: () => (
-      <AttenteVerification
-        dossier={{
-          statut: 'complement_demande',
-          deposeLe: '2026-09-10T09:00:00.000Z',
-          motif: 'Diplôme illisible : la photo est trop floue pour lire l’organisme et la date.',
-        }}
-      />
+      <AvecEnTeteCoach titre="Espace coach">
+        <AttenteVerification
+          dossier={{
+            statut: 'complement_demande',
+            deposeLe: '2026-09-10T09:00:00.000Z',
+            motif: 'Diplôme illisible : la photo est trop floue pour lire l’organisme et la date.',
+          }}
+        />
+      </AvecEnTeteCoach>
     ),
   },
   {
     titre: 'L2-09 · En attente de vérification — refusee',
     rendu: () => (
-      <AttenteVerification
-        dossier={{
-          statut: 'refusee',
-          deposeLe: '2026-09-08T09:00:00.000Z',
-          motif: 'Dossier incomplet.',
-        }}
-      />
+      <AvecEnTeteCoach titre="Espace coach">
+        <AttenteVerification
+          dossier={{
+            statut: 'refusee',
+            deposeLe: '2026-09-08T09:00:00.000Z',
+            motif: 'Dossier incomplet.',
+          }}
+        />
+      </AvecEnTeteCoach>
     ),
   },
   {
     titre: 'L2-11 · Premier lancement coach',
     rendu: () => (
-      <PremierLancement
-        prenom="Nadia"
-        lignes={[
-          { libelle: 'Photo et bio renseignées', fait: true, route: '/(compte)/informations' },
-          { libelle: 'Créer ta première offre', fait: false, route: '/(coach)/creer/offre' },
-          { libelle: 'Vérifier ton identité', fait: true, route: '/(coach)/creer/offre' },
-        ]}
-      />
+      <AvecEnTeteCoach titre="Bienvenue Nadia">
+        <PremierLancement
+          lignes={[
+            { libelle: 'Photo et bio renseignées', fait: true, route: '/(compte)/informations' },
+            { libelle: 'Créer ta première offre', fait: false, route: '/(coach)/creer/offre' },
+            { libelle: 'Vérifier ton identité', fait: true, route: '/(coach)/creer/offre' },
+          ]}
+        />
+      </AvecEnTeteCoach>
     ),
   },
   { titre: 'L2-15 · Créer et publier une offre', rendu: () => <EcranCreationOffre /> },

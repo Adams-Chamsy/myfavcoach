@@ -1,12 +1,11 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { type ReactNode, useEffect, useState } from 'react';
+import { View } from 'react-native';
 
-import { Avatar } from '@/composants/avatar';
 import { EcranProvisoire } from '@/composants/ecran-provisoire';
 import { AttenteVerification } from '@/fonctionnalites/coach/attente-verification';
 import { CarteImporterClients } from '@/fonctionnalites/coach/carte-importer-clients';
+import { EnTeteEspaceCoach } from '@/fonctionnalites/coach/en-tete-espace-coach';
 import { PremierLancement, type LigneMiseEnRoute } from '@/fonctionnalites/coach/premier-lancement';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FeuilleBascule } from '@/fonctionnalites/identite/feuille-bascule';
@@ -22,7 +21,6 @@ import { useTheme } from '@/theme/fournisseur';
 // qui rend I-01 atteignable à ce lot.
 export default function Pilotage() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { profils, port } = useDonnees();
   const [feuilleOuverte, setFeuilleOuverte] = useState(false);
@@ -52,25 +50,15 @@ export default function Pilotage() {
     };
   }, [port, profils]);
 
+  // Le contenu dépend de l'état du coach ; l'EN-TÊTE, avec l'avatar de la bascule, n'en dépend
+  // jamais (en-tete-espace-coach.tsx : une sortie qui vit dans une branche disparaît avec elle).
+  let titre = 'Espace coach';
+  let contenu: ReactNode;
   if (!profils || profils.profilActif !== 'coach' || !profils.coachExiste || !dossier || !offres) {
-    return (
-      <FeuilleBascule ouverte={feuilleOuverte} onFermer={() => setFeuilleOuverte(false)}>
-        <View style={{ flex: 1 }} />
-      </FeuilleBascule>
-    );
-  }
-
-  if (dossier.statut !== 'verifiee') {
-    return (
-      <FeuilleBascule ouverte={feuilleOuverte} onFermer={() => setFeuilleOuverte(false)}>
-        <AttenteVerification dossier={dossier} />
-      </FeuilleBascule>
-    );
-  }
-
-  const auMoinsUneOffrePubliee = offres.some((o) => o.publieeLe !== null && o.retireeLe === null);
-
-  if (dossier.statut === 'verifiee' && !auMoinsUneOffrePubliee) {
+    contenu = <View style={{ flex: 1 }} />;
+  } else if (dossier.statut !== 'verifiee') {
+    contenu = <AttenteVerification dossier={dossier} />;
+  } else if (!offres.some((o) => o.publieeLe !== null && o.retireeLe === null)) {
     const lignes: LigneMiseEnRoute[] = [
       {
         libelle: 'Photo et bio renseignées',
@@ -84,37 +72,26 @@ export default function Pilotage() {
       },
       { libelle: 'Vérifier ton identité', fait: true, route: '/(coach)/creer/offre' },
     ];
-    return (
-      <FeuilleBascule ouverte={feuilleOuverte} onFermer={() => setFeuilleOuverte(false)}>
-        <PremierLancement prenom={profils.identiteActive.prenom} lignes={lignes} />
-      </FeuilleBascule>
+    titre = `Bienvenue ${profils.identiteActive.prenom}`;
+    contenu = <PremierLancement lignes={lignes} />;
+  } else {
+    contenu = (
+      <>
+        <CarteImporterClients onPress={() => router.push('/(coach)/invitations')} />
+        <EcranProvisoire titre="Pilotage" lot="L7" />
+      </>
     );
   }
 
   return (
     <FeuilleBascule ouverte={feuilleOuverte} onFermer={() => setFeuilleOuverte(false)}>
-      <View style={{ flex: 1 }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'flex-end',
-            paddingTop: insets.top + theme.espace[2],
-            paddingHorizontal: theme.espace.gouttiere,
-            paddingBottom: theme.espace[2],
-          }}
-        >
-          <Pressable
-            onPress={() => setFeuilleOuverte(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Ouvrir la bascule d'espace"
-          >
-            <Avatar nom={nom} taille="md" />
-          </Pressable>
-        </View>
-
-        <CarteImporterClients onPress={() => router.push('/(coach)/invitations')} />
-
-        <EcranProvisoire titre="Pilotage" lot="L7" />
+      <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+        <EnTeteEspaceCoach
+          titre={titre}
+          nomAvatar={nom}
+          onOuvrirBascule={() => setFeuilleOuverte(true)}
+        />
+        {contenu}
       </View>
     </FeuilleBascule>
   );

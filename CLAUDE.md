@@ -288,6 +288,15 @@ testait son propre faux, et passait. Sur l'iPhone, appuyer sur un onglet aurait 
 - le contrat réel d'une bibliothèque ne se prouve que contre la vraie bibliothèque : un test
   `renderRouter`, un essai contre le vrai service (le banc, les essais Stripe réels), ou
   l'appareil. La liste des doubles du dépôt à revoir sous cet angle est dans `docs/dette.md`.
+- **un test de parcours appuie sur ce qu'une personne appuierait, il ne fabrique jamais le
+  geste.** Troisième défaut réel de cette famille en deux jours, le 2 novembre 2026 : le test
+  `bascule-coach-vers-client` remplaçait l'écran de pilotage par un faux écran qui appelait
+  `basculerProfil('client')` lui-même. Il restait vert pendant que l'avatar, seule entrée vers la
+  feuille de bascule, n'existait que dans une des quatre branches du vrai pilotage : depuis le
+  12 septembre, un coach non vérifié ne pouvait ni revenir à l'espace client, ni se déconnecter,
+  ni supprimer son compte. Trouvé sur iPhone. Corollaire : quand un écran se découpe par état,
+  chaque sortie (retour, en-tête, avatar, bascule) est rendue AU-DESSUS des branches, jamais dans
+  l'une d'elles, et un test l'atteint dans chaque état.
 
 **Le banc emprunte le chemin de l'application, jamais un chemin équivalent.** Même famille que
 la règle précédente, côté base. Trouvé le 1er novembre 2026 : l'application modifiait un profil

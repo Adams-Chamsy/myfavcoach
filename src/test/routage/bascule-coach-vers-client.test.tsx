@@ -1,9 +1,8 @@
-import { useEffect } from 'react';
-import { act, renderRouter, waitFor } from 'expo-router/testing-library';
-import { router, useRouter, Stack } from 'expo-router';
+import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { router, Stack } from 'expo-router';
 import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 
-import { FournisseurDonnees, useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
+import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
 import { creerFauxPortDonnees } from '@/services/donnees/faux';
@@ -40,18 +39,12 @@ function creerRacineFaux(
   };
 }
 
-// Rejoue exactement la séquence de FeuilleBascule.basculerVers('client') après acceptation
-// serveur, depuis l'espace COACH cette fois : basculerProfil (du fournisseur) PUIS
-// router.replace.
-function PilotageBasculeVersClient() {
-  const { basculerProfil } = useDonnees();
-  const routeur = useRouter();
-  useEffect(() => {
-    basculerProfil('client').then(() => routeur.replace('/(client)/(tabs)/accueil'));
-  }, [basculerProfil, routeur]);
-  return null;
-}
-
+// Avant le 2 novembre 2026, ce test remplaçait le pilotage par un faux écran qui appelait
+// basculerProfil('client') lui-même : il CONSTRUISAIT le geste au lieu de l'emprunter, et restait
+// vert pendant que l'avatar, seule entrée vers la feuille, manquait dans trois des quatre
+// branches du vrai pilotage (CLAUDE.md §8, un test qui fabrique ce que l'application ferait).
+// Désormais : le VRAI écran de pilotage, dans l'état d'un coach qui débute (dossier jamais
+// déposé), et les deux appuis qu'une personne ferait -- l'avatar, puis « Espace client ».
 async function compteConnecteEtVerifie(portAuth: ReturnType<typeof creerFauxPortAuth>) {
   await portAuth.inscrire('camille@exemple.fr', 'bon-mot-de-passe', '2000-01-01');
   portAuth.verifierEmailPourTest('camille@exemple.fr');
@@ -74,19 +67,33 @@ it('la bascule coach → client réinitialise la pile coach : elle disparaît de
     identiteActive: { prenom: 'Camille', nom: 'Coach' },
     attentesCoach: 0,
   });
+  portDonnees.definirDossierVerificationPourTest({
+    statut: 'absente',
+    deposeLe: null,
+    motif: null,
+  });
+  portDonnees.definirOffresPourTest([]);
 
   const rendu = await renderRouter(
     {
       appDir: './app',
       overrides: {
         _layout: creerRacineFaux(portAuth, portDonnees),
-        '(coach)/(tabs)/pilotage': PilotageBasculeVersClient,
       },
     },
     { initialUrl: '/(coach)/(tabs)/pilotage' },
   );
 
-  act(() => jest.runOnlyPendingTimers());
+  await act(async () => {
+    jest.runOnlyPendingTimers();
+  });
+  await waitFor(() => expect(screen.queryByLabelText("Ouvrir la bascule d'espace")).toBeTruthy());
+  await fireEvent.press(screen.getByLabelText("Ouvrir la bascule d'espace"));
+  await waitFor(() => expect(screen.queryByLabelText('Espace client')).toBeTruthy());
+  await fireEvent.press(screen.getByLabelText('Espace client'));
+  await act(async () => {
+    await jest.runAllTimersAsync();
+  });
   await waitFor(() => expect(rendu.getPathname()).toBe('/accueil'));
 
   // Critère 5, sens inverse : la pile de l'espace COACH disparaît de l'arbre plutôt que d'y

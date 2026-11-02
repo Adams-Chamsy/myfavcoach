@@ -6,7 +6,6 @@ import { Badge, type StatutBadge } from '@/composants/badge';
 import { Bouton } from '@/composants/bouton';
 import type { DossierVerification } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
-import { themes } from '@/theme/tokens';
 import { echeanceQuaranteHuitHeuresOuvrees } from './echeance-verification';
 
 // L2-09 : écran indépendant (pas un bandeau ajouté à L2-11), affiché tant que le dossier n'est
@@ -48,21 +47,6 @@ export function AttenteVerification({ dossier }: { dossier: DossierVerification 
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      {/* Île fixe, toujours sombre quel que soit le thème ambiant (CLAUDE.md §5) : themes.sombre
-          lu explicitement, jamais theme.couleur.* — même pattern que barre-navigation.tsx. */}
-      <View
-        style={{
-          backgroundColor: themes.sombre.fond.canevas,
-          paddingTop: insets.top + theme.espace[3],
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[4],
-        }}
-      >
-        <Text style={{ ...theme.texte.titre3, color: themes.sombre.texte.surSombre }}>
-          Espace coach
-        </Text>
-      </View>
-
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: theme.espace.gouttiere,
