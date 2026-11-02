@@ -19,6 +19,40 @@ function tableLecture(donnees: unknown[] | null, erreur: unknown = null) {
   return { select: () => ({ limit: () => Promise.resolve({ data: donnees, error: erreur }) }) };
 }
 
+// Balayage du 2 novembre 2026 (src/test/lecture-profils-coach-designee.test.ts) : deux
+// lectures de profils_coach par limit(1), sans filtre. Cette table rend l'AUTRE coach (un
+// coach vérifié, lisible par tous) par l'ancien chemin, et la ligne de l'appelant seulement
+// par `.eq('id', <celui que le serveur a désigné>)`.
+const LIGNE_AUTRE_COACH = {
+  id: 'coach-autre',
+  prenom: 'Autre',
+  nom: 'Coach',
+  discipline: 'yoga',
+  titre_court: 'Pas toi',
+  bio: 'La bio d’un autre coach',
+  commune_base_insee: null,
+  formats: [],
+  parcours_texte: null,
+  langues: [],
+};
+function tableProfilsCoach(lignesParId: Record<string, Record<string, unknown>>) {
+  return {
+    select: () => ({
+      limit: () => Promise.resolve({ data: [LIGNE_AUTRE_COACH], error: null }),
+      eq: (colonne: string, valeur: string) => {
+        const ligne = colonne === 'id' ? lignesParId[valeur] : undefined;
+        const resultat = Promise.resolve({ data: ligne ? [ligne] : [], error: null });
+        return Object.assign(resultat, { limit: () => resultat });
+      },
+    }),
+  };
+}
+function rpcParNom(reponses: Record<string, unknown>) {
+  supabaseMock.rpc.mockImplementation((fonction: string) =>
+    Promise.resolve({ data: reponses[fonction] ?? null, error: null }),
+  );
+}
+
 // update() est CHAÎNABLE, jamais directement awaitable : Supabase précharge `safeupdate` sur
 // le rôle authenticator (confirmé en direct sur le projet — pg_roles.rolconfig,
 // session_preload_libraries), qui refuse tout UPDATE/DELETE sans clause WHERE avec l'erreur
@@ -67,14 +101,17 @@ describe('portDonneesSupabase', () => {
   });
 
   describe('lireEtatProfils', () => {
+    // Doublures adaptées le 2 novembre 2026 : une réponse par fonction du serveur
+    // (mon_profil_coach_id désigne le profil coach) et profils_coach lu par id. Les assertions,
+    // elles, n'ont pas changé.
     it('compose profilActif, les deux existences, onboarding_etape et identiteActive en un seul EtatProfils', async () => {
-      supabaseMock.rpc.mockResolvedValue({ data: 'client', error: null });
+      rpcParNom({ profil_actif_courant: 'client', mon_profil_coach_id: null });
       supabaseMock.from.mockImplementation((table: string) => {
         if (table === 'profils_client')
           return tableLecture([
             { id: 'p-client', prenom: 'Camille', nom: 'Dupré', onboarding_etape: 2 },
           ]);
-        if (table === 'profils_coach') return tableLecture([]);
+        if (table === 'profils_coach') return tableProfilsCoach({});
         throw new Error(`table inattendue dans ce test : ${table}`);
       });
 
@@ -92,14 +129,16 @@ describe('portDonneesSupabase', () => {
     });
 
     it('profilActif coach : identiteActive vient de profils_coach, pas de profils_client', async () => {
-      supabaseMock.rpc.mockResolvedValue({ data: 'coach', error: null });
+      rpcParNom({ profil_actif_courant: 'coach', mon_profil_coach_id: 'p-coach' });
       supabaseMock.from.mockImplementation((table: string) => {
         if (table === 'profils_client')
           return tableLecture([
             { id: 'p-client', prenom: 'Camille', nom: 'Dupré', onboarding_etape: 5 },
           ]);
         if (table === 'profils_coach')
-          return tableLecture([{ id: 'p-coach', prenom: 'Camille', nom: 'Coach' }]);
+          return tableProfilsCoach({
+            'p-coach': { id: 'p-coach', prenom: 'Camille', nom: 'Coach' },
+          });
         throw new Error(`table inattendue dans ce test : ${table}`);
       });
 
@@ -109,8 +148,10 @@ describe('portDonneesSupabase', () => {
     });
 
     it('un compte sans aucun profil rend clientExiste/coachExiste à false, clientOnboardingEtape à null, identiteActive vide', async () => {
-      supabaseMock.rpc.mockResolvedValue({ data: 'client', error: null });
-      supabaseMock.from.mockImplementation(() => tableLecture([]));
+      rpcParNom({ profil_actif_courant: 'client', mon_profil_coach_id: null });
+      supabaseMock.from.mockImplementation((table: string) =>
+        table === 'profils_coach' ? tableProfilsCoach({}) : tableLecture([]),
+      );
 
       const resultat = await portDonneesSupabase.lireEtatProfils();
 
@@ -735,6 +776,47 @@ describe('portDonneesSupabase', () => {
       parcoursTexte: null,
       langues: [],
     };
+
+    it('lireEtatProfils, compte sans profil coach : jamais « coach existe » à cause d’un coach vérifié', async () => {
+      rpcParNom({ profil_actif_courant: 'client', mon_profil_coach_id: null });
+      supabaseMock.from.mockImplementation((table: string) =>
+        table === 'profils_coach'
+          ? tableProfilsCoach({})
+          : tableLecture([{ id: 'p-client', prenom: 'Camille', nom: null, onboarding_etape: 5 }]),
+      );
+
+      const etat = await portDonneesSupabase.lireEtatProfils();
+
+      expect(etat.coachExiste).toBe(false);
+    });
+
+    it('lireEtatProfils, en espace coach : l’identité est celle du coach désigné, jamais d’un autre', async () => {
+      rpcParNom({ profil_actif_courant: 'coach', mon_profil_coach_id: 'coach-1' });
+      supabaseMock.from.mockImplementation((table: string) =>
+        table === 'profils_coach'
+          ? tableProfilsCoach({ 'coach-1': { id: 'coach-1', prenom: 'Adams', nom: 'C' } })
+          : tableLecture([]),
+      );
+
+      const etat = await portDonneesSupabase.lireEtatProfils();
+
+      expect(etat.coachExiste).toBe(true);
+      expect(etat.identiteActive).toEqual({ prenom: 'Adams', nom: 'C' });
+    });
+
+    it('lireInformations (coach) : le formulaire montre le profil désigné, jamais celui d’un autre', async () => {
+      rpcParNom({ profil_actif_courant: 'coach', mon_profil_coach_id: 'coach-1' });
+      supabaseMock.from.mockImplementation((table: string) => {
+        if (table === 'comptes') return tableLecture([{ date_naissance: '1990-01-01' }]);
+        return tableProfilsCoach({
+          'coach-1': { ...LIGNE_AUTRE_COACH, id: 'coach-1', prenom: 'Adams', bio: 'Ma bio' },
+        });
+      });
+
+      const infos = await portDonneesSupabase.lireInformations();
+
+      expect(infos).toMatchObject({ profil: 'coach', prenom: 'Adams', bio: 'Ma bio' });
+    });
 
     it('enregistrerInformations (coach) : demande le profil au serveur, puis écrit PAR ID', async () => {
       supabaseMock.auth.getSession.mockResolvedValue(SESSION_A);

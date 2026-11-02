@@ -204,6 +204,16 @@ en rendre d'autres (une politique de lecture publique s'ajoute à la politique p
 Une seule fonction répond à « quelle est ma ligne » par table concernée, et toutes les
 écritures de l'application l'utilisent.
 
+**Interdit par un test depuis le 2 novembre 2026 pour `profils_coach`**, la seule table dont les
+lignes d'autrui sont lisibles (tout coach vérifié est public, 0008) :
+`src/test/lecture-profils-coach-designee.test.ts` refuse toute lecture de `profils_coach` sans
+filtre sur `id`, hors exceptions nommées (la file du back-office). Quatre occurrences du même
+geste en une journée (`select ... limit(1)` sans filtre : `monProfilCoachId`,
+`lireDossierVerification`, `lireEtatProfils`, `lireInformations`) : une façon d'écrire, plus une
+inattention. Le commentaire de `lireEtatProfils` affirmait « ne peut renvoyer QUE la ligne de
+l'appelant », faux depuis 0008, ce qui est pire qu'une absence de commentaire. **Une table qui
+gagne une lecture publique entre dans ce balayage, ou dans un balayage à son image.**
+
 **Une politique dont la condition est vraie par défaut n'est pas une règle.** Trouvé le
 2 novembre 2026 (option B, 0051) : `profils_client_insert_espace_client` exigeait l'espace client
 actif. Un compte neuf le satisfaisait seulement parce que `comptes.profil_actif` vaut `'client'`

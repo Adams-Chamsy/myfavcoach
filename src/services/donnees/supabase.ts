@@ -248,22 +248,29 @@ async function monProfilCoachId(): Promise<{ id: string | null; erreur: unknown 
 
 export const portDonneesSupabase: PortDonnees = {
   async lireEtatProfils() {
-    // Trois appels, jamais une nouvelle vue/migration pour ce lot : profil_actif_courant() est
-    // la fonction SECURITY DEFINER déjà posée par 0002_politiques.sql pour cet usage exact
-    // ("Seule source du profil actif... jamais un en-tête falsifiable"). Les deux lectures
-    // d'existence s'appuient sur les politiques RLS déjà prouvées par P1.5
-    // (profils_client_select_proprietaire, profils_coach_select_proprietaire) : chacune ne peut
-    // renvoyer QUE la ligne de l'appelant, ou aucune. prenom/nom ajoutés (L1-06) pour
-    // identiteActive ci-dessous — aucun appel réseau supplémentaire, les deux lignes étaient
-    // déjà lues.
-    const [{ data: profilActif, error: erreurProfilActif }, client, coach] = await Promise.all([
-      supabase.rpc('profil_actif_courant'),
-      supabase.from('profils_client').select('id, prenom, nom, onboarding_etape').limit(1),
-      supabase.from('profils_coach').select('id, prenom, nom').limit(1),
-    ]);
+    // profil_actif_courant() est la fonction SECURITY DEFINER posée par 0002_politiques.sql pour
+    // cet usage exact (« Seule source du profil actif... jamais un en-tête falsifiable »).
+    //
+    // profils_client : sa seule politique de lecture est le propriétaire, la lecture ne peut
+    // rendre QUE la ligne de l'appelant. profils_coach, NON : tout coach vérifié y est lisible
+    // par tous (profils_coach_select_verifiee, 0008). Jusqu'au 2 novembre 2026, ce commentaire
+    // affirmait le contraire et le profil coach se lisait par limit(1) : un compte sans profil
+    // coach pouvait recevoir « coach existe » et l'identité d'un autre coach dès qu'un seul
+    // coach vérifié existait. Désormais, le serveur désigne le profil (mon_profil_coach_id,
+    // docs/backend.md §7), puis on le lit PAR ID (src/test/lecture-profils-coach-designee.test.ts).
+    const [{ data: profilActif, error: erreurProfilActif }, client, coachDesigne] =
+      await Promise.all([
+        supabase.rpc('profil_actif_courant'),
+        supabase.from('profils_client').select('id, prenom, nom, onboarding_etape').limit(1),
+        monProfilCoachId(),
+      ]);
 
     if (erreurProfilActif) throw erreurProfilActif;
     if (client.error) throw client.error;
+    if (coachDesigne.erreur) throw coachDesigne.erreur;
+    const coach = coachDesigne.id
+      ? await supabase.from('profils_coach').select('id, prenom, nom').eq('id', coachDesigne.id)
+      : { data: [], error: null };
     if (coach.error) throw coach.error;
 
     const ligneClient = client.data?.[0] as
@@ -429,12 +436,19 @@ export const portDonneesSupabase: PortDonnees = {
       (compte.data?.[0] as { date_naissance: string } | undefined)?.date_naissance ?? '';
 
     if (profilActif === 'coach') {
-      const { data, error } = await supabase
-        .from('profils_coach')
-        .select(
-          'prenom, nom, discipline, titre_court, bio, commune_base_insee, formats, parcours_texte, langues',
-        )
-        .limit(1);
+      // Le profil désigné par le serveur, lu PAR ID : par limit(1), le formulaire pouvait montrer
+      // la bio d'un autre coach (vérifié, donc lisible), puis l'enregistrer comme la sienne.
+      // Trouvé au balayage du 2 novembre 2026 (src/test/lecture-profils-coach-designee.test.ts).
+      const coach = await monProfilCoachId();
+      if (coach.erreur) throw coach.erreur;
+      const { data, error } = coach.id
+        ? await supabase
+            .from('profils_coach')
+            .select(
+              'prenom, nom, discipline, titre_court, bio, commune_base_insee, formats, parcours_texte, langues',
+            )
+            .eq('id', coach.id)
+        : { data: [], error: null };
       if (error) throw error;
       const ligne = data?.[0] as
         | {
