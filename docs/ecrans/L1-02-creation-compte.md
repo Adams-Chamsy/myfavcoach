@@ -59,7 +59,7 @@ Pied fixe : bouton primaire « Créer mon compte ».
 | Mot de passe trop long | 72 caractères au maximum. |
 | Moins de 18 ans | My Fav Coach est réservé aux majeurs. |
 | Réseau | Pas de connexion. Ta saisie est gardée, réessaie. |
-| Serveur | On a un souci de notre côté. Ce n'est pas toi. |
+| Serveur | On a un souci de notre côté (titre) ; Ce n'est pas toi. Réessaie dans un instant. (détail) — formulation unique, 1er novembre 2026 |
 
 Aucun autre. Si une situation nouvelle apparaît, elle s'ajoute à ce tableau avant d'apparaître
 à l'écran.

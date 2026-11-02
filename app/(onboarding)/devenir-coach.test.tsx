@@ -156,21 +156,43 @@ describe('DevenirCoach (docs/ecrans/L1-08-activation-espace-coach.md)', () => {
     expect(etat.profilActif).toBe('coach');
   });
 
+  // Retours à l'écran (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B) : un message
+  // d'erreur doit être dans le champ de vision, donc HORS de la zone de défilement.
+  function dansLaZoneDeDefilement(element: unknown): boolean {
+    let noeud = element as { type?: string; parent?: unknown } | null;
+    while (noeud) {
+      if (noeud.type === 'RCTScrollView') return true;
+      noeud = (noeud.parent as typeof noeud) ?? null;
+    }
+    return false;
+  }
+
   // Critère 3 : une erreur serveur ne laisse aucun profil à moitié, bandeau, saisie conservée.
-  it('un échec serveur affiche l’erreur, ne navigue pas et conserve la saisie', async () => {
+  // Adapté le 2 novembre 2026 : il exigeait que le texte du port soit affiché tel quel, ce qui
+  // dupliquait le titre du bandeau. L'écran affiche désormais le repli serveur (titre, détail),
+  // une seule fois, hors de la zone de défilement, et « Réessayer » relance vraiment l'envoi.
+  it('un échec serveur affiche le repli une seule fois, ne navigue pas, conserve la saisie ; « Réessayer » relance', async () => {
     const { portDonnees } = await rendre();
-    portDonnees.echouerProchaineEcriturePourTest('On a un souci de notre côté.');
+    portDonnees.echouerProchaineEcriturePourTest();
 
     await fireEvent.press(screen.getByText('Cuisine et alimentation du quotidien'));
     await fireEvent.changeText(screen.getByLabelText('Téléphone'), TELEPHONE);
     await waitFor(() => expect(boutonDesactive()).toBe(false));
     await fireEvent.press(screen.getByText('Ouvrir mon espace coach'));
 
-    await waitFor(() => expect(screen.queryByText('On a un souci de notre côté.')).toBeTruthy());
+    await waitFor(() => expect(screen.queryByText('On a un souci de notre côté')).toBeTruthy());
+    expect(screen.getAllByText(/On a un souci de notre côté/)).toHaveLength(1);
+    expect(screen.getByText("Ce n'est pas toi. Réessaie dans un instant.")).toBeTruthy();
+    expect(dansLaZoneDeDefilement(screen.getByText('On a un souci de notre côté'))).toBe(false);
     expect(mockRemplacer).not.toHaveBeenCalled();
     expect((await portDonnees.lireEtatProfils()).coachExiste).toBe(false);
     // La saisie n'est pas perdue : le bouton est encore prêt à réessayer.
     expect(boutonDesactive()).toBe(false);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
+    await waitFor(() =>
+      expect(mockPousser).toHaveBeenCalledWith('/(onboarding)/devenir-coach-profil'),
+    );
   });
 
   // Critère 7 : aucun module de paiement importé, aucune lecture d'une clé publiable, dans

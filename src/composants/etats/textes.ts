@@ -17,7 +17,10 @@ export const textesRepliErreur: Record<SituationErreur, TexteRepli> = {
   },
   serveur: {
     titre: 'On a un souci de notre côté',
-    explication: "Ce n'est pas toi. On réessaie dans un instant.",
+    // Formulation unique, validée le 1er novembre 2026 (même texte que le repli des Edge Functions,
+    // supabase/functions/_partage/refus.ts) : « On réessaie » promettait un nouvel essai
+    // automatique qui n'existe pas.
+    explication: "Ce n'est pas toi. Réessaie dans un instant.",
   },
   delaiDepasse: {
     titre: 'Ça met plus de temps que prévu',

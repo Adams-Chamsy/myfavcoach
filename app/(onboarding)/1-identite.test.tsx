@@ -41,6 +41,17 @@ async function rendreEcran(port: FauxPortDonnees) {
   );
 }
 
+// Retours à l'écran (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B) : un message
+// d'erreur doit être dans le champ de vision, donc HORS de la zone de défilement.
+function dansLaZoneDeDefilement(element: unknown): boolean {
+  let noeud = element as { type?: string; parent?: unknown } | null;
+  while (noeud) {
+    if (noeud.type === 'RCTScrollView') return true;
+    noeud = (noeud.parent as typeof noeud) ?? null;
+  }
+  return false;
+}
+
 describe('OnboardingIdentite (docs/ecrans/L1-05-onboarding-client.md, étape 1/4)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -90,7 +101,11 @@ describe('OnboardingIdentite (docs/ecrans/L1-05-onboarding-client.md, étape 1/4
     await fireEvent.changeText(screen.getByLabelText('Prénom'), 'Camille');
     await fireEvent.press(screen.getByText('Continuer'));
 
-    await waitFor(() => expect(screen.getByText('On a un souci de notre côté.')).toBeTruthy());
+    // Adapté le 2 novembre 2026 : le repli serveur (titre, détail), hors de la zone de défilement,
+    // au lieu du texte du port affiché tel quel en bas de l'écran.
+    await waitFor(() => expect(screen.queryByText('On a un souci de notre côté')).toBeTruthy());
+    expect(screen.getByText("Ce n'est pas toi. Réessaie dans un instant.")).toBeTruthy();
+    expect(dansLaZoneDeDefilement(screen.getByText('On a un souci de notre côté'))).toBe(false);
     expect(mockPousser).not.toHaveBeenCalled();
     // La saisie n'est pas perdue.
     expect(screen.getByLabelText('Prénom').props.value).toBe('Camille');

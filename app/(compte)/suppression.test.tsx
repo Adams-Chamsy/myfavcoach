@@ -120,10 +120,25 @@ describe('Suppression de compte (docs/ecrans/L2-01-suppression-compte.md)', () =
     expect(mockRemplacer).toHaveBeenCalledWith('/(public)');
   });
 
+  // Retours à l'écran (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B) : un message
+  // d'erreur doit être dans le champ de vision, donc HORS de la zone de défilement.
+  function dansLaZoneDeDefilement(element: unknown): boolean {
+    let noeud = element as { type?: string; parent?: unknown } | null;
+    while (noeud) {
+      if (noeud.type === 'RCTScrollView') return true;
+      noeud = (noeud.parent as typeof noeud) ?? null;
+    }
+    return false;
+  }
+
   // Critère 4 : une erreur serveur ne marque pas le compte supprimé, ne vide pas la session.
-  it('une erreur serveur affiche un état d’erreur, sans déconnecter ni naviguer', async () => {
+  // Adapté le 2 novembre 2026 : il exigeait que le texte du port soit affiché tel quel. L'écran
+  // affiche le repli serveur (titre, détail) hors de la zone de défilement, et « Réessayer »
+  // relance vraiment la demande.
+  it('une erreur serveur affiche le repli, sans déconnecter ni naviguer ; « Réessayer » relance la demande', async () => {
     const { portAuth, portDonnees } = await rendre();
-    portDonnees.echouerProchaineEcriturePourTest('Erreur de test.');
+    portDonnees.echouerProchaineEcriturePourTest();
+    const espionSuppression = jest.spyOn(portDonnees, 'demanderSuppressionCompte');
     const espionDeconnexion = jest.spyOn(portAuth, 'deconnecter');
 
     await fireEvent.changeText(
@@ -132,9 +147,16 @@ describe('Suppression de compte (docs/ecrans/L2-01-suppression-compte.md)', () =
     );
     await fireEvent.press(screen.getByText('Supprimer définitivement'));
 
-    await waitFor(() => expect(screen.queryByText('Erreur de test.')).toBeTruthy());
+    await waitFor(() => expect(screen.queryByText('On a un souci de notre côté')).toBeTruthy());
+    expect(screen.getAllByText(/On a un souci de notre côté/)).toHaveLength(1);
+    expect(screen.getByText("Ce n'est pas toi. Réessaie dans un instant.")).toBeTruthy();
+    expect(dansLaZoneDeDefilement(screen.getByText('On a un souci de notre côté'))).toBe(false);
     expect(espionDeconnexion).not.toHaveBeenCalled();
     expect(mockRemplacer).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
+    await waitFor(() => expect(mockRemplacer).toHaveBeenCalledWith('/(public)'));
+    expect(espionSuppression).toHaveBeenCalledTimes(2);
   });
 
   // Critère 5 : le lien d'export ouvre L2-04 sans déclencher la suppression.

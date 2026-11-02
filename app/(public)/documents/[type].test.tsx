@@ -5,11 +5,13 @@ import { FournisseurTheme } from '@/theme/fournisseur';
 import DocumentLegalPublic from './[type]';
 
 const mockRetour = jest.fn();
+const mockRemplacer = jest.fn();
+let mockPeutRevenir = true;
 let mockTypeCourant = 'cgu';
 
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ type: mockTypeCourant }),
-  useRouter: () => ({ back: mockRetour }),
+  useRouter: () => ({ back: mockRetour, replace: mockRemplacer, canGoBack: () => mockPeutRevenir }),
 }));
 
 const METRIQUES_ZONES_SURES: Metrics = {
@@ -67,6 +69,45 @@ describe('Document légal, surface publique (docs/ecrans/L2-03-documents-contrac
       </SafeAreaProvider>,
     );
     await waitFor(() => expect(screen.queryByText('Document introuvable')).toBeTruthy());
+  });
+
+  // 2 novembre 2026 : l'état « Document introuvable » n'avait aucune sortie, alors que le rendu
+  // normal a son bouton retour (docs/dette.md, recherche des sorties présentes dans une seule
+  // branche). Atteint par un lien venu de l'extérieur, rien n'est derrière lui dans la pile :
+  // « Retour » ramène alors à l'accueil plutôt que de ne rien faire.
+  it('un type inconnu a aussi un bouton « Retour », qui revient en arrière s’il y a un écran derrière', async () => {
+    mockTypeCourant = 'inexistant';
+    mockPeutRevenir = true;
+    mockRetour.mockClear();
+    render(
+      <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
+        <FournisseurTheme>
+          <DocumentLegalPublic />
+        </FournisseurTheme>
+      </SafeAreaProvider>,
+    );
+    await waitFor(() => expect(screen.queryByText('Document introuvable')).toBeTruthy());
+    await fireEvent.press(screen.getByText('Retour'));
+    expect(mockRetour).toHaveBeenCalledTimes(1);
+  });
+
+  it('atteint par un lien, sans écran derrière : « Retour » ramène à l’accueil, jamais un bouton qui ne fait rien', async () => {
+    mockTypeCourant = 'inexistant';
+    mockPeutRevenir = false;
+    mockRetour.mockClear();
+    mockRemplacer.mockClear();
+    render(
+      <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
+        <FournisseurTheme>
+          <DocumentLegalPublic />
+        </FournisseurTheme>
+      </SafeAreaProvider>,
+    );
+    await waitFor(() => expect(screen.queryByText('Document introuvable')).toBeTruthy());
+    await fireEvent.press(screen.getByText('Retour'));
+    expect(mockRetour).not.toHaveBeenCalled();
+    expect(mockRemplacer).toHaveBeenCalledWith('/');
+    mockPeutRevenir = true;
   });
 
   // Critère 5 : aucune action d'acceptation sur cette surface.

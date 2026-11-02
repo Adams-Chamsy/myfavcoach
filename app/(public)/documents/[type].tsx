@@ -28,17 +28,36 @@ export function CorpsDocumentLegal({ type }: { type: string | undefined }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
+  // Revient en arrière s'il y a un écran derrière ; sinon (lien venu de l'extérieur, rien dans la
+  // pile), ramène à l'accueil : un bouton « Retour » qui ne fait rien serait un bouton qui ment.
+  function revenir() {
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  }
+
+  // Le même pied de page dans les deux états : une sortie ne vit jamais dans une seule branche
+  // (CLAUDE.md §8 ; « Document introuvable » n'en avait aucune jusqu'au 2 novembre 2026).
+  const piedRetour = (
+    <View
+      style={{
+        paddingHorizontal: theme.espace.gouttiere,
+        paddingTop: theme.espace[3],
+        paddingBottom: insets.bottom + theme.espace[3],
+        borderTopWidth: 1,
+        borderTopColor: theme.couleur.bordure.discrete,
+      }}
+    >
+      <Bouton libelle="Retour" variante="secondaire" onPress={revenir} />
+    </View>
+  );
+
   if (!estTypeConnu(type)) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: theme.couleur.fond.canevas,
-          padding: theme.espace.gouttiere,
-          justifyContent: 'center',
-        }}
-      >
-        <EtatVide titre="Document introuvable" explication="Ce lien ne mène à aucun document." />
+      <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+        <View style={{ flex: 1, padding: theme.espace.gouttiere, justifyContent: 'center' }}>
+          <EtatVide titre="Document introuvable" explication="Ce lien ne mène à aucun document." />
+        </View>
+        {piedRetour}
       </View>
     );
   }
@@ -67,17 +86,7 @@ export function CorpsDocumentLegal({ type }: { type: string | undefined }) {
       {/* Retour uniquement : aucune action d'acceptation ici, l'acceptation reste portée par le
           geste qui la déclenche ailleurs (inscription, activation coach) — fiche, "Contenu —
           surface publique". */}
-      <View
-        style={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[3],
-          paddingBottom: insets.bottom + theme.espace[3],
-          borderTopWidth: 1,
-          borderTopColor: theme.couleur.bordure.discrete,
-        }}
-      >
-        <Bouton libelle="Retour" variante="secondaire" onPress={() => router.back()} />
-      </View>
+      {piedRetour}
     </View>
   );
 }

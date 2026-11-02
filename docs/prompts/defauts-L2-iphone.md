@@ -47,7 +47,15 @@ L'application ne l'a jamais appelée. Aucune migration.
    que le chemin de l'application est couvert, pas un correctif serveur. Le dire dans le rapport.
 ```
 
-## Partie B — retours à l'écran (après la séance du 2 novembre)
+## Partie B — retours à l'écran
+
+**Faite le 2 novembre 2026**, après la correction urgente de l'avatar de bascule (`ccc3237`) et
+avant les quatre points d'essai du SDK 58 : l'ordre du jour a été changé par le développeur, la
+séance d'essais porte ainsi sur le code corrigé. Tests adaptés, chacun signalé dans son fichier :
+ceux qui exigeaient que le texte du port soit affiché tel quel (`devenir-coach`, `suppression`,
+`1-identite`, `3-poids`), et celui qui exigeait qu'un coach non vérifié puisse appuyer sur
+« Publier » (décision contraire du 1er novembre).
+
 
 Textes et décisions validés : `docs/ecrans/L2-15-creation-offre-coach.md`, « Retours à l'écran ».
 Plus : le texte de repli serveur unique (« Ce n'est pas toi. Réessaie dans un instant. ») dans

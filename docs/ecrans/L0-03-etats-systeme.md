@@ -56,7 +56,7 @@ Props : `titre`, `explication`, `resteAccessible?`, `onReessayer`, `code?`.
 | Situation | Titre | Explication |
 |---|---|---|
 | Réseau absent | Pas de connexion | Vérifie ton réseau, on réessaie dès que c'est revenu. |
-| Serveur (5xx) | On a un souci de notre côté | Ce n'est pas toi. On réessaie dans un instant. |
+| Serveur (5xx) | On a un souci de notre côté | Ce n'est pas toi. Réessaie dans un instant. (formulation unique, 1er novembre 2026 : « On réessaie » promettait un nouvel essai automatique qui n'existe pas) |
 | Délai dépassé | Ça met plus de temps que prévu | La connexion est lente, ou on rame un peu. |
 | Non autorisé (403) | Tu n'as pas accès à cette page | Elle appartient peut-être à ton autre espace. |
 | Introuvable (404) | Cette page n'existe plus | Elle a peut-être été supprimée. |

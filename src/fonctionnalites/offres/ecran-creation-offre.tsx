@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -6,7 +6,8 @@ import { Bouton } from '@/composants/bouton';
 import { Champ } from '@/composants/champ';
 import { Chip } from '@/composants/chip';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
-import type { Offre } from '@/services/donnees/port';
+import { textesRepliErreur } from '@/composants/etats/textes';
+import type { Offre, StatutVerification } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
 import { centimesDepuisSaisieEuros, saisieEurosDepuisCentimes } from './prix';
 
@@ -23,11 +24,36 @@ const ENGAGEMENTS_POSSIBLES = [
 const NOMBRE_BENEFICES_MIN = 3;
 const NOMBRE_BENEFICES_MAX = 5;
 
+// Refus de publier_offre. coach_non_verifie reste une défense du serveur : il n'est plus
+// atteignable depuis l'écran, qui désactive « Publier » pour un coach non vérifié (fiche L2-15,
+// décision du 1er novembre 2026). Un code inconnu prend le repli serveur (titre et détail).
 const TEXTES_REFUS: Record<string, string> = {
   coach_non_verifie: 'Ton identité doit être vérifiée avant de publier une offre.',
   engagement_humain_requis: 'Choisis au moins un engagement humain.',
-  inconnu: 'On a un souci de notre côté. Réessaie dans un instant.',
 };
+
+// Textes validés un par un le 1er novembre 2026 (docs/ecrans/L2-15-creation-offre-coach.md,
+// « Retours à l'écran »). Un seul manque à la fois, dans l'ordre des champs de l'écran.
+function manquePourPublier(titre: string, prixValide: boolean, nombreBenefices: number) {
+  if (titre.trim() === '') return 'Donne un titre à ton offre pour publier.';
+  if (!prixValide) return 'Choisis un prix entre 10 et 500 €.';
+  const restants = NOMBRE_BENEFICES_MIN - nombreBenefices;
+  if (restants > 0) {
+    return `Ajoute encore ${restants} ${restants === 1 ? 'bénéfice' : 'bénéfices'} pour publier.`;
+  }
+  return null;
+}
+
+function attenteVerification(statut: StatutVerification | null): string | null {
+  if (statut === null || statut === 'verifiee') return null;
+  if (statut === 'en_examen') return 'On regarde ton dossier. Tu pourras publier ensuite.';
+  return 'Tu pourras publier une fois ton identité vérifiée.';
+}
+
+type Retour =
+  | { type: 'enregistre' }
+  | { type: 'echec'; titre: string; detail: string }
+  | { type: 'refus'; texte: string };
 
 export function EcranCreationOffre({ offreExistante }: { offreExistante?: Offre }) {
   const theme = useTheme();
@@ -47,7 +73,20 @@ export function EcranCreationOffre({ offreExistante }: { offreExistante?: Offre 
   const [publieeLe, setPublieeLe] = useState<string | null>(offreExistante?.publieeLe ?? null);
   const [retireeLe, setRetireeLe] = useState<string | null>(offreExistante?.retireeLe ?? null);
   const [chargement, setChargement] = useState(false);
-  const [erreur, setErreur] = useState<string | null>(null);
+  // Le retour de la dernière action, toujours affiché HORS de la zone de défilement : près
+  // d'« Enregistrer » pour l'enregistrement, près de « Publier » pour la publication.
+  const [retour, setRetour] = useState<Retour | null>(null);
+  const [statutVerification, setStatutVerification] = useState<StatutVerification | null>(null);
+
+  useEffect(() => {
+    let monte = true;
+    void port.lireDossierVerification().then((dossier) => {
+      if (monte) setStatutVerification(dossier.statut);
+    });
+    return () => {
+      monte = false;
+    };
+  }, [port]);
 
   const prixCentimes = centimesDepuisSaisieEuros(saisiePrix);
   const prixValide = prixCentimes !== null && prixCentimes >= 1000 && prixCentimes <= 50000;
@@ -56,7 +95,16 @@ export function EcranCreationOffre({ offreExistante }: { offreExistante?: Offre 
   // engagements.length > 0 n'est PAS revérifié ici : le serveur le fait déjà
   // (engagement_humain_requis, publier_offre) et son texte de refus doit rester atteignable
   // depuis l'écran (docs/ecrans/L2-15, Règles) — un bouton désactivé ne l'afficherait jamais.
-  const publicable = brouillonComplet;
+  // La vérification d'identité, elle, désactive le bouton : un refus certain n'est pas une action.
+  const manque = manquePourPublier(titre, prixValide, benefices.length);
+  const attente = attenteVerification(statutVerification);
+  const publicable = brouillonComplet && statutVerification === 'verifiee';
+  const raisonInactif = manque ?? attente;
+  const echecServeur: Retour = {
+    type: 'echec',
+    titre: textesRepliErreur.serveur.titre,
+    detail: textesRepliErreur.serveur.explication,
+  };
 
   function modifications() {
     return {
@@ -70,38 +118,44 @@ export function EcranCreationOffre({ offreExistante }: { offreExistante?: Offre 
   }
 
   async function surEnregistrer() {
-    setErreur(null);
+    setRetour(null);
     setChargement(true);
     if (id) {
       const resultat = await port.modifierOffre(id, modifications());
       setChargement(false);
-      if (!resultat.succes) setErreur(resultat.erreur);
+      setRetour(resultat.succes ? { type: 'enregistre' } : echecServeur);
       return;
     }
     const resultat = await port.creerOffreBrouillon(modifications());
     setChargement(false);
     if (!resultat.succes) {
-      setErreur(resultat.erreur);
+      setRetour(echecServeur);
       return;
     }
     setId(resultat.id);
+    setRetour({ type: 'enregistre' });
+  }
+
+  function refusDePublication(code: string): Retour {
+    const texte = TEXTES_REFUS[code];
+    return texte ? { type: 'refus', texte } : echecServeur;
   }
 
   async function surPublier() {
-    setErreur(null);
+    setRetour(null);
     setChargement(true);
     if (!id) {
       const cree = await port.creerOffreBrouillon(modifications());
       if (!cree.succes) {
         setChargement(false);
-        setErreur(cree.erreur);
+        setRetour(echecServeur);
         return;
       }
       setId(cree.id);
       const resultat = await port.publierOffre(cree.id);
       setChargement(false);
       if (!resultat.succes) {
-        setErreur(TEXTES_REFUS[resultat.code] ?? TEXTES_REFUS.inconnu);
+        setRetour(refusDePublication(resultat.code));
         return;
       }
       setPublieeLe(new Date().toISOString());
@@ -110,7 +164,7 @@ export function EcranCreationOffre({ offreExistante }: { offreExistante?: Offre 
     const resultat = await port.publierOffre(id);
     setChargement(false);
     if (!resultat.succes) {
-      setErreur(TEXTES_REFUS[resultat.code] ?? TEXTES_REFUS.inconnu);
+      setRetour(refusDePublication(resultat.code));
       return;
     }
     setPublieeLe(new Date().toISOString());
@@ -143,6 +197,34 @@ export function EcranCreationOffre({ offreExistante }: { offreExistante?: Offre 
           desactive={chargement}
         />
       </View>
+
+      {retour?.type === 'enregistre' ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          style={{
+            ...theme.texte.petit,
+            color: theme.couleur.texte.secondaire,
+            paddingHorizontal: theme.espace.gouttiere,
+            paddingBottom: theme.espace[2],
+            textAlign: 'right',
+          }}
+        >
+          Brouillon enregistré.
+        </Text>
+      ) : null}
+      {retour?.type === 'echec' ? (
+        <View
+          accessibilityLiveRegion="polite"
+          style={{ paddingHorizontal: theme.espace.gouttiere, paddingBottom: theme.espace[2] }}
+        >
+          <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
+            {retour.titre}
+          </Text>
+          <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
+            {retour.detail}
+          </Text>
+        </View>
+      ) : null}
 
       <ScrollView
         contentContainerStyle={{
@@ -254,12 +336,6 @@ export function EcranCreationOffre({ offreExistante }: { offreExistante?: Offre 
             Mise en avant (« LE PLUS CHOISI »)
           </Text>
         </View>
-
-        {erreur ? (
-          <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
-            {erreur}
-          </Text>
-        ) : null}
       </ScrollView>
 
       <View
@@ -269,8 +345,22 @@ export function EcranCreationOffre({ offreExistante }: { offreExistante?: Offre 
           paddingBottom: insets.bottom + theme.espace[3],
           borderTopWidth: 1,
           borderTopColor: theme.couleur.bordure.discrete,
+          gap: theme.espace[2],
         }}
       >
+        {retour?.type === 'refus' ? (
+          <Text
+            accessibilityLiveRegion="polite"
+            style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}
+          >
+            {retour.texte}
+          </Text>
+        ) : null}
+        {!(publieeLe && !retireeLe) && raisonInactif ? (
+          <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+            {raisonInactif}
+          </Text>
+        ) : null}
         {publieeLe && !retireeLe ? (
           <Bouton
             libelle="Retirer"

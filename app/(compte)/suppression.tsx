@@ -157,19 +157,25 @@ export default function Suppression() {
           onChangeTexte={setMotif}
           desactive={chargement}
         />
+      </ScrollView>
 
+      {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
+          (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B). « Réessayer » relance
+          vraiment l'envoi ; le détail est le repli serveur, jamais le texte du port, qui
+          répétait le titre. */}
+      <View style={{ paddingHorizontal: theme.espace.gouttiere }}>
         {erreur ? (
           <View accessibilityLiveRegion="polite">
             <EtatErreur
               titre={textesRepliErreur.serveur.titre}
-              explication={erreur}
+              explication={textesRepliErreur.serveur.explication}
               nombreEchecs={0}
-              onReessayer={() => {}}
+              onReessayer={() => void surSupprimer()}
               onNousEcrire={() => {}}
             />
           </View>
         ) : null}
-      </ScrollView>
+      </View>
 
       <View
         style={{
