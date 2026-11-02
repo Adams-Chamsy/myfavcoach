@@ -192,69 +192,40 @@ describe('portDonneesSupabase', () => {
   });
 
   describe('creerProfilClient', () => {
-    // UPDATE d'abord, INSERT seulement si 0 ligne affectée — jamais un upsert (compte_id n'a
-    // aucun grant UPDATE, voir le commentaire de creerProfilClient dans supabase.ts). Nécessaire
-    // depuis que le bouton retour (P1.11) peut ramener à l'étape 1 après qu'un profil existe.
-    function tablePourCreerProfilClient(
-      ligneExistante: unknown[] | null,
-      erreurUpdate: unknown = null,
-      erreurInsert: unknown = null,
-    ) {
-      const select = jest.fn(() => Promise.resolve({ data: ligneExistante, error: erreurUpdate }));
+    // Une table qui accepterait l'écriture directe : si l'adaptateur y écrivait encore, il
+    // réussirait — c'est l'assertion sur la fonction appelée qui doit le refuser, pas un plantage.
+    function tableQuiAccepte() {
+      const select = jest.fn(() => Promise.resolve({ data: [{ id: 'p-client' }], error: null }));
       const eq = jest.fn(() => ({ select }));
-      const update = jest.fn(() => ({ eq }));
-      const insert = jest.fn(() => Promise.resolve({ error: erreurInsert }));
-      return { update, eq, select, insert };
+      return {
+        update: jest.fn(() => ({ eq })),
+        insert: jest.fn(() => Promise.resolve({ error: null })),
+      };
     }
 
-    it("aucun profil existant : l'UPDATE ne touche aucune ligne, alors INSERT — nom vide traduit en null", async () => {
+    // Option B (2 novembre 2026, docs/domaine.md §3.2) : un profil se crée par une fonction du
+    // serveur, jamais par une écriture directe — l'INSERT dans profils_client est fermé (0051).
+    it('appelle creer_profil_client(prenom, nom), jamais la table profils_client', async () => {
       supabaseMock.auth.getSession.mockResolvedValue(SESSION_A);
-      const table = tablePourCreerProfilClient([]);
-      supabaseMock.from.mockReturnValue(table);
+      supabaseMock.rpc.mockResolvedValue({ data: null, error: null });
+      supabaseMock.from.mockReturnValue(tableQuiAccepte());
+
+      const resultat = await portDonneesSupabase.creerProfilClient('Camille', 'Dupont');
+
+      expect(resultat).toEqual({ succes: true });
+      expect(supabaseMock.rpc).toHaveBeenCalledWith('creer_profil_client', {
+        prenom: 'Camille',
+        nom: 'Dupont',
+      });
+      expect(supabaseMock.from).not.toHaveBeenCalled();
+    });
+
+    it('un refus de la fonction rend ResultatEcriture en échec, jamais une exception', async () => {
+      supabaseMock.auth.getSession.mockResolvedValue(SESSION_A);
+      supabaseMock.rpc.mockResolvedValue({ data: null, error: new Error('panne') });
+      supabaseMock.from.mockReturnValue(tableQuiAccepte());
 
       const resultat = await portDonneesSupabase.creerProfilClient('Camille', '');
-
-      expect(resultat).toEqual({ succes: true });
-      expect(supabaseMock.from).toHaveBeenCalledWith('profils_client');
-      expect(table.update).toHaveBeenCalledWith({
-        prenom: 'Camille',
-        nom: null,
-        onboarding_etape: 2,
-      });
-      expect(table.eq).toHaveBeenCalledWith('compte_id', 'compte-a');
-      expect(table.insert).toHaveBeenCalledWith({
-        compte_id: 'compte-a',
-        prenom: 'Camille',
-        nom: null,
-        onboarding_etape: 2,
-      });
-    });
-
-    it('un profil existe déjà (retour à l’étape 1) : met à jour, jamais un second INSERT', async () => {
-      supabaseMock.auth.getSession.mockResolvedValue(SESSION_A);
-      const table = tablePourCreerProfilClient([{ id: 'p-client' }]);
-      supabaseMock.from.mockReturnValue(table);
-
-      const resultat = await portDonneesSupabase.creerProfilClient('Camille', 'Dupont');
-
-      expect(resultat).toEqual({ succes: true });
-      expect(table.insert).not.toHaveBeenCalled();
-    });
-
-    it("un échec de l'UPDATE rend ResultatEcriture en échec, jamais une exception", async () => {
-      supabaseMock.auth.getSession.mockResolvedValue(SESSION_A);
-      supabaseMock.from.mockReturnValue(tablePourCreerProfilClient(null, new Error('panne')));
-
-      const resultat = await portDonneesSupabase.creerProfilClient('Camille', 'Dupont');
-
-      expect(resultat.succes).toBe(false);
-    });
-
-    it("un échec de l'INSERT (première fois) rend ResultatEcriture en échec", async () => {
-      supabaseMock.auth.getSession.mockResolvedValue(SESSION_A);
-      supabaseMock.from.mockReturnValue(tablePourCreerProfilClient([], null, new Error('panne')));
-
-      const resultat = await portDonneesSupabase.creerProfilClient('Camille', 'Dupont');
 
       expect(resultat.succes).toBe(false);
     });

@@ -233,6 +233,34 @@ async function creerCompteReel(
   return { compteId: utilisateur.id, jwt: session.access_token };
 }
 
+// Le chemin de l'application pour créer un profil client (option B, 2 novembre 2026) : la fonction
+// du serveur creer_profil_client(), qui crée le profil ET pose l'espace client, jamais une
+// écriture directe dans profils_client (fermée par 0051). CLAUDE.md §8 : le banc emprunte le
+// chemin de l'application. Rend l'identifiant du profil créé.
+async function creerProfilClientParLeServeur(
+  session: Session,
+  prenom: string,
+  nom: string | null = null,
+): Promise<string> {
+  const { statut, corps } = await appelRest('/rest/v1/rpc/creer_profil_client', {
+    methode: 'POST',
+    session,
+    corps: { prenom, nom: nom ?? '' },
+  });
+  if (statut >= 400) {
+    throw new Error(
+      `Préparation du banc : creer_profil_client refusée (${statut}) : ${JSON.stringify(corps)}`,
+    );
+  }
+  const lu = await appelRest(`/rest/v1/profils_client?compte_id=eq.${session.compteId}&select=id`, {
+    session: 'admin',
+  });
+  const id = (lu.corps as { id: string }[])[0]?.id;
+  if (!id)
+    throw new Error('Préparation du banc : creer_profil_client n’a créé aucun profil client');
+  return id;
+}
+
 async function supprimerCompteReel(compteId: string): Promise<void> {
   await fetch(`${API_URL}/auth/v1/admin/users/${compteId}`, {
     method: 'DELETE',
@@ -343,8 +371,9 @@ afterAll(async () => {
 });
 
 describe('profils_client', () => {
-  // A et B créent leur profil client par le chemin réel : leur propre session, la politique
-  // d'INSERT de profils_client s'applique (PostgREST direct, docs/api.md §3).
+  // A et B créent leur profil client par le chemin réel : leur propre session, la fonction du
+  // serveur creer_profil_client (option B, 2 novembre 2026 ; avant, une écriture directe sous la
+  // politique d'INSERT, aujourd'hui fermée).
   //
   // Chaque étape de préparation vérifie son propre succès : un échec silencieux ici (ex. une
   // politique RLS ou un GRANT manquant) ne doit jamais se manifester des dizaines de lignes plus
@@ -352,29 +381,9 @@ describe('profils_client', () => {
   // réponse HTTP exacte, sans faire échouer les describe voisins (comptes, consentements) qui
   // n'ont pas besoin de profils_client.
   beforeAll(async () => {
-    const profilClientA = await appelRest('/rest/v1/profils_client', {
-      methode: 'POST',
-      session: A,
-      corps: { compte_id: A.compteId, prenom: 'A' },
-    });
-    if (profilClientA.statut >= 400) {
-      throw new Error(
-        `Préparation du banc : création du profil client de A refusée (${profilClientA.statut}) : ` +
-          JSON.stringify(profilClientA.corps),
-      );
-    }
-
-    const profilClientB = await appelRest('/rest/v1/profils_client', {
-      methode: 'POST',
-      session: B,
-      corps: { compte_id: B.compteId, prenom: 'B' },
-    });
-    if (profilClientB.statut >= 400) {
-      throw new Error(
-        `Préparation du banc : création du profil client de B refusée (${profilClientB.statut}) : ` +
-          JSON.stringify(profilClientB.corps),
-      );
-    }
+    // Option B (2 novembre 2026) : par creer_profil_client, le chemin de l'application.
+    await creerProfilClientParLeServeur(A, 'A');
+    await creerProfilClientParLeServeur(B, 'B');
   }, 30_000);
 
   it('A lit son profil client : une ligne', async () => {
@@ -445,6 +454,11 @@ describe('profils_client', () => {
   // (0001_creer_identite.sql : "un profil ne change jamais de propriétaire"), et le plan
   // d'exécution d'un upsert le réécrit dans sa branche UPDATE même à valeur inchangée. D'où le
   // choix réel : UPDATE (colonnes accordées) d'abord, INSERT seulement si 0 ligne touchée.
+  //
+  // Depuis l'option B (0051, 2 novembre 2026), ce POST est refusé plus tôt : le grant d'INSERT
+  // lui-même est retiré. Le test reste vert (403, « permission denied »), mais il ne prouve plus
+  // la raison de son titre. La règle qu'il gardait (pas d'upsert) n'a plus d'objet : la création
+  // passe par creer_profil_client, qui fait l'UPDATE puis l'INSERT côté serveur.
   it('A upserte son propre profil client (POST + merge-duplicates) : refusé — compte_id sans grant UPDATE', async () => {
     const reponse = await fetch(`${API_URL}/rest/v1/profils_client`, {
       method: 'POST',
@@ -496,37 +510,82 @@ describe('profils_client', () => {
     expect((relu as { prenom: string }[])[0].prenom).toBe('B');
   });
 
-  it("un deuxième profil client sur le même compte est refusé par la contrainte d'unicité", async () => {
-    const { statut } = await appelRest('/rest/v1/profils_client', {
+  // Option B (2 novembre 2026) : creer_profil_client est idempotente, comme l'onboarding qu'elle
+  // sert (retour à l'étape 1 après qu'un profil existe). Avant : « un deuxième profil client est
+  // refusé par la contrainte d'unicité », sur une écriture directe aujourd'hui fermée.
+  it('un second appel de creer_profil_client ne crée pas de second profil : il met à jour le premier', async () => {
+    const { statut } = await appelRest('/rest/v1/rpc/creer_profil_client', {
       methode: 'POST',
       session: A,
-      corps: { compte_id: A.compteId, prenom: 'A bis' },
+      corps: { prenom: 'A bis', nom: '' },
     });
-    expect(statut).toBeGreaterThanOrEqual(400);
+    expect(statut).toBe(204);
+    const { corps } = await appelRest(
+      `/rest/v1/profils_client?compte_id=eq.${A.compteId}&select=prenom`,
+      { session: 'admin' },
+    );
+    expect(corps).toEqual([{ prenom: 'A bis' }]);
+    await creerProfilClientParLeServeur(A, 'A');
   });
 
-  // Sens illégitime de profils_client_insert_espace_client, chemin « autre compte » : le
-  // WITH CHECK exige compte_id = auth.uid(). Miroir de « A tente de créer son profil coach hors
-  // espace coach » (describe profils_coach) — le cas était couvert côté coach, pas côté client.
-  it('A insère un profil client pour le compte de B : refusé, profil de B intact', async () => {
-    const { statut } = await appelRest('/rest/v1/profils_client', {
-      methode: 'POST',
-      session: A,
-      corps: { compte_id: B.compteId, prenom: 'PIRATE' },
-    });
-    expect(statut).toBeGreaterThanOrEqual(400);
-
+  // Option B : la porte de derrière est fermée. Aucune écriture directe dans profils_client, pas
+  // même pour son propre compte (grant retiré par 0051) ; creer_profil_client n'a AUCUN
+  // paramètre de compte, créer pour un autre est structurellement impossible.
+  it('aucune écriture directe dans profils_client, ni pour soi ni pour un autre : refusée (42501), profil de B intact', async () => {
+    for (const compteCible of [A.compteId, B.compteId]) {
+      const { statut, corps } = await appelRest('/rest/v1/profils_client', {
+        methode: 'POST',
+        session: A,
+        corps: { compte_id: compteCible, prenom: 'PIRATE' },
+      });
+      expect(statut).toBe(403);
+      expect((corps as { code?: string }).code).toBe('42501');
+    }
     const { corps: relu } = await appelRest(`/rest/v1/profils_client?compte_id=eq.${B.compteId}`, {
       session: 'admin',
     });
     expect((relu as { prenom: string }[])[0].prenom).toBe('B');
   });
 
-  // Sens illégitime, chemin « espace » : le WITH CHECK exige aussi profil_actif_courant() =
-  // 'client'. Compte dédié muni d'un profil coach (donc profil actif 'coach') et SANS profil
-  // client — creer_profil_coach le place exactement dans cet état. Il tente alors d'insérer son
-  // propre profil client : refusé parce qu'il n'est pas en espace client.
-  it('un compte en espace coach ne peut pas insérer son profil client : refusé', async () => {
+  // Accès légitime, test NOMMÉ (CLAUDE.md §8, deux sens ; docs/dette.md, les politiques de 0002
+  // sans test d'accès légitime) : un compte neuf crée son profil client par la fonction.
+  it('un compte neuf crée son profil client par creer_profil_client : étape 2, espace client actif', async () => {
+    const email = `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-creer-client-neuf@${DOMAINE_EMAIL}`;
+    const compte = await creerCompteReel(email, {
+      date_naissance: '1990-01-01',
+      cgu_version_acceptee: '2026-08-01',
+    });
+    try {
+      const { statut } = await appelRest('/rest/v1/rpc/creer_profil_client', {
+        methode: 'POST',
+        session: compte,
+        corps: { prenom: 'Neuf', nom: '' },
+      });
+      expect(statut).toBe(204);
+      const { corps } = await appelRest(
+        `/rest/v1/profils_client?compte_id=eq.${compte.compteId}&select=prenom,nom,onboarding_etape`,
+        { session: 'admin' },
+      );
+      expect(corps).toEqual([{ prenom: 'Neuf', nom: null, onboarding_etape: 2 }]);
+      const actif = await appelRest('/rest/v1/rpc/profil_actif_courant', {
+        methode: 'POST',
+        session: compte,
+        corps: {},
+      });
+      expect(actif.corps).toBe('client');
+    } finally {
+      await supprimerCompteReel(compte.compteId);
+    }
+  });
+
+  // [INVERSÉ par l'option B, 2 novembre 2026] Ce test s'appelait « un compte en espace coach ne
+  // peut pas insérer son profil client : refusé ». Il gardait précisément l'impasse retirée : un
+  // compte seulement coach ne pouvait ni créer son profil client (la politique exigeait l'espace
+  // client actif) ni passer à l'espace client (basculer_profil exige un profil client). Même
+  // inversion assumée que les invitations à L4 (Règle 8). Désormais : par creer_profil_client, il
+  // crée son profil client ET passe en espace client, par le même geste qu'un compte client ouvre
+  // son espace coach (creer_profil_coach, 0005).
+  it('[inversé] un compte seulement coach crée son profil client par creer_profil_client, et passe en espace client', async () => {
     const email = `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-insert-client-espace@${DOMAINE_EMAIL}`;
     const compte = await creerCompteReel(email, {
       date_naissance: '1990-01-01',
@@ -540,20 +599,34 @@ describe('profils_client', () => {
       });
       expect(creationCoach.statut).toBeLessThan(400);
 
-      const { statut } = await appelRest('/rest/v1/profils_client', {
+      const { statut } = await appelRest('/rest/v1/rpc/creer_profil_client', {
         methode: 'POST',
         session: compte,
-        corps: { compte_id: compte.compteId, prenom: 'X' },
+        corps: { prenom: 'X', nom: 'Y' },
       });
-      expect(statut).toBeGreaterThanOrEqual(400);
-
-      const { corps } = await appelRest(`/rest/v1/profils_client?compte_id=eq.${compte.compteId}`, {
-        session: 'admin',
+      expect(statut).toBe(204);
+      const { corps } = await appelRest(
+        `/rest/v1/profils_client?compte_id=eq.${compte.compteId}&select=prenom`,
+        { session: 'admin' },
+      );
+      expect(corps).toEqual([{ prenom: 'X' }]);
+      const actif = await appelRest('/rest/v1/rpc/profil_actif_courant', {
+        methode: 'POST',
+        session: compte,
+        corps: {},
       });
-      expect(corps).toEqual([]);
+      expect(actif.corps).toBe('client');
     } finally {
       await supprimerCompteReel(compte.compteId);
     }
+  });
+
+  it('anon ne peut pas appeler creer_profil_client', async () => {
+    const { statut } = await appelRest('/rest/v1/rpc/creer_profil_client', {
+      methode: 'POST',
+      corps: { prenom: 'Anonyme', nom: '' },
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
   });
 });
 
@@ -634,20 +707,18 @@ describe('profils_coach', () => {
     expect(corps).toEqual([]);
   });
 
-  // Ce test ne PROUVE PAS profils_coach_insert_espace_coach : le cycle rouge/vert de P1.5 a
-  // montré 21/21 verts avec ET sans cette politique — elle refuse ce qu'un défaut absence-de-
-  // politique refuserait de toute façon (personne ne peut satisfaire son WITH CHECK par ce
-  // chemin, voir docs/dette.md). Elle est fonctionnellement inerte aujourd'hui, pas seulement
-  // hors de portée du banc. Ce test reste néanmoins utile : il documente le comportement attendu
-  // (refus) et resterait vert si la politique disparaissait par erreur — juste sans le prouver
-  // par un rouge. Voir docs/dette.md pour l'analyse complète et l'échéance L2.
-  it('A tente de créer son profil coach hors espace coach : refusé', async () => {
-    const { statut } = await appelRest('/rest/v1/profils_coach', {
+  // Option B (2 novembre 2026) : la politique profils_coach_insert_espace_coach, inerte depuis
+  // 0005 (personne ne pouvait satisfaire son WITH CHECK, cycle rouge/vert de P1.5), est retirée
+  // par 0051 avec le grant d'INSERT : un profil coach se crée par creer_profil_coach, jamais par
+  // une écriture directe (docs/domaine.md §3.2). Ce test prouve désormais la porte fermée.
+  it('aucune écriture directe dans profils_coach : refusée (42501), le profil se crée par creer_profil_coach', async () => {
+    const { statut, corps } = await appelRest('/rest/v1/profils_coach', {
       methode: 'POST',
       session: A,
       corps: { compte_id: A.compteId, prenom: 'A', nom: 'Test', discipline: 'yoga' },
     });
-    expect(statut).toBeGreaterThanOrEqual(400);
+    expect(statut).toBe(403);
+    expect((corps as { code?: string }).code).toBe('42501');
   });
 
   it('B, en espace client, modifie son profil coach : refusé', async () => {
@@ -1124,12 +1195,7 @@ describe('poids du profil client protégé par consentement (0004_proteger_donne
     // Reflète le vrai parcours (docs/ecrans/L1-05, étape 1 crée la ligne sans poids ; étape 3
     // l'écrit plus tard) : jamais un profil déjà muni de poids créé d'un coup, qui masquerait
     // le chemin UPDATE que ce déclencheur protège réellement.
-    const { statut } = await appelRest('/rest/v1/profils_client', {
-      methode: 'POST',
-      session: C,
-      corps: { compte_id: C.compteId, prenom: 'Camille-C' },
-    });
-    if (statut !== 201) throw new Error(`Préparation du profil client de C échouée : ${statut}`);
+    await creerProfilClientParLeServeur(C, 'Camille-C');
   });
 
   it('C écrit son poids de départ sans consentement donneesSante : refusé', async () => {
@@ -2371,19 +2437,21 @@ describe('langues et communes_reference — contraintes ajoutées par 0025', () 
     expect(JSON.stringify(corps)).toMatch(/foreign key|profils_coach_commune_base_insee_fkey/i);
   });
 
-  // Côté client, une insertion directe par le compte lui-même est légitime (docs/api.md §3,
-  // déjà exercée par le describe profils_client plus haut) — la commune y est donc exercée par
-  // une vraie session, pas par admin.
+  // Côté client, le profil se crée par creer_profil_client (option B, 2 novembre 2026), et la
+  // commune s'écrit ensuite par une modification : le vrai chemin de « Mes informations ». Avant,
+  // ce test passait par une insertion directe, aujourd'hui fermée (il aurait été refusé en 42501,
+  // pour une autre raison que la clé étrangère qu'il veut prouver).
   it('une commune absente du référentiel est refusée à l’écriture, côté client (clé étrangère)', async () => {
-    const { statut, corps } = await appelRest('/rest/v1/profils_client', {
-      methode: 'POST',
-      session: compteClientCommune,
-      corps: {
-        compte_id: compteClientCommune.compteId,
-        prenom: 'Sans',
-        commune_insee: '00000',
+    await creerProfilClientParLeServeur(compteClientCommune, 'Sans');
+    const { statut, corps } = await appelRest(
+      `/rest/v1/profils_client?compte_id=eq.${compteClientCommune.compteId}`,
+      {
+        methode: 'PATCH',
+        session: compteClientCommune,
+        prefer: 'return=minimal',
+        corps: { commune_insee: '00000' },
       },
-    });
+    );
     expect(statut).toBeGreaterThanOrEqual(400);
     expect(JSON.stringify(corps)).toMatch(/foreign key|profils_client_commune_insee_fkey/i);
   });
@@ -3326,10 +3394,10 @@ describe('invitations — L3bis (0026/0027)', () => {
       `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-${suffixe}@${DOMAINE_EMAIL}`,
       { date_naissance: '1995-01-01', cgu_version_acceptee: '2026-08-01', jeton_invitation: jeton },
     );
-    const creationProfil = await appelRest('/rest/v1/profils_client', {
+    const creationProfil = await appelRest('/rest/v1/rpc/creer_profil_client', {
       methode: 'POST',
       session,
-      corps: { compte_id: session.compteId, prenom: suffixe, nom },
+      corps: { prenom: suffixe, nom },
     });
     if (creationProfil.statut >= 400) {
       throw new Error(
@@ -3840,13 +3908,7 @@ describe('abonnements — L4 (0033)', () => {
   }
 
   async function creerProfilClient(session: Session, prenom: string): Promise<string> {
-    const { statut, corps } = await appelRest('/rest/v1/profils_client', {
-      methode: 'POST',
-      session,
-      corps: { compte_id: session.compteId, prenom, nom: 'Banc' },
-    });
-    if (statut >= 400) throw new Error(`Préparation du banc : profil client refusé (${statut})`);
-    return (corps as { id: string }[])[0].id;
+    return creerProfilClientParLeServeur(session, prenom, 'Banc');
   }
 
   async function souscrire(
@@ -5174,13 +5236,7 @@ describe('intentions et synchronisation — L4 (0037, 0038)', () => {
     );
     let id = (lu.corps as { id: string }[])[0]?.id;
     if (!id) {
-      const cree = await appelRest('/rest/v1/profils_client', {
-        methode: 'POST',
-        session,
-        corps: { compte_id: session.compteId, prenom, nom: 'Banc' },
-      });
-      if (cree.statut >= 400) throw new Error(`Préparation du banc : profil client refusé`);
-      id = (cree.corps as { id: string }[])[0].id;
+      id = await creerProfilClientParLeServeur(session, prenom, 'Banc');
     }
     const bascule = await appelRest('/rest/v1/rpc/basculer_profil', {
       methode: 'POST',
@@ -6187,13 +6243,7 @@ describe('avis — L4 (0048, 0049)', () => {
     );
     let id = (lu.corps as { id: string }[])[0]?.id;
     if (!id) {
-      const cree = await appelRest('/rest/v1/profils_client', {
-        methode: 'POST',
-        session,
-        corps: { compte_id: session.compteId, prenom, nom: 'Banc' },
-      });
-      if (cree.statut >= 400) throw new Error(`Préparation du banc : profil client refusé`);
-      id = (cree.corps as { id: string }[])[0].id;
+      id = await creerProfilClientParLeServeur(session, prenom, 'Banc');
     }
     const bascule = await appelRest('/rest/v1/rpc/basculer_profil', {
       methode: 'POST',

@@ -20,7 +20,7 @@ const METRIQUES_ZONES_SURES: Metrics = {
   frame: { x: 0, y: 0, width: 393, height: 852 },
 };
 
-async function rendreEcran(port: FauxPortDonnees) {
+async function rendreEcran(portDonnees: FauxPortDonnees) {
   const portAuth = creerFauxPortAuth();
   await portAuth.inscrire('camille@exemple.fr', 'bon-mot-de-passe', '2000-01-01');
   portAuth.verifierEmailPourTest('camille@exemple.fr');
@@ -30,7 +30,7 @@ async function rendreEcran(port: FauxPortDonnees) {
     <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
       <FournisseurTheme>
         <FournisseurSession port={portAuth}>
-          <FournisseurDonnees port={port}>
+          <FournisseurDonnees port={portDonnees}>
             <OnboardingPoids />
           </FournisseurDonnees>
         </FournisseurSession>
@@ -58,18 +58,18 @@ describe('OnboardingPoids (docs/ecrans/L1-05-onboarding-client.md, étape 3/4)',
   // Critère 3 : "Interrupteur de consentement décoché : les deux champs de poids n'acceptent
   // aucune saisie, et leur inertie est perceptible autrement que par la couleur."
   it('les champs de poids sont désactivés tant que le consentement est décoché', async () => {
-    const port = creerFauxPortDonnees();
-    await port.creerProfilClient('Camille', '');
-    await rendreEcran(port);
+    const portDonnees = creerFauxPortDonnees();
+    await portDonnees.creerProfilClient('Camille', '');
+    await rendreEcran(portDonnees);
 
     expect(screen.getByLabelText('Poids actuel (kg)').props.accessibilityState.disabled).toBe(true);
     expect(screen.getByLabelText('Poids visé (kg)').props.accessibilityState.disabled).toBe(true);
   });
 
   it("cocher l'interrupteur active les champs de poids", async () => {
-    const port = creerFauxPortDonnees();
-    await port.creerProfilClient('Camille', '');
-    await rendreEcran(port);
+    const portDonnees = creerFauxPortDonnees();
+    await portDonnees.creerProfilClient('Camille', '');
+    await rendreEcran(portDonnees);
 
     await fireEvent(
       screen.getByLabelText("J'accepte l'enregistrement de mes données de santé"),
@@ -83,17 +83,17 @@ describe('OnboardingPoids (docs/ecrans/L1-05-onboarding-client.md, étape 3/4)',
   });
 
   it('le bouton Continuer est toujours actif, sans aucune saisie', async () => {
-    const port = creerFauxPortDonnees();
-    await port.creerProfilClient('Camille', '');
-    await rendreEcran(port);
+    const portDonnees = creerFauxPortDonnees();
+    await portDonnees.creerProfilClient('Camille', '');
+    await rendreEcran(portDonnees);
 
     expect(screen.getByText('Continuer').parent?.props.accessibilityState?.disabled).toBeFalsy();
   });
 
   it('avec consentement et poids saisis, enregistre en grammes et avance à l’étape 4', async () => {
-    const port = creerFauxPortDonnees();
-    await port.creerProfilClient('Camille', '');
-    await rendreEcran(port);
+    const portDonnees = creerFauxPortDonnees();
+    await portDonnees.creerProfilClient('Camille', '');
+    await rendreEcran(portDonnees);
 
     await fireEvent(
       screen.getByLabelText("J'accepte l'enregistrement de mes données de santé"),
@@ -105,30 +105,30 @@ describe('OnboardingPoids (docs/ecrans/L1-05-onboarding-client.md, étape 3/4)',
     await fireEvent.press(screen.getByText('Continuer'));
 
     await waitFor(() => expect(mockPousser).toHaveBeenCalledWith('/(onboarding)/4-cest-parti'));
-    expect(await port.lireProfilOnboarding()).toMatchObject({
+    expect(await portDonnees.lireProfilOnboarding()).toMatchObject({
       poidsDepartGrammes: 70500,
       poidsCibleGrammes: 65000,
     });
   });
 
   it('sans consentement, Continuer avance sans enregistrer de poids', async () => {
-    const port = creerFauxPortDonnees();
-    await port.creerProfilClient('Camille', '');
-    await rendreEcran(port);
+    const portDonnees = creerFauxPortDonnees();
+    await portDonnees.creerProfilClient('Camille', '');
+    await rendreEcran(portDonnees);
 
     await fireEvent.press(screen.getByText('Continuer'));
 
     await waitFor(() => expect(mockPousser).toHaveBeenCalledWith('/(onboarding)/4-cest-parti'));
-    expect(await port.lireProfilOnboarding()).toMatchObject({
+    expect(await portDonnees.lireProfilOnboarding()).toMatchObject({
       poidsDepartGrammes: null,
       poidsCibleGrammes: null,
     });
   });
 
   it("« Passer » ignore l'état du formulaire, même si l'interrupteur a été touché", async () => {
-    const port = creerFauxPortDonnees();
-    await port.creerProfilClient('Camille', '');
-    await rendreEcran(port);
+    const portDonnees = creerFauxPortDonnees();
+    await portDonnees.creerProfilClient('Camille', '');
+    await rendreEcran(portDonnees);
 
     await fireEvent(
       screen.getByLabelText("J'accepte l'enregistrement de mes données de santé"),
@@ -139,21 +139,21 @@ describe('OnboardingPoids (docs/ecrans/L1-05-onboarding-client.md, étape 3/4)',
     await fireEvent.press(screen.getByText('Passer'));
 
     await waitFor(() => expect(mockPousser).toHaveBeenCalledWith('/(onboarding)/4-cest-parti'));
-    expect(await port.lireProfilOnboarding()).toMatchObject({ poidsDepartGrammes: null });
+    expect(await portDonnees.lireProfilOnboarding()).toMatchObject({ poidsDepartGrammes: null });
   });
 
   // Reprise via le bouton retour depuis l'étape 4 (P1.11) : relit un poids déjà enregistré, et
   // recoche l'interrupteur (sa présence implique le consentement déjà accordé).
   it('pré-remplit le poids déjà enregistré et recoche le consentement (retour depuis l’étape 4)', async () => {
-    const port = creerFauxPortDonnees();
-    await port.creerProfilClient('Camille', '');
-    await port.enregistrerPointDeDepart({
+    const portDonnees = creerFauxPortDonnees();
+    await portDonnees.creerProfilClient('Camille', '');
+    await portDonnees.enregistrerPointDeDepart({
       consentementAccorde: true,
       versionConsentement: '2026-09-04',
       poidsDepartGrammes: 82300,
       poidsCibleGrammes: 78000,
     });
-    await rendreEcran(port);
+    await rendreEcran(portDonnees);
 
     await waitFor(() =>
       expect(screen.getByLabelText('Poids actuel (kg)').props.value).toBe('82,3'),
@@ -165,15 +165,15 @@ describe('OnboardingPoids (docs/ecrans/L1-05-onboarding-client.md, étape 3/4)',
   });
 
   it('un échec du serveur affiche une erreur et ne navigue pas', async () => {
-    const port = creerFauxPortDonnees();
-    await port.creerProfilClient('Camille', '');
-    port.echouerProchaineEcriturePourTest('On a un souci de notre côté.');
-    await rendreEcran(port);
+    const portDonnees = creerFauxPortDonnees();
+    await portDonnees.creerProfilClient('Camille', '');
+    portDonnees.echouerProchaineEcriturePourTest('On a un souci de notre côté.');
+    await rendreEcran(portDonnees);
 
     await fireEvent.press(screen.getByText('Continuer'));
 
     // Adapté le 2 novembre 2026 : le repli serveur (titre, détail), hors de la zone de défilement,
-    // au lieu du texte du port affiché tel quel en bas de l'écran.
+    // au lieu du texte du portDonnees affiché tel quel en bas de l'écran.
     await waitFor(() => expect(screen.queryByText('On a un souci de notre côté')).toBeTruthy());
     expect(screen.getByText("Ce n'est pas toi. Réessaie dans un instant.")).toBeTruthy();
     expect(dansLaZoneDeDefilement(screen.getByText('On a un souci de notre côté'))).toBe(false);

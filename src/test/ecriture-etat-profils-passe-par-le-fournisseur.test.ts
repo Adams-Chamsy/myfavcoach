@@ -17,10 +17,17 @@ const FOURNISSEUR = 'src/fonctionnalites/identite/fournisseur-donnees.tsx';
 // sur un objet `port`.
 const PREFIXE_ADAPTATEURS = 'src/services/donnees/';
 
+// Préparer un faux AVANT le montage (`portDonnees.creerProfilClient(...)` dans les tests de
+// l'onboarding) n'est pas une écriture d'écran : ces tests nomment leur faux `portDonnees`, hors
+// du motif. Le 2 novembre 2026, creerProfilClient est entrée dans la liste (option B) et ces
+// préparations, nommées `port` jusque-là, ont été renommées : c'est un choix de nommage assumé,
+// pas un contournement du balayage, qui vise les écrans.
+//
 // `port.` (ou `xxxPort.`) suivi d'une des trois méthodes et d'une parenthèse d'appel. Ne
 // matche pas `jest.spyOn(portDonnees, 'basculerProfil')` (chaîne, pas accès membre) ni
 // `const { basculerProfil } = useDonnees()` (déstructuration).
-const MOTIF_APPEL_DIRECT = /\bport\.(creerProfilCoach|basculerProfil|enregistrerInformations)\s*\(/;
+const MOTIF_APPEL_DIRECT =
+  /\bport\.(creerProfilClient|creerProfilCoach|basculerProfil|enregistrerInformations)\s*\(/;
 
 function fichiersScrutes(): string[] {
   const sortie = execFileSync(

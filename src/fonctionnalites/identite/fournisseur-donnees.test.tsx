@@ -284,6 +284,31 @@ describe('les écritures d’EtatProfils rafraîchissent l’état lu, sans rafr
     expect(result.current.profils?.identiteActive.prenom).toBe('Nouveau');
   });
 
+  // Option B (2 novembre 2026) : creer_profil_client active l'espace client, donc change
+  // EtatProfils — quatrième écriture enveloppée (CLAUDE.md §8).
+  it('creerProfilClient : profils reflète clientExiste + profilActif client juste après', async () => {
+    const portAuth = creerFauxPortAuth();
+    await compteConnecteEtVerifie(portAuth);
+    const portDonnees = creerFauxPortDonnees();
+    portDonnees.definirEtatProfilsPourTest(
+      etatProfilsParDefaut({ profilActif: 'coach', clientExiste: false, coachExiste: true }),
+    );
+
+    const { result } = await renderHook(() => useDonnees(), {
+      wrapper: envelopper(portAuth, portDonnees),
+    });
+    await waitFor(() => expect(result.current.chargement).toBe(false));
+    expect(typeof result.current.creerProfilClient).toBe('function');
+
+    await act(async () => {
+      const r = await result.current.creerProfilClient('Camille', '');
+      expect(r.succes).toBe(true);
+    });
+
+    expect(result.current.profils?.clientExiste).toBe(true);
+    expect(result.current.profils?.profilActif).toBe('client');
+  });
+
   it('un échec d’écriture ne rafraîchit pas : profils reste sur l’ancienne valeur', async () => {
     const portAuth = creerFauxPortAuth();
     await compteConnecteEtVerifie(portAuth);

@@ -204,6 +204,15 @@ en rendre d'autres (une politique de lecture publique s'ajoute à la politique p
 Une seule fonction répond à « quelle est ma ligne » par table concernée, et toutes les
 écritures de l'application l'utilisent.
 
+**Une politique dont la condition est vraie par défaut n'est pas une règle.** Trouvé le
+2 novembre 2026 (option B, 0051) : `profils_client_insert_espace_client` exigeait l'espace client
+actif. Un compte neuf le satisfaisait seulement parce que `comptes.profil_actif` vaut `'client'`
+**par défaut** (0001) ; un compte seulement coach ne le satisfaisait jamais, et restait enfermé
+dans son espace. Avant d'écrire une condition sur une colonne qui a un `DEFAULT`, se demander qui
+la satisfait sans l'avoir choisi. La création d'un profil est désormais une fonction du serveur,
+des deux côtés (`creer_profil_client`, `creer_profil_coach`), l'écriture directe fermée
+(`docs/domaine.md` §3.2).
+
 ---
 
 ## 8. Lectures inter-comptes

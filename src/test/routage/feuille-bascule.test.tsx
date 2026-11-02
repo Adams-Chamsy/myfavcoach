@@ -83,8 +83,16 @@ describe('FeuilleBascule (docs/ecrans/L1-06-bascule-espace.md)', () => {
 
   it('depuis l’espace coach → client : demande /(client)/accueil ET la coche passe sur client', async () => {
     const portDonnees = creerFauxPortDonnees();
+    // `clientExiste: true` ajouté le 2 novembre 2026 : sans profil client, la bascule vers le
+    // client est refusée par le vrai serveur (basculer_profil), et désormais par le faux. Ce test
+    // décrivait sans le savoir l'impasse retirée par l'option B. Assertions inchangées.
     portDonnees.definirEtatProfilsPourTest(
-      etatProfilsParDefaut({ profilActif: 'coach', coachExiste: true }),
+      etatProfilsParDefaut({
+        profilActif: 'coach',
+        coachExiste: true,
+        clientExiste: true,
+        clientOnboardingEtape: 5,
+      }),
     );
 
     await rendreFeuille(portDonnees);
@@ -102,8 +110,16 @@ describe('FeuilleBascule (docs/ecrans/L1-06-bascule-espace.md)', () => {
   // encore ; « Réessayer » reste, et réessaie vraiment.
   it('au troisième échec de bascule, aucun « Nous écrire » qui réessaierait : « Réessayer » reste', async () => {
     const portDonnees = creerFauxPortDonnees();
+    // `clientExiste: true` ajouté le 2 novembre 2026 : sans profil client, la bascule vers le
+    // client est refusée par le vrai serveur (basculer_profil), et désormais par le faux. Ce test
+    // décrivait sans le savoir l'impasse retirée par l'option B. Assertions inchangées.
     portDonnees.definirEtatProfilsPourTest(
-      etatProfilsParDefaut({ profilActif: 'coach', coachExiste: true }),
+      etatProfilsParDefaut({
+        profilActif: 'coach',
+        coachExiste: true,
+        clientExiste: true,
+        clientOnboardingEtape: 5,
+      }),
     );
     await rendreFeuille(portDonnees);
     await waitFor(() => expect(screen.getByLabelText('Espace client')).toBeTruthy());
@@ -135,6 +151,29 @@ describe('FeuilleBascule (docs/ecrans/L1-06-bascule-espace.md)', () => {
 
     expect(mockPousser).toHaveBeenCalledWith('/(onboarding)/devenir-coach');
     expect(espionBascule).not.toHaveBeenCalled();
+  });
+
+  // Option B (2 novembre 2026), miroir du critère 2 : un compte seulement coach n'a pas de profil
+  // client vers lequel basculer (basculer_profil le refuse). « Espace client » mène alors à
+  // l'onboarding client, où creer_profil_client crée le profil ET active l'espace — jamais une
+  // bascule qui échouerait en affichant une panne. Push, pas replace : le retour ramène à
+  // l'espace coach (CLAUDE.md §8, GO_BACK).
+  it('sans profil client, « Espace client » mène à l’onboarding client sans tenter de bascule ni afficher de panne', async () => {
+    const portDonnees = creerFauxPortDonnees();
+    portDonnees.definirEtatProfilsPourTest(
+      etatProfilsParDefaut({ profilActif: 'coach', coachExiste: true, clientExiste: false }),
+    );
+    const espionBascule = jest.spyOn(portDonnees, 'basculerProfil');
+
+    await rendreFeuille(portDonnees);
+    await waitFor(() => expect(screen.getByLabelText('Espace client')).toBeTruthy());
+
+    await fireEvent.press(screen.getByLabelText('Espace client'));
+
+    expect(mockPousser).toHaveBeenCalledWith('/(onboarding)/1-identite');
+    expect(mockRemplacer).not.toHaveBeenCalled();
+    expect(espionBascule).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Réessayer' })).toBeNull();
   });
 
   // Critère 6.

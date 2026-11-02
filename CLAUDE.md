@@ -373,7 +373,9 @@ qui relit l'état en cas de succès. `useDonnees().port` est typé `PortDonneesL
 retirées) — un écran qui écrit `port.basculerProfil(...)` ne compile pas — et
 `src/test/ecriture-etat-profils-passe-par-le-fournisseur.test.ts` balaie le contournement par
 `as`. **Une quatrième écriture qui change `EtatProfils` s'enveloppe pareil** ; on n'appelle
-jamais un `rafraichir()` à la main depuis un écran.
+jamais un `rafraichir()` à la main depuis un écran. C'est arrivé le 2 novembre 2026 :
+`creerProfilClient` active désormais l'espace client côté serveur (option B,
+`creer_profil_client`), elle est la quatrième, enveloppée de la même façon.
 
 **Zones sûres — angle mort structurel, trouvé à P1.12, de la même famille que le rendu web (§6).**
 `react-test-renderer` (donc `npm test`, `test:a11y`, tout test d'écran) ne fait aucune mise en

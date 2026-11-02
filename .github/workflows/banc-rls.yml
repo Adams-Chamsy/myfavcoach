@@ -34,7 +34,7 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.122.0
 
       # Studio et imgproxy ne servent pas au banc : exclus pour raccourcir le démarrage.
       - name: Démarrer la pile Supabase locale

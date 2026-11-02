@@ -1,4 +1,4 @@
-import { creerFauxPortDonnees } from './faux';
+import { creerFauxPortDonnees, etatProfilsParDefaut } from './faux';
 
 describe('creerFauxPortDonnees', () => {
   // src/services/donnees/port.ts : comptes.profil_actif est NOT NULL, défaut 'client' —
@@ -83,6 +83,40 @@ describe('creerFauxPortDonnees', () => {
         prenom: 'Camille',
         nom: 'Dupont',
       });
+    });
+
+    // Option B (2 novembre 2026) : comme creer_profil_client côté serveur (0051), la création
+    // active l'espace client — c'est ce qui sort un compte seulement coach de son espace.
+    it('creerProfilClient active l’espace client, avec l’identité du profil créé', async () => {
+      const port = creerFauxPortDonnees();
+      port.definirEtatProfilsPourTest(
+        etatProfilsParDefaut({
+          profilActif: 'coach',
+          coachExiste: true,
+          identiteActive: { prenom: 'Yannick', nom: 'Coach' },
+        }),
+      );
+
+      await port.creerProfilClient('Camille', 'Dupont');
+
+      expect(await port.lireEtatProfils()).toMatchObject({
+        profilActif: 'client',
+        identiteActive: { prenom: 'Camille', nom: 'Dupont' },
+      });
+    });
+
+    // Le vrai basculer_profil refuse un profil inexistant (0002). Le faux l'acceptait : c'est
+    // pourquoi aucun test n'a vu un compte seulement coach bloqué sur « Espace client ».
+    it('basculerProfil vers un profil qui n’existe pas : refusé, profil actif inchangé', async () => {
+      const port = creerFauxPortDonnees();
+      port.definirEtatProfilsPourTest(
+        etatProfilsParDefaut({ profilActif: 'coach', coachExiste: true, clientExiste: false }),
+      );
+
+      const resultat = await port.basculerProfil('client');
+
+      expect(resultat.succes).toBe(false);
+      expect((await port.lireEtatProfils()).profilActif).toBe('coach');
     });
 
     it('creerProfilClient traduit un nom vide en null (comme le vrai adaptateur)', async () => {

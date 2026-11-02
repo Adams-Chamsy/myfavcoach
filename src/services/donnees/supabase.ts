@@ -319,31 +319,12 @@ export const portDonneesSupabase: PortDonnees = {
     } satisfies ProfilOnboarding;
   },
 
+  // creer_profil_client (0051, option B du 2 novembre 2026) : SECURITY DEFINER, agit sur
+  // auth.uid(). Crée le profil client à l'étape 2, ou le met à jour s'il existe déjà (retour à
+  // l'étape 1, P1.11), traduit un nom vide en absent, et active l'espace client — dans la même
+  // transaction. L'écriture directe dans profils_client est fermée (docs/domaine.md §3.2).
   async creerProfilClient(prenom, nom) {
-    const compteId = await compteIdCourant();
-    const nomNormalise = nom === '' ? null : nom;
-
-    // UPDATE d'abord, jamais un upsert : compte_id n'a AUCUN grant UPDATE (0001_creer_identite.sql,
-    // "un profil ne change jamais de propriétaire") — vérifié en direct, un upsert real échoue
-    // avec "permission denied for table profils_client" dès qu'il touche compte_id, même à
-    // valeur inchangée (le plan d'exécution d'un upsert le réécrit dans les deux branches).
-    // 0 ligne affectée = pas encore de profil (première fois) → INSERT. Nécessaire depuis que
-    // le bouton retour peut ramener à l'étape 1 après qu'un profil existe déjà (P1.11) : un
-    // second INSERT y échouerait sur la contrainte d'unicité de compte_id.
-    const miseAJour = await supabase
-      .from('profils_client')
-      .update({ prenom, nom: nomNormalise, onboarding_etape: 2 })
-      .eq('compte_id', compteId)
-      .select('id');
-    if (miseAJour.error) return echec(miseAJour.error);
-    if ((miseAJour.data?.length ?? 0) > 0) return { succes: true };
-
-    const { error } = await supabase.from('profils_client').insert({
-      compte_id: compteId,
-      prenom,
-      nom: nomNormalise,
-      onboarding_etape: 2,
-    });
+    const { error } = await supabase.rpc('creer_profil_client', { prenom, nom });
     if (error) return echec(error);
     return { succes: true };
   },

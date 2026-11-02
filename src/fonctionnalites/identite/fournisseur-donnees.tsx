@@ -9,7 +9,12 @@ import {
 } from 'react';
 
 import { useSession } from './fournisseur-session';
-import type { EtatProfils, PortDonnees, PortDonneesLecture } from '@/services/donnees/port';
+import type {
+  EcritureEtatProfils,
+  EtatProfils,
+  PortDonnees,
+  PortDonneesLecture,
+} from '@/services/donnees/port';
 
 // Miroir de fournisseur-session.tsx (P1.8), pour src/services/donnees/ (P1.10). Ne lit
 // JAMAIS le port tant qu'aucune session vérifiée n'existe : un compte non vérifié ou non
@@ -38,10 +43,11 @@ import type { EtatProfils, PortDonnees, PortDonneesLecture } from '@/services/do
 // `PortDonneesLecture` (ces trois retirées) : un écran ne peut plus les appeler par erreur.
 // Les écrans d'onboarding client (P1.11) restent hors du lot : chaque étape navigue par un
 // `router.push` direct, la reprise repart d'un fournisseur neuf — rien à rafraîchir en place.
-export type EcrituresEtatProfils = Pick<
-  PortDonnees,
-  'creerProfilCoach' | 'basculerProfil' | 'enregistrerInformations'
->;
+//
+// Quatrième, le 2 novembre 2026 (option B) : `creerProfilClient`, qui active l'espace client
+// côté serveur. Elle sort de la phrase ci-dessus sur l'onboarding client : un compte seulement
+// coach y entre depuis la feuille de bascule, avec un état à rafraîchir en place.
+export type EcrituresEtatProfils = Pick<PortDonnees, EcritureEtatProfils>;
 
 type EtatDonneesCommun = { port: PortDonneesLecture } & EcrituresEtatProfils;
 
@@ -104,10 +110,18 @@ export function FournisseurDonnees({ children, port }: ProprietesFournisseurDonn
     void rafraichir();
   }, [rafraichir, compteIdVerifie]);
 
-  // Les trois écritures d'EtatProfils, enveloppées : même signature que le port, mais une
+  // Les quatre écritures d'EtatProfils, enveloppées : même signature que le port, mais une
   // relecture de l'état en cas de succès. `rafraichir` ne relit rien tant qu'il n'y a pas de
   // session vérifiée (garde interne) — un échec du port laisse donc l'état intact. Stables tant
   // que `port` l'est (prop injectée) : sûres en dépendance d'un `useEffect` d'écran.
+  const creerProfilClient = useCallback<PortDonnees['creerProfilClient']>(
+    async (prenom, nom) => {
+      const resultatEcriture = await port.creerProfilClient(prenom, nom);
+      if (resultatEcriture.succes) await rafraichir();
+      return resultatEcriture;
+    },
+    [port, rafraichir],
+  );
   const creerProfilCoach = useCallback<PortDonnees['creerProfilCoach']>(
     async (donnees) => {
       const resultatEcriture = await port.creerProfilCoach(donnees);
@@ -134,6 +148,7 @@ export function FournisseurDonnees({ children, port }: ProprietesFournisseurDonn
   );
 
   const ecritures: EcrituresEtatProfils = {
+    creerProfilClient,
     creerProfilCoach,
     basculerProfil,
     enregistrerInformations,

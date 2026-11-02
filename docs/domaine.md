@@ -156,6 +156,17 @@ un réglage à activer, pas un algorithme à choisir (voir `docs/dette.md`).
 
 ### 3.2 ProfilClient / ProfilCoach
 
+**Un profil, client ou coach, se crée par une fonction du serveur qui applique la règle, jamais
+par une écriture directe** (écrit le 2 novembre 2026). `creer_profil_client()` et
+`creer_profil_coach()` sont les deux seuls chemins, symétriques : chacune agit sur le compte
+appelant (`auth.uid()`, aucun paramètre de compte), crée le profil et active son espace dans la
+même transaction. L'écriture directe dans `profils_client` et `profils_coach` est fermée (0051).
+Pourquoi : le client passait par une écriture directe protégée par une condition (« espace client
+actif ») toujours vraie pour un compte neuf, parce que `profil_actif` vaut `client` par défaut, et
+toujours fausse pour un compte seulement coach, qui restait enfermé dans son espace. Un troisième
+type de profil, s'il vient un jour, se crée de la même façon, par sa propre fonction : jamais un
+troisième chemin.
+
 Un compte porte **0, 1 ou 2 profils**. Un compte sans profil ne peut rien faire d'autre que
 l'onboarding. La création d'un profil coach n'efface jamais le profil client.
 

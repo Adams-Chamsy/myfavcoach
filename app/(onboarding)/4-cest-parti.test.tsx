@@ -27,7 +27,7 @@ const METRIQUES_ZONES_SURES: Metrics = {
   frame: { x: 0, y: 0, width: 393, height: 852 },
 };
 
-async function rendreEcran(port: FauxPortDonnees) {
+async function rendreEcran(portDonnees: FauxPortDonnees) {
   const portAuth = creerFauxPortAuth();
   await portAuth.inscrire('camille@exemple.fr', 'bon-mot-de-passe', '2000-01-01');
   portAuth.verifierEmailPourTest('camille@exemple.fr');
@@ -37,7 +37,7 @@ async function rendreEcran(port: FauxPortDonnees) {
     <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
       <FournisseurTheme>
         <FournisseurSession port={portAuth}>
-          <FournisseurDonnees port={port}>
+          <FournisseurDonnees port={portDonnees}>
             <OnboardingCestParti />
           </FournisseurDonnees>
         </FournisseurSession>
@@ -47,19 +47,19 @@ async function rendreEcran(port: FauxPortDonnees) {
 }
 
 async function portRempli(): Promise<FauxPortDonnees> {
-  const port = creerFauxPortDonnees();
-  await port.creerProfilClient('Camille', 'Dupont');
-  await port.enregistrerObjectifsEtRythme(
+  const portDonnees = creerFauxPortDonnees();
+  await portDonnees.creerProfilClient('Camille', 'Dupont');
+  await portDonnees.enregistrerObjectifsEtRythme(
     [objectifsOnboarding[0].cle, objectifsOnboarding[1].cle],
     rythmesOnboarding[1].cle,
   );
-  await port.enregistrerPointDeDepart({
+  await portDonnees.enregistrerPointDeDepart({
     consentementAccorde: true,
     versionConsentement: '2026-09-04',
     poidsDepartGrammes: 70500,
     poidsCibleGrammes: 65000,
   });
-  return port;
+  return portDonnees;
 }
 
 // Retours à l'écran (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B) : un message
@@ -97,9 +97,9 @@ describe('OnboardingCestParti (docs/ecrans/L1-05-onboarding-client.md, étape 4/
   });
 
   it('« Non renseigné » quand rien n’a été rempli aux étapes 2 et 3', async () => {
-    const port = creerFauxPortDonnees();
-    await port.creerProfilClient('Camille', '');
-    await rendreEcran(port);
+    const portDonnees = creerFauxPortDonnees();
+    await portDonnees.creerProfilClient('Camille', '');
+    await rendreEcran(portDonnees);
 
     await waitFor(() => expect(screen.getAllByText('Non renseigné').length).toBe(3));
   });
@@ -125,14 +125,14 @@ describe('OnboardingCestParti (docs/ecrans/L1-05-onboarding-client.md, étape 4/
   });
 
   it('« Découvrir des coachs » termine l’onboarding et remplace la route par (client)/accueil', async () => {
-    const port = await portRempli();
-    await rendreEcran(port);
+    const portDonnees = await portRempli();
+    await rendreEcran(portDonnees);
     await waitFor(() => expect(screen.getByText('Bienvenue, Camille.')).toBeTruthy());
 
     await fireEvent.press(screen.getByText('Découvrir des coachs'));
 
     await waitFor(() => expect(mockRemplacer).toHaveBeenCalledWith('/(client)/(tabs)/accueil'));
-    expect((await port.lireEtatProfils()).clientOnboardingEtape).toBe(5);
+    expect((await portDonnees.lireEtatProfils()).clientOnboardingEtape).toBe(5);
   });
 
   it("aucun lien « Passer » à l'étape 4", async () => {
@@ -143,14 +143,14 @@ describe('OnboardingCestParti (docs/ecrans/L1-05-onboarding-client.md, étape 4/
   });
 
   it('un échec du serveur affiche une erreur et ne navigue pas', async () => {
-    const port = await portRempli();
-    port.echouerProchaineEcriturePourTest();
-    await rendreEcran(port);
+    const portDonnees = await portRempli();
+    portDonnees.echouerProchaineEcriturePourTest();
+    await rendreEcran(portDonnees);
     await waitFor(() => expect(screen.getByText('Bienvenue, Camille.')).toBeTruthy());
 
     await fireEvent.press(screen.getByText('Découvrir des coachs'));
 
-    // Adapté le 2 novembre 2026 : le test injectait lui-même un texte dans le faux port et
+    // Adapté le 2 novembre 2026 : le test injectait lui-même un texte dans le faux portDonnees et
     // vérifiait que l'écran le répétait (test circulaire, CLAUDE.md §8). La fiche (L1-05,
     // « Erreur ») demande le repli serveur : titre et détail, ici hors de la zone de défilement.
     await waitFor(() => expect(screen.queryByText('On a un souci de notre côté')).toBeTruthy());

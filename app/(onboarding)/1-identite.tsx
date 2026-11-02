@@ -24,7 +24,9 @@ export default function OnboardingIdentite() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { port } = useDonnees();
+  // creerProfilClient vient du fournisseur (une écriture d'EtatProfils, enveloppée) : elle
+  // active l'espace client, ce que la feuille de bascule doit lire juste après.
+  const { port, creerProfilClient } = useDonnees();
 
   const [prenom, setPrenom] = useState('');
   const [nom, setNom] = useState('');
@@ -54,7 +56,7 @@ export default function OnboardingIdentite() {
   async function surContinuer() {
     setErreur(null);
     setChargement(true);
-    const resultat = await port.creerProfilClient(prenom.trim(), nom.trim());
+    const resultat = await creerProfilClient(prenom.trim(), nom.trim());
     setChargement(false);
 
     if (!resultat.succes) {

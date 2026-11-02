@@ -21,7 +21,7 @@ const METRIQUES_ZONES_SURES: Metrics = {
   frame: { x: 0, y: 0, width: 393, height: 852 },
 };
 
-async function rendreEcran(port: FauxPortDonnees) {
+async function rendreEcran(portDonnees: FauxPortDonnees) {
   const portAuth = creerFauxPortAuth();
   await portAuth.inscrire('camille@exemple.fr', 'bon-mot-de-passe', '2000-01-01');
   portAuth.verifierEmailPourTest('camille@exemple.fr');
@@ -31,7 +31,7 @@ async function rendreEcran(port: FauxPortDonnees) {
     <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
       <FournisseurTheme>
         <FournisseurSession port={portAuth}>
-          <FournisseurDonnees port={port}>
+          <FournisseurDonnees port={portDonnees}>
             <OnboardingObjectifs />
           </FournisseurDonnees>
         </FournisseurSession>
@@ -58,9 +58,9 @@ describe('OnboardingObjectifs (docs/ecrans/L1-05-onboarding-client.md, étape 2/
 
   // Critère 6.
   it('affiche les 8 objectifs et les 3 rythmes de src/fixtures/demonstration.ts', async () => {
-    const port = creerFauxPortDonnees();
-    await port.creerProfilClient('Camille', '');
-    await rendreEcran(port);
+    const portDonnees = creerFauxPortDonnees();
+    await portDonnees.creerProfilClient('Camille', '');
+    await rendreEcran(portDonnees);
 
     for (const objectif of objectifsOnboarding) {
       expect(screen.getByText(objectif.libelle)).toBeTruthy();
@@ -73,9 +73,9 @@ describe('OnboardingObjectifs (docs/ecrans/L1-05-onboarding-client.md, étape 2/
   // Critère 7 : "Le bouton de l'étape 2 affiche le nombre exact de sélections et se désactive
   // à zéro."
   it('le bouton affiche le nombre de sélections et se désactive à zéro', async () => {
-    const port = creerFauxPortDonnees();
-    await port.creerProfilClient('Camille', '');
-    await rendreEcran(port);
+    const portDonnees = creerFauxPortDonnees();
+    await portDonnees.creerProfilClient('Camille', '');
+    await rendreEcran(portDonnees);
 
     expect(screen.getByText('Continuer · 0 objectif')).toBeTruthy();
     expect(
@@ -90,9 +90,9 @@ describe('OnboardingObjectifs (docs/ecrans/L1-05-onboarding-client.md, étape 2/
   });
 
   it('un objectif pressé deux fois revient désélectionné', async () => {
-    const port = creerFauxPortDonnees();
-    await port.creerProfilClient('Camille', '');
-    await rendreEcran(port);
+    const portDonnees = creerFauxPortDonnees();
+    await portDonnees.creerProfilClient('Camille', '');
+    await rendreEcran(portDonnees);
 
     const chip = screen.getByText(objectifsOnboarding[0].libelle);
     await fireEvent.press(chip);
@@ -102,51 +102,51 @@ describe('OnboardingObjectifs (docs/ecrans/L1-05-onboarding-client.md, étape 2/
   });
 
   it('le rythme est exclusif : en choisir un second désélectionne le premier', async () => {
-    const port = creerFauxPortDonnees();
-    await port.creerProfilClient('Camille', '');
-    await rendreEcran(port);
+    const portDonnees = creerFauxPortDonnees();
+    await portDonnees.creerProfilClient('Camille', '');
+    await rendreEcran(portDonnees);
     await fireEvent.press(screen.getByText(objectifsOnboarding[0].libelle));
 
     await fireEvent.press(screen.getByText(rythmesOnboarding[0].libelle));
     await fireEvent.press(screen.getByText('Continuer · 1 objectif'));
     await waitFor(() => expect(mockPousser).toHaveBeenCalled());
-    expect((await port.lireProfilOnboarding()).rythme).toBe(rythmesOnboarding[0].cle);
+    expect((await portDonnees.lireProfilOnboarding()).rythme).toBe(rythmesOnboarding[0].cle);
   });
 
   it('« Passer » enregistre un profil sans objectif ni rythme et avance à l’étape 3', async () => {
-    const port = creerFauxPortDonnees();
-    await port.creerProfilClient('Camille', '');
-    await rendreEcran(port);
+    const portDonnees = creerFauxPortDonnees();
+    await portDonnees.creerProfilClient('Camille', '');
+    await rendreEcran(portDonnees);
 
     await fireEvent.press(screen.getByText('Passer'));
 
     await waitFor(() => expect(mockPousser).toHaveBeenCalledWith('/(onboarding)/3-poids'));
-    expect(await port.lireProfilOnboarding()).toMatchObject({ objectifs: [], rythme: null });
+    expect(await portDonnees.lireProfilOnboarding()).toMatchObject({ objectifs: [], rythme: null });
   });
 
   // Reprise via le bouton retour depuis l'étape 3 (P1.11) : relit un choix déjà enregistré.
   it('pré-remplit objectifs et rythme déjà enregistrés (retour depuis l’étape 3)', async () => {
-    const port = creerFauxPortDonnees();
-    await port.creerProfilClient('Camille', '');
-    await port.enregistrerObjectifsEtRythme(
+    const portDonnees = creerFauxPortDonnees();
+    await portDonnees.creerProfilClient('Camille', '');
+    await portDonnees.enregistrerObjectifsEtRythme(
       [objectifsOnboarding[0].cle, objectifsOnboarding[2].cle],
       rythmesOnboarding[2].cle,
     );
-    await rendreEcran(port);
+    await rendreEcran(portDonnees);
 
     await waitFor(() => expect(screen.getByText('Continuer · 2 objectifs')).toBeTruthy());
   });
 
   it('un échec du serveur affiche une erreur et ne navigue pas', async () => {
-    const port = creerFauxPortDonnees();
-    await port.creerProfilClient('Camille', '');
-    port.echouerProchaineEcriturePourTest();
-    await rendreEcran(port);
+    const portDonnees = creerFauxPortDonnees();
+    await portDonnees.creerProfilClient('Camille', '');
+    portDonnees.echouerProchaineEcriturePourTest();
+    await rendreEcran(portDonnees);
 
     await fireEvent.press(screen.getByText(objectifsOnboarding[0].libelle));
     await fireEvent.press(screen.getByText('Continuer · 1 objectif'));
 
-    // Adapté le 2 novembre 2026 : le test injectait lui-même un texte dans le faux port et
+    // Adapté le 2 novembre 2026 : le test injectait lui-même un texte dans le faux portDonnees et
     // vérifiait que l'écran le répétait (test circulaire, CLAUDE.md §8). La fiche (L1-05,
     // « Erreur ») demande le repli serveur : titre et détail, ici hors de la zone de défilement.
     await waitFor(() => expect(screen.queryByText('On a un souci de notre côté')).toBeTruthy());

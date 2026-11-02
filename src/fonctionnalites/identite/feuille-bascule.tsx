@@ -24,6 +24,10 @@ export type ProprietesFeuilleBascule = {
 // docs/ecrans/L1-06-bascule-espace.md : "la deuxième ligne mène à L1-08" — route posée par sa
 // propre fiche (docs/ecrans/L1-08-activation-espace-coach.md), pas inventée ici.
 const ROUTE_DEVENIR_COACH = '/(onboarding)/devenir-coach' as Href;
+// Miroir, côté client (option B, 2 novembre 2026) : un compte seulement coach n'a pas de profil
+// vers lequel basculer. L'étape 1 de l'onboarding client le crée ET active l'espace client
+// (creer_profil_client, 0051).
+const ROUTE_DEVENIR_CLIENT = '/(onboarding)/1-identite' as Href;
 
 function nomComplet(prenom: string, nom: string | null) {
   return [prenom, nom].filter(Boolean).join(' ');
@@ -98,6 +102,13 @@ export function FeuilleBascule({ ouverte, onFermer, children }: ProprietesFeuill
     if (derniereTentative) basculerVers(derniereTentative);
   }
 
+  // Push, pas replace : le retour de l'étape 1 ramène à l'espace coach (CLAUDE.md §8, GO_BACK).
+  function allerDevenirClient() {
+    if (enCours) return;
+    onFermer();
+    router.push(ROUTE_DEVENIR_CLIENT);
+  }
+
   function allerDevenirCoach() {
     if (enCours) return;
     onFermer();
@@ -170,7 +181,7 @@ export function FeuilleBascule({ ouverte, onFermer, children }: ProprietesFeuill
             actif={actifClient}
             enCours={enCours}
             desactive={Boolean(enCours)}
-            onPress={() => basculerVers('client')}
+            onPress={profils.clientExiste ? () => basculerVers('client') : allerDevenirClient}
           />
 
           {profils.coachExiste ? (

@@ -122,9 +122,12 @@ describe('OnboardingIdentite (docs/ecrans/L1-05-onboarding-client.md, étape 1/4
   // Reprise via le bouton retour (P1.11) : un profil peut déjà exister, la saisie déjà
   // enregistrée doit réapparaître, pas des champs vides.
   it('pré-remplit prénom et nom depuis un profil déjà créé (retour depuis l’étape 2)', async () => {
-    const port = creerFauxPortDonnees();
-    await port.creerProfilClient('Camille', 'Dupont');
-    await rendreEcran(port);
+    // Préparation du faux AVANT le montage, pas une écriture d'écran : nommé portDonnees comme
+    // dans les autres tests (src/test/routage/feuille-bascule.test.tsx), hors du balayage
+    // src/test/ecriture-etat-profils-passe-par-le-fournisseur.test.ts, qui vise les écrans.
+    const portDonnees = creerFauxPortDonnees();
+    await portDonnees.creerProfilClient('Camille', 'Dupont');
+    await rendreEcran(portDonnees);
 
     await waitFor(() => expect(screen.getByLabelText('Prénom').props.value).toBe('Camille'));
     expect(screen.getByLabelText('Nom').props.value).toBe('Dupont');

@@ -563,9 +563,13 @@ export type PortDonnees = {
 // (CLAUDE.md §8, « Le rafraîchissement de l'état appartient au fournisseur »). Trois oublis en
 // trois prompts (P1.13→P1.15) : tant que rafraîchir restait une politesse à se rappeler, il y
 // avait un oubli de plus.
-export type EcritureEtatProfils = 'creerProfilCoach' | 'basculerProfil' | 'enregistrerInformations';
+//
+// Quatrième ajoutée le 2 novembre 2026 (option B) : creerProfilClient, qui active désormais
+// l'espace client côté serveur (creer_profil_client, 0051).
+export type EcritureEtatProfils =
+  'creerProfilClient' | 'creerProfilCoach' | 'basculerProfil' | 'enregistrerInformations';
 
-// Ce qu'un écran atteint par useDonnees().port : tout PortDonnees SAUF ces trois écritures.
+// Ce qu'un écran atteint par useDonnees().port : tout PortDonnees SAUF ces quatre écritures.
 // Un écran qui écrit `port.basculerProfil(...)` ne compile pas ; un balayage
 // (src/test/ecriture-etat-profils-passe-par-le-fournisseur.test.ts) ferme le contournement par
 // `as`.

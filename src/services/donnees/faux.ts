@@ -315,10 +315,18 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
       prochaineEcritureEchoue = erreur;
     },
 
+    // Miroir de creer_profil_client (0051) : crée ou met à jour, puis active l'espace client.
     async creerProfilClient(prenom, nom) {
+      const nomOuAbsent = nom === '' ? null : nom;
       return ecrire(
-        { ...etat, clientExiste: true, clientOnboardingEtape: 2 },
-        { ...profilOnboarding, prenom, nom: nom === '' ? null : nom },
+        {
+          ...etat,
+          clientExiste: true,
+          clientOnboardingEtape: 2,
+          profilActif: 'client',
+          identiteActive: { prenom, nom: nomOuAbsent },
+        },
+        { ...profilOnboarding, prenom, nom: nomOuAbsent },
       );
     },
 
@@ -357,12 +365,13 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
       return ecrire({ ...etat, clientOnboardingEtape: 5 }, profilOnboarding);
     },
 
-    // Pas de règle métier reproduite ici (contrairement au vrai basculer_profil, qui refuse un
-    // profil inexistant) : comme les écritures d'onboarding ci-dessus, ce faux ne simule que
-    // l'échec générique, via echouerProchaineEcriturePourTest — suffisant pour les tests
-    // d'écran de docs/ecrans/L1-06-bascule-espace.md, qui n'exposent cette action que pour un
-    // profil déjà connu comme existant (voir le commentaire de PortDonnees.basculerProfil).
+    // Reproduit la règle du vrai basculer_profil (0002) : un profil inexistant est refusé.
+    // Jusqu'au 2 novembre 2026, ce faux l'acceptait, en supposant que la feuille ne proposait la
+    // bascule que vers un profil existant. C'était faux pour « Espace client », toujours affiché :
+    // un compte seulement coach y obtenait une panne, et aucun test ne pouvait le voir.
     async basculerProfil(profil) {
+      const existe = profil === 'client' ? etat.clientExiste : etat.coachExiste;
+      if (!existe) return { succes: false, erreur: 'Ce profil n’existe pas pour ce compte.' };
       return ecrire({ ...etat, profilActif: profil }, profilOnboarding);
     },
 
