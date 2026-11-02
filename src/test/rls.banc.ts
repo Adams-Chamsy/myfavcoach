@@ -6927,6 +6927,33 @@ describe('soumission du dossier de vérification', () => {
     expect(dossier.soumis_le).not.toBeNull();
   });
 
+  // File d'attente du back-office (0054/0055) : le chemin de l'application, la session de
+  // l'examinateur. Avant 0055, la file lisait profils_coach directement, où un examinateur n'a
+  // aucune politique de lecture : elle était TOUJOURS vide, et sa date toujours absente.
+  it('l’examinateur voit le dossier dans la file d’attente, daté de sa soumission', async () => {
+    const dossier = await monDossier(coach);
+    const { statut, corps } = await appelRest('/rest/v1/rpc/file_attente_verification', {
+      methode: 'POST',
+      session: examinateur,
+      corps: {},
+    });
+    expect(statut).toBe(200);
+    const ligne = (corps as { coach_id: string; soumis_le: string }[]).find(
+      (l) => l.coach_id === coachId,
+    );
+    expect(ligne?.soumis_le).toBe(dossier.soumis_le);
+  });
+
+  it('un compte qui n’est pas examinateur ne lit pas la file d’attente (examinateur_requis)', async () => {
+    const { statut, corps } = await appelRest('/rest/v1/rpc/file_attente_verification', {
+      methode: 'POST',
+      session: coach,
+      corps: {},
+    });
+    expect(statut).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(corps)).toContain('examinateur_requis');
+  });
+
   it('une pièce remplacée pendant l’examen : toujours en examen, date de soumission inchangée', async () => {
     const avant = await monDossier(coach);
     expect((await deposerPiece(coach, coachId, 'diplome_ou_certification')).statut).toBe(201);

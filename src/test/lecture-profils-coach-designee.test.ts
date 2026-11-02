@@ -19,14 +19,11 @@ import { join, relative } from 'path';
 const RACINE_DEPOT = join(__dirname, '..', '..');
 const CE_FICHIER = relative(RACINE_DEPOT, __filename);
 
-// Exceptions nommées, chacune avec sa raison.
-const EXCEPTIONS = new Map<string, string>([
-  [
-    'app/(admin)/verification.tsx',
-    'file d’attente du back-office : un examinateur liste PAR CONSTRUCTION les dossiers des ' +
-      'autres (filtre sur statut_verification), verrou côté serveur (est_examinateur_courant)',
-  ],
-]);
+// Exceptions nommées, chacune avec sa raison. Aucune depuis le 2 novembre 2026 : la seule
+// (la file du back-office, qui lisait les dossiers des autres) passe désormais par
+// file_attente_verification() (0055) — cette lecture directe la laissait d'ailleurs TOUJOURS
+// vide, faute de politique de lecture pour un examinateur.
+const EXCEPTIONS = new Map<string, string>([]);
 
 const MOTIF_LECTURE = /\.from\(\s*['"`]profils_coach['"`]\s*\)/g;
 const MOTIF_FILTRE_ID = /\.(eq|in)\(\s*['"`]id['"`]\s*,/;

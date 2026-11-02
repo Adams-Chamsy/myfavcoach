@@ -41,38 +41,29 @@ export default function Verification() {
   // et decider() après une décision) décident eux-mêmes quoi faire du résultat — un effet qui
   // appelle une fonction externe faisant du setState en son sein n'est pas vérifiable
   // statiquement par react-hooks/set-state-in-effect, d'où cette séparation.
+  //
+  // file_attente_verification() (0055) : réservée aux examinateurs, rend les dossiers en examen
+  // avec leur date de SOUMISSION, le plus ancien d'abord — la même date que l'écran d'attente du
+  // coach. Jusqu'au 2 novembre 2026, cette file lisait profils_coach directement : un examinateur
+  // n'y a aucune politique de lecture, la file était donc toujours vide, et la date (lue dans
+  // pieces_verification, même session) toujours absente.
   async function chargerFileAttente(): Promise<Dossier[]> {
-    const { data, error } = await supabaseAdmin
-      .from('profils_coach')
-      .select('id, prenom, nom, discipline')
-      .eq('statut_verification', 'en_examen');
+    const { data, error } = await supabaseAdmin.rpc('file_attente_verification');
     if (error) throw error;
     const lignes = (data ?? []) as {
-      id: string;
+      coach_id: string;
       prenom: string;
       nom: string;
       discipline: string;
+      soumis_le: string | null;
     }[];
-    const avecDepot = await Promise.all(
-      lignes.map(async (l) => {
-        const pieces = await supabaseAdmin
-          .from('pieces_verification')
-          .select('depose_le')
-          .eq('coach_id', l.id)
-          .order('depose_le', { ascending: true })
-          .limit(1);
-        const premiereLigne = (pieces.data?.[0] as { depose_le: string } | undefined) ?? null;
-        return {
-          coachId: l.id,
-          prenom: l.prenom,
-          nom: l.nom,
-          discipline: l.discipline,
-          deposeLe: premiereLigne?.depose_le ?? null,
-        };
-      }),
-    );
-    avecDepot.sort((a, b) => (a.deposeLe ?? '').localeCompare(b.deposeLe ?? ''));
-    return avecDepot;
+    return lignes.map((l) => ({
+      coachId: l.coach_id,
+      prenom: l.prenom,
+      nom: l.nom,
+      discipline: l.discipline,
+      deposeLe: l.soumis_le,
+    }));
   }
 
   useEffect(() => {

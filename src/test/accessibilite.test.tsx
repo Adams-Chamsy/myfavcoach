@@ -909,8 +909,11 @@ const EXCEPTIONS_CORPUS = new Map<string, string>([
     'app/index.tsx',
     'démarrage : polices, écran de démarrage, stockage sécurisé, hors corpus (voir plus haut)',
   ],
-  ['app/(admin)/connexion.tsx', 'back-office, web seulement, exclu du paquet mobile (L2-10)'],
-  ['app/(admin)/verification.tsx', 'back-office, web seulement, exclu du paquet mobile (L2-10)'],
+  ['app/(admin)/admin/connexion.tsx', 'back-office, web seulement, exclu du paquet mobile (L2-10)'],
+  [
+    'app/(admin)/admin/verification.tsx',
+    'back-office, web seulement, exclu du paquet mobile (L2-10)',
+  ],
 ]);
 
 describe('corpus d’accessibilité', () => {

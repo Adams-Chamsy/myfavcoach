@@ -15,7 +15,7 @@ import { join } from 'path';
 // aucun écran ne lisait encore chemin_stockage (P2.5 était backend seul).
 //
 // CE N'EST PLUS LE CAS : depuis P2.6/P2.10, `app/(onboarding)/devenir-coach-verification.tsx`
-// (L2-06) ET `app/(admin)/verification.tsx` (L2-10) lisent tous deux chemin_stockage pour de
+// (L2-06) ET `app/(admin)/admin/verification.tsx` (L2-10) lisent tous deux chemin_stockage pour de
 // vrai (dépôt du fichier, consultation par l'examinateur). Le 4ᵉ test ci-dessous n'est donc plus
 // vacueusement vert : il scanne réellement ces deux fichiers à chaque exécution, et son passage
 // prouve — pas suppose — qu'aucun des deux ne journalise ni ne construit d'URL avec cette

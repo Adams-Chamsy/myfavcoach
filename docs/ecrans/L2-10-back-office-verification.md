@@ -2,7 +2,12 @@
 
 **Lot** L2 · **Rôle** examinateur (équipe de la plateforme — dans ce projet, le porteur du
 projet lui-même, `CLAUDE.md` §1 : « développée par une seule personne ») · **Route**
-`app/(admin)/verification.tsx` — **dans ce même dépôt**, pas une application séparée.
+`app/(admin)/admin/verification.tsx` — **dans ce même dépôt**, pas une application séparée.
+**Adresse web** : `/admin/verification` (connexion intégrée tant que l'examinateur n'est pas
+connecté ; `/admin/connexion` existe aussi). Corrigé le 2 novembre 2026 : les deux écrans étaient
+à `/connexion` et `/verification`, les mêmes adresses que deux écrans publics : en
+développement, le back-office les masquait. (Son absence des paquets exportés, elle, est voulue :
+critère 7, `metro.config.js`. Le back-office ne tourne qu'en local, par `npm start`.)
 **Référence visuelle** aucune — absent du dossier, hors application mobile
 (`docs/perimetre.md`, section « Hors application mobile »).
 
@@ -25,7 +30,11 @@ solution ennuyeuse à l'astucieuse).
 
 Trois écrans, dans le groupe `app/(admin)/` :
 
-1. **File d'attente** : dossiers `en_examen`, triés par date de dépôt (le plus ancien d'abord).
+1. **File d'attente** : dossiers `en_examen`, triés par date de **soumission** (le plus ancien
+   d'abord), lus par `file_attente_verification()` (0055, réservée aux examinateurs). La date
+   affichée est la même que sur l'écran d'attente du coach (`dossier_soumis_le`, 0053).
+   Jusqu'au 2 novembre 2026, la file lisait `profils_coach` directement, où un examinateur n'a
+   aucune politique de lecture : elle était toujours vide.
    Chaque ligne : nom du coach, discipline, date de dépôt, pièces présentes.
 2. **Consultation d'un dossier** : les pièces déposées (`L2-06`), affichées à l'examinateur —
    seul endroit du système entier où leur contenu est rouvert.

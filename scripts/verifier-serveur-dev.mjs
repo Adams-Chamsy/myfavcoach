@@ -31,7 +31,26 @@ const INTERVALLE_SONDAGE_MS = 1_500;
 // voit ailleurs : dans les durées du paquet de production affichées par verif:bundle.
 const DELAI_REQUETE_MS = 30_000;
 const MARQUEUR_ERREUR_BUILD = '_expo-static-error';
-const ROUTES_A_VERIFIER = ['/', '/_galerie'];
+// Chaque route : un statut 200 sans erreur de build, ET, quand c'est précisé, le BON écran.
+// `texteAttendu` est un texte que seul cet écran affiche (sans session, tel que le serveur le
+// construit) ; `texteInterdit`, celui de l'écran qui lui disputait l'adresse.
+//
+// Pourquoi (2 novembre 2026) : ce contrôle existait depuis L0 et ne regardait que `/` et
+// `/_galerie`, statut et marqueur d'erreur. Il n'a jamais vu que le back-office (app/(admin)/)
+// et deux écrans publics servaient les MÊMES adresses, /connexion et /verification : en
+// développement, le back-office masquait la connexion et la vérification d'e-mail publiques.
+// Une page 200 n'est pas le bon écran.
+// L'unicité de TOUTES les adresses se prouve ailleurs, sans serveur, sur chaque fichier de route
+// (src/test/adresses-uniques.test.ts) ; ici, on prouve sur un vrai serveur que les adresses
+// autrefois disputées montrent chacune leur écran.
+const ROUTES_A_VERIFIER = [
+  { chemin: '/' },
+  { chemin: '/_galerie' },
+  { chemin: '/connexion', texteAttendu: 'Mot de passe oublié', texteInterdit: 'Back-office' },
+  { chemin: '/verification', texteAttendu: 'Regarde tes e-mails.', texteInterdit: 'Back-office' },
+  { chemin: '/admin/connexion', texteAttendu: 'Back-office — vérification' },
+  { chemin: '/admin/verification', texteAttendu: 'Back-office — vérification' },
+];
 
 function attendre(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -106,7 +125,7 @@ async function attendreLeServeurPret() {
   );
 }
 
-async function verifierRoute(chemin) {
+async function verifierRoute({ chemin, texteAttendu, texteInterdit }) {
   const { statut, corps } = await requeter(chemin);
   const contientErreurBuild = corps.includes(MARQUEUR_ERREUR_BUILD);
 
@@ -114,7 +133,19 @@ async function verifierRoute(chemin) {
     const extrait = contientErreurBuild
       ? (corps.match(/"content":"([^"]*)"/)?.[1] ?? corps.slice(0, 400))
       : corps.slice(0, 400);
-    throw new Error(`${chemin} : statut ${statut}, erreur de build detectee : ${extrait}`);
+    throw new Error(
+      contientErreurBuild
+        ? `${chemin} : statut ${statut}, erreur de build detectee : ${extrait}`
+        : `${chemin} : statut ${statut}`,
+    );
+  }
+  if (texteAttendu && !corps.includes(texteAttendu)) {
+    throw new Error(`${chemin} : ce n'est pas le bon ecran, « ${texteAttendu} » absent de la page`);
+  }
+  if (texteInterdit && corps.includes(texteInterdit)) {
+    throw new Error(
+      `${chemin} : un autre ecran sert cette adresse, « ${texteInterdit} » present dans la page`,
+    );
   }
 }
 
@@ -123,9 +154,22 @@ async function main() {
 
   try {
     await attendreLeServeurPret();
+    // Toutes les routes sont interrogées, même après un échec : un bilan qui s'arrête au premier
+    // rouge cache les suivants (CLAUDE.md §8, « lire toutes les lignes de bilan »).
+    const echecs = [];
     for (const route of ROUTES_A_VERIFIER) {
-      await verifierRoute(route);
-      console.log(`[verifier-serveur-dev] ${route} : OK`);
+      try {
+        await verifierRoute(route);
+        console.log(`[verifier-serveur-dev] ${route.chemin} : OK`);
+      } catch (erreur) {
+        console.error(`[verifier-serveur-dev] ${route.chemin} : ECHEC — ${erreur.message}`);
+        echecs.push(route.chemin);
+      }
+    }
+    if (echecs.length > 0) {
+      throw new Error(
+        `${echecs.length} route(s) en echec sur ${ROUTES_A_VERIFIER.length} : ${echecs.join(', ')}`,
+      );
     }
   } catch (erreur) {
     console.error(`[verifier-serveur-dev] ECHEC — ${erreur.message}`);

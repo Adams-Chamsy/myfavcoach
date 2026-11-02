@@ -219,7 +219,7 @@ describe('secrets interdits côté application', () => {
   //   - docs/prompts/L3bis.md : règle 11 (cumulative) nomme "service_role" pour que le trou récurrent ci-dessus devienne une règle de conduite, pas une note qui ne survit qu'à ma mémoire
   //   - docs/prompts/L4.md : règle 12 (cumulative) nomme "service_role" pour la même raison, et le point 3 de tête de fichier explique que le webhook Stripe s'authentifie contre Postgres par ce même rôle
   //   - docs/dette.md : explique que le banc RLS insère ses coachs de test directement par service_role (formats/commune_base_insee posés à la main, faute de formulaire applicatif) — P3.2/P3.3
-  //   - app/(admin)/verification.tsx : commentaire expliquant que la consultation des pièces passe par le compte examinateur, jamais par service_role
+  //   - app/(admin)/admin/verification.tsx : commentaire expliquant que la consultation des pièces passe par le compte examinateur, jamais par service_role
   //   - supabase/config.toml                          : commentaire généré par `supabase init`, décrivant les rôles de la Data API
   //   - src/test/rls.banc.ts                          : le nom de variable (SERVICE_ROLE_KEY) apparaît pour préparer le banc ; sa valeur, jamais écrite ici, est lue depuis .secrets-rls.local (ignoré par git) — jamais dans l'application
   //   - .github/workflows/banc-rls.yml                : le nom de variable shell issu de `supabase status -o env` (pile locale du runner) ; sa valeur, une clé de démo FIXE du CLI Supabase, n'est jamais écrite ici — lue puis passée à .secrets-rls.local, ignoré par git
@@ -267,12 +267,14 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0051_creer_profil_client_regle.sql',
       'supabase/migrations/0052_preparer_soumission_dossier.sql',
       'supabase/migrations/0053_soumettre_dossier_regle.sql',
+      'supabase/migrations/0054_preparer_file_attente_verification.sql',
+      'supabase/migrations/0055_file_attente_verification_regle.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',
       'docs/prompts/L4.md',
       'docs/dette.md',
-      'app/(admin)/verification.tsx',
+      'app/(admin)/admin/verification.tsx',
       'supabase/config.toml',
       'src/test/rls.banc.ts',
       'src/test/conventions-grants-migrations.test.ts',
