@@ -96,6 +96,18 @@ describe('Export de mes données (docs/ecrans/L2-04-export-donnees.md)', () => {
     expect(screen.queryByText('EN PRÉPARATION')).toBeNull();
   });
 
+  // 2 novembre 2026 : « Réessayer » était inerte (onReessayer={() => {}}). Il relance la demande.
+  it('un échec serveur : « Réessayer » relance vraiment la demande', async () => {
+    const { portDonnees } = await rendre();
+    portDonnees.echouerProchainExportPourTest('inconnu');
+    const espion = jest.spyOn(portDonnees, 'demanderExportDonnees');
+    await fireEvent.press(screen.getByText('Demander mon export'));
+    await waitFor(() => expect(screen.queryByText('On a un souci de notre côté')).toBeTruthy());
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
+    await waitFor(() => expect(espion).toHaveBeenCalledTimes(2));
+  });
+
   it('un export prêt affiche la taille, les dates et un bouton Télécharger', async () => {
     await rendre(
       {},

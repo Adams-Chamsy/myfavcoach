@@ -172,7 +172,7 @@ export default function Export() {
                   titre={textesRepliErreur.serveur.titre}
                   explication={erreur}
                   nombreEchecs={0}
-                  onReessayer={() => {}}
+                  onReessayer={() => void surDemander()}
                   onNousEcrire={() => {}}
                 />
               </View>

@@ -62,6 +62,17 @@ async function portRempli(): Promise<FauxPortDonnees> {
   return port;
 }
 
+// Retours à l'écran (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B) : un message
+// d'erreur doit être dans le champ de vision, donc HORS de la zone de défilement.
+function dansLaZoneDeDefilement(element: unknown): boolean {
+  let noeud = element as { type?: string; parent?: unknown } | null;
+  while (noeud) {
+    if (noeud.type === 'RCTScrollView') return true;
+    noeud = (noeud.parent as typeof noeud) ?? null;
+  }
+  return false;
+}
+
 describe('OnboardingCestParti (docs/ecrans/L1-05-onboarding-client.md, étape 4/4)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -133,13 +144,18 @@ describe('OnboardingCestParti (docs/ecrans/L1-05-onboarding-client.md, étape 4/
 
   it('un échec du serveur affiche une erreur et ne navigue pas', async () => {
     const port = await portRempli();
-    port.echouerProchaineEcriturePourTest('On a un souci de notre côté.');
+    port.echouerProchaineEcriturePourTest();
     await rendreEcran(port);
     await waitFor(() => expect(screen.getByText('Bienvenue, Camille.')).toBeTruthy());
 
     await fireEvent.press(screen.getByText('Découvrir des coachs'));
 
-    await waitFor(() => expect(screen.getByText('On a un souci de notre côté.')).toBeTruthy());
+    // Adapté le 2 novembre 2026 : le test injectait lui-même un texte dans le faux port et
+    // vérifiait que l'écran le répétait (test circulaire, CLAUDE.md §8). La fiche (L1-05,
+    // « Erreur ») demande le repli serveur : titre et détail, ici hors de la zone de défilement.
+    await waitFor(() => expect(screen.queryByText('On a un souci de notre côté')).toBeTruthy());
+    expect(screen.getByText("Ce n'est pas toi. Réessaie dans un instant.")).toBeTruthy();
+    expect(dansLaZoneDeDefilement(screen.getByText('On a un souci de notre côté'))).toBe(false);
     expect(mockRemplacer).not.toHaveBeenCalled();
   });
 });

@@ -298,6 +298,21 @@ testait son propre faux, et passait. Sur l'iPhone, appuyer sur un onglet aurait 
   chaque sortie (retour, en-tête, avatar, bascule) est rendue AU-DESSUS des branches, jamais dans
   l'une d'elles, et un test l'atteint dans chaque état.
 
+**Un test s'écrit d'après la fiche, jamais d'après le code : sinon il est circulaire.** Un test
+qui fabrique son entrée puis vérifie que l'écran la répète prouve seulement que l'écran répète,
+pas qu'il fait ce que la fiche demande. Trouvé le 2 novembre 2026 : six tests d'erreur
+(`1-identite`, `2-objectifs`, `3-poids`, `4-cest-parti`, `devenir-coach`, `suppression`)
+injectaient eux-mêmes un texte dans le faux port (« On a un souci de notre côté. », « Erreur de
+test. ») et vérifiaient que l'écran l'affichait. Leurs fiches demandaient autre chose
+(« `EtatErreur` en bandeau », le repli serveur de L0-03). Ces tests ont tenu en place sept
+semaines un texte dupliqué sous son propre titre ; sur deux écrans, ils restaient verts alors que
+l'écran n'utilisait même pas `EtatErreur`. Le faux port le disait pourtant dans son texte par
+défaut : « jamais affichée telle quelle ». À l'inverse, un septième test adapté le même jour (un
+coach non vérifié pouvait appuyer sur « Publier ») suivait fidèlement sa fiche de l'époque :
+c'est la décision qui avait changé, pas le test qui était faux. Avant d'écrire une assertion,
+la question est donc : quelle ligne de la fiche est-ce que je prouve ? Si la réponse est « ce que
+le code fait », le test est circulaire.
+
 **Le banc emprunte le chemin de l'application, jamais un chemin équivalent.** Même famille que
 la règle précédente, côté base. Trouvé le 1er novembre 2026 : l'application modifiait un profil
 coach par `compte_id`, le banc par `id` ; le chemin du banc passait, celui de l'application

@@ -5,6 +5,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
+import { textesRepliErreur } from '@/composants/etats/textes';
 import { objectifsOnboarding, rythmesOnboarding } from '@/fixtures/demonstration';
 import { EnteteOnboarding } from '@/fonctionnalites/identite/entete-onboarding';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
@@ -113,15 +114,24 @@ export default function OnboardingCestParti() {
             />
           </View>
         ) : null}
-
-        {erreur ? (
-          <View accessibilityLiveRegion="polite">
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
-              {erreur}
-            </Text>
-          </View>
-        ) : null}
       </ScrollView>
+
+      {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
+          (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B). Le repli serveur, titre et
+          détail, jamais le texte du port. */}
+      {erreur ? (
+        <View
+          accessibilityLiveRegion="polite"
+          style={{ paddingHorizontal: theme.espace.gouttiere, paddingTop: theme.espace[2] }}
+        >
+          <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
+            {textesRepliErreur.serveur.titre}
+          </Text>
+          <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
+            {textesRepliErreur.serveur.explication}
+          </Text>
+        </View>
+      ) : null}
 
       <View
         style={{
