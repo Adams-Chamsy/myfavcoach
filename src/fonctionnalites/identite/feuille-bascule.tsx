@@ -8,6 +8,7 @@ import { textesRepliErreur } from '@/composants/etats/textes';
 import { Icone } from '@/composants/icones';
 import { FeuilleBasse } from '@/composants/feuille-basse';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
+import { determinerDestination } from '@/fonctionnalites/identite/garde';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import type { ProfilActif } from '@/services/donnees/port';
 import { useTheme, type ThemeResolu } from '@/theme/fournisseur';
@@ -93,9 +94,11 @@ export function FeuilleBascule({ ouverte, onFermer, children }: ProprietesFeuill
     AccessibilityInfo.announceForAccessibility(
       profil === 'coach' ? 'Espace coach' : 'Espace client',
     );
-    router.replace(
-      (profil === 'coach' ? '/(coach)/(tabs)/pilotage' : '/(client)/(tabs)/accueil') as Href,
-    );
+    // La destination vient de la garde (determinerDestination, P1.10), jamais d'un choix local :
+    // jusqu'au 2 novembre 2026, la feuille envoyait toujours à l'accueil client, et un coach qui
+    // avait quitté l'onboarding client à l'étape 2 y arrivait sans ses étapes 2 à 4. L'état lu
+    // ici date d'avant la bascule : seul le profil actif change, il est posé à la main.
+    router.replace(determinerDestination(session, { ...profils!, profilActif: profil }));
   }
 
   function reessayer() {

@@ -176,6 +176,30 @@ describe('FeuilleBascule (docs/ecrans/L1-06-bascule-espace.md)', () => {
     expect(screen.queryByRole('button', { name: 'Réessayer' })).toBeNull();
   });
 
+  // docs/dette.md (2 novembre 2026) : la garde de P1.10 renvoie un profil client à l'étape
+  // non terminée (determinerDestination, règle 4). Un coach qui a quitté l'onboarding client
+  // après l'étape 1 a un profil client à l'étape 2 : la bascule doit le ramener là, jamais sur
+  // l'accueil client sans ses étapes 2 à 4.
+  it('vers un profil client à l’onboarding non terminé : reprend l’étape non terminée, pas l’accueil', async () => {
+    const portDonnees = creerFauxPortDonnees();
+    portDonnees.definirEtatProfilsPourTest(
+      etatProfilsParDefaut({
+        profilActif: 'coach',
+        coachExiste: true,
+        clientExiste: true,
+        clientOnboardingEtape: 2,
+      }),
+    );
+
+    await rendreFeuille(portDonnees);
+    await waitFor(() => expect(screen.getByLabelText('Espace client')).toBeTruthy());
+
+    await fireEvent.press(screen.getByLabelText('Espace client'));
+
+    await waitFor(() => expect(mockRemplacer).toHaveBeenCalledWith('/(onboarding)/2-objectifs'));
+    expect(mockRemplacer).not.toHaveBeenCalledWith('/(client)/(tabs)/accueil');
+  });
+
   // Critère 6.
   it('le compteur d’attente n’est pas rendu quand il vaut 0 — absence du nœud, pas un texte vide', async () => {
     const portDonnees = creerFauxPortDonnees();
