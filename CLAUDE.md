@@ -382,10 +382,14 @@ un écran qui l'ignore rendent le même arbre à un nombre près dans un objet d
 encre de `app/(client)/moi.tsx` s'affichait sous la barre d'état sans qu'aucun test ne bronche.
 `METRIQUES_ZONES_SURES` (`src/test/accessibilite.test.tsx` : haut 59, bas 34) n'existe que pour
 que `useSafeAreaInsets()` ne lève pas ; sa valeur n'est comparée à la position de rien. Seule
-parade en place : `verifierOffsetHautZoneSure` + la liste `ECRANS_CHROME_HAUT` du même fichier
-vérifient que le premier contenu des écrans qui posent leur propre chrome haut (`accueil`,
-`pilotage`, `moi`) est retraité d'au moins l'inset haut. **Tout écran qui gagne un chrome haut
-doit être ajouté à cette liste.** Ce contrôle n'attrape pas la géométrie réelle (troncature,
+parade en place : `verifierOffsetHautZoneSure` (même fichier) vérifie que le premier contenu de
+**chaque écran du corpus** est retraité d'au moins l'inset haut, sauf exceptions nommées
+(`EXCEPTIONS_ZONE_SURE_HAUT`, une seule : la galerie). **Inversé le 2 novembre 2026** : c'était une
+liste d'écrans tenue à la main (« tout écran qui gagne un chrome haut doit y être ajouté ») ; le
+profil coach n'y a jamais été ajouté, et son nom passait sous l'heure, trouvé sur iPhone. Le corpus
+lui-même est exhaustif : un test exige que chaque route de `app/` y figure, ou soit une exception
+nommée (`EXCEPTIONS_CORPUS`, trois : démarrage et back-office web). **Une route nouvelle entre dans
+le corpus, ou dans une exception avec sa raison : jamais un oubli silencieux.** Ce contrôle n'attrape pas la géométrie réelle (troncature,
 inset bas, barre gestuelle Android), qui reste une vérification manuelle sur appareil (voir
 `docs/dette.md`).
 

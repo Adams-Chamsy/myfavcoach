@@ -31,6 +31,14 @@ import OnboardingIdentite from '../../app/(onboarding)/1-identite';
 import OnboardingObjectifs from '../../app/(onboarding)/2-objectifs';
 import OnboardingPoids from '../../app/(onboarding)/3-poids';
 import OnboardingCestParti from '../../app/(onboarding)/4-cest-parti';
+import { CorpsProfilCoachPublic } from '../../app/(client)/coach/[id]';
+import Invitations from '../../app/(coach)/invitations';
+import DevenirCoachProfil from '../../app/(onboarding)/devenir-coach-profil';
+import DevenirCoachRecapitulatif from '../../app/(onboarding)/devenir-coach-recapitulatif';
+import DevenirCoachVerification from '../../app/(onboarding)/devenir-coach-verification';
+import { CorpsDocumentLegal } from '../../app/(public)/documents/[type]';
+import { CorpsArriveeParInvitation } from '../../app/(public)/y/[jeton]';
+import { EcranCreationOffre } from '@/fonctionnalites/offres/ecran-creation-offre';
 import { creerSessionDemonstration } from '@/fixtures/session-demonstration';
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { EcranChoixOffre } from '@/fonctionnalites/abonnement/ecran-choix-offre';
@@ -38,6 +46,8 @@ import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-sessi
 import { creerFauxPortAuth } from '@/services/auth/faux';
 import { creerFauxPortDonnees } from '@/services/donnees/faux';
 import { FournisseurTheme } from '@/theme/fournisseur';
+import { execFileSync } from 'child_process';
+import { join } from 'path';
 import { taille, themes } from '@/theme/tokens';
 import { contraste, melangerCouleur } from './contraste';
 
@@ -113,32 +123,22 @@ function contientTexte(noeud: Noeud): boolean {
   return collecterTexte(noeud).trim().length > 0;
 }
 
-// Écrans qui posent leur propre chrome en haut (barre d'avatar, bloc encre) sous une navigation
-// « headerShown: false » : rien au-dessus d'eux ne réserve la zone sûre, donc chacun doit
-// pousser son premier contenu vers le bas d'au moins l'inset haut, via useSafeAreaInsets().
-// moi.tsx ne le faisait pas (P1.12) — « Devenir coach » passait sous l'heure et l'encoche, sans
-// qu'aucun test ne le voie. P1.13a a réécrit les deux écrans « moi » (même EcranCompte partagé,
-// src/fonctionnalites/compte/) : cette liste les y tient, côté client ET côté coach.
+// Zone sûre du haut : sous une navigation « headerShown: false » (toute l'application), rien
+// au-dessus d'un écran ne réserve la zone sûre ; chacun doit pousser son premier contenu vers le
+// bas d'au moins l'inset haut, via useSafeAreaInsets().
+//
+// INVERSÉ le 2 novembre 2026 : le contrôle vaut pour TOUS les écrans du corpus, sauf les
+// exceptions nommées ci-dessous, chacune avec sa raison. Avant, il ne valait que pour une liste
+// tenue à la main (« tout écran qui gagne un chrome haut doit être ajouté ») : le profil coach
+// (app/(client)/coach/[id].tsx) n'y a jamais été ajouté, et son nom passait sous l'heure, trouvé
+// sur iPhone. Même correction que le balayage des secrets : une liste à compléter à la main finit
+// par être incomplète.
 // Portée assumée : ce contrôle ne prouve PAS la géométrie réelle (débordement, inset bas, barre
 // Android à 3 boutons) — voir docs/dette.md, il reste un angle mort manuel sur appareil.
-const ECRANS_CHROME_HAUT = new Set([
-  'app/(client)/(tabs)/accueil.tsx',
-  // L3-02 : en-tête (retour, recherche, filtres) posé contre insets.top, même motif
-  // qu'accueil.tsx (règle de conduite CLAUDE.md §8, trouvée deux fois avant ce lot).
-  'app/(client)/(tabs)/explorer.tsx',
-  'app/(coach)/(tabs)/pilotage.tsx',
-  'app/(client)/(tabs)/moi.tsx',
-  'app/(coach)/(tabs)/moi.tsx',
-  'app/(compte)/informations.tsx',
-  'app/(compte)/identifiants.tsx',
-  'app/(compte)/confidentialite.tsx',
-  'app/(compte)/suppression.tsx',
-  'app/(compte)/documents.tsx',
-  'app/(compte)/export.tsx',
-  // L4-04a (P4.6a) : en-tête (retour, titre, étape) posé contre insets.top.
-  'app/(client)/souscription/[coachId].tsx',
+const EXCEPTIONS_ZONE_SURE_HAUT = new Map<string, string>([
+  // La galerie est un catalogue de composants, pas un écran du produit.
+  ['app/_galerie.tsx', 'catalogue de composants, hors parcours'],
 ]);
-
 type OffsetHaut = { ancre: boolean; offset: number };
 
 // Descend en ordre de rendu jusqu'au premier nœud qui, soit centre / pousse son contenu hors du
@@ -164,6 +164,15 @@ function verifierOffsetHautZoneSure(noeud: Noeud): OffsetHaut | null {
     (valeur): valeur is number => typeof valeur === 'number',
   );
   if (retrait !== undefined) return { ancre: true, offset: retrait };
+  // Une zone de défilement est rendue, sous Jest, en un seul nœud qui porte son
+  // contentContainerStyle comme propriété : son retrait haut est là, pas dans `style`. Sans cette
+  // lecture, connexion, inscription et les deux écrans de mot de passe passaient pour des écrans
+  // sans zone sûre (faux rouges trouvés en inversant le contrôle, 2 novembre 2026).
+  const conteneur = fusionnerStyle(noeud.props?.contentContainerStyle);
+  const retraitConteneur = [conteneur?.paddingTop, conteneur?.padding].find(
+    (valeur): valeur is number => typeof valeur === 'number',
+  );
+  if (retraitConteneur !== undefined) return { ancre: true, offset: retraitConteneur };
 
   const role = noeud.props?.accessibilityRole;
   if (
@@ -196,7 +205,7 @@ type Resultats = {
   contrastes: ConstatContraste[];
   cibles: ConstatCible[];
   iconesSansLabel: ConstatIcone[];
-  // Renseigné seulement pour les écrans de ECRANS_CHROME_HAUT ; null ailleurs.
+  // Renseigné pour tous les écrans du corpus (contrôle inversé le 2 novembre 2026).
   offsetHautZoneSure: OffsetHaut | null;
 };
 
@@ -542,6 +551,56 @@ const CORPUS: EntreeCorpus[] = [
       </FournisseurSession>
     ),
   },
+  // Ajoutés le 2 novembre 2026 : routes absentes du corpus, trouvées en le rendant exhaustif
+  // (test « chaque route de app/ est dans le corpus » ci-dessous).
+  {
+    nom: 'app/(client)/coach/[id].tsx',
+    creerElement: () => (
+      <FournisseurSession key="profil-coach" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesChoixOffre()}>
+          <CorpsProfilCoachPublic id="coach-yannick" />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(coach)/creer/[type].tsx',
+    creerElement: () => (
+      <FournisseurSession key="creer-offre" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <EcranCreationOffre />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(coach)/invitations.tsx',
+    creerElement: () => (
+      <FournisseurSession key="invitations" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <Invitations />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(public)/documents/[type].tsx',
+    creerElement: () => <CorpsDocumentLegal key="document" type="cgu" />,
+  },
+  {
+    nom: 'app/(public)/y/[jeton].tsx',
+    creerElement: () => {
+      const p = portDonneesChoixOffre();
+      p.definirCoachParJetonPourTest({ 'jeton-demonstration': 'coach-yannick' });
+      return (
+        <FournisseurSession key="invitation" port={creerFauxPortAuth()}>
+          <FournisseurDonnees port={p}>
+            <CorpsArriveeParInvitation jeton="jeton-demonstration" />
+          </FournisseurDonnees>
+        </FournisseurSession>
+      );
+    },
+  },
   { nom: 'app/(coach)/(tabs)/clients.tsx', creerElement: () => <Clients key="clients" /> },
   { nom: 'app/(coach)/(tabs)/agenda.tsx', creerElement: () => <Agenda key="agenda" /> },
   { nom: 'app/(coach)/(tabs)/revenus.tsx', creerElement: () => <Revenus key="revenus" /> },
@@ -630,6 +689,22 @@ const CORPUS: EntreeCorpus[] = [
       </FournisseurSession>
     ),
   },
+  ...(
+    [
+      ['app/(onboarding)/devenir-coach-profil.tsx', DevenirCoachProfil],
+      ['app/(onboarding)/devenir-coach-recapitulatif.tsx', DevenirCoachRecapitulatif],
+      ['app/(onboarding)/devenir-coach-verification.tsx', DevenirCoachVerification],
+    ] as const
+  ).map(([nom, Ecran]) => ({
+    nom,
+    creerElement: () => (
+      <FournisseurSession key={nom} port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <Ecran />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  })),
   {
     // docs/ecrans/L1-01-bienvenue.md, critère 5 : « couples texte/fond mesurés sur le dégradé
     // AU POINT LE PLUS CLAIR, pas sur l'encre pleine ». Le dégradé va de son extrémité
@@ -801,7 +876,7 @@ describe('accessibilité automatisée (npm run test:a11y)', () => {
           echecsIcone.push(`${nom} — icône sans accessibilityLabel (${icone.pere})`);
         }
 
-        if (ECRANS_CHROME_HAUT.has(nom)) {
+        if (!EXCEPTIONS_ZONE_SURE_HAUT.has(nom)) {
           const z = resultats.offsetHautZoneSure;
           if (z && z.ancre && z.offset < METRIQUES_ZONES_SURES.insets.top) {
             echecsZoneSure.push(
@@ -824,4 +899,34 @@ describe('accessibilité automatisée (npm run test:a11y)', () => {
     // une vraie dérive de performance future.
     15000,
   );
+});
+
+// Le corpus lui-même est exhaustif (2 novembre 2026) : chaque route de app/ y figure, ou est une
+// exception NOMMÉE avec sa raison. Sans ce test, le contrôle de zone sûre « tous les écrans »
+// redevenait « les écrans qu'on a pensé à ajouter » : le profil coach n'était pas dans le corpus.
+const EXCEPTIONS_CORPUS = new Map<string, string>([
+  [
+    'app/index.tsx',
+    'démarrage : polices, écran de démarrage, stockage sécurisé, hors corpus (voir plus haut)',
+  ],
+  ['app/(admin)/connexion.tsx', 'back-office, web seulement, exclu du paquet mobile (L2-10)'],
+  ['app/(admin)/verification.tsx', 'back-office, web seulement, exclu du paquet mobile (L2-10)'],
+]);
+
+describe('corpus d’accessibilité', () => {
+  it('chaque route de app/ est dans le corpus, ou une exception nommée', () => {
+    const routes = execFileSync(
+      'git',
+      ['ls-files', '--cached', '--others', '--exclude-standard', 'app'],
+      {
+        cwd: join(__dirname, '..', '..'),
+        encoding: 'utf8',
+      },
+    )
+      .split('\n')
+      .filter((f) => f.endsWith('.tsx') && !f.includes('.test.') && !/(^|\/)_layout\.tsx$/.test(f));
+    const dansLeCorpus = new Set(CORPUS.map((e) => e.nom));
+    const absentes = routes.filter((r) => !dansLeCorpus.has(r) && !EXCEPTIONS_CORPUS.has(r));
+    expect(absentes).toEqual([]);
+  });
 });

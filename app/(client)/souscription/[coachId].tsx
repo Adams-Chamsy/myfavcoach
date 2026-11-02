@@ -17,9 +17,11 @@ export default function ChoixOffreEcran() {
         router.canGoBack() ? router.back() : router.replace(`/(client)/coach/${coachId}` as Href)
       }
       // P4.6b : pousse 04b avec ce résultat, gardé en mémoire (jamais dans la route : l'URL de
-      // paiement n'entre ni dans une adresse ni dans un stockage, CLAUDE.md §10). D'ici là,
-      // l'intention est créée et rien d'autre ne se passe (docs/prompts/L4.md, P4.6a).
+      // paiement n'entre ni dans une adresse ni dans un stockage, CLAUDE.md §10). D'ici là, le
+      // paiement est FERMÉ et l'écran le dit (2 novembre 2026) : sans cela, chaque appui créait une
+      // intention et une session de paiement pour rien. À rouvrir (paiementOuvert retiré) à P4.6b.
       onIntentionCreee={() => {}}
+      paiementOuvert={false}
     />
   );
 }

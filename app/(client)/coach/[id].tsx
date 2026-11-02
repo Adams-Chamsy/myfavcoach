@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Badge } from '@/composants/badge';
 import { Bouton } from '@/composants/bouton';
@@ -24,6 +25,7 @@ type Onglet = 'offres' | 'avis' | 'parcours';
 // avant correction).
 export function CorpsProfilCoachPublic({ id }: { id: string | undefined }) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { port } = useDonnees();
   const { session, chargement: sessionEnChargement } = useSession();
   const router = useRouter();
@@ -66,7 +68,9 @@ export function CorpsProfilCoachPublic({ id }: { id: string | undefined }) {
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[6],
+          // Zone sûre du haut : la pile client masque l'en-tête système, rien d'autre ne réserve
+          // l'encoche. Oubliée jusqu'au 2 novembre 2026 : un nom long passait sous l'heure (iPhone).
+          paddingTop: insets.top + theme.espace[6],
           paddingBottom: theme.espace[6],
           gap: theme.espace[4],
         }}

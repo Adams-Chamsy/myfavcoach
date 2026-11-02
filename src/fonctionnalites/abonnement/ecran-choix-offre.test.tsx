@@ -54,7 +54,7 @@ const CREEE: ResultatIntention = {
 
 const FORMAT_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-async function rendre(offres: Offre[] = [SUIVI_COMPLET, SECONDE_OFFRE]) {
+async function rendre(offres: Offre[] = [SUIVI_COMPLET, SECONDE_OFFRE], paiementOuvert = true) {
   const portDonnees = creerFauxPortDonnees();
   portDonnees.definirProfilsCoachPublicsPourTest({
     'coach-yannick': {
@@ -83,6 +83,7 @@ async function rendre(offres: Offre[] = [SUIVI_COMPLET, SECONDE_OFFRE]) {
               coachId="coach-yannick"
               onRetour={onRetour}
               onIntentionCreee={onIntentionCreee}
+              paiementOuvert={paiementOuvert}
             />
           </FournisseurDonnees>
         </FournisseurSession>
@@ -94,6 +95,21 @@ async function rendre(offres: Offre[] = [SUIVI_COMPLET, SECONDE_OFFRE]) {
 }
 
 describe('L4-04a · Choix de l’offre', () => {
+  // 2 novembre 2026 : tant que P4.6b (04b, puis la page de paiement) n'existe pas, « Continuer »
+  // créait une intention et une session de paiement à chaque appui, et rien ne se passait à l'écran
+  // (trois intentions orphelines le matin même, sur iPhone). La route le désactive en le disant.
+  it('paiement pas encore ouvert : « Continuer » inactif, la raison écrite, aucune intention créée', async () => {
+    const { portDonnees } = await rendre([SUIVI_COMPLET, SECONDE_OFFRE], false);
+    const espion = jest.spyOn(portDonnees, 'demanderIntention');
+    expect(
+      screen.getByText("Le paiement n'est pas encore ouvert dans l'application."),
+    ).toBeTruthy();
+    const bouton = screen.getByRole('button', { name: /^Continuer/ });
+    expect(bouton.props.accessibilityState?.disabled).toBe(true);
+    await fireEvent.press(bouton);
+    expect(espion).not.toHaveBeenCalled();
+  });
+
   it('affiche le titre, l’étape, les offres publiées avec leur engagement humain, sans jour de prélèvement', async () => {
     await rendre();
     expect(screen.queryByText('Étape 1 sur 2')).toBeTruthy();

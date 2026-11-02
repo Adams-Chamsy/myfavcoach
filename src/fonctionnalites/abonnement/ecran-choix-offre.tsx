@@ -31,6 +31,10 @@ export type ProprietesEcranChoixOffre = {
   // L'URL de paiement ne quitte l'écran que par ce rappel, en mémoire : jamais une route, un
   // journal ni un stockage (CLAUDE.md §10). 04b la reçoit en P4.6b.
   onIntentionCreee: (resultat: IntentionCreee) => void;
+  // false tant que P4.6b (04b, puis la page de paiement) n'existe pas : « Continuer » est inactif
+  // et le dit, au lieu de créer une intention et une session de paiement pour rien à chaque appui
+  // (2 novembre 2026). Vrai par défaut : l'écran lui-même sait payer, c'est la route qui décide.
+  paiementOuvert?: boolean;
 };
 
 type Erreur = { type: 'refus'; refus: RefusServeur } | { type: 'reseau' };
@@ -50,6 +54,7 @@ export function EcranChoixOffre({
   coachId,
   onRetour,
   onIntentionCreee,
+  paiementOuvert = true,
 }: ProprietesEcranChoixOffre) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -218,12 +223,17 @@ export function EcranChoixOffre({
               borderTopColor: theme.couleur.bordure.discrete,
             }}
           >
+            {offre && !paiementOuvert ? (
+              <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+                Le paiement n&apos;est pas encore ouvert dans l&apos;application.
+              </Text>
+            ) : null}
             {offre ? (
               <Bouton
                 libelle={`Continuer · ${prixMensuel(offre.prixCentimes)}`}
                 variante="primaire"
                 onPress={() => void continuer()}
-                desactive={enCours}
+                desactive={enCours || !paiementOuvert}
               />
             ) : null}
             <Text
