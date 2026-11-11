@@ -544,7 +544,17 @@ Deux cas, jamais mélangés dans une même fonction :
 - **Pas d'exécution locale sur cette machine** : `supabase functions serve` a besoin de Docker,
   absent (même contrainte que le banc, `docs/dette.md`). Les essais se font donc contre le projet
   de développement déployé, avec la Stripe CLI en mode test pour les événements signés
-  (`stripe listen --forward-to <url>`, `stripe trigger <événement>`).
+  (`stripe trigger <événement>`, et le relais ci-dessous).
+- **Le relais est le seul chemin des événements Stripe vers le projet de développement** : aucun
+  point de terminaison Stripe n'y pointe. `npm run relais:stripe` le lance, avec la liste des six
+  événements traités par `webhook-paiement` (la Stripe CLI 1.52 refuse `stripe listen` sans
+  `--events`). **Sans lui, un paiement de test réussit chez Stripe mais ne crée jamais
+  l'abonnement.** Trouvé le 3 novembre 2026 (`docs/dette.md`). Un paiement fait sans relais se
+  rattrape sans repayer : relais lancé, `stripe events resend <evt_…>` pour chaque
+  `checkout.session.completed` (vérifié le même jour : livré, webhook en 200, abonnement créé).
+  Le secret de signature du relais doit être celui posé sur le projet : comparer par empreinte
+  (SHA-256 de `stripe listen --print-secret` contre l'empreinte de `supabase secrets list`), jamais
+  en affichant l'un ou l'autre.
 - Une fonction déployée n'est pas une migration : aucune trace dans `supabase/migrations/`, et la
   CI ne la rejoue pas. Ce qui la rend reproductible, c'est son code dans le dépôt et la commande
   ci-dessus — rien n'est modifié à la main dans le tableau de bord.

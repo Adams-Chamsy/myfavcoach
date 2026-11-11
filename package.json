@@ -18,6 +18,7 @@
     "comptes:scenarios": "node scripts/comptes-scenarios.mjs",
     "comptes:scenarios:paiements": "node scripts/comptes-scenarios.mjs --paiements",
     "comptes:scenarios:supprimer": "node scripts/comptes-scenarios.mjs --supprimer",
+    "relais:stripe": "stripe listen --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired,payment_intent.succeeded,payment_intent.payment_failed --forward-to https://imzdtntaqbtymoacsxua.supabase.co/functions/v1/webhook-paiement",
     "verif:fonctions": "node scripts/verifier-fonctions.mjs",
     "verif:serveur": "node scripts/verifier-serveur-dev.mjs",
     "env:proteger": "node scripts/proteger-env.mjs",

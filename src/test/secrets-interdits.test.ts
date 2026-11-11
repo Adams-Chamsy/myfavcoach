@@ -110,9 +110,13 @@ describe('secrets interdits côté application', () => {
     //   - scripts/verifier-bundle-production.mjs : cherche "api.stripe.com" dans le bundle livré
     //   - scripts/poser-secret-stripe.sh         : pose un secret Stripe sur le projet de dev
     //     après avoir refusé toute clé _live_ (docs/backend.md §13, « Secrets »)
+    //   - scripts/comptes-scenarios.mjs          : cherche le processus `stripe listen` (le relais
+    //     des événements vers le dev) et refuse d'ouvrir des liens de paiement s'il ne tourne pas
+    //     (ajouté le 3 novembre 2026). N'importe rien de Stripe : il passe par l'Edge Function.
     const NOMMENT_SANS_IMPORTER = new Set([
       'scripts/verifier-bundle-production.mjs',
       'scripts/poser-secret-stripe.sh',
+      'scripts/comptes-scenarios.mjs',
     ]);
     const MOTIF_IMPORT_STRIPE =
       /(?:from\s+|require\(\s*|import\(\s*)['"](?:stripe|@stripe\/[^'"]*)['"]/;

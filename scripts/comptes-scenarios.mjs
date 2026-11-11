@@ -28,6 +28,7 @@
 // Il faut un prélèvement échoué à l'échéance suivante, un mois plus tard (docs/dette.md).
 import { Buffer } from 'node:buffer';
 import { spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -592,6 +593,36 @@ async function construire(cfg) {
   return { resultats, ids };
 }
 
+// Le relais des événements Stripe : le projet de dev n'a AUCUN point de terminaison Stripe, il ne
+// reçoit les événements que par `stripe listen` lancé sur la machine (docs/backend.md §12). Sans
+// lui, le paiement réussit chez Stripe et l'abonnement n'est jamais créé. Trouvé le 3 novembre
+// 2026 : trois paiements faits, aucun abonnement — le relais n'était dit nulle part. Les liens ne
+// sont donc ouverts que si un relais tourne, vers CE webhook, avec checkout.session.completed.
+// Ce contrôle prouve qu'un processus tourne, pas que son secret de signature est le bon : celui-là
+// se compare par empreinte (docs/dette.md, ligne du relais).
+const URL_WEBHOOK_DEV = `https://${REFERENCE_PROJET_AUTORISEE}.supabase.co/functions/v1/webhook-paiement`;
+
+function relaisStripeEnMarche() {
+  const r = spawnSync('pgrep', ['-fl', 'stripe listen'], { encoding: 'utf8' });
+  return (r.stdout ?? '')
+    .split('\n')
+    .some(
+      (ligne) => ligne.includes(URL_WEBHOOK_DEV) && ligne.includes('checkout.session.completed'),
+    );
+}
+
+function exigerRelaisStripe() {
+  if (!relaisStripeEnMarche()) {
+    console.error(
+      'REFUSÉ : aucun relais Stripe ne tourne vers le webhook du projet de dev. Sans lui, un ' +
+        'paiement réussit chez Stripe mais ne crée jamais l’abonnement.\n' +
+        'Lance-le dans un autre terminal, laisse-le tourner, puis relance cette commande :\n' +
+        '  npm run relais:stripe',
+    );
+    process.exit(1);
+  }
+}
+
 async function ouvrirPaiements(cfg) {
   const [offre] = await lire(
     cfg,
@@ -615,7 +646,10 @@ async function ouvrirPaiements(cfg) {
       methode: 'POST',
       jeton,
       corps: { offreId: offre.id },
-      entetes: { 'Idempotency-Key': `scenario-${def.cle}-${Date.now()}` },
+      // Un UUID, comme l'application (l'Edge Function refuse tout autre format :
+      // cle_idempotence_requise). Corrigé le 3 novembre 2026 : la première version envoyait
+      // « scenario-<compte>-<heure> », refusé avant toute création d'intention.
+      entetes: { 'Idempotency-Key': randomUUID() },
     });
     liens.push({ def, url: intention.urlPaiement });
   }
@@ -664,6 +698,11 @@ function ecrireFichier(cfg, { resultats }, liens = null) {
       'Carte de test : `4242 4242 4242 4242`, n’importe quelle date future, n’importe quel code.',
       'Garde ton `npm start` ouvert : la page de paiement te ramène sur `http://localhost:8081`.',
       '',
+      '**Le relais des événements Stripe doit tourner** jusqu’à la fin des trois paiements',
+      '(`npm run relais:stripe`, dans un autre terminal ; ces liens n’ont été créés que parce',
+      'qu’il tournait). Sans lui, le paiement réussit chez Stripe mais l’abonnement n’est jamais',
+      'créé : le projet de dev n’a aucun point de terminaison Stripe (docs/backend.md §12).',
+      '',
     );
     liens.forEach(({ def, url, deja }, i) => {
       lignes.push(
@@ -703,6 +742,9 @@ const mode = process.argv[2];
 if (mode === '--supprimer') {
   await supprimer(cfg);
 } else if (mode === '--paiements') {
+  // En tout premier : refuser AVANT toute connexion ni écriture (trouvé le 3 novembre 2026, la
+  // garde passait après une quinzaine de connexions, jusqu'à la limite de débit de Supabase).
+  exigerRelaisStripe();
   const etat = await construire(cfg);
   const liens = await ouvrirPaiements(cfg);
   ecrireFichier(cfg, etat, liens);
