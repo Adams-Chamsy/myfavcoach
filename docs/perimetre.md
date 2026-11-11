@@ -236,6 +236,48 @@ l'application plus cohérente plus tôt — la messagerie est l'un des trois eng
 qu'une offre vend —, mais rien n'est vendu en mode test, et déplacer un lot pour une cohérence de
 démonstration coûterait plus qu'il ne rapporte.
 
+**Séances avec le développeur ramenées à quatre (décidé le 11 novembre 2026).** Les groupes et
+leur ordre ci-dessus ne changent pas ; ce qui change, c'est le nombre de fois où le développeur
+doit être présent : quatre au lieu de six. Chaque séance clôt les lots qui viennent d'être
+construits et prend les décisions dont le groupe suivant a besoin.
+
+| Séance | Clôt | Décide pour la suite | Présence (estimation) |
+|---|---|---|---|
+| 1 | **L5 seul** (L5a puis L5b) : onboarding Connect de deux coachs de test, un versement de test, écran revenus sur la vraie base | questionnaire santé (05a) pour L6 | ~2 h 30 |
+| 2 | **L6 et L7** | traitement des signalements (L8), règles de réservation (L9), clés de notification Apple (L10) | ~2 h 30 |
+| 3 | **L8, L9, puis L10 en dernier**, sur appareil | — | ~3 h |
+| 4 | **L12 seul** | — | plusieurs jours d'attente réelle (revue des stores) |
+
+Activer Connect dans le tableau de bord Stripe se fait avant le code de L5, à la porte de sortie de
+L4. L5 reste seul (l'argent y sort, Connect est un service extérieur nouveau) ; L12 reste seul
+(production, argent réel). L5a et L5b dans une même séance : recommandé, le découpage reste dans
+le code (le banc prouve les montants avant que les écrans existent).
+
+**L6 et L7 dans une même séance — l'arrêt entre les deux est gardé.** Fusionnés sans précaution,
+L6 se clôturerait en même temps que L7, et L7 serait construit sur des données de santé
+(catégorie 9) que personne n'aurait vues sur la vraie base. Une progression fausse côté coach
+pourrait alors venir d'une saisie mal enregistrée, d'un consentement ou d'une réponse partielle mal
+traités, ou du calcul lui-même. Claude l'a déconseillé. **Ce qui rend la fusion acceptable** :
+L6 est clos par Claude, avant que L7 ne s'ouvre, par un écran web piloté sur la base de dev
+(Chrome headless par le protocole de débogage, sans dépendance, à partir du serveur web local ;
+essai concluant le 11 novembre 2026 : connexion d'un compte de scénario jusqu'à `/accueil`,
+données lues sur la base de dev, capture d'écran comprise). Cette clôture vaut pour la règle « un
+lot ne se clôt pas sans qu'un écran ait touché la vraie base » ; elle ne remplace pas l'appareil
+(module natif sans rendu web, zones sûres, gestes : `CLAUDE.md` §6 et §8), qui reste vérifié en
+séance 2. **Si un défaut de L7 devient difficile à situer, regarder d'abord si la clôture web de L6
+a bien eu lieu avant l'ouverture de L7.**
+
+**L10 vérifié dans la même séance que L8 et L9 — décision du développeur, contre l'avis de
+Claude.** Raison de l'avis contraire : une notification absente ou à la mauvaise heure a trois
+origines possibles dans trois lots — l'événement jamais émis (L8, L9), l'heure mal calculée (le
+fuseau de L9, la logique la plus piégeuse du jalon), la livraison (Apple, Expo). Un symptôme, trois
+lots. Précaution retenue : L10 a son propre prompt, son propre commit et sa propre vérification,
+passée en dernier dans la séance, une fois L8 et L9 vus séparément — c'est ce qui garde Apple
+identifiable. **Si un défaut de notification devient difficile à situer, c'est d'ici qu'il vient.**
+L8 et L9 dans la même séance : acceptable (tables et écrans distincts), au prix d'un point brouillé —
+les droits d'accès des deux lots se décident sur le statut d'abonnement ; une règle d'accès fausse
+se cherchera dans les deux.
+
 **Risque, à tenir tant que L8 n'existe pas : aucun coach ne doit pouvoir publier une offre qui
 promet une réponse sous 24 h.** L'engagement « messagerie avec délai de réponse annoncé »
 (`docs/domaine.md` §3.3) se publie aujourd'hui sans que la messagerie existe : la promesse serait
@@ -327,8 +369,10 @@ Ces délais sont externes et bloquent la publication, pas le développement :
   aucune offre ni souscription sans compte de versement opérationnel, applicable en L5) ; reste
   une détention bornée — jusqu'à environ cinq semaines, et plus longtemps pour un solde sous
   20 € — dont la compatibilité avec la réglementation des services de paiement (encaissement pour
-  compte de tiers) est à confirmer, pas à supposer. **Bloque le premier paiement réel (L5)**, pas
-  le mode test.
+  compte de tiers) est à confirmer, pas à supposer. **Bloque le premier paiement réel**, pas
+  le mode test : le jalon 1 entier reste en mode test (`CLAUDE.md` §2), L5 compris ; le premier
+  paiement réel vient avec la mise en production, en L12 au plus tôt (corrigé le 11 novembre 2026 :
+  cette ligne disait « (L5) »).
 - **Facturation au nom du coach — deux questions de plus pour le juriste** (ajouté le 28 septembre
   2026, `docs/domaine.md` §3.5), **non tranchées ici** : (1) **le mandat de facturation** — c'est le
   coach qui vend, la plateforme émet la facture en son nom et pour son compte : ce mandat doit-il
@@ -338,7 +382,8 @@ Ces délais sont externes et bloquent la publication, pas le développement :
   dont le cadre a changé cette année d'après le porteur du projet) : ce que la plateforme doit
   collecter sur chaque coach, déclarer, et transmettre au coach lui-même. Cette seconde question
   pèse sur l'identité fiscale collectée en L5 (`docs/domaine.md` §3.2) : la liste des champs peut
-  s'allonger. **Bloque le premier paiement réel (L5)**, pas le mode test.
+  s'allonger. **Bloque le premier paiement réel** (mise en production, L12 au plus tôt ; L5
+  reste en mode test, corrigé le 11 novembre 2026), pas le mode test.
 - **POINT BLOQUANT — Apple : le paiement hors achat in-app n'est probablement pas permis pour
   cette offre sur iOS** (ajouté le 28 septembre 2026, décidé en conversation ; raisonnement dans
   `docs/domaine.md` §2). La seule exception d'Apple qui pourrait s'appliquer, la règle 3.1.3(d),
