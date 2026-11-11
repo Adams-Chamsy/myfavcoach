@@ -32,6 +32,10 @@ L0) en choisissant « Nouvelle offre ».
 | « Ce que tu fais toi-même » (engagement humain) | oui (au moins un) | choix parmi une liste figée, en jetons sélectionnables (ajustement hebdomadaire, visio mensuelle, messagerie avec délai de réponse annoncé — `docs/domaine.md` §3.3), pas de saisie libre |
 | Mise en avant | non, une seule par coach | interrupteur ; l'activer désactive automatiquement celle d'une autre offre du même coach, s'il en existe une |
 
+**En-tête** (maquette, ajouté le 11 novembre 2026 — A3, trouvé sur iPhone le 2 novembre) : une
+croix « Fermer » à gauche, qui quitte l'écran ; le titre « Nouvelle offre » ; « Enregistrer » à
+droite. Sans la croix, le geste de retour était la seule sortie.
+
 **Hiérarchie des actions** (maquette) : « Enregistrer » est un lien discret en en-tête —
 enregistrer un brouillon n'est pas l'action principale de cet écran, seulement un filet de
 sécurité. « Publier » est le seul bouton de pied, plein et proéminent : c'est l'action que cet

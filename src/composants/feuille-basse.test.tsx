@@ -1,7 +1,9 @@
-import { render, screen } from '@testing-library/react-native';
+import { render, screen, waitFor } from '@testing-library/react-native';
 import { Text } from 'react-native';
+import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 
 import { FournisseurTheme } from '@/theme/fournisseur';
+import { espace } from '@/theme/tokens';
 import { calculerDecalageEntree, FeuilleBasse } from './feuille-basse';
 
 function rendreFeuille(ouverte: boolean, onFermer = () => {}) {
@@ -65,5 +67,36 @@ describe('calculerDecalageEntree', () => {
     expect(calculerDecalageEntree(false, 0, 400)).toBe(400);
     expect(calculerDecalageEntree(false, 0.5, 400)).toBe(200);
     expect(calculerDecalageEntree(false, 1, 400)).toBe(0);
+  });
+
+  // Trouvé sur iPhone le 2 novembre 2026 : la dernière ligne de la feuille de bascule
+  // (« Réglages du compte ») commençait dans la zone de la barre d'accueil, où le système
+  // intercepte les gestes. La feuille, collée au bas de l'écran, ajoute donc l'inset bas à son
+  // propre retrait — pour toutes les feuilles de l'application, pas seulement celle-là.
+  it('ajoute la zone sûre du bas à son retrait (barre d’accueil)', async () => {
+    const metriques: Metrics = {
+      insets: { top: 59, right: 0, bottom: 34, left: 0 },
+      frame: { x: 0, y: 0, width: 393, height: 852 },
+    };
+    render(
+      <SafeAreaProvider initialMetrics={metriques}>
+        <FournisseurTheme>
+          <FeuilleBasse
+            ouverte
+            onFermer={() => {}}
+            enfants={<Text>Contenu feuille</Text>}
+            testID="feuille"
+          >
+            <Text>Contenu ecran</Text>
+          </FeuilleBasse>
+        </FournisseurTheme>
+      </SafeAreaProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('feuille-feuille')).toHaveStyle({
+        paddingBottom: espace[6] + 34,
+      }),
+    );
   });
 });

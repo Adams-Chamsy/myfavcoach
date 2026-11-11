@@ -3,6 +3,7 @@ import { ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
+import { BoutonIcone } from '@/composants/bouton-icone';
 import { Champ } from '@/composants/champ';
 import { Chip } from '@/composants/chip';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
@@ -55,7 +56,15 @@ type Retour =
   | { type: 'echec'; titre: string; detail: string }
   | { type: 'refus'; texte: string };
 
-export function EcranCreationOffre({ offreExistante }: { offreExistante?: Offre }) {
+export function EcranCreationOffre({
+  offreExistante,
+  onFermer,
+}: {
+  offreExistante?: Offre;
+  // A3 : la croix de l'en-tête. Fournie par la route (app/(coach)/creer/[type].tsx), qui seule
+  // sait où revenir — cet écran ne connaît pas la pile.
+  onFermer: () => void;
+}) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { port } = useDonnees();
@@ -187,9 +196,20 @@ export function EcranCreationOffre({ offreExistante }: { offreExistante?: Offre 
           paddingHorizontal: theme.espace.gouttiere,
           paddingBottom: theme.espace[2],
           flexDirection: 'row',
-          justifyContent: 'flex-end',
+          alignItems: 'center',
+          gap: theme.espace[2],
         }}
       >
+        {/* A3 — maquette MyFavCoach-L2_dc.html, « Créer une offre » : ✕ · Nouvelle offre ·
+            Enregistrer. Sans la croix, le geste de retour était la seule sortie (iPhone, 2
+            novembre 2026). */}
+        <BoutonIcone nom="fermer" accessibilityLabel="Fermer" onPress={onFermer} />
+        <Text
+          accessibilityRole="header"
+          style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal, flex: 1 }}
+        >
+          {offreExistante ? '' : 'Nouvelle offre'}
+        </Text>
         <Bouton
           libelle="Enregistrer"
           variante="discret"

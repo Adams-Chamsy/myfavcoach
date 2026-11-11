@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { AccessibilityInfo, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,6 +25,7 @@ export default function MotDePasseOublie() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ email?: string }>();
+  const router = useRouter();
   const { port } = useSession();
 
   const [email, setEmail] = useState(params.email ?? '');
@@ -94,28 +95,35 @@ export default function MotDePasseOublie() {
         )}
       </ScrollView>
 
-      {/* "Un champ, une action" (docs/ecrans/L1-04-connexion.md) : la fiche ne décrit rien
-          après l'envoi — aucun bouton de retour inventé ici, voir docs/dette.md. Le geste
-          système (glissement iOS, bouton matériel Android) reste disponible. */}
-      {!envoye ? (
-        <View
-          style={{
-            paddingHorizontal: theme.espace.gouttiere,
-            paddingTop: theme.espace[3],
-            paddingBottom: insets.bottom + theme.espace[3],
-            borderTopWidth: 1,
-            borderTopColor: theme.couleur.bordure.discrete,
-            backgroundColor: theme.couleur.fond.canevas,
-          }}
-        >
+      {/* "Un champ, une action" (docs/ecrans/L1-04-connexion.md). Après l'envoi, une sortie :
+          « Retour à la connexion » (B2, décidé par le développeur le 2 novembre 2026 — « un écran
+          sans sortie est un défaut quelle que soit la façon dont on y arrive »). Arrivé par « Ce
+          lien a expiré » (un remplacement), aucun geste système ne ramenait nulle part. */}
+      <View
+        style={{
+          paddingHorizontal: theme.espace.gouttiere,
+          paddingTop: theme.espace[3],
+          paddingBottom: insets.bottom + theme.espace[3],
+          borderTopWidth: 1,
+          borderTopColor: theme.couleur.bordure.discrete,
+          backgroundColor: theme.couleur.fond.canevas,
+        }}
+      >
+        {!envoye ? (
           <Bouton
             libelle="Envoyer le lien"
             variante="primaire"
             onPress={surEnvoyer}
             desactive={email.trim() === '' || chargement}
           />
-        </View>
-      ) : null}
+        ) : (
+          <Bouton
+            libelle="Retour à la connexion"
+            variante="primaire"
+            onPress={() => router.replace('/(public)/connexion')}
+          />
+        )}
+      </View>
     </View>
   );
 }

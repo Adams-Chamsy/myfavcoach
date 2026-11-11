@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 
 import { EcranProvisoire } from '@/composants/ecran-provisoire';
 import { EcranCreationOffre } from '@/fonctionnalites/offres/ecran-creation-offre';
@@ -17,10 +17,20 @@ const CONFIGURATION: Record<string, { titre: string; lot: string }> = {
 
 export default function Creer() {
   const { type } = useLocalSearchParams<{ type: string }>();
+  const router = useRouter();
 
   // L2-15 (docs/prompts/L2.md P2.10) : seule "offre" a un écran réel à ce lot. programme/seance
   // restent la coquille provisoire (L6, hors périmètre).
-  if (type === 'offre') return <EcranCreationOffre />;
+  if (type === 'offre')
+    return (
+      <EcranCreationOffre
+        onFermer={() =>
+          // Ouvert depuis la feuille « Créer » : on revient d'où l'on vient. Atteint sans rien
+          // derrière (lien direct, rechargement web), on retombe sur le pilotage.
+          router.canGoBack() ? router.back() : router.replace('/(coach)/(tabs)/pilotage' as Href)
+        }
+      />
+    );
 
   const configuration = CONFIGURATION[type ?? ''];
   return (

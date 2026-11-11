@@ -7,9 +7,10 @@ import { FournisseurTheme } from '@/theme/fournisseur';
 import MotDePasseOublie from './mot-de-passe-oublie';
 
 let mockParams: { email?: string } = {};
+const mockRemplacer = jest.fn();
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ replace: jest.fn(), push: jest.fn() }),
+  useRouter: () => ({ replace: mockRemplacer, push: jest.fn() }),
   useLocalSearchParams: () => mockParams,
 }));
 
@@ -35,6 +36,22 @@ const MESSAGE_CONFIRMATION = 'Si un compte existe avec cette adresse, le lien es
 describe('MotDePasseOublie (docs/ecrans/L1-04-connexion.md)', () => {
   beforeEach(() => {
     mockParams = {};
+    mockRemplacer.mockReset();
+  });
+
+  // B2, décidé par le développeur le 2 novembre 2026 : « Un écran sans sortie est un défaut
+  // quelle que soit la façon dont on y arrive. » Après l'envoi, le bouton d'envoi disparaît et
+  // rien d'autre n'était rendu ; arrivé par « Ce lien a expiré » (un replace), aucun geste
+  // système ne ramenait nulle part. Fiche L1-04 corrigée le 11 novembre 2026.
+  it('après l’envoi : « Retour à la connexion » ramène à l’écran de connexion', async () => {
+    await rendreEcran(creerFauxPortAuth());
+    expect(screen.queryByRole('button', { name: 'Retour à la connexion' })).toBeNull();
+
+    await fireEvent.changeText(screen.getByLabelText('Adresse e-mail'), 'camille@exemple.fr');
+    await fireEvent.press(screen.getByText('Envoyer le lien'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Retour à la connexion' }));
+
+    expect(mockRemplacer).toHaveBeenCalledWith('/(public)/connexion');
   });
 
   // Critère 2 : le même écran de confirmation pour une adresse existante et pour une adresse

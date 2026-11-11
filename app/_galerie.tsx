@@ -1338,7 +1338,10 @@ const ECRANS_L2: { titre: string; rendu: () => ReactNode }[] = [
       </AvecEnTeteCoach>
     ),
   },
-  { titre: 'L2-15 · Créer et publier une offre', rendu: () => <EcranCreationOffre /> },
+  {
+    titre: 'L2-15 · Créer et publier une offre',
+    rendu: () => <EcranCreationOffre onFermer={() => {}} />,
+  },
   { titre: 'L2-01 · Suppression de compte', rendu: () => <Suppression /> },
   {
     titre: 'L2-03 · Documents (client, à jour)',

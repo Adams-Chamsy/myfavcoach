@@ -568,7 +568,7 @@ const CORPUS: EntreeCorpus[] = [
     creerElement: () => (
       <FournisseurSession key="creer-offre" port={portAuthOnboarding}>
         <FournisseurDonnees port={portDonneesOnboarding}>
-          <EcranCreationOffre />
+          <EcranCreationOffre onFermer={() => {}} />
         </FournisseurDonnees>
       </FournisseurSession>
     ),

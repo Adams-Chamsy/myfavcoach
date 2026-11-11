@@ -31,7 +31,7 @@ function publier() {
   return screen.getByRole('button', { name: 'Publier' });
 }
 
-async function rendre(dossier?: DossierVerification) {
+async function rendre(dossier?: DossierVerification, onFermer: () => void = () => {}) {
   const portAuth = creerFauxPortAuth();
   await portAuth.inscrire('coach@mfc.test', 'un-mot-de-passe-suffisant', '1990-01-01');
   portAuth.verifierEmailPourTest('coach@mfc.test');
@@ -47,7 +47,7 @@ async function rendre(dossier?: DossierVerification) {
       <FournisseurTheme>
         <FournisseurSession port={portAuth}>
           <FournisseurDonnees port={portDonnees}>
-            <EcranCreationOffre />
+            <EcranCreationOffre onFermer={onFermer} />
           </FournisseurDonnees>
         </FournisseurSession>
       </FournisseurTheme>
@@ -173,5 +173,18 @@ describe('L2-15 · Créer et publier une offre', () => {
       ).toBeTruthy(),
     );
     expect(screen.getByLabelText('Titre').props.value).toBe('Suivi complet');
+  });
+
+  // A3 — maquette MyFavCoach-L2_dc.html, bloc « Créer une offre » : en-tête « ✕ · Nouvelle
+  // offre · Enregistrer ». Trouvé sur iPhone le 2 novembre 2026 : sans la croix, le seul moyen
+  // de quitter l'écran était le geste de retour.
+  it('l’en-tête porte la croix « Fermer » et le titre « Nouvelle offre » ; la croix quitte l’écran', async () => {
+    const onFermer = jest.fn();
+    await rendre(undefined, onFermer);
+
+    expect(screen.getByText('Nouvelle offre')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Fermer' }));
+
+    expect(onFermer).toHaveBeenCalledTimes(1);
   });
 });

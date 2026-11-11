@@ -38,6 +38,12 @@ Un champ, une action. Titre : « On te renvoie une clé. »
 existe avec cette adresse, le lien est parti. » Aucune distinction, aucune animation
 différente, aucun délai différent.
 
+**Après l'envoi** (ajouté le 11 novembre 2026, décision du développeur du 2 novembre) : le bouton
+« Envoyer le lien » laisse la place à « Retour à la connexion », qui mène à l'écran de connexion.
+Un écran sans sortie est un défaut quelle que soit la façon dont on y arrive : arrivé par « Ce
+lien a expiré » → « M'en renvoyer un », l'écran a remplacé le précédent, et aucun geste système
+ne ramène nulle part.
+
 ---
 
 ## Nouveau mot de passe

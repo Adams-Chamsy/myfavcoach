@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { Modal, PanResponder, Pressable, View } from 'react-native';
 import Animated, {
   Easing,
@@ -8,6 +8,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import { useMouvementReduit, useTheme } from '@/theme/fournisseur';
 
@@ -53,6 +54,7 @@ export function FeuilleBasse({
   children,
   testID,
 }: ProprietesFeuilleBasse) {
+  const insets = useContext(SafeAreaInsetsContext);
   const theme = useTheme();
   const {
     actif: mouvementReduitActif,
@@ -184,6 +186,12 @@ export function FeuilleBasse({
                   borderTopRightRadius: theme.rayon.feuille,
                   backgroundColor: theme.couleur.fond.surface,
                   padding: theme.espace[6],
+                  // La feuille est collée au bas de l'écran : sans l'inset bas, sa dernière ligne
+                  // tombe dans la zone de la barre d'accueil, où le système intercepte les gestes
+                  // (« Réglages du compte », trouvé sur iPhone le 2 novembre 2026). Lu par le
+                  // contexte, pas par useSafeAreaInsets() : hors fournisseur (galerie, tests),
+                  // l'inset vaut simplement 0 au lieu de lever.
+                  paddingBottom: theme.espace[6] + (insets?.bottom ?? 0),
                 },
                 styleFeuille,
               ]}
