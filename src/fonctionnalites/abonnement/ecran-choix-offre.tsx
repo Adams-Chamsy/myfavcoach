@@ -25,16 +25,19 @@ import { nouvelleCleIdempotence } from './cle-idempotence';
 
 type IntentionCreee = Extract<ResultatIntention, { issue: 'creee' }>;
 
+// Ce que 04b nomme dans son récapitulatif (« Titre de l'offre, coach · discipline ») et que le
+// serveur ne rend pas avec l'intention.
+export type ChoixOffre = {
+  offre: { id: string; titre: string };
+  coach: { id: string; prenom: string; nom: string; discipline: string };
+};
+
 export type ProprietesEcranChoixOffre = {
   coachId: string;
   onRetour: () => void;
   // L'URL de paiement ne quitte l'écran que par ce rappel, en mémoire : jamais une route, un
-  // journal ni un stockage (CLAUDE.md §10). 04b la reçoit en P4.6b.
-  onIntentionCreee: (resultat: IntentionCreee) => void;
-  // false tant que P4.6b (04b, puis la page de paiement) n'existe pas : « Continuer » est inactif
-  // et le dit, au lieu de créer une intention et une session de paiement pour rien à chaque appui
-  // (2 novembre 2026). Vrai par défaut : l'écran lui-même sait payer, c'est la route qui décide.
-  paiementOuvert?: boolean;
+  // journal ni un stockage (CLAUDE.md §10). 04b la reçoit (P4.6b).
+  onIntentionCreee: (resultat: IntentionCreee, choix: ChoixOffre) => void;
 };
 
 type Erreur = { type: 'refus'; refus: RefusServeur } | { type: 'reseau' };
@@ -54,13 +57,13 @@ export function EcranChoixOffre({
   coachId,
   onRetour,
   onIntentionCreee,
-  paiementOuvert = true,
 }: ProprietesEcranChoixOffre) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { port } = useDonnees();
 
-  const [prenom, setPrenom] = useState<string | null>(null);
+  const [coach, setCoach] = useState<ChoixOffre['coach'] | null>(null);
+  const prenom = coach?.prenom ?? null;
   const [offres, setOffres] = useState<Offre[] | null>(null);
   const [choisie, setChoisie] = useState<string | null>(null);
   const [enCours, setEnCours] = useState(false);
@@ -86,7 +89,12 @@ export function EcranChoixOffre({
       port.lireOffresPublieesDeCoach(coachId),
     ]).then(([p, lues]) => {
       if (!monte) return;
-      setPrenom(p?.prenom ?? '');
+      setCoach({
+        id: coachId,
+        prenom: p?.prenom ?? '',
+        nom: p?.nom ?? '',
+        discipline: p?.discipline ?? '',
+      });
       appliquerOffres(lues);
     });
     return () => {
@@ -117,7 +125,10 @@ export function EcranChoixOffre({
         }
         return;
       }
-      onIntentionCreee(resultat);
+      onIntentionCreee(resultat, {
+        offre: { id: offre.id, titre: offre.titre },
+        coach: coach ?? { id: coachId, prenom: '', nom: '', discipline: '' },
+      });
     } finally {
       verrou.current = false;
       setEnCours(false);
@@ -223,17 +234,12 @@ export function EcranChoixOffre({
               borderTopColor: theme.couleur.bordure.discrete,
             }}
           >
-            {offre && !paiementOuvert ? (
-              <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-                Le paiement n&apos;est pas encore ouvert dans l&apos;application.
-              </Text>
-            ) : null}
             {offre ? (
               <Bouton
                 libelle={`Continuer · ${prixMensuel(offre.prixCentimes)}`}
                 variante="primaire"
                 onPress={() => void continuer()}
-                desactive={enCours || !paiementOuvert}
+                desactive={enCours}
               />
             ) : null}
             <Text

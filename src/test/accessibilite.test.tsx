@@ -42,6 +42,8 @@ import { EcranCreationOffre } from '@/fonctionnalites/offres/ecran-creation-offr
 import { creerSessionDemonstration } from '@/fixtures/session-demonstration';
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { EcranChoixOffre } from '@/fonctionnalites/abonnement/ecran-choix-offre';
+import { EcranPaiement } from '@/fonctionnalites/abonnement/ecran-paiement';
+import { recapitulatifPaiementDemonstration } from '@/fixtures/demonstration';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
 import { creerFauxPortDonnees } from '@/services/donnees/faux';
@@ -511,6 +513,46 @@ const CORPUS: EntreeCorpus[] = [
             coachId="coach-yannick"
             onRetour={() => {}}
             onIntentionCreee={() => {}}
+          />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    // P4.6b : rendu par son composant (la route lit useLocalSearchParams et la mémoire du tunnel).
+    // Données : src/fixtures/demonstration.ts (recapitulatifPaiementDemonstration).
+    nom: 'app/(client)/souscription/paiement.tsx',
+    creerElement: () => (
+      <FournisseurSession key="paiement" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesChoixOffre()}>
+          <EcranPaiement
+            mode={{
+              type: 'recapitulatif',
+              enCours: {
+                intention: {
+                  issue: 'creee',
+                  intentionId: 'intention-a11y',
+                  recapitulatif: { ...recapitulatifPaiementDemonstration },
+                  urlPaiement: 'https://paiement.exemple/a11y',
+                  moyensAcceptes: ['carte', 'sepa'],
+                },
+                offre: { id: 'offre-suivi', titre: 'Suivi complet' },
+                coach: {
+                  id: 'coach-yannick',
+                  prenom: 'Yannick',
+                  nom: 'Berthaud',
+                  discipline: 'préparation physique',
+                },
+                creeeLe: Date.now(),
+              },
+            }}
+            onRetour={() => {}}
+            ouvrirPage={async () => {}}
+            onAbonne={() => {}}
+            onVoirAbonnements={() => {}}
+            onRevenirProfil={() => {}}
+            onRienAConstater={() => {}}
+            onOuvrirConditions={() => {}}
           />
         </FournisseurDonnees>
       </FournisseurSession>

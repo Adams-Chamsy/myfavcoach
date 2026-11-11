@@ -27,6 +27,7 @@ import {
   offresDemonstration,
   programmesDemonstration,
   seancesDemonstration,
+  recapitulatifPaiementDemonstration,
 } from '@/fixtures/demonstration';
 import { EcranCompte } from '@/fonctionnalites/compte/ecran-compte';
 import { FeuilleBascule } from '@/fonctionnalites/identite/feuille-bascule';
@@ -64,6 +65,7 @@ import Export from './(compte)/export';
 import { CorpsDocumentLegal } from './(public)/documents/[type]';
 import { CorpsProfilCoachPublic } from './(client)/coach/[id]';
 import { EcranChoixOffre } from '@/fonctionnalites/abonnement/ecran-choix-offre';
+import { EcranPaiement } from '@/fonctionnalites/abonnement/ecran-paiement';
 import Accueil from './(client)/(tabs)/accueil';
 import { CorpsExplorer } from './(client)/(tabs)/explorer';
 import Invitations from './(coach)/invitations';
@@ -1882,12 +1884,52 @@ function ChoixOffreAvecFixture({ avecOffre }: { avecOffre: boolean }) {
   );
 }
 
+// L4-04b (P4.6b) : le récapitulatif, sur le jeu de démonstration (src/fixtures/demonstration.ts).
+function PaiementAvecFixture() {
+  const [port] = useState(() => creerFauxPortDonnees());
+  const [creeeLe] = useState(() => Date.now());
+  return (
+    <FournisseurDonnees port={port}>
+      <EcranPaiement
+        mode={{
+          type: 'recapitulatif',
+          enCours: {
+            intention: {
+              issue: 'creee',
+              intentionId: 'intention-galerie',
+              recapitulatif: { ...recapitulatifPaiementDemonstration },
+              urlPaiement: 'https://paiement.exemple/galerie',
+              moyensAcceptes: ['carte', 'sepa'],
+            },
+            offre: { id: 'offre-suivi', titre: 'Suivi complet' },
+            coach: {
+              id: 'coach-yannick',
+              prenom: 'Yannick',
+              nom: 'Berthaud',
+              discipline: 'préparation physique',
+            },
+            creeeLe,
+          },
+        }}
+        onRetour={() => {}}
+        ouvrirPage={async () => {}}
+        onAbonne={() => {}}
+        onVoirAbonnements={() => {}}
+        onRevenirProfil={() => {}}
+        onRienAConstater={() => {}}
+        onOuvrirConditions={() => {}}
+      />
+    </FournisseurDonnees>
+  );
+}
+
 const ECRANS_L4: { titre: string; rendu: () => ReactNode }[] = [
   { titre: 'L4-04a · Choix de l’offre', rendu: () => <ChoixOffreAvecFixture avecOffre /> },
   {
     titre: 'L4-04a · Aucune offre ouverte',
     rendu: () => <ChoixOffreAvecFixture avecOffre={false} />,
   },
+  { titre: 'L4-04b · Récapitulatif et paiement', rendu: () => <PaiementAvecFixture /> },
 ];
 
 function SectionEcransL4() {

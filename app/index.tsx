@@ -1,4 +1,4 @@
-import { Redirect } from 'expo-router';
+import { type Href, Redirect, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Image, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -80,6 +80,11 @@ export default function Index() {
   const insets = useSafeAreaInsets();
   const { chargement: chargementSession, session } = useSession();
   const { chargement: chargementDonnees, profils } = useDonnees();
+  // P4.6b — retour de la page de paiement sur web (docs/ecrans/L4-04b-recapitulatif-paiement.md,
+  // « Retour sur web ») : `/?intention={id}`, adresse posée par le serveur. Une donnée venue de
+  // l'extérieur : 04b ne fait que demander le constat, et le serveur décide (404 si elle n'est
+  // pas au compte connecté).
+  const { intention } = useLocalSearchParams<{ intention?: string }>();
   // P1.10 : le profil actif vient du serveur (src/services/donnees/), pas seulement la session
   // — determinerDestination attend les DEUX avant de trancher. FournisseurDonnees ne lit
   // jamais le port tant qu'aucune session vérifiée n'existe, donc chargementDonnees se résout
@@ -117,6 +122,15 @@ export default function Index() {
   // Trouve en preparant P1.8 avec le trousseau (l'ancienne memoire de session, qui ne savait
   // jamais qu'une session Supabase venait d'etre etablie).
   if (!chargement) {
+    if (intention && session?.emailVerifie && profils?.clientExiste) {
+      return (
+        <Redirect
+          href={
+            `/(client)/souscription/paiement?intention=${encodeURIComponent(intention)}` as Href
+          }
+        />
+      );
+    }
     return <Redirect href={determinerDestination(session, profils)} />;
   }
 

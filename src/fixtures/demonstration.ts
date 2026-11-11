@@ -377,3 +377,15 @@ export const rythmesOnboarding: RythmeOnboarding[] = [
 // (`disciplines`, 0020_creer_disciplines_reference.sql, `docs/domaine.md` §3.2bis), lue par
 // `port.lireDisciplines()` — `DISCIPLINES_FIGEES` (`src/services/donnees/faux.ts`) porte le même
 // contenu pour le faux port, qui ne touche jamais Postgres.
+
+// L4-04b (P4.6b) — le récapitulatif de paiement que la galerie et le corpus d'accessibilité
+// rendent. maquettes/MyFavCoach-Client_dc.html, bloc « 04b · Récapitulatif & paiement » :
+// « Suivi complet » de Yannick Berthaud à 49 €, « puis le 18 de chaque mois ». La maquette ne
+// donne que le JOUR : le mois et l'année de la date du prochain prélèvement sont choisis ici
+// (docs/decisions-en-attente.md, 11 novembre 2026), jamais lus nulle part.
+export const recapitulatifPaiementDemonstration = {
+  prixCentimes: 4900,
+  totalCentimes: 4900,
+  jourPrelevement: 18,
+  prochainPrelevementLe: '2026-12-18',
+} as const;

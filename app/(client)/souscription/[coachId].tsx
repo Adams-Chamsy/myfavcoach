@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 
 import { EcranChoixOffre } from '@/fonctionnalites/abonnement/ecran-choix-offre';
+import { poserIntentionEnCours } from '@/fonctionnalites/abonnement/intention-en-cours';
 
 // docs/ecrans/L4-04a-choix-offre.md, route `souscription/[coachId]` (nom de la fiche). Aucune
 // logique ici (CLAUDE.md §5) : l'écran vit dans src/fonctionnalites/abonnement/.
@@ -16,12 +17,12 @@ export default function ChoixOffreEcran() {
       onRetour={() =>
         router.canGoBack() ? router.back() : router.replace(`/(client)/coach/${coachId}` as Href)
       }
-      // P4.6b : pousse 04b avec ce résultat, gardé en mémoire (jamais dans la route : l'URL de
-      // paiement n'entre ni dans une adresse ni dans un stockage, CLAUDE.md §10). D'ici là, le
-      // paiement est FERMÉ et l'écran le dit (2 novembre 2026) : sans cela, chaque appui créait une
-      // intention et une session de paiement pour rien. À rouvrir (paiementOuvert retiré) à P4.6b.
-      onIntentionCreee={() => {}}
-      paiementOuvert={false}
+      // P4.6b : l'intention part vers 04b en mémoire (intention-en-cours.ts), jamais dans la
+      // route : l'URL de paiement n'entre ni dans une adresse ni dans un stockage (CLAUDE.md §10).
+      onIntentionCreee={(intention, choix) => {
+        poserIntentionEnCours({ intention, ...choix, creeeLe: Date.now() });
+        router.push('/(client)/souscription/paiement' as Href);
+      }}
     />
   );
 }

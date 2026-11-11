@@ -14,11 +14,13 @@ import Index from './index';
 // qu'un import en tete de fichier : le factory de jest.mock() ne peut pas referencer une
 // variable hors de sa portee (elle est hoistee au-dessus des imports), sauf via require()
 // appele a l'interieur du factory lui-meme.
+let mockParams: { intention?: string } = {};
 jest.mock('expo-router', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- voir commentaire ci-dessus
   const { Text } = require('react-native');
   return {
     Redirect: ({ href }: { href: string }) => <Text testID="redirection">{href}</Text>,
+    useLocalSearchParams: () => mockParams,
   };
 });
 
@@ -169,6 +171,32 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       await waitFor(() => {
         expect(screen.getByTestId('redirection').props.children).toBe('/(client)/(tabs)/accueil');
       });
+    });
+
+    // P4.6b — docs/ecrans/L4-04b-recapitulatif-paiement.md, « Retour sur web » : la page de
+    // paiement renvoie sur `/?intention={id}` (adresse posée par le serveur). Avec une session
+    // client, l'accueil ouvre 04b en mode retour, qui ne fait que demander le constat.
+    it('retour de paiement sur web (?intention=…) avec une session client : ouvre 04b en mode retour', async () => {
+      mockParams = { intention: 'intention-1' };
+      const session: SessionAuth = { ...sessionNonVerifiee(), emailVerifie: true };
+      const portDonnees = creerFauxPortDonnees();
+      portDonnees.definirEtatProfilsPourTest(
+        etatProfilsParDefaut({
+          profilActif: 'client',
+          clientExiste: true,
+          clientOnboardingEtape: 5,
+          coachExiste: false,
+        }),
+      );
+
+      await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('redirection').props.children).toBe(
+          '/(client)/souscription/paiement?intention=intention-1',
+        );
+      });
+      mockParams = {};
     });
 
     // P1.10 : le profil actif vient du serveur (src/services/donnees/), pas seulement de la

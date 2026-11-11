@@ -152,7 +152,10 @@ export type FauxPortDonnees = PortDonnees & {
   ): void;
   // Chaque demande reçue, dans l'ordre : un double appui, une clé réutilisée se voient ici.
   lireDemandesIntentionPourTest(): { offreId: string; cleIdempotence: string }[];
-  definirReponseConstatPourTest(reponse: ResultatConstat): void;
+  // Une réponse, ou une suite de réponses rendues dans l'ordre (la dernière se répète) : l'attente
+  // bornée de 04b (P4.6b) enchaîne plusieurs constats.
+  definirReponseConstatPourTest(reponse: ResultatConstat | ResultatConstat[]): void;
+  lireNombreConstatsPourTest(): number;
   // Avis (P4.9a) : par coach ; sans réglage, aucun avis et l'état « aucun ».
   definirAvisDuCoachPourTest(table: Record<string, AvisDuCoach>): void;
   definirMonAvisPourTest(table: Record<string, EtatMonAvis>): void;
@@ -227,7 +230,8 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     issue: 'sans_reponse',
   };
   let demandesIntention: { offreId: string; cleIdempotence: string }[] = [];
-  let reponseConstat: ResultatConstat = { issue: 'sans_reponse' };
+  let reponsesConstat: ResultatConstat[] = [{ issue: 'sans_reponse' }];
+  let nombreConstats = 0;
   let dossierVerification: DossierVerification = { statut: 'absente', deposeLe: null, motif: null };
   let piecesDeposees: PieceDeposee[] = [];
   // Types déposés depuis la dernière décision : miroir du « nouveau dossier » de 0053, où un
@@ -738,10 +742,16 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
       return demandesIntention;
     },
     async constaterIntention() {
-      return reponseConstat;
+      const reponse = reponsesConstat[Math.min(nombreConstats, reponsesConstat.length - 1)];
+      nombreConstats += 1;
+      return reponse;
     },
     definirReponseConstatPourTest(reponse) {
-      reponseConstat = reponse;
+      reponsesConstat = Array.isArray(reponse) ? reponse : [reponse];
+      nombreConstats = 0;
+    },
+    lireNombreConstatsPourTest() {
+      return nombreConstats;
     },
 
     async lireEtiquettesAvis() {
