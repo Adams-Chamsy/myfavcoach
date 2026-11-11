@@ -6,6 +6,7 @@ import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-sessi
 import { creerFauxPortAuth } from '@/services/auth/faux';
 import { creerFauxPortDonnees, etatProfilsParDefaut } from '@/services/donnees/faux';
 import { FournisseurTheme } from '@/theme/fournisseur';
+import { themes } from '@/theme/tokens';
 import DevenirCoachVerification from './devenir-coach-verification';
 
 const mockPousser = jest.fn();
@@ -24,7 +25,12 @@ const METRIQUES_ZONES_SURES: Metrics = {
   frame: { x: 0, y: 0, width: 393, height: 852 },
 };
 
-async function rendre(piecesDeposees: { type: string; deposeLe: string }[]) {
+async function rendre(
+  piecesDeposees: { type: string; deposeLe: string }[],
+  dossier?: Parameters<
+    ReturnType<typeof creerFauxPortDonnees>['definirDossierVerificationPourTest']
+  >[0],
+) {
   const portAuth = creerFauxPortAuth();
   await portAuth.inscrire('coach@mfc.test', 'un-mot-de-passe-suffisant', '1990-01-01');
   portAuth.verifierEmailPourTest('coach@mfc.test');
@@ -37,6 +43,7 @@ async function rendre(piecesDeposees: { type: string; deposeLe: string }[]) {
   portDonnees.definirPiecesDeposeesPourTest(
     piecesDeposees as Parameters<typeof portDonnees.definirPiecesDeposeesPourTest>[0],
   );
+  if (dossier) portDonnees.definirDossierVerificationPourTest(dossier);
 
   render(
     <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
@@ -159,5 +166,79 @@ describe('L2-06 · Devenir coach — étape 3/4 (vérification)', () => {
     await waitFor(() => expect(screen.queryByText(/Il manque/)).toBeNull());
     await fireEvent.press(screen.getByRole('button', { name: 'Continuer' }));
     expect(mockPousser).toHaveBeenCalledWith('/(onboarding)/devenir-coach-recapitulatif');
+  });
+
+  // A2 (2 novembre 2026, docs/dette.md « Impasse : un coach refusé… ») — fiche L2-06 : une pièce
+  // déposée affiche l'action « Remplacer » (Contenu, « Déposée ») ; elle efface l'ancienne
+  // version sans autre confirmation (critère 4). Sans elle, un coach refusé ne pouvait plus rien
+  // redéposer.
+  it('une pièce déposée propose « Remplacer » ; un nouveau fichier remplace la date affichée', async () => {
+    mockGetDocumentAsync.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///tmp/b.pdf', name: 'b.pdf', mimeType: 'application/pdf', size: 1 }],
+    });
+    const { portDonnees } = await rendre([
+      { type: 'identite', deposeLe: '2026-09-10T10:00:00.000Z' },
+    ]);
+    expect(screen.getByText('Déposée le 10/09/2026')).toBeTruthy();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Remplacer la pièce d’identité' }));
+
+    await waitFor(() => expect(screen.queryByText('Déposée le 10/09/2026')).toBeNull());
+    expect(screen.getByText(`Déposée le ${new Date().toLocaleDateString('fr-FR')}`)).toBeTruthy();
+    const identites = (await portDonnees.lirePiecesDeposees()).filter((p) => p.type === 'identite');
+    expect(identites).toHaveLength(2);
+  });
+
+  // Le serveur garde chaque dépôt (0012 : « l'ancien dépôt reste une preuve ») et les rend du
+  // plus ancien au plus récent : la ligne affiche le dépôt en vigueur, le plus récent.
+  it('plusieurs dépôts du même type : la ligne affiche le plus récent', async () => {
+    await rendre([
+      { type: 'identite', deposeLe: '2026-09-10T10:00:00.000Z' },
+      { type: 'identite', deposeLe: '2026-10-20T10:00:00.000Z' },
+    ]);
+
+    expect(screen.getByText('Déposée le 20/10/2026')).toBeTruthy();
+    expect(screen.queryByText('Déposée le 10/09/2026')).toBeNull();
+  });
+
+  it('« Remplacer » est présenté comme destructif : encre d’alerte, jamais la couleur d’action', async () => {
+    await rendre([{ type: 'identite', deposeLe: '2026-09-10T10:00:00.000Z' }]);
+
+    expect(screen.getByText('Remplacer')).toHaveStyle({
+      color: themes.clair.etat.erreurEncre,
+    });
+  });
+
+  // La raison de A2 : un coach refusé redépose les trois pièces, et son dossier repart en examen
+  // (0053). Avant A2, aucune des trois lignes n'avait d'action.
+  it('un coach refusé remplace ses trois pièces : le dossier repart en examen, et l’écran le dit', async () => {
+    mockGetDocumentAsync.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///tmp/c.pdf', name: 'c.pdf', mimeType: 'application/pdf', size: 1 }],
+    });
+    await rendre(
+      [
+        { type: 'identite', deposeLe: '2026-09-10T10:00:00.000Z' },
+        { type: 'diplome_ou_certification', deposeLe: '2026-09-10T10:01:00.000Z' },
+        { type: 'assurance_rc_pro', deposeLe: '2026-09-10T10:02:00.000Z' },
+      ],
+      { statut: 'refusee', deposeLe: '2026-09-10T10:02:00.000Z', motif: 'Pièce illisible.' },
+    );
+
+    for (const piece of ['la pièce d’identité', 'le diplôme ou la certification']) {
+      await fireEvent.press(screen.getByRole('button', { name: `Remplacer ${piece}` }));
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: `Remplacer ${piece}` })).toBeEnabled(),
+      );
+    }
+    expect(screen.queryByText('Ton dossier est complet, il part en examen.')).toBeNull();
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Remplacer l’attestation d’assurance RC pro' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText('Ton dossier est complet, il part en examen.')).toBeTruthy(),
+    );
   });
 });

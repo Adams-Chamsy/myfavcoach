@@ -1,13 +1,14 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
 import { Icone } from '@/composants/icones';
 import { EnteteOnboarding } from '@/fonctionnalites/identite/entete-onboarding';
 import { echeanceQuaranteHuitHeuresOuvrees } from '@/fonctionnalites/coach/echeance-verification';
+import { piecesEnVigueur } from '@/fonctionnalites/coach/pieces-en-vigueur';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import type { PieceDeposee, TypePiece } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
@@ -38,6 +39,12 @@ const LIBELLES_PIECE: Record<TypePiece, string> = {
   assurance_rc_pro: 'Attestation d’assurance RC pro',
 };
 const ORDRE_PIECES: TypePiece[] = ['identite', 'diplome_ou_certification', 'assurance_rc_pro'];
+// Libellé d'accessibilité de « Remplacer » : le seul mot visible ne dit pas quelle pièce.
+const LIBELLES_REMPLACER: Record<TypePiece, string> = {
+  identite: 'Remplacer la pièce d’identité',
+  diplome_ou_certification: 'Remplacer le diplôme ou la certification',
+  assurance_rc_pro: 'Remplacer l’attestation d’assurance RC pro',
+};
 
 function libelleManquant(deposees: Set<TypePiece>): string {
   const manquantes = ORDRE_PIECES.filter((t) => !deposees.has(t));
@@ -149,7 +156,7 @@ export default function DevenirCoachVerification() {
 
         {!chargement
           ? ORDRE_PIECES.map((type) => {
-              const piece = pieces.find((p) => p.type === type);
+              const piece = piecesEnVigueur(pieces).find((p) => p.type === type);
               return (
                 <View
                   key={type}
@@ -170,9 +177,45 @@ export default function DevenirCoachVerification() {
                       style={{ flexDirection: 'row', alignItems: 'center', gap: theme.espace[2] }}
                     >
                       <Icone nom="valide" couleur={theme.couleur.etat.succesEncre} />
-                      <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-                        Déposée le {new Date(piece.deposeLe).toLocaleDateString('fr-FR')}
+                      <Text
+                        style={{
+                          ...theme.texte.petit,
+                          color: theme.couleur.texte.secondaire,
+                          flex: 1,
+                        }}
+                      >
+                        {enCours === type
+                          ? 'Envoi en cours…'
+                          : `Déposée le ${new Date(piece.deposeLe).toLocaleDateString('fr-FR')}`}
                       </Text>
+                      {/* A2 — L2-06, règle 6 : action destructive (l'ancienne version cesse de compter
+                          dès l'envoi de la nouvelle), en encre d'alerte, jamais en couleur d'action ;
+                          sans autre confirmation (critère 4). */}
+                      <Pressable
+                        onPress={() => void surChoisirFichier(type)}
+                        disabled={enCours !== null}
+                        accessibilityRole="button"
+                        accessibilityLabel={LIBELLES_REMPLACER[type]}
+                        accessibilityState={{ disabled: enCours !== null }}
+                        style={{
+                          minHeight: theme.taille.tapMin,
+                          minWidth: theme.taille.tapMin,
+                          justifyContent: 'center',
+                          alignItems: 'flex-end',
+                        }}
+                      >
+                        <Text
+                          style={{
+                            ...theme.texte.actionAccent,
+                            color:
+                              enCours !== null
+                                ? theme.couleur.texte.desactive
+                                : theme.couleur.etat.erreurEncre,
+                          }}
+                        >
+                          Remplacer
+                        </Text>
+                      </Pressable>
                     </View>
                   ) : (
                     <Bouton

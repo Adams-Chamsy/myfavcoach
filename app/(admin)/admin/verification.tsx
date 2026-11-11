@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Linking, ScrollView, Text, TextInput, View } from 'react-native';
 
+import { piecesEnVigueur } from '@/fonctionnalites/coach/pieces-en-vigueur';
 import { supabaseAdmin } from '@/services/supabase/client-admin';
 import ConnexionAdmin from './connexion';
 
@@ -99,10 +100,15 @@ export default function Verification() {
       depose_le: string;
       chemin_stockage: string;
     }[];
+    // A2 : une pièce remplacée par le coach reste en base (0012, preuve), mais l'examinateur ne
+    // voit que la pièce en vigueur de chaque type — sinon deux « Pièce d'identité » côte à côte,
+    // sans savoir laquelle examiner.
     setPiecesDuDossier(
-      toutes
-        .filter((p) => p.coach_id === coachId)
-        .map((p) => ({ type: p.type, deposeLe: p.depose_le, cheminStockage: p.chemin_stockage })),
+      piecesEnVigueur(
+        toutes
+          .filter((p) => p.coach_id === coachId)
+          .map((p) => ({ type: p.type, deposeLe: p.depose_le, cheminStockage: p.chemin_stockage })),
+      ),
     );
   }
 

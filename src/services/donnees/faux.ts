@@ -488,10 +488,10 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
         return { succes: false, erreur };
       }
       const maintenant = new Date().toISOString();
-      piecesDeposees = [
-        ...piecesDeposees.filter((p) => p.type !== type),
-        { type, deposeLe: maintenant },
-      ];
+      // Comme le serveur (0012 : « l'ancien dépôt reste une preuve ») : un remplacement AJOUTE
+      // une ligne, il n'écrase pas l'ancienne. Corrigé à A2 (11 novembre 2026) : ce faux écrasait,
+      // et cachait ainsi un écran qui affichait le plus ANCIEN dépôt de chaque type.
+      piecesDeposees = [...piecesDeposees, { type, deposeLe: maintenant }];
       typesDepuisDecision.add(type);
       // Miroir de soumettre_dossier_si_complet (0053).
       const { statut } = dossierVerification;
