@@ -18,6 +18,8 @@ type CompteFaux = {
   // Changement d'adresse demandé mais pas encore confirmé sur les deux liens (docs/ecrans/
   // L1-09) : `email` NE CHANGE PAS tant que ceci est renseigné. null = aucun changement en cours.
   emailEnAttente: string | null;
+  // D — porte coach (L1-01) : comme les métadonnées d'inscription du vrai serveur.
+  intentionCoach: boolean;
 };
 
 // N'analyse JAMAIS la date de naissance via `new Date(dateNaissance)` : une chaîne "AAAA-MM-JJ"
@@ -78,6 +80,7 @@ export function creerFauxPortAuth(): FauxPortAuth {
       emailVerifie: compte.emailVerifie,
       jetonAcces: `jeton-acces-${compte.compteId}`,
       jetonRafraichissement: `jeton-rafraichissement-${compte.compteId}`,
+      intentionCoach: compte.intentionCoach,
     };
   }
 
@@ -87,7 +90,7 @@ export function creerFauxPortAuth(): FauxPortAuth {
   }
 
   return {
-    async inscrire(email, motDePasse, dateNaissance) {
+    async inscrire(email, motDePasse, dateNaissance, _jetonInvitation, intentionCoach) {
       // Pas parce que ce port applique la règle des 18 ans (elle est portée par le
       // déclencheur de 0001_creer_identite.sql, jamais dupliquée ici) : parce que l'écran
       // L1-02 doit pouvoir être testé face à ce refus précis sans base réelle.
@@ -107,6 +110,7 @@ export function creerFauxPortAuth(): FauxPortAuth {
           emailVerifie: false,
           lienExpire: false,
           emailEnAttente: null,
+          intentionCoach: intentionCoach === true,
         });
       }
       return { succes: true };

@@ -30,6 +30,13 @@ export function determinerDestination(
   if (!session) return '/(public)' as Href;
   if (!session.emailVerifie) return '/(public)/verification' as Href;
 
+  // D — L1-01, Règles : la porte coach « mémorise une intention (viaCoach) qui déclenchera
+  // l'écran L1-08 après la création du compte ». Seulement tant qu'aucun profil n'existe : une
+  // fois un profil créé (coach ou client), les règles habituelles reprennent.
+  if (profils && !profils.clientExiste && !profils.coachExiste && session.intentionCoach) {
+    return '/(onboarding)/devenir-coach' as Href;
+  }
+
   if (profils?.profilActif === 'client') {
     if (!profils.clientExiste) return ROUTE_PAR_ETAPE[1]; // règle 3 : aucun profil du tout
     const etape = profils.clientOnboardingEtape ?? 1;

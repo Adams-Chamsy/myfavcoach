@@ -65,6 +65,46 @@ describe('portAuthSupabase', () => {
       });
     });
 
+    // D — la porte coach (L1-01) : l'intention part dans les métadonnées d'inscription, comme
+    // jeton_invitation (L3bis) — elles survivent à la vérification de l'adresse, et à un
+    // changement d'appareil, ce qu'aucune mémoire locale ne ferait.
+    it('porte coach : l’intention part dans les métadonnées, en snake_case', async () => {
+      auth.signUp.mockResolvedValue({ data: {}, error: null });
+
+      await portAuthSupabase.inscrire(
+        'camille@exemple.fr',
+        'un-mot-de-passe',
+        '2000-01-01',
+        undefined,
+        true,
+      );
+
+      expect(auth.signUp).toHaveBeenCalledWith(
+        expect.objectContaining({
+          options: expect.objectContaining({
+            data: expect.objectContaining({ intention_coach: true }),
+          }),
+        }),
+      );
+    });
+
+    it('porte coach : la session rend l’intention lue dans les métadonnées du compte', async () => {
+      const avecIntention = sessionSupabaseFausse('compte-2', true);
+      auth.signInWithPassword.mockResolvedValue({
+        data: {
+          session: {
+            ...avecIntention,
+            user: { ...avecIntention.user, user_metadata: { intention_coach: true } },
+          },
+        },
+        error: null,
+      });
+
+      const resultat = await portAuthSupabase.connecter('camille@exemple.fr', 'bon-mot-de-passe');
+
+      expect(resultat.type === 'connecte' && resultat.session.intentionCoach).toBe(true);
+    });
+
     // Zone NON VÉRIFIÉE (voir le commentaire de traduireErreur dans ./supabase.ts et
     // docs/dette.md) : hypothèse la plus probable sur ce que GoTrue relaie réellement pour un
     // compte refusé par le déclencheur des 18 ans.
@@ -144,6 +184,7 @@ describe('portAuthSupabase', () => {
           emailVerifie: true,
           jetonAcces: 'jeton-acces-compte-1',
           jetonRafraichissement: 'jeton-rafraichissement-compte-1',
+          intentionCoach: false,
         },
       });
     });

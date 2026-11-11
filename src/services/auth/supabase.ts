@@ -57,6 +57,7 @@ function envoyerCourrielInscription(
   motDePasse: string,
   dateNaissance: string,
   jetonInvitation?: string,
+  intentionCoach?: boolean,
 ): ReturnType<typeof supabase.auth.signUp> {
   return supabase.auth.signUp({
     email,
@@ -75,6 +76,10 @@ function envoyerCourrielInscription(
         date_naissance: dateNaissance,
         cgu_version_acceptee: VERSION_CGU_ACCEPTEE,
         jeton_invitation: jetonInvitation,
+        // D — porte coach (L1-01) : même snake_case, même omission silencieuse quand absent.
+        // Une indication de navigation, jamais une autorisation : les métadonnées sont écrites
+        // par l'utilisateur lui-même.
+        intention_coach: intentionCoach ? true : undefined,
       },
       emailRedirectTo: LIEN_VERIFICATION_EMAIL,
     },
@@ -118,6 +123,7 @@ function versSessionAuth(session: SessionSupabaseJs): SessionAuth {
     emailVerifie: session.user.email_confirmed_at != null,
     jetonAcces: session.access_token,
     jetonRafraichissement: session.refresh_token,
+    intentionCoach: session.user.user_metadata?.intention_coach === true,
   };
 }
 
@@ -160,12 +166,13 @@ function traduireErreur(erreurBrute: unknown): ErreurAuth {
 }
 
 export const portAuthSupabase: PortAuth = {
-  async inscrire(email, motDePasse, dateNaissance, jetonInvitation) {
+  async inscrire(email, motDePasse, dateNaissance, jetonInvitation, intentionCoach) {
     const { error } = await envoyerCourrielInscription(
       email,
       motDePasse,
       dateNaissance,
       jetonInvitation,
+      intentionCoach,
     );
     if (error) return { succes: false, erreur: traduireErreur(error) };
     return { succes: true };

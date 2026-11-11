@@ -10,6 +10,7 @@ function sessionVerifiee(): SessionAuth {
     emailVerifie: true,
     jetonAcces: 'jeton-acces',
     jetonRafraichissement: 'jeton-rafraichissement',
+    intentionCoach: false,
   };
 }
 
@@ -105,4 +106,32 @@ describe('determinerDestination (docs/prompts/L1.md, P1.10 + P1.11)', () => {
   // app/(public)/_layout-garde.test.tsx pour la preuve de ce second appel — nommé avec un tiret,
   // jamais "_layout.test.tsx" (expo-router le lirait comme un second layout de la même route,
   // voir docs/dette.md).
+
+  // D — L1-01, Règles : « La porte coach ne crée pas un compte différent. Elle mémorise une
+  // intention (viaCoach) qui déclenchera l'écran L1-08 après la création du compte. » Jamais
+  // branchée jusqu'au 11 novembre 2026 : tout le monde partait à l'onboarding client.
+  it('porte coach : session vérifiée, aucun profil, intention coach → L1-08 (ouvre ton espace coach)', () => {
+    const profils: EtatProfils = etatProfilsParDefaut({
+      clientExiste: false,
+      coachExiste: false,
+      profilActif: 'client',
+    });
+
+    expect(determinerDestination({ ...sessionVerifiee(), intentionCoach: true }, profils)).toBe(
+      '/(onboarding)/devenir-coach',
+    );
+  });
+
+  it('porte coach, profil client déjà créé : l’intention ne prime plus, les règles habituelles s’appliquent', () => {
+    const profils: EtatProfils = etatProfilsParDefaut({
+      clientExiste: true,
+      clientOnboardingEtape: 5,
+      coachExiste: false,
+      profilActif: 'client',
+    });
+
+    expect(determinerDestination({ ...sessionVerifiee(), intentionCoach: true }, profils)).toBe(
+      '/(client)/(tabs)/accueil',
+    );
+  });
 });

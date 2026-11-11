@@ -9,7 +9,7 @@ import Inscription from './inscription';
 
 const mockPousser = jest.fn();
 const mockRetour = jest.fn();
-let mockParams: { email?: string } = {};
+let mockParams: { email?: string; viaCoach?: string } = {};
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPousser, back: mockRetour }),
@@ -283,5 +283,38 @@ describe('Inscription (docs/ecrans/L1-02-creation-compte.md)', () => {
 
     await fireEvent.press(screen.getByText('politique de confidentialité'));
     expect(mockPousser).toHaveBeenCalledWith('/(public)/documents/confidentialite');
+  });
+
+  // D — L1-01 : la porte « Je suis coach » ouvre l'inscription avec viaCoach=1 ; l'intention
+  // doit survivre à la création du compte ET à la vérification de l'adresse (elle décide de
+  // L1-08 à la première connexion). Avant le 11 novembre 2026, l'écran ne lisait jamais ce
+  // paramètre.
+  it('porte coach : l’intention est transmise à l’inscription et se retrouve dans la session', async () => {
+    mockParams = { viaCoach: '1' };
+    const port = creerFauxPortAuth();
+
+    await rendreInscription(port);
+    await fireEvent.changeText(screen.getByLabelText('Adresse e-mail'), 'yannick@exemple.fr');
+    await fireEvent.changeText(screen.getByLabelText('Mot de passe'), 'un-mot-de-passe-solide');
+    await choisirDateNaissance(new Date(1990, 0, 1));
+    await fireEvent.press(screen.getByText('Créer mon compte'));
+
+    port.verifierEmailPourTest('yannick@exemple.fr');
+    const connexion = await port.connecter('yannick@exemple.fr', 'un-mot-de-passe-solide');
+    expect(connexion.type === 'connecte' && connexion.session.intentionCoach).toBe(true);
+  });
+
+  it('sans la porte coach : aucune intention', async () => {
+    const port = creerFauxPortAuth();
+
+    await rendreInscription(port);
+    await fireEvent.changeText(screen.getByLabelText('Adresse e-mail'), 'camille@exemple.fr');
+    await fireEvent.changeText(screen.getByLabelText('Mot de passe'), 'un-mot-de-passe-solide');
+    await choisirDateNaissance(new Date(1990, 0, 1));
+    await fireEvent.press(screen.getByText('Créer mon compte'));
+
+    port.verifierEmailPourTest('camille@exemple.fr');
+    const connexion = await port.connecter('camille@exemple.fr', 'un-mot-de-passe-solide');
+    expect(connexion.type === 'connecte' && connexion.session.intentionCoach).toBe(false);
   });
 });

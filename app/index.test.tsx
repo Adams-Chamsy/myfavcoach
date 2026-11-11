@@ -71,6 +71,7 @@ function sessionNonVerifiee(): SessionAuth {
     emailVerifie: false,
     jetonAcces: 'jeton-acces',
     jetonRafraichissement: 'jeton-rafraichissement',
+    intentionCoach: false,
   };
 }
 

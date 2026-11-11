@@ -173,9 +173,8 @@ export default function Bienvenue() {
 
   function surPorteCoach() {
     // Mémorise une intention (viaCoach), pas un compte différent (docs/ecrans/L1-01-bienvenue.md,
-    // Règles). Portée en paramètre de route vers l'inscription : mécanisme provisoire, à
-    // confirmer quand L1-08 (activation espace coach, qui consomme cette intention) sera écrit —
-    // voir docs/dette.md.
+    // Règles). L'inscription l'écrit dans les métadonnées du compte, et la garde mène à L1-08
+    // tant qu'aucun profil n'existe (D, 11 novembre 2026 : src/fonctionnalites/identite/garde.ts).
     router.push('/(public)/inscription?viaCoach=1' as Href);
   }
 

@@ -22,6 +22,10 @@ export type SessionAuth = {
   emailVerifie: boolean;
   jetonAcces: string;
   jetonRafraichissement: string;
+  // D — la porte « Je suis coach » de l'écran de bienvenue (L1-01, Règles) : l'intention
+  // mémorisée à l'inscription, lue dans les métadonnées du compte. Elle décide de L1-08 à la
+  // première connexion tant qu'aucun profil n'existe (garde.ts), jamais une autorisation.
+  intentionCoach: boolean;
 };
 
 // Codes reconnus par les écrans (docs/ecrans/L1-02-creation-compte.md, tableau des messages
@@ -61,6 +65,8 @@ export type PortAuth = {
     motDePasse: string,
     dateNaissance: string,
     jetonInvitation?: string,
+    // D — porte coach (L1-01) : vrai seulement si l'inscription vient de « Je suis coach ».
+    intentionCoach?: boolean,
   ): Promise<ResultatAuth>;
   connecter(email: string, motDePasse: string): Promise<ResultatConnexion>;
   deconnecter(): Promise<void>;

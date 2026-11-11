@@ -115,7 +115,9 @@ export default function Inscription() {
   // jeton (L3bis) : porté depuis I-02 (app/(public)/y/[jeton].tsx) — même mécanique que
   // viaCoach (app/(public)/index.tsx, docs/dette.md), transmis tel quel jusqu'aux métadonnées
   // d'inscription (port.inscrire, src/services/auth/port.ts).
-  const params = useLocalSearchParams<{ email?: string; jeton?: string }>();
+  // viaCoach=1 : la porte « Je suis coach » de l'écran de bienvenue (D, L1-01, Règles) —
+  // lue enfin le 11 novembre 2026, transmise comme le jeton.
+  const params = useLocalSearchParams<{ email?: string; jeton?: string; viaCoach?: string }>();
   const { port } = useSession();
 
   const [email, setEmail] = useState(params.email ?? '');
@@ -237,6 +239,7 @@ export default function Inscription() {
       motDePasse,
       formatDateISO(dateNaissance),
       params.jeton,
+      params.viaCoach === '1',
     );
     setChargement(false);
 
