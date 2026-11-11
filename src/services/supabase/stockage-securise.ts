@@ -66,12 +66,8 @@ async function lireCompte(cle: string): Promise<number> {
 // ExpoSecureStore.web.ts exporte un objet vide) : le module natif appelé par getItemAsync sous
 // ce package n'existe tout simplement pas sur cette plateforme, et lève au lieu de renvoyer une
 // erreur "indisponible" propre. Sans repli, l'application entière plante à l'ouverture sur web —
-// découvert par npm run verif:serveur (docs/dette.md), qui fait tourner un vrai serveur
-// `expo start --web` en boîte noire pour prouver l'absence de bug de démarrage. Le web n'est de
-// toute façon jamais une cible du produit (CLAUDE.md §1 : iOS + Android uniquement) : une
-// session qui ne survit pas au rechargement de page y est un comportement honnête, pas un
-// contournement — jamais AsyncStorage/localStorage en repli, qui redonnerait une VRAIE
-// persistance à une plateforme jamais conçue pour porter un jeton de session.
+// découvert par npm run verif:serveur (docs/dette.md). Le web n'est de toute façon jamais une
+// cible du produit (CLAUDE.md §1 : iOS + Android uniquement).
 const stockageSecuriseNatif: AdaptateurStockage = {
   async getItem(cle) {
     const compte = await lireCompte(cle);
@@ -112,12 +108,24 @@ const stockageSecuriseNatif: AdaptateurStockage = {
   },
 };
 
+// Sur web : la session vit le temps de la page, en mémoire, et disparaît au rechargement —
+// jamais rien sur le disque du navigateur (ni localStorage, ni sessionStorage, ni AsyncStorage),
+// qui redonnerait une VRAIE persistance à un jeton de session sur une plateforme jamais conçue
+// pour le porter. Décidé par le développeur le 11 novembre 2026, à la place du repli de P1.8 qui
+// ne gardait RIEN : supabase-js relit ce stockage à chaque requête, et dès la requête suivant la
+// connexion tout partait avec la clé anonyme (lectures de profil en 401, un coach renvoyé dans
+// l'espace client, « Salut » sans prénom — trouvé par le navigateur piloté, jamais par un test).
+const memoireWeb = new Map<string, string>();
 const stockageSecuriseWeb: AdaptateurStockage = {
-  async getItem() {
-    return null;
+  async getItem(cle) {
+    return memoireWeb.get(cle) ?? null;
   },
-  async setItem() {},
-  async removeItem() {},
+  async setItem(cle, valeur) {
+    memoireWeb.set(cle, valeur);
+  },
+  async removeItem(cle) {
+    memoireWeb.delete(cle);
+  },
 };
 
 export const stockageSecurise: AdaptateurStockage =
