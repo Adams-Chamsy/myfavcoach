@@ -7,6 +7,7 @@ import { Badge } from '@/composants/badge';
 import { Bouton } from '@/composants/bouton';
 import { EtatVide } from '@/composants/etats/etat-vide';
 import { Onglets } from '@/composants/onglets';
+import { OngletAvis } from '@/fonctionnalites/avis/onglet-avis';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import type { Offre, ProfilCoachPublic } from '@/services/donnees/port';
@@ -108,7 +109,8 @@ export function CorpsProfilCoachPublic({ id }: { id: string | undefined }) {
         />
 
         {onglet === 'offres' ? <OngletOffres offres={offres} /> : null}
-        {onglet === 'avis' ? <OngletAvis /> : null}
+        {/* L2-13 et 27b (L4, 12 novembre 2026) : src/fonctionnalites/avis/onglet-avis.tsx. */}
+        {onglet === 'avis' ? <OngletAvis coachId={profil.id} prenom={profil.prenom} /> : null}
         {onglet === 'parcours' ? <OngletParcours profil={profil} /> : null}
       </ScrollView>
 
@@ -190,21 +192,6 @@ function OngletOffres({ offres }: { offres: Offre[] }) {
         </View>
       ))}
     </View>
-  );
-}
-
-// L2-13 : aucun avis réel n'existe au jalon 1 (aucune table `avis`, docs/domaine.md §3.11 non
-// implémentée à ce lot) — le seul cas atteignable en production est donc "0 avis". Révisé le
-// 12 septembre 2026 (docs/domaine.md §5.1) : plus de badge « Nouveau » dans aucun des trois cas
-// (0, 1-4, 5+ avis) — à 0 avis, ni note ni compteur, un état honnête comme OngletOffres/
-// OngletParcours juste au-dessus. La date de vérification qui accompagne ce cas (§5.1) est déjà
-// affichée dans l'en-tête, pas répétée ici (voir « Vérifié depuis le » plus haut).
-function OngletAvis() {
-  return (
-    <EtatVide
-      titre="Aucun avis pour l’instant"
-      explication="Ce coach n’a pas encore reçu d’avis."
-    />
   );
 }
 

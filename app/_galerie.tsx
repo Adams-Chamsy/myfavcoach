@@ -28,6 +28,7 @@ import {
   programmesDemonstration,
   seancesDemonstration,
   recapitulatifPaiementDemonstration,
+  avisDemonstration,
 } from '@/fixtures/demonstration';
 import { EcranCompte } from '@/fonctionnalites/compte/ecran-compte';
 import { FeuilleBascule } from '@/fonctionnalites/identite/feuille-bascule';
@@ -67,6 +68,7 @@ import { CorpsProfilCoachPublic } from './(client)/coach/[id]';
 import { EcranChoixOffre } from '@/fonctionnalites/abonnement/ecran-choix-offre';
 import { BlocMesAbonnements } from '@/fonctionnalites/abonnement/bloc-mes-abonnements';
 import { EcranPaiement } from '@/fonctionnalites/abonnement/ecran-paiement';
+import { OngletAvis } from '@/fonctionnalites/avis/onglet-avis';
 import Accueil from './(client)/(tabs)/accueil';
 import { CorpsExplorer } from './(client)/(tabs)/explorer';
 import Invitations from './(coach)/invitations';
@@ -1956,6 +1958,47 @@ function MesAbonnementsAvecFixture() {
   );
 }
 
+// L2-13 et 27b : l'avis du jeu de démonstration (Sophie Lambert sur Yannick, 5 étoiles,
+// src/fixtures/demonstration.ts), seul ou recopié pour exercer le seuil des 5 avis.
+function OngletAvisAvecFixture({
+  nombre,
+  monAvis,
+}: {
+  nombre: number;
+  monAvis?: { etat: 'pas_encore'; joursRestants: number };
+}) {
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    const sophie = {
+      prenom: 'Sophie',
+      initialeNom: 'L',
+      dureeSuiviMois: 3,
+      note: avisDemonstration[0].note,
+      etiquettes: ['ecoute', 'programme_adapte'],
+      texte: avisDemonstration[0].texte,
+    };
+    const avis = Array.from({ length: nombre }, (_, i) => ({ ...sophie, id: `galerie-${i}` }));
+    p.definirAvisDuCoachPourTest({
+      'coach-yannick': {
+        avis,
+        synthese: {
+          nombre,
+          moyenne: nombre >= 5 ? avisDemonstration[0].note : null,
+          distribution: [0, 0, 0, 0, nombre],
+          etiquettesPortees: nombre > 0 ? sophie.etiquettes : [],
+        },
+      },
+    });
+    if (monAvis) p.definirMonAvisPourTest({ 'coach-yannick': monAvis });
+    return p;
+  });
+  return (
+    <FournisseurDonnees port={port}>
+      <OngletAvis coachId="coach-yannick" prenom="Yannick" />
+    </FournisseurDonnees>
+  );
+}
+
 const ECRANS_L4: { titre: string; rendu: () => ReactNode }[] = [
   { titre: 'L4-04a · Choix de l’offre', rendu: () => <ChoixOffreAvecFixture avecOffre /> },
   {
@@ -1964,6 +2007,14 @@ const ECRANS_L4: { titre: string; rendu: () => ReactNode }[] = [
   },
   { titre: 'L4-04b · Récapitulatif et paiement', rendu: () => <PaiementAvecFixture /> },
   { titre: 'L4-24b · Mes abonnements, chaque état', rendu: () => <MesAbonnementsAvecFixture /> },
+  { titre: 'L2-13 · Onglet Avis, 1 avis', rendu: () => <OngletAvisAvecFixture nombre={1} /> },
+  { titre: 'L2-13 · Onglet Avis, 5 avis', rendu: () => <OngletAvisAvecFixture nombre={5} /> },
+  {
+    titre: 'L4-27b · Avis pas encore possible',
+    rendu: () => (
+      <OngletAvisAvecFixture nombre={1} monAvis={{ etat: 'pas_encore', joursRestants: 12 }} />
+    ),
+  },
 ];
 
 function SectionEcransL4() {

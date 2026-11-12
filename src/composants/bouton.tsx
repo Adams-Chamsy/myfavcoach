@@ -18,6 +18,10 @@ export type ProprietesBouton = {
   variante?: VarianteBouton;
   desactive?: boolean;
   icone?: NomIcone;
+  // Libelle lu par le lecteur d'ecran quand il doit dire PLUS que le texte visible — un bouton
+  // inactif qui dit pourquoi (L4-27a, 27b : « Donner mon avis, possible dans 12 jours »). Par
+  // defaut, le libelle visible : aucun bouton existant ne change.
+  accessibilityLabel?: string;
   // Reserve a la galerie de developpement (app/_galerie.tsx) : force l'affichage de l'etat
   // "presse" ou "focus" sans interaction reelle, pour montrer les 4 etats cote a cote. Un
   // ecran du produit ne fournit jamais cette prop, les etats y viennent toujours de l'appui.
@@ -113,6 +117,7 @@ export function Bouton({
   variante = 'primaire',
   desactive = false,
   icone,
+  accessibilityLabel,
   previsualiserEtat,
 }: ProprietesBouton) {
   const theme = useTheme();
@@ -192,6 +197,7 @@ export function Bouton({
           onBlur={() => setEstFocus(false)}
           disabled={desactive}
           accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel}
           accessibilityState={{ disabled: desactive }}
           style={{
             flexDirection: 'row',
