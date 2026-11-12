@@ -15,6 +15,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
+import { GardeAdressesPrivees } from '@/fonctionnalites/identite/garde-adresses-privees';
 import { portAuthSupabase } from '@/services/auth/supabase';
 import { portDonneesSupabase } from '@/services/donnees/supabase';
 import { neutraliserConsoleEnProduction } from '@/services/journalisation';
@@ -117,6 +118,7 @@ export default function LayoutRacine() {
       <FournisseurTheme>
         <FournisseurSession port={portAuthSupabase}>
           <FournisseurDonnees port={portDonneesSupabase}>
+            <GardeAdressesPrivees />
             <Stack screenOptions={{ headerShown: false }} />
           </FournisseurDonnees>
         </FournisseurSession>

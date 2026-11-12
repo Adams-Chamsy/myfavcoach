@@ -6,8 +6,9 @@ import { determinerDestination } from '@/fonctionnalites/identite/garde';
 
 // Règle 7 (docs/prompts/L1.md, P1.10) : "une route de (public) atteinte avec une session
 // valide → renvoi vers l'espace actif." Un seul endroit CALCULE la destination
-// (determinerDestination, garde.ts) ; celui-ci et app/index.tsx sont les deux seuls endroits
-// qui l'APPELLENT — jamais une troisième logique de redirection écrite ailleurs.
+// (determinerDestination, garde.ts) ; celui-ci, app/index.tsx et la garde des adresses privées
+// (src/fonctionnalites/identite/garde-adresses-privees.tsx, 12 novembre 2026) sont les seuls
+// endroits qui l'APPELLENT — jamais une autre logique de redirection écrite ailleurs.
 //
 // Pendant le chargement (session ou profils), rend les enfants normalement : jamais de
 // redirection décidée sur des données pas encore arrivées (même principe que app/index.tsx).
