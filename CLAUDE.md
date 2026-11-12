@@ -222,6 +222,13 @@ manuelle, jamais automatique.
    tôt le même jour, une montée en SDK 58 abandonnée en cours (`npx expo install`) avait déjà fait
    diverger `package.json` et le lock sans que personne le sache. Dix minutes de diagnostic, pour
    une commande qui aurait pu être annoncée.
+10. **Un appel refusé n'est pas un appel sans effet.** Après un refus (le développeur rejette un
+   appel d'outil, ou l'interrompt), Claude vérifie si la commande a déjà agi — base de dev,
+   fichiers, processus en arrière-plan — avant de conclure quoi que ce soit, et le dit. Trouvé le
+   11 novembre 2026 : une clôture web refusée tournait déjà en arrière-plan ; elle avait remplacé
+   les trois pièces d'un compte de scénario et renvoyé son dossier en examen. Claude a rapporté
+   « rien n'a changé en base » ; le compte était en examen depuis une heure, découvert par
+   hasard à la clôture suivante.
 
 ---
 
