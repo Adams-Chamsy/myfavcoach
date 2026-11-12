@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 
@@ -6,7 +7,12 @@ import { supabaseAdmin } from '@/services/supabase/client-admin';
 // L2-10 : écran de connexion dédié à app/(admin)/. Un compte auth.users distinct par
 // examinateur (docs/backend.md §9) — jamais un mot de passe partagé. Interface minimale,
 // volontairement sans design system mobile (cet écran n'a pas de maquette, docs/ecrans/L2-10.md).
-export default function ConnexionAdmin({ onConnecte }: { onConnecte: () => void }) {
+//
+// Deux usages : rendu DANS /admin/verification (qui passe `onConnecte`), ou ouvert seul à sa propre
+// adresse /admin/connexion — alors, une connexion réussie mène à la file. Trouvé le 11 novembre
+// 2026 : ouvert seul, l'écran plantait après la connexion (`onConnecte is not a function`).
+export default function ConnexionAdmin({ onConnecte }: { onConnecte?: () => void }) {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [motDePasse, setMotDePasse] = useState('');
   const [erreur, setErreur] = useState<string | null>(null);
@@ -21,7 +27,8 @@ export default function ConnexionAdmin({ onConnecte }: { onConnecte: () => void 
       setErreur('Identifiants refusés.');
       return;
     }
-    onConnecte();
+    if (onConnecte) onConnecte();
+    else router.replace('/admin/verification');
   }
 
   return (

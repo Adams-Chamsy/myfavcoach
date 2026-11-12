@@ -67,6 +67,18 @@ export default function Verification() {
     }));
   }
 
+  // Une session déjà ouverte (connexion faite à /admin/connexion, puis arrivée ici) : la file
+  // directement, pas le formulaire une seconde fois.
+  useEffect(() => {
+    let monte = true;
+    void supabaseAdmin.auth.getSession().then(({ data }) => {
+      if (monte && data.session) setConnecte(true);
+    });
+    return () => {
+      monte = false;
+    };
+  }, []);
+
   useEffect(() => {
     if (!connecte) return;
     let monte = true;
