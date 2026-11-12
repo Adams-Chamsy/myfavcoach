@@ -27,7 +27,12 @@ export function GardeAdressesPrivees(): null {
   const { chargement: chargementSession, session } = useSession();
   const { chargement: chargementDonnees, profils } = useDonnees();
 
-  const groupePrive = GROUPES_PRIVES.has(segments[0] ?? '');
+  // Exception nommée : le profil PUBLIC d'un coach (app/(client)/coach/[id].tsx) vit dans le
+  // groupe (client), mais il est lisible sans session (docs/ecrans/L2-12-profil-coach-public.md)
+  // et le parcours d'invitation l'ouvre ainsi (app/(public)/y/[jeton].tsx). Régression du jour
+  // même de cette garde, trouvée le 12 novembre 2026.
+  const profilCoachPublic = segments[0] === '(client)' && segments[1] === 'coach';
+  const groupePrive = GROUPES_PRIVES.has(segments[0] ?? '') && !profilCoachPublic;
   const sansSessionVerifiee = !session?.emailVerifie;
 
   useEffect(() => {
