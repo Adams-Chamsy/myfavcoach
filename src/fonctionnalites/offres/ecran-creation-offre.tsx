@@ -6,7 +6,9 @@ import { Bouton } from '@/composants/bouton';
 import { BoutonIcone } from '@/composants/bouton-icone';
 import { Champ } from '@/composants/champ';
 import { Chip } from '@/composants/chip';
+import { Modale } from '@/composants/modale';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
+import { useGardeSortie } from '@/fonctionnalites/navigation/garde-sortie';
 import { textesRepliErreur } from '@/composants/etats/textes';
 import type { Offre, StatutVerification } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
@@ -98,6 +100,14 @@ export function EcranCreationOffre({
   }, [port]);
 
   const prixCentimes = centimesDepuisSaisieEuros(saisiePrix);
+  // A3 (12 novembre 2026) : fermer une offre modifiée sans enregistrer demande confirmation, par
+  // la garde de sortie existante. « Modifiée » = les champs diffèrent du dernier état enregistré
+  // (celui du montage, puis celui de chaque enregistrement réussi).
+  const [empreinteEnregistree, setEmpreinteEnregistree] = useState(() =>
+    JSON.stringify(modifications()),
+  );
+  const modifie = JSON.stringify(modifications()) !== empreinteEnregistree;
+  const { sortieEnAttente, annulerSortie } = useGardeSortie(modifie);
   const prixValide = prixCentimes !== null && prixCentimes >= 1000 && prixCentimes <= 50000;
   const brouillonComplet =
     titre.trim() !== '' && prixValide && benefices.length >= NOMBRE_BENEFICES_MIN;
@@ -133,6 +143,7 @@ export function EcranCreationOffre({
       const resultat = await port.modifierOffre(id, modifications());
       setChargement(false);
       setRetour(resultat.succes ? { type: 'enregistre' } : echecServeur);
+      if (resultat.succes) setEmpreinteEnregistree(JSON.stringify(modifications()));
       return;
     }
     const resultat = await port.creerOffreBrouillon(modifications());
@@ -143,6 +154,7 @@ export function EcranCreationOffre({
     }
     setId(resultat.id);
     setRetour({ type: 'enregistre' });
+    setEmpreinteEnregistree(JSON.stringify(modifications()));
   }
 
   function refusDePublication(code: string): Retour {
@@ -161,6 +173,7 @@ export function EcranCreationOffre({
         return;
       }
       setId(cree.id);
+      setEmpreinteEnregistree(JSON.stringify(modifications()));
       const resultat = await port.publierOffre(cree.id);
       setChargement(false);
       if (!resultat.succes) {
@@ -189,214 +202,226 @@ export function EcranCreationOffre({
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <View
-        style={{
-          paddingTop: insets.top + theme.espace[3],
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[2],
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.espace[2],
-        }}
-      >
-        {/* A3 — maquette MyFavCoach-L2_dc.html, « Créer une offre » : ✕ · Nouvelle offre ·
-            Enregistrer. Sans la croix, le geste de retour était la seule sortie (iPhone, 2
-            novembre 2026). */}
-        <BoutonIcone nom="fermer" accessibilityLabel="Fermer" onPress={onFermer} />
-        <Text
-          accessibilityRole="header"
-          style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal, flex: 1 }}
-        >
-          {offreExistante ? '' : 'Nouvelle offre'}
-        </Text>
-        <Bouton
-          libelle="Enregistrer"
-          variante="discret"
-          onPress={() => void surEnregistrer()}
-          desactive={chargement}
-        />
-      </View>
-
-      {retour?.type === 'enregistre' ? (
-        <Text
-          accessibilityLiveRegion="polite"
+    // Mêmes textes que « Mes informations » (app/(compte)/informations.tsx), validés en L1.
+    <Modale
+      ouverte={sortieEnAttente !== null}
+      onFermer={annulerSortie}
+      titre="Modifications non enregistrées"
+      corps="Tu as des modifications non enregistrées."
+      libelleAction="Rester"
+      onAction={annulerSortie}
+      libelleDestructeur="Quitter"
+      onDestructeur={() => sortieEnAttente?.reprendre()}
+    >
+      <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+        <View
           style={{
-            ...theme.texte.petit,
-            color: theme.couleur.texte.secondaire,
+            paddingTop: insets.top + theme.espace[3],
             paddingHorizontal: theme.espace.gouttiere,
             paddingBottom: theme.espace[2],
-            textAlign: 'right',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: theme.espace[2],
           }}
         >
-          Brouillon enregistré.
-        </Text>
-      ) : null}
-      {retour?.type === 'echec' ? (
-        <View
-          accessibilityLiveRegion="polite"
-          style={{ paddingHorizontal: theme.espace.gouttiere, paddingBottom: theme.espace[2] }}
-        >
-          <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
-            {retour.titre}
+          {/* A3 — maquette MyFavCoach-L2_dc.html, « Créer une offre » : ✕ · Nouvelle offre ·
+            Enregistrer. Sans la croix, le geste de retour était la seule sortie (iPhone, 2
+            novembre 2026). */}
+          <BoutonIcone nom="fermer" accessibilityLabel="Fermer" onPress={onFermer} />
+          <Text
+            accessibilityRole="header"
+            style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal, flex: 1 }}
+          >
+            {offreExistante ? '' : 'Nouvelle offre'}
           </Text>
-          <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
-            {retour.detail}
-          </Text>
-        </View>
-      ) : null}
-
-      <ScrollView
-        contentContainerStyle={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[4],
-        }}
-      >
-        {retireeLe ? (
-          <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-            Cette offre n’est plus en vente. Tes abonnés en cours gardent l’accès.
-          </Text>
-        ) : null}
-
-        <Champ libelle="Titre" valeur={titre} onChangeTexte={setTitre} desactive={chargement} />
-        <Champ
-          libelle="Description"
-          valeur={description}
-          onChangeTexte={setDescription}
-          desactive={chargement}
-        />
-
-        <View style={{ gap: theme.espace[1] }}>
-          <Champ
-            libelle="Prix mensuel (€)"
-            valeur={saisiePrix}
-            onChangeTexte={setSaisiePrix}
+          <Bouton
+            libelle="Enregistrer"
+            variante="discret"
+            onPress={() => void surEnregistrer()}
             desactive={chargement}
           />
-          {publieeLe ? (
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.attenue }}>
-              Le prix est figé pour les abonnés déjà souscrits : un changement ici ne s’applique
-              qu’aux nouveaux.
-            </Text>
-          ) : null}
         </View>
 
-        <View style={{ gap: theme.espace[2] }}>
-          <Text style={{ ...theme.texte.label, color: theme.couleur.texte.attenue }}>
-            Ce que le client reçoit — {benefices.length} sur {NOMBRE_BENEFICES_MAX}
-          </Text>
-          {benefices.map((b, index) => (
-            <Chip
-              key={`${b}-${index}`}
-              variante="filtreRetirable"
-              libelle={b}
-              selectionne
-              onPress={() => {}}
-              onRetirer={() => setBenefices(benefices.filter((_, i) => i !== index))}
-              accessibilityLabelRetirer={`Retirer « ${b} »`}
-            />
-          ))}
-          {benefices.length < NOMBRE_BENEFICES_MAX ? (
-            <View style={{ flexDirection: 'row', gap: theme.espace[2] }}>
-              <TextInput
-                value={nouveauBenefice}
-                onChangeText={setNouveauBenefice}
-                placeholder="Ajouter une ligne"
-                style={{
-                  flex: 1,
-                  ...theme.texte.corps,
-                  color: theme.couleur.texte.principal,
-                  borderWidth: 1,
-                  borderColor: theme.couleur.bordure.discrete,
-                  borderRadius: theme.rayon.saisie,
-                  paddingHorizontal: theme.espace[3],
-                  paddingVertical: theme.espace[2],
-                }}
-              />
-              <Bouton
-                libelle="Ajouter"
-                variante="secondaire"
-                desactive={nouveauBenefice.trim() === ''}
-                onPress={() => {
-                  setBenefices([...benefices, nouveauBenefice.trim()]);
-                  setNouveauBenefice('');
-                }}
-              />
-            </View>
-          ) : null}
-        </View>
-
-        <View style={{ gap: theme.espace[2] }}>
-          <Text style={{ ...theme.texte.label, color: theme.couleur.texte.attenue }}>
-            Ce que tu fais toi-même
-          </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.espace[2] }}>
-            {ENGAGEMENTS_POSSIBLES.map((e) => (
-              <Chip
-                key={e}
-                variante="selection"
-                libelle={e}
-                selectionne={engagements.includes(e)}
-                onPress={() =>
-                  setEngagements(
-                    engagements.includes(e)
-                      ? engagements.filter((x) => x !== e)
-                      : [...engagements, e],
-                  )
-                }
-              />
-            ))}
-          </View>
-        </View>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.espace[3] }}>
-          <Switch value={miseEnAvant} onValueChange={setMiseEnAvant} disabled={chargement} />
-          <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}>
-            Mise en avant (« LE PLUS CHOISI »)
-          </Text>
-        </View>
-      </ScrollView>
-
-      <View
-        style={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[3],
-          paddingBottom: insets.bottom + theme.espace[3],
-          borderTopWidth: 1,
-          borderTopColor: theme.couleur.bordure.discrete,
-          gap: theme.espace[2],
-        }}
-      >
-        {retour?.type === 'refus' ? (
+        {retour?.type === 'enregistre' ? (
           <Text
             accessibilityLiveRegion="polite"
-            style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}
+            style={{
+              ...theme.texte.petit,
+              color: theme.couleur.texte.secondaire,
+              paddingHorizontal: theme.espace.gouttiere,
+              paddingBottom: theme.espace[2],
+              textAlign: 'right',
+            }}
           >
-            {retour.texte}
+            Brouillon enregistré.
           </Text>
         ) : null}
-        {!(publieeLe && !retireeLe) && raisonInactif ? (
-          <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-            {raisonInactif}
-          </Text>
+        {retour?.type === 'echec' ? (
+          <View
+            accessibilityLiveRegion="polite"
+            style={{ paddingHorizontal: theme.espace.gouttiere, paddingBottom: theme.espace[2] }}
+          >
+            <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
+              {retour.titre}
+            </Text>
+            <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
+              {retour.detail}
+            </Text>
+          </View>
         ) : null}
-        {publieeLe && !retireeLe ? (
-          <Bouton
-            libelle="Retirer"
-            variante="secondaire"
-            onPress={() => void surRetirer()}
+
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: theme.espace.gouttiere,
+            paddingBottom: theme.espace[6],
+            gap: theme.espace[4],
+          }}
+        >
+          {retireeLe ? (
+            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+              Cette offre n’est plus en vente. Tes abonnés en cours gardent l’accès.
+            </Text>
+          ) : null}
+
+          <Champ libelle="Titre" valeur={titre} onChangeTexte={setTitre} desactive={chargement} />
+          <Champ
+            libelle="Description"
+            valeur={description}
+            onChangeTexte={setDescription}
             desactive={chargement}
           />
-        ) : (
-          <Bouton
-            libelle="Publier"
-            variante="primaire"
-            onPress={() => void surPublier()}
-            desactive={!publicable || chargement}
-          />
-        )}
+
+          <View style={{ gap: theme.espace[1] }}>
+            <Champ
+              libelle="Prix mensuel (€)"
+              valeur={saisiePrix}
+              onChangeTexte={setSaisiePrix}
+              desactive={chargement}
+            />
+            {publieeLe ? (
+              <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.attenue }}>
+                Le prix est figé pour les abonnés déjà souscrits : un changement ici ne s’applique
+                qu’aux nouveaux.
+              </Text>
+            ) : null}
+          </View>
+
+          <View style={{ gap: theme.espace[2] }}>
+            <Text style={{ ...theme.texte.label, color: theme.couleur.texte.attenue }}>
+              Ce que le client reçoit — {benefices.length} sur {NOMBRE_BENEFICES_MAX}
+            </Text>
+            {benefices.map((b, index) => (
+              <Chip
+                key={`${b}-${index}`}
+                variante="filtreRetirable"
+                libelle={b}
+                selectionne
+                onPress={() => {}}
+                onRetirer={() => setBenefices(benefices.filter((_, i) => i !== index))}
+                accessibilityLabelRetirer={`Retirer « ${b} »`}
+              />
+            ))}
+            {benefices.length < NOMBRE_BENEFICES_MAX ? (
+              <View style={{ flexDirection: 'row', gap: theme.espace[2] }}>
+                <TextInput
+                  value={nouveauBenefice}
+                  onChangeText={setNouveauBenefice}
+                  placeholder="Ajouter une ligne"
+                  style={{
+                    flex: 1,
+                    ...theme.texte.corps,
+                    color: theme.couleur.texte.principal,
+                    borderWidth: 1,
+                    borderColor: theme.couleur.bordure.discrete,
+                    borderRadius: theme.rayon.saisie,
+                    paddingHorizontal: theme.espace[3],
+                    paddingVertical: theme.espace[2],
+                  }}
+                />
+                <Bouton
+                  libelle="Ajouter"
+                  variante="secondaire"
+                  desactive={nouveauBenefice.trim() === ''}
+                  onPress={() => {
+                    setBenefices([...benefices, nouveauBenefice.trim()]);
+                    setNouveauBenefice('');
+                  }}
+                />
+              </View>
+            ) : null}
+          </View>
+
+          <View style={{ gap: theme.espace[2] }}>
+            <Text style={{ ...theme.texte.label, color: theme.couleur.texte.attenue }}>
+              Ce que tu fais toi-même
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.espace[2] }}>
+              {ENGAGEMENTS_POSSIBLES.map((e) => (
+                <Chip
+                  key={e}
+                  variante="selection"
+                  libelle={e}
+                  selectionne={engagements.includes(e)}
+                  onPress={() =>
+                    setEngagements(
+                      engagements.includes(e)
+                        ? engagements.filter((x) => x !== e)
+                        : [...engagements, e],
+                    )
+                  }
+                />
+              ))}
+            </View>
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.espace[3] }}>
+            <Switch value={miseEnAvant} onValueChange={setMiseEnAvant} disabled={chargement} />
+            <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}>
+              Mise en avant (« LE PLUS CHOISI »)
+            </Text>
+          </View>
+        </ScrollView>
+
+        <View
+          style={{
+            paddingHorizontal: theme.espace.gouttiere,
+            paddingTop: theme.espace[3],
+            paddingBottom: insets.bottom + theme.espace[3],
+            borderTopWidth: 1,
+            borderTopColor: theme.couleur.bordure.discrete,
+            gap: theme.espace[2],
+          }}
+        >
+          {retour?.type === 'refus' ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}
+            >
+              {retour.texte}
+            </Text>
+          ) : null}
+          {!(publieeLe && !retireeLe) && raisonInactif ? (
+            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+              {raisonInactif}
+            </Text>
+          ) : null}
+          {publieeLe && !retireeLe ? (
+            <Bouton
+              libelle="Retirer"
+              variante="secondaire"
+              onPress={() => void surRetirer()}
+              desactive={chargement}
+            />
+          ) : (
+            <Bouton
+              libelle="Publier"
+              variante="primaire"
+              onPress={() => void surPublier()}
+              desactive={!publicable || chargement}
+            />
+          )}
+        </View>
       </View>
-    </View>
+    </Modale>
   );
 }

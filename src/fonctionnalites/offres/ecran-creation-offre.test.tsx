@@ -9,6 +9,23 @@ import type { DossierVerification } from '@/services/donnees/port';
 import { FournisseurTheme } from '@/theme/fournisseur';
 import { EcranCreationOffre } from './ecran-creation-offre';
 
+// A3 (12 novembre 2026) : l'écran monte la garde de sortie existante. Son interaction avec la vraie
+// pile est prouvée par src/test/routage/garde-sortie-offre.test.tsx ; ici, on prouve ce que
+// l'ÉCRAN lui passe (actif seulement après une modification) et ce qu'il affiche quand une sortie
+// est en attente. Double de bibliothèque : useGardeSortie est un module du dépôt, pas une
+// bibliothèque — son contrat est le type exporté.
+const mockGarde: { actif: boolean[]; sortie: { reprendre: () => void } | null } = {
+  actif: [],
+  sortie: null,
+};
+const mockAnnuler = jest.fn();
+jest.mock('@/fonctionnalites/navigation/garde-sortie', () => ({
+  useGardeSortie: (actif: boolean) => {
+    mockGarde.actif.push(actif);
+    return { sortieEnAttente: mockGarde.sortie, annulerSortie: mockAnnuler };
+  },
+}));
+
 const METRIQUES_ZONES_SURES: Metrics = {
   insets: { top: 59, right: 0, bottom: 34, left: 0 },
   frame: { x: 0, y: 0, width: 393, height: 852 },
@@ -186,5 +203,36 @@ describe('L2-15 · Créer et publier une offre', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Fermer' }));
 
     expect(onFermer).toHaveBeenCalledTimes(1);
+  });
+
+  // A3, décision du 12 novembre 2026 : fermer une offre modifiée sans enregistrer demande
+  // confirmation, avec la garde de sortie existante et sa modale (mêmes textes que « Mes
+  // informations », validés en L1).
+  it('la garde de sortie ne s’active qu’après une modification non enregistrée', async () => {
+    mockGarde.actif = [];
+    await rendre();
+    expect(mockGarde.actif.at(-1)).toBe(false);
+
+    await fireEvent.changeText(screen.getByLabelText('Titre'), 'Suivi complet');
+
+    expect(mockGarde.actif.at(-1)).toBe(true);
+  });
+
+  it('sortie en attente : la modale « Modifications non enregistrées », « Quitter » reprend la sortie', async () => {
+    const reprendre = jest.fn();
+    try {
+      await rendre();
+      // Une sortie interceptée par la garde (le « retour » de la croix), puis un rendu.
+      mockGarde.sortie = { reprendre };
+      await fireEvent.changeText(screen.getByLabelText('Titre'), 'Suivi complet');
+      expect(screen.getByText('Modifications non enregistrées')).toBeTruthy();
+      expect(screen.getByText('Tu as des modifications non enregistrées.')).toBeTruthy();
+      await fireEvent.press(screen.getByText('Quitter'));
+      expect(reprendre).toHaveBeenCalledTimes(1);
+      await fireEvent.press(screen.getByText('Rester'));
+      expect(mockAnnuler).toHaveBeenCalled();
+    } finally {
+      mockGarde.sortie = null;
+    }
   });
 });
