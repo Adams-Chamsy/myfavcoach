@@ -898,5 +898,38 @@ describe('portDonneesSupabase', () => {
       expect(insert).toHaveBeenCalledWith(expect.objectContaining({ coach_id: 'coach-1' }));
       expect(supabaseMock.from).not.toHaveBeenCalledWith('profils_coach');
     });
+
+    // L2-06 (12 novembre 2026) : la ligne « Déposée » montre le nom du fichier et son poids. Le
+    // poids est celui du contenu réellement envoyé, pas une valeur annoncée par le sélecteur.
+    it('deposerPieceVerification : enregistre le nom du fichier et le poids du contenu envoyé', async () => {
+      supabaseMock.rpc.mockImplementation((fonction: string) =>
+        Promise.resolve({
+          data: fonction === 'mon_profil_coach_id' ? 'coach-1' : 'chemin-1',
+          error: null,
+        }),
+      );
+      const fetchOrigine = global.fetch;
+      global.fetch = jest.fn(() =>
+        Promise.resolve({ blob: () => Promise.resolve({ size: 1468006 }) }),
+      ) as unknown as typeof fetch;
+      supabaseMock.storage.from.mockReturnValue({
+        upload: jest.fn(() => Promise.resolve({ error: null })),
+      });
+      const insert = jest.fn(() => Promise.resolve({ error: null }));
+      supabaseMock.from.mockReturnValue(tableAvecAncienChemin({ insert }));
+
+      try {
+        await portDonneesSupabase.deposerPieceVerification('diplome_ou_certification', {
+          uri: 'file:///diplome.pdf',
+          nom: 'diplome.pdf',
+          typeMime: 'application/pdf',
+        });
+      } finally {
+        global.fetch = fetchOrigine;
+      }
+      expect(insert).toHaveBeenCalledWith(
+        expect.objectContaining({ nom_fichier: 'diplome.pdf', taille_octets: 1468006 }),
+      );
+    });
   });
 });

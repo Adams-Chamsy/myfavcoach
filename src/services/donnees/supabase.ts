@@ -599,13 +599,22 @@ export const portDonneesSupabase: PortDonnees = {
   async lirePiecesDeposees() {
     const { data, error } = await supabase
       .from('pieces_verification')
-      .select('type, depose_le')
+      .select('type, depose_le, nom_fichier, taille_octets')
       .order('depose_le', { ascending: true });
     if (error) throw error;
-    return (data ?? []).map((ligne: { type: string; depose_le: string }): PieceDeposee => ({
-      type: ligne.type as TypePiece,
-      deposeLe: ligne.depose_le,
-    }));
+    return (data ?? []).map(
+      (ligne: {
+        type: string;
+        depose_le: string;
+        nom_fichier: string | null;
+        taille_octets: number | null;
+      }): PieceDeposee => ({
+        type: ligne.type as TypePiece,
+        deposeLe: ligne.depose_le,
+        nomFichier: ligne.nom_fichier,
+        tailleOctets: ligne.taille_octets,
+      }),
+    );
   },
 
   async deposerPieceVerification(type, fichier) {
@@ -627,10 +636,14 @@ export const portDonneesSupabase: PortDonnees = {
       .upload(chemin as string, contenu, { contentType: fichier.typeMime });
     if (erreurEnvoi) return echec(erreurEnvoi);
 
+    // Nom et poids (L2-06, 0056/0057) : le poids est celui du contenu réellement envoyé. Le nom,
+    // borné à 255 caractères comme la contrainte de 0056 ; jamais journalisé.
     const { error: erreurLigne } = await supabase.from('pieces_verification').insert({
       coach_id: coachId,
       type,
       chemin_stockage: chemin,
+      nom_fichier: fichier.nom.trim().slice(0, 255) || null,
+      taille_octets: typeof contenu.size === 'number' ? contenu.size : null,
     });
     if (erreurLigne) return echec(erreurLigne);
     return { succes: true };

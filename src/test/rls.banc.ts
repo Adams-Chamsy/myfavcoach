@@ -1894,6 +1894,47 @@ describe('pieces_verification', () => {
     idPieceB = (ligne.corps as { id: string }[])[0].id;
   });
 
+  // L2-06 (12 novembre 2026, décision du développeur : « la fiche les demande, fais-le ») : la
+  // ligne « Déposée » montre le nom du fichier et son poids. Même requête que l'application
+  // (deposerPieceVerification, src/services/donnees/supabase.ts) : coach_id, type, chemin,
+  // nom_fichier, taille_octets — avec la session du coach, jamais le rôle serveur.
+  it('B dépose une pièce avec son nom et son poids, et les relit (0056/0057)', async () => {
+    const chemin = randomUUID();
+    const depot = await appelRest(`${CHEMIN_STOCKAGE_BASE}/${chemin}`, {
+      methode: 'POST',
+      session: B,
+      corps: { contenu: 'pièce de test, jamais un vrai document (CLAUDE.md §4)' },
+    });
+    expect(depot.statut).toBeLessThan(300);
+    const ligne = await appelRest(
+      '/rest/v1/pieces_verification?select=id,nom_fichier,taille_octets',
+      {
+        methode: 'POST',
+        session: B,
+        corps: {
+          coach_id: profilCoachIdB,
+          type: 'diplome_ou_certification',
+          chemin_stockage: chemin,
+          nom_fichier: 'diplome-essai.pdf',
+          taille_octets: 1468006,
+        },
+      },
+    );
+    expect(ligne.statut).toBe(201);
+    expect(ligne.corps).toEqual([
+      expect.objectContaining({ nom_fichier: 'diplome-essai.pdf', taille_octets: 1468006 }),
+    ]);
+  });
+
+  it('A (un autre compte) ne lit ni le nom ni le poids des pièces de B', async () => {
+    const { statut, corps } = await appelRest(
+      `/rest/v1/pieces_verification?coach_id=eq.${profilCoachIdB}&select=nom_fichier,taille_octets`,
+      { session: A },
+    );
+    expect(statut).toBe(200);
+    expect(corps).toEqual([]);
+  });
+
   // Cas légitime de la décision "affichage métadonnées seules" (P2.5, point 3) : le coach voit
   // qu'il a déposé une pièce, de quel type, sans jamais recevoir chemin_stockage.
   it('B lit les métadonnées de sa pièce : une ligne, sans chemin_stockage', async () => {

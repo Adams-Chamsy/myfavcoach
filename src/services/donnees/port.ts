@@ -124,7 +124,14 @@ export type DossierVerification = {
 // jamais son chemin de stockage à l'application (0012_creer_pieces_verification.sql, décision
 // "pas même lui") — seuls type/dates en sortent.
 export type TypePiece = 'identite' | 'diplome_ou_certification' | 'assurance_rc_pro';
-export type PieceDeposee = { type: TypePiece; deposeLe: string };
+// nomFichier, tailleOctets (L2-06, 0056/0057, 12 novembre 2026) : null pour une pièce déposée
+// avant cette date. Jamais dans un journal (fiche L2-06, critère 7).
+export type PieceDeposee = {
+  type: TypePiece;
+  deposeLe: string;
+  nomFichier?: string | null;
+  tailleOctets?: number | null;
+};
 
 // Table de référence `disciplines` (0020_creer_disciplines_reference.sql, `docs/domaine.md`
 // §3.2bis) : `profils_coach.discipline` référence `cle` par clé étrangère depuis ce même lot —

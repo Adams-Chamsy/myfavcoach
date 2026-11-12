@@ -46,6 +46,13 @@ const LIBELLES_REMPLACER: Record<TypePiece, string> = {
   assurance_rc_pro: 'Remplacer l’attestation d’assurance RC pro',
 };
 
+// Le poids lisible (fiche L2-06, maquette 23b : « 1,4 Mo »), en unités binaires comme le montrent
+// les systèmes d'exploitation (1 Mo = 1 048 576 octets), une décimale.
+function poidsLisible(octets: number): string {
+  if (octets < 1024 * 1024) return `${Math.max(1, Math.round(octets / 1024))} Ko`;
+  return `${(octets / (1024 * 1024)).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} Mo`;
+}
+
 function libelleManquant(deposees: Set<TypePiece>): string {
   const manquantes = ORDRE_PIECES.filter((t) => !deposees.has(t));
   if (manquantes.length === 0) return '';
@@ -172,6 +179,14 @@ export default function DevenirCoachVerification() {
                   <Text style={{ ...theme.texte.label, color: theme.couleur.texte.principal }}>
                     {LIBELLES_PIECE[type]}
                   </Text>
+                  {piece?.nomFichier ? (
+                    <Text
+                      numberOfLines={1}
+                      style={{ ...theme.texte.petit, color: theme.couleur.texte.principal }}
+                    >
+                      {piece.nomFichier}
+                    </Text>
+                  ) : null}
                   {piece ? (
                     <View
                       style={{ flexDirection: 'row', alignItems: 'center', gap: theme.espace[2] }}
@@ -186,7 +201,11 @@ export default function DevenirCoachVerification() {
                       >
                         {enCours === type
                           ? 'Envoi en cours…'
-                          : `Déposée le ${new Date(piece.deposeLe).toLocaleDateString('fr-FR')}`}
+                          : `Déposée le ${new Date(piece.deposeLe).toLocaleDateString('fr-FR')}${
+                              piece.tailleOctets != null
+                                ? ` · ${poidsLisible(piece.tailleOctets)}`
+                                : ''
+                            }`}
                       </Text>
                       {/* A2 — L2-06, règle 6 : action destructive (l'ancienne version cesse de compter
                           dès l'envoi de la nouvelle), en encre d'alerte, jamais en couleur d'action ;

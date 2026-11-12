@@ -26,7 +26,12 @@ const METRIQUES_ZONES_SURES: Metrics = {
 };
 
 async function rendre(
-  piecesDeposees: { type: string; deposeLe: string }[],
+  piecesDeposees: {
+    type: string;
+    deposeLe: string;
+    nomFichier?: string | null;
+    tailleOctets?: number | null;
+  }[],
   dossier?: Parameters<
     ReturnType<typeof creerFauxPortDonnees>['definirDossierVerificationPourTest']
   >[0],
@@ -240,5 +245,24 @@ describe('L2-06 · Devenir coach — étape 3/4 (vérification)', () => {
     await waitFor(() =>
       expect(screen.queryByText('Ton dossier est complet, il part en examen.')).toBeTruthy(),
     );
+  });
+
+  // L2-06, Contenu (« Déposée » : coche, nom du fichier, date de dépôt, poids) — décision du
+  // développeur du 12 novembre 2026. Une pièce déposée avant cette date n'a ni nom ni poids :
+  // la ligne montre alors la date seule.
+  it('une pièce déposée affiche le nom du fichier, la date et le poids', async () => {
+    await rendre([
+      {
+        type: 'identite',
+        deposeLe: '2026-09-12T10:00:00.000Z',
+        nomFichier: 'passeport.pdf',
+        tailleOctets: 1468006,
+      },
+      { type: 'diplome_ou_certification', deposeLe: '2026-09-12T10:01:00.000Z' },
+    ]);
+
+    expect(screen.getByText('passeport.pdf')).toBeTruthy();
+    expect(screen.getByText('Déposée le 12/09/2026 · 1,4 Mo')).toBeTruthy();
+    expect(screen.getByText('Déposée le 12/09/2026')).toBeTruthy();
   });
 });
