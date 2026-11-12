@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar } from '@/composants/avatar';
 import { Carte } from '@/composants/carte';
 import { EtatErreur } from '@/composants/etats/etat-erreur';
+import { BlocMesAbonnements } from '@/fonctionnalites/abonnement/bloc-mes-abonnements';
 import { textesRepliErreur } from '@/composants/etats/textes';
 import { Icone, type NomIcone } from '@/composants/icones';
 import { Modale } from '@/composants/modale';
@@ -177,6 +178,10 @@ export function EcranCompte() {
                     onReessayer={() => {}}
                   />
                 ) : null}
+
+                {/* L4-24b : entre l'en-tête et la liste de réglages, espace client seulement (les
+                    abonnés d'un coach sont une autre lecture, L7). */}
+                {profils?.profilActif === 'client' ? <BlocMesAbonnements /> : null}
 
                 <Carte>
                   {LIGNES_REGLAGES.map((ligne, index) => (

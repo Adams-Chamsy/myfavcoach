@@ -129,6 +129,8 @@ function creerPortDonneesEnAttente(promesse: Promise<EtatProfils>): PortDonnees 
     lireMonAvis: jest.fn(),
     deposerAvis: jest.fn(),
     modifierAvis: jest.fn(),
+    lireMesAbonnements: jest.fn(),
+    transitionAbonnement: jest.fn(),
   };
 }
 
@@ -288,6 +290,8 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       lireMonAvis: jest.fn(),
       deposerAvis: jest.fn(),
       modifierAvis: jest.fn(),
+      lireMesAbonnements: jest.fn(),
+      transitionAbonnement: jest.fn(),
     };
 
     await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);

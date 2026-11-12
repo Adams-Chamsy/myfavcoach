@@ -24,6 +24,9 @@ import type {
   ResultatRecherche,
   SaisieAvis,
   TypePiece,
+  AbonnementClient,
+  StatutAbonnement,
+  TransitionAbonnement,
 } from './port';
 
 // Mêmes sept clés que la migration 0020 (disciplines) — dupliquées ici volontairement : le faux
@@ -154,6 +157,11 @@ export type FauxPortDonnees = PortDonnees & {
   lireDemandesIntentionPourTest(): { offreId: string; cleIdempotence: string }[];
   // Une réponse, ou une suite de réponses rendues dans l'ordre (la dernière se répète) : l'attente
   // bornée de 04b (P4.6b) enchaîne plusieurs constats.
+  // L4-24b : les abonnements du client et les transitions demandées (machine de 0033, réduite
+  // aux trois transitions du client).
+  definirAbonnementsPourTest(abonnements: AbonnementClient[]): void;
+  lireTransitionsPourTest(): { abonnementId: string; transition: TransitionAbonnement }[];
+  refuserProchaineTransitionPourTest(code: string): void;
   definirReponseConstatPourTest(reponse: ResultatConstat | ResultatConstat[]): void;
   lireNombreConstatsPourTest(): number;
   // Avis (P4.9a) : par coach ; sans réglage, aucun avis et l'état « aucun ».
@@ -230,6 +238,9 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     issue: 'sans_reponse',
   };
   let demandesIntention: { offreId: string; cleIdempotence: string }[] = [];
+  let abonnements: AbonnementClient[] = [];
+  let transitions: { abonnementId: string; transition: TransitionAbonnement }[] = [];
+  let refusTransition: string | null = null;
   let reponsesConstat: ResultatConstat[] = [{ issue: 'sans_reponse' }];
   let nombreConstats = 0;
   let dossierVerification: DossierVerification = { statut: 'absente', deposeLe: null, motif: null };
@@ -743,6 +754,58 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     },
     lireDemandesIntentionPourTest() {
       return demandesIntention;
+    },
+    definirAbonnementsPourTest(valeur) {
+      abonnements = valeur;
+    },
+    async lireMesAbonnements() {
+      return abonnements;
+    },
+    lireTransitionsPourTest() {
+      return transitions;
+    },
+    refuserProchaineTransitionPourTest(code) {
+      refusTransition = code;
+    },
+    async transitionAbonnement(abonnementId, transition) {
+      transitions = [...transitions, { abonnementId, transition }];
+      if (refusTransition) {
+        const code = refusTransition;
+        refusTransition = null;
+        return { succes: false, code };
+      }
+      // Miroir de 0033 (demander_resiliation, annuler_resiliation, reprendre_abonnement).
+      const suivant: Partial<
+        Record<TransitionAbonnement, Partial<Record<StatutAbonnement, StatutAbonnement>>>
+      > = {
+        resilier: {
+          actif: 'resiliation_programmee',
+          en_pause: 'resilie',
+          impaye: 'resilie',
+          suspendu: 'resilie',
+        },
+        annuler_resiliation: { resiliation_programmee: 'actif' },
+        reprendre: { en_pause: 'actif' },
+      };
+      const a = abonnements.find((x) => x.id === abonnementId);
+      const statut = a ? suivant[transition]?.[a.statut] : undefined;
+      if (!a || !statut) return { succes: false, code: 'transition_interdite' };
+      abonnements = abonnements.map((x) =>
+        x.id === abonnementId
+          ? {
+              ...x,
+              statut,
+              finAccesLe:
+                transition === 'resilier'
+                  ? x.prochainPrelevementLe
+                  : statut === 'actif'
+                    ? null
+                    : x.finAccesLe,
+              pauseJusquLe: transition === 'reprendre' ? null : x.pauseJusquLe,
+            }
+          : x,
+      );
+      return { succes: true };
     },
     async constaterIntention() {
       const reponse = reponsesConstat[Math.min(nombreConstats, reponsesConstat.length - 1)];

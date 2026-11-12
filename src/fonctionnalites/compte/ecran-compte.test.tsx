@@ -5,7 +5,7 @@ import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donne
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
 import { creerFauxPortDonnees, etatProfilsParDefaut } from '@/services/donnees/faux';
-import type { EtatProfils } from '@/services/donnees/port';
+import type { AbonnementClient, EtatProfils } from '@/services/donnees/port';
 import { FournisseurTheme } from '@/theme/fournisseur';
 import MoiClient from '../../../app/(client)/(tabs)/moi';
 import MoiCoach from '../../../app/(coach)/(tabs)/moi';
@@ -39,7 +39,22 @@ const METRIQUES_ZONES_SURES: Metrics = {
 // FournisseurDonnees ne lit le port qu'avec une session vérifiée ET connectée — même montage
 // que app/(onboarding)/1-identite.test.tsx. On attend systématiquement le premier rendu réel
 // (waitFor) plutôt que findBy*, qui s'est montré instable avec ce montage à providers.
-async function rendreEcran(surcharges: Partial<EtatProfils> = {}) {
+const ABONNEMENT_ACTIF: AbonnementClient = {
+  id: 'abonnement-1',
+  coachPrenom: 'Yannick',
+  coachNom: 'Berthaud',
+  offreTitre: 'Suivi complet',
+  prixFigeCentimes: 4900,
+  statut: 'actif',
+  prochainPrelevementLe: '2026-12-03',
+  pauseJusquLe: null,
+  finAccesLe: null,
+};
+
+async function rendreEcran(
+  surcharges: Partial<EtatProfils> = {},
+  abonnements: AbonnementClient[] = [],
+) {
   const portAuth = creerFauxPortAuth();
   await portAuth.inscrire('camille@exemple.fr', 'bon-mot-de-passe', '2000-01-01');
   portAuth.verifierEmailPourTest('camille@exemple.fr');
@@ -55,6 +70,7 @@ async function rendreEcran(surcharges: Partial<EtatProfils> = {}) {
       ...surcharges,
     }),
   );
+  portDonnees.definirAbonnementsPourTest(abonnements);
 
   render(
     <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
@@ -179,14 +195,32 @@ describe('EcranCompte (docs/ecrans/L1-07-compte-reglages.md)', () => {
     );
   });
 
-  // Critère 9 : aucune chaîne des lots L4 ou L10 dans le rendu — ces deux-là restent loin.
-  it('n’affiche aucune fonctionnalité des lots L4 ou L10', async () => {
+  // Critère 9 de L1-07, INVERSÉ pour « abonnement » au lot L4 comme sa fiche l'annonçait
+  // (docs/ecrans/L4-24b-mes-abonnements.md, critère 6 ; règle 8 de docs/prompts/L4.md : inversé,
+  // jamais retiré). « notification » (L10) reste interdit dans tous les cas.
+  it('sans abonnement : ni « abonnement » ni « notification »', async () => {
     await rendreEcran();
+    await waitFor(() => expect(screen.queryByText('Mes informations')).toBeTruthy());
 
     const rendu = JSON.stringify(screen.toJSON()).toLowerCase();
     for (const interdit of ['abonnement', 'notification']) {
       expect(rendu).not.toContain(interdit);
     }
+  });
+
+  it('avec un abonnement, en espace client : le bloc « Mes abonnements » ; toujours aucune « notification »', async () => {
+    await rendreEcran({}, [ABONNEMENT_ACTIF]);
+
+    await waitFor(() => expect(screen.queryByText('Mes abonnements · 1')).toBeTruthy());
+    expect(JSON.stringify(screen.toJSON()).toLowerCase()).not.toContain('notification');
+  });
+
+  // Fiche 24b, Règles : « Espace coach : bloc absent ».
+  it('en espace coach : aucun bloc d’abonnements, même si le compte en a un', async () => {
+    await rendreEcran({ profilActif: 'coach', coachExiste: true }, [ABONNEMENT_ACTIF]);
+    await waitFor(() => expect(screen.queryByText('Mes informations')).toBeTruthy());
+
+    expect(screen.queryByText(/Mes abonnements/)).toBeNull();
   });
 
   // Critère 9 (suite), INVERSÉE comme annoncé par son propre commentaire d'origine (P1.13) :

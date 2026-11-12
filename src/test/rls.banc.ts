@@ -4339,6 +4339,35 @@ describe('abonnements — L4 (0033)', () => {
       expect(ids2).not.toContain(abonnement1);
     });
 
+    // L4-24b (12 novembre 2026) : la requête EXACTE de l'application (lireMesAbonnements,
+    // src/services/donnees/supabase.ts), titre de l'offre et nom du coach embarqués, avec la
+    // session du client. Verte par construction (aucune règle serveur nouvelle) : elle prouve que
+    // le chemin de l'application est couvert, pas un correctif.
+    const SELECT_24B =
+      'id,prix_fige_centimes,statut,prochain_prelevement_le,pause_jusqu_le,fin_acces_le,offres(titre),profils_coach(prenom,nom)';
+    it('24b : le client lit ses abonnements avec le titre de l’offre et le nom du coach', async () => {
+      const { statut, corps } = await appelRest(`/rest/v1/abonnements?select=${SELECT_24B}`, {
+        session: client1,
+      });
+      expect(statut).toBe(200);
+      const ligne = (
+        corps as {
+          id: string;
+          offres: { titre: string } | null;
+          profils_coach: { prenom: string } | null;
+        }[]
+      ).find((l) => l.id === abonnement1);
+      expect(ligne?.offres?.titre).toEqual(expect.any(String));
+      expect(ligne?.profils_coach?.prenom).toEqual(expect.any(String));
+    });
+
+    it('24b : un compte tiers, même requête, ne lit rien', async () => {
+      const { corps } = await appelRest(`/rest/v1/abonnements?select=${SELECT_24B}`, {
+        session: B,
+      });
+      expect(corps).toEqual([]);
+    });
+
     // B (module) : un compte tiers, avec profil client ET profil coach, qui n'est partie à aucun
     // de ces abonnements. Le coach de ce describe n'a pas de session (voir plus haut) ; aucune
     // lecture coach n'existe de toute façon à L4 (pilotage : L7).

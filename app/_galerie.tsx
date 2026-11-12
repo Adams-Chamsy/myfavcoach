@@ -65,6 +65,7 @@ import Export from './(compte)/export';
 import { CorpsDocumentLegal } from './(public)/documents/[type]';
 import { CorpsProfilCoachPublic } from './(client)/coach/[id]';
 import { EcranChoixOffre } from '@/fonctionnalites/abonnement/ecran-choix-offre';
+import { BlocMesAbonnements } from '@/fonctionnalites/abonnement/bloc-mes-abonnements';
 import { EcranPaiement } from '@/fonctionnalites/abonnement/ecran-paiement';
 import Accueil from './(client)/(tabs)/accueil';
 import { CorpsExplorer } from './(client)/(tabs)/explorer';
@@ -1923,6 +1924,38 @@ function PaiementAvecFixture() {
   );
 }
 
+// L4-24b : un abonnement par état affiché (jeu de démonstration : Yannick Berthaud, « Suivi
+// complet », 49 €/mois ; dates : celle de recapitulatifPaiementDemonstration).
+function MesAbonnementsAvecFixture() {
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    const date = recapitulatifPaiementDemonstration.prochainPrelevementLe;
+    const base = {
+      coachPrenom: 'Yannick',
+      coachNom: 'Berthaud',
+      offreTitre: 'Suivi complet',
+      prixFigeCentimes: 4900,
+      prochainPrelevementLe: date,
+      pauseJusquLe: null,
+      finAccesLe: null,
+    };
+    p.definirAbonnementsPourTest([
+      { ...base, id: 'galerie-actif', statut: 'actif' },
+      { ...base, id: 'galerie-attente', statut: 'en_attente_confirmation' },
+      { ...base, id: 'galerie-pause', statut: 'en_pause', pauseJusquLe: date },
+      { ...base, id: 'galerie-programmee', statut: 'resiliation_programmee', finAccesLe: date },
+      { ...base, id: 'galerie-impaye', statut: 'impaye' },
+      { ...base, id: 'galerie-suspendu', statut: 'suspendu' },
+    ]);
+    return p;
+  });
+  return (
+    <FournisseurDonnees port={port}>
+      <BlocMesAbonnements />
+    </FournisseurDonnees>
+  );
+}
+
 const ECRANS_L4: { titre: string; rendu: () => ReactNode }[] = [
   { titre: 'L4-04a · Choix de l’offre', rendu: () => <ChoixOffreAvecFixture avecOffre /> },
   {
@@ -1930,6 +1963,7 @@ const ECRANS_L4: { titre: string; rendu: () => ReactNode }[] = [
     rendu: () => <ChoixOffreAvecFixture avecOffre={false} />,
   },
   { titre: 'L4-04b · Récapitulatif et paiement', rendu: () => <PaiementAvecFixture /> },
+  { titre: 'L4-24b · Mes abonnements, chaque état', rendu: () => <MesAbonnementsAvecFixture /> },
 ];
 
 function SectionEcransL4() {

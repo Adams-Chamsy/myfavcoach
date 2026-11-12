@@ -27,6 +27,9 @@ import type {
   ResultatRecherche,
   SaisieAvis,
   TypePiece,
+  AbonnementClient,
+  StatutAbonnement,
+  TransitionAbonnement,
 } from './port';
 
 // L4 : ce que supabase-js rend pour l'appel d'une Edge Function. Une réponse non 2xx arrive en
@@ -245,6 +248,19 @@ async function monProfilCoachId(): Promise<{ id: string | null; erreur: unknown 
   const { data, error } = await supabase.rpc('mon_profil_coach_id');
   return { id: (data as string | null) ?? null, erreur: error };
 }
+
+// Lecture de 24b : PostgREST rend les relations embarquées comme des objets (clé étrangère
+// simple), null si la ligne liée n'est pas lisible (politique de lecture).
+type LigneAbonnementClient = {
+  id: string;
+  prix_fige_centimes: number;
+  statut: string;
+  prochain_prelevement_le: string | null;
+  pause_jusqu_le: string | null;
+  fin_acces_le: string | null;
+  offres: { titre: string } | null;
+  profils_coach: { prenom: string; nom: string } | null;
+};
 
 export const portDonneesSupabase: PortDonnees = {
   async lireEtatProfils() {
@@ -1023,6 +1039,38 @@ export const portDonneesSupabase: PortDonnees = {
       return refus ? { issue: 'refusee', refus } : { issue: 'sans_reponse' };
     }
     return constat(data);
+  },
+
+  async lireMesAbonnements() {
+    const { data, error } = await supabase
+      .from('abonnements')
+      .select(
+        'id, prix_fige_centimes, statut, prochain_prelevement_le, pause_jusqu_le, fin_acces_le, offres(titre), profils_coach(prenom, nom)',
+      )
+      .order('cree_le', { ascending: false });
+    if (error) throw error;
+    return ((data ?? []) as unknown as LigneAbonnementClient[]).map((l): AbonnementClient => ({
+      id: l.id,
+      coachPrenom: l.profils_coach?.prenom ?? null,
+      coachNom: l.profils_coach?.nom ?? null,
+      offreTitre: l.offres?.titre ?? null,
+      prixFigeCentimes: l.prix_fige_centimes,
+      statut: l.statut as StatutAbonnement,
+      prochainPrelevementLe: l.prochain_prelevement_le,
+      pauseJusquLe: l.pause_jusqu_le,
+      finAccesLe: l.fin_acces_le,
+    }));
+  },
+
+  async transitionAbonnement(abonnementId, transition) {
+    const fonction = {
+      resilier: 'demander_resiliation',
+      annuler_resiliation: 'annuler_resiliation',
+      reprendre: 'reprendre_abonnement',
+    }[transition];
+    const { error } = await supabase.rpc(fonction, { p_abonnement_id: abonnementId });
+    if (error) return { succes: false, code: error.message };
+    return { succes: true };
   },
 
   async lireEtiquettesAvis() {

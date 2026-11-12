@@ -291,6 +291,37 @@ export type ResultatConstat =
   | { issue: 'refusee'; refus: RefusServeur }
   | { issue: 'sans_reponse' };
 
+// L4-24b, « Mes abonnements » (12 novembre 2026) : la lecture du client sur SES abonnements
+// (abonnements_select_client, 0033 ; colonnes accordées, jamais reference_paiement), avec le
+// titre de l'offre et le nom du coach embarqués. Toutes les dates viennent du serveur. Coach ou
+// offre devenus illisibles (coach écarté, offre retirée) : null, l'écran n'invente rien.
+export type StatutAbonnement =
+  | 'en_attente_confirmation'
+  | 'actif'
+  | 'en_pause'
+  | 'impaye'
+  | 'suspendu'
+  | 'resiliation_programmee'
+  | 'resilie'
+  | 'annule';
+
+export type AbonnementClient = {
+  id: string;
+  coachPrenom: string | null;
+  coachNom: string | null;
+  offreTitre: string | null;
+  prixFigeCentimes: number;
+  statut: StatutAbonnement;
+  prochainPrelevementLe: string | null;
+  pauseJusquLe: string | null;
+  finAccesLe: string | null;
+};
+
+// Les transitions du client (0033) : demander_resiliation, annuler_resiliation,
+// reprendre_abonnement. Le serveur tranche ; un refus porte son code (`transition_interdite`…).
+export type TransitionAbonnement = 'resilier' | 'annuler_resiliation' | 'reprendre';
+export type ResultatTransition = { succes: true } | { succes: false; code: string };
+
 // L4, avis (P4.9a ; docs/domaine.md §3.11, §5.1 ; docs/ecrans/L2-13-avis.md, L4-27a-depot-avis.md).
 // Tout est calculé par le serveur : la durée de suivi (jamais une date), la moyenne (à partir de 5
 // avis publiés seulement, sinon null), l'éligibilité et le nombre de jours restants.
@@ -555,6 +586,13 @@ export type PortDonnees = {
   // l'adresse de retour, donc de l'extérieur : c'est le serveur qui décide s'il appartient au
   // compte connecté (docs/ecrans/L4-04b-recapitulatif-paiement.md), jamais l'application.
   constaterIntention(intentionId: string): Promise<ResultatConstat>;
+
+  // L4-24b : mes abonnements, en espace client (0033). Une erreur de lecture lève.
+  lireMesAbonnements(): Promise<AbonnementClient[]>;
+  transitionAbonnement(
+    abonnementId: string,
+    transition: TransitionAbonnement,
+  ): Promise<ResultatTransition>;
 
   // L4, avis (P4.9a). Lectures publiques (anon compris) : etiquettes_avis (table), avis_du_coach
   // et synthese_avis_du_coach (fonctions de base, 0049). Un coach non vérifié rend une liste vide.
