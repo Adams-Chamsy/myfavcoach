@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
+import { avecRelectureJeton } from './relecture-jeton';
+
 // L2-10/docs/backend.md §9 : client DÉDIÉ à app/(admin)/, jamais src/services/supabase/client.ts
 // (celui embarqué dans le paquet mobile). EXPO_PUBLIC_SUPABASE_ADMIN_ANON_KEY porte la clé
 // "publishable" (sb_publishable_…, nouveau système de clés Supabase) — un enregistrement
@@ -27,6 +29,8 @@ const cleAdmin = exigerVariable(
 const memoire = new Map<string, string>();
 
 export const supabaseAdmin = createClient(url, cleAdmin, {
+  // Un jeton refusé « émis dans le futur » est relu une fois (relecture-jeton.ts).
+  global: { fetch: avecRelectureJeton((...args) => fetch(...args)) },
   auth: {
     autoRefreshToken: true,
     persistSession: true,

@@ -1,6 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 
+import { avecRelectureJeton } from './relecture-jeton';
 import { stockageSecurise } from './stockage-securise';
 
 // Lecture statique obligatoire (process.env.EXPO_PUBLIC_XXX, jamais process.env[nom]) : le
@@ -26,6 +27,8 @@ const cleAnonyme = exigerVariable(
 // La clé anonyme est publique par conception (docs/backend.md §5, .env.exemple) : sa
 // protection vient des politiques RLS posées sur chaque table, jamais de sa confidentialité.
 export const supabase = createClient(url, cleAnonyme, {
+  // Un jeton refusé « émis dans le futur » est relu une fois (relecture-jeton.ts).
+  global: { fetch: avecRelectureJeton((...args) => fetch(...args)) },
   auth: {
     storage: stockageSecurise,
     autoRefreshToken: true,
