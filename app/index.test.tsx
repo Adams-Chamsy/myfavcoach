@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
@@ -199,6 +199,33 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
         );
       });
       mockParams = {};
+    });
+
+    // Décidé le 13 novembre 2026 : une lecture des profils qui échoue n'envoie plus dans un espace
+    // (jusque-là : l'onboarding client, « Salut » sans prénom — le cas du jeton « émis dans le
+    // futur », docs/dette.md). Elle affiche l'erreur, et « Réessayer » relit.
+    it('lecture des profils en échec : l’erreur et « Réessayer », aucune redirection ; au second essai, la destination', async () => {
+      const session: SessionAuth = { ...sessionNonVerifiee(), emailVerifie: true };
+      const portDonnees = creerFauxPortDonnees();
+      portDonnees.definirEtatProfilsPourTest(
+        etatProfilsParDefaut({
+          profilActif: 'coach',
+          clientExiste: false,
+          coachExiste: true,
+        }),
+      );
+      jest.spyOn(portDonnees, 'lireEtatProfils').mockRejectedValueOnce(new Error('PGRST303'));
+
+      await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);
+
+      await waitFor(() => expect(screen.queryByText('On a un souci de notre côté')).toBeTruthy());
+      expect(screen.queryByTestId('redirection')).toBeNull();
+
+      await fireEvent.press(screen.getByText('Réessayer'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('redirection').props.children).toBe('/(coach)/(tabs)/pilotage');
+      });
     });
 
     // P1.10 : le profil actif vient du serveur (src/services/donnees/), pas seulement de la

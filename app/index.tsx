@@ -6,6 +6,7 @@ import { Path, Svg } from 'react-native-svg';
 
 import splashLogoClair from '../assets/marque/splash-logo-clair.png';
 import { EtatErreur } from '@/composants/etats/etat-erreur';
+import { textesRepliErreur } from '@/composants/etats/textes';
 import { Progression } from '@/composants/progression';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
@@ -79,7 +80,7 @@ export default function Index() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { chargement: chargementSession, session } = useSession();
-  const { chargement: chargementDonnees, profils } = useDonnees();
+  const { chargement: chargementDonnees, profils, erreurLecture, relire } = useDonnees();
   // P4.6b — retour de la page de paiement sur web (docs/ecrans/L4-04b-recapitulatif-paiement.md,
   // « Retour sur web ») : `/?intention={id}`, adresse posée par le serveur. Une donnée venue de
   // l'extérieur : 04b ne fait que demander le constat, et le serveur décide (404 si elle n'est
@@ -121,6 +122,32 @@ export default function Index() {
   // un eclair d'ecran public precede l'espace reel d'un utilisateur qui a une session valide.
   // Trouve en preparant P1.8 avec le trousseau (l'ancienne memoire de session, qui ne savait
   // jamais qu'une session Supabase venait d'etre etablie).
+  // Lecture des profils en échec (13 novembre 2026) : l'erreur, jamais un espace choisi sur une
+  // lecture ratée — le repli de garde.ts menait à l'onboarding client (docs/dette.md, jeton
+  // « émis dans le futur »). « Réessayer » relit par le fournisseur.
+  if (!chargement && erreurLecture) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          padding: theme.espace[6],
+          backgroundColor: theme.couleur.fond.canevas,
+        }}
+      >
+        <EtatErreur
+          titre={textesRepliErreur.serveur.titre}
+          explication={textesRepliErreur.serveur.explication}
+          nombreEchecs={nombreEchecs}
+          onReessayer={() => {
+            setNombreEchecs((n) => n + 1);
+            void relire();
+          }}
+        />
+      </View>
+    );
+  }
+
   if (!chargement) {
     if (intention && session?.emailVerifie && profils?.clientExiste) {
       return (

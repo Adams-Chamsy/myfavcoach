@@ -1,8 +1,13 @@
 import { Redirect, Slot, useSegments } from 'expo-router';
+import { View } from 'react-native';
+
+import { EtatErreur } from '@/composants/etats/etat-erreur';
+import { textesRepliErreur } from '@/composants/etats/textes';
 
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { determinerDestination } from '@/fonctionnalites/identite/garde';
+import { useTheme } from '@/theme/fournisseur';
 
 // Règle 7 (docs/prompts/L1.md, P1.10) : "une route de (public) atteinte avec une session
 // valide → renvoi vers l'espace actif." Un seul endroit CALCULE la destination
@@ -24,14 +29,36 @@ import { determinerDestination } from '@/fonctionnalites/identite/garde';
 const DERNIER_SEGMENT_EXEMPTE = 'nouveau-mot-de-passe';
 
 export default function LayoutPublic() {
+  const theme = useTheme();
   const segments = useSegments();
   const { chargement: chargementSession, session } = useSession();
-  const { chargement: chargementDonnees, profils } = useDonnees();
+  const { chargement: chargementDonnees, profils, erreurLecture, relire } = useDonnees();
 
   const routeExemptee = segments[segments.length - 1] === DERNIER_SEGMENT_EXEMPTE;
   const sessionValide = Boolean(session && session.emailVerifie);
 
   if (!routeExemptee && !chargementSession && !chargementDonnees && sessionValide) {
+    // Lecture des profils en échec (13 novembre 2026) : l'erreur, aucune redirection — le repli
+    // menait à l'onboarding client (docs/dette.md, jeton « émis dans le futur »).
+    if (erreurLecture) {
+      return (
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            padding: theme.espace[6],
+            backgroundColor: theme.couleur.fond.canevas,
+          }}
+        >
+          <EtatErreur
+            titre={textesRepliErreur.serveur.titre}
+            explication={textesRepliErreur.serveur.explication}
+            nombreEchecs={0}
+            onReessayer={() => void relire()}
+          />
+        </View>
+      );
+    }
     return <Redirect href={determinerDestination(session, profils)} />;
   }
 

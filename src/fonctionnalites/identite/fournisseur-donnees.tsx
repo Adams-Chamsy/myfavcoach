@@ -49,7 +49,16 @@ import type {
 // coach y entre depuis la feuille de bascule, avec un état à rafraîchir en place.
 export type EcrituresEtatProfils = Pick<PortDonnees, EcritureEtatProfils>;
 
-type EtatDonneesCommun = { port: PortDonneesLecture } & EcrituresEtatProfils;
+// erreurLecture (13 novembre 2026) : la dernière lecture a ÉCHOUÉ — à distinguer de « aucune
+// session » (profils null, erreurLecture false) et de « aucun profil » (profils non null). Une
+// lecture ratée n'autorise rien, mais ne mène nulle part non plus : jusque-là, garde.ts la
+// prenait pour « aucun profil » et envoyait à l'onboarding client (le cas du jeton « émis dans
+// le futur », docs/dette.md). relire() : la même lecture, depuis un écran (« Réessayer »).
+type EtatDonneesCommun = {
+  port: PortDonneesLecture;
+  erreurLecture: boolean;
+  relire: () => Promise<void>;
+} & EcrituresEtatProfils;
 
 export type EtatDonnees =
   | ({ chargement: true; profils: null } & EtatDonneesCommun)
@@ -72,7 +81,7 @@ export type ProprietesFournisseurDonnees = {
 // celui où l'effet qui devrait relancer la lecture s'exécute enfin. `etat` ci-dessous est
 // dérivé de session + resultat à CHAQUE rendu, jamais mis en cache séparément : aucun rendu
 // intermédiaire ne peut donc annoncer "chargement terminé" avec les profils d'un autre compte.
-type ResultatLecture = { compteId: string; profils: EtatProfils | null };
+type ResultatLecture = { compteId: string; profils: EtatProfils | null; echec: boolean };
 
 export function FournisseurDonnees({ children, port }: ProprietesFournisseurDonnees) {
   const { session } = useSession();
@@ -94,12 +103,12 @@ export function FournisseurDonnees({ children, port }: ProprietesFournisseurDonn
     if (!compteId) return;
     try {
       const profils = await port.lireEtatProfils();
-      if (compteIdRef.current === compteId) setResultat({ compteId, profils });
+      if (compteIdRef.current === compteId) setResultat({ compteId, profils, echec: false });
     } catch {
-      // Une lecture qui échoue n'autorise rien (même principe que FournisseurSession) : repli
-      // sûr vers "profils: null", que garde.ts traite comme "onboarding non terminé", jamais
-      // comme un espace client ou coach.
-      if (compteIdRef.current === compteId) setResultat({ compteId, profils: null });
+      // Une lecture qui échoue n'autorise rien (même principe que FournisseurSession) : profils
+      // null, ET l'échec nommé — l'écran affiche une erreur avec « Réessayer », jamais un espace
+      // choisi sur une lecture ratée.
+      if (compteIdRef.current === compteId) setResultat({ compteId, profils: null, echec: true });
     }
   }, [port]);
 
@@ -154,11 +163,12 @@ export function FournisseurDonnees({ children, port }: ProprietesFournisseurDonn
     enregistrerInformations,
   };
 
+  const commun = { port, relire: rafraichir, ...ecritures };
   const etat: EtatDonnees = !compteIdVerifie
-    ? { chargement: false, profils: null, port, ...ecritures }
+    ? { chargement: false, profils: null, erreurLecture: false, ...commun }
     : resultat && resultat.compteId === compteIdVerifie
-      ? { chargement: false, profils: resultat.profils, port, ...ecritures }
-      : { chargement: true, profils: null, port, ...ecritures };
+      ? { chargement: false, profils: resultat.profils, erreurLecture: resultat.echec, ...commun }
+      : { chargement: true, profils: null, erreurLecture: false, ...commun };
 
   return <ContexteDonnees.Provider value={etat}>{children}</ContexteDonnees.Provider>;
 }

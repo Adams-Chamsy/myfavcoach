@@ -1,11 +1,12 @@
 // Nom avec un tiret, jamais "_layout.test.tsx" : même piège qu'app/_layout-racine.test.tsx
 // (expo-router lirait "_layout.test.tsx" comme un second layout de la même route et
 // planterait au démarrage — voir son commentaire complet et docs/dette.md).
-import { render, screen } from '@testing-library/react-native';
+import { render, screen, waitFor } from '@testing-library/react-native';
 
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth, type FauxPortAuth } from '@/services/auth/faux';
+import { FournisseurTheme } from '@/theme/fournisseur';
 import {
   creerFauxPortDonnees,
   etatProfilsParDefaut,
@@ -34,13 +35,16 @@ jest.mock('expo-router', () => ({
 
 const MAJEUR = '2000-01-01';
 
+// FournisseurTheme : l'état d'erreur du layout (13 novembre 2026) lit le thème.
 function rendre(portAuth: FauxPortAuth, portDonnees: FauxPortDonnees) {
   return render(
-    <FournisseurSession port={portAuth}>
-      <FournisseurDonnees port={portDonnees}>
-        <LayoutPublic />
-      </FournisseurDonnees>
-    </FournisseurSession>,
+    <FournisseurTheme>
+      <FournisseurSession port={portAuth}>
+        <FournisseurDonnees port={portDonnees}>
+          <LayoutPublic />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    </FournisseurTheme>,
   );
 }
 
@@ -76,6 +80,23 @@ describe('app/(public)/_layout.tsx — règle 7 (docs/prompts/L1.md, P1.10)', ()
 
     expect(mockRemplacer).toHaveBeenCalledWith('/(client)/(tabs)/accueil');
     expect(screen.queryByText('écran public affiché')).toBeNull();
+  });
+
+  // Décidé le 13 novembre 2026 : une lecture des profils qui échoue n'est pas « aucun profil » ;
+  // le layout public n'expulse vers aucun espace, il affiche l'erreur et laisse réessayer.
+  it('avec une session vérifiée et une lecture des profils en échec : l’erreur, aucune redirection', async () => {
+    const portAuth = creerFauxPortAuth();
+    await portAuth.inscrire('camille@exemple.fr', 'bon-mot-de-passe', MAJEUR);
+    portAuth.verifierEmailPourTest('camille@exemple.fr');
+    await portAuth.connecter('camille@exemple.fr', 'bon-mot-de-passe');
+    const portDonnees = creerFauxPortDonnees();
+    jest.spyOn(portDonnees, 'lireEtatProfils').mockRejectedValue(new Error('PGRST303'));
+
+    await rendre(portAuth, portDonnees);
+
+    await waitFor(() => expect(screen.queryByText('On a un souci de notre côté')).toBeTruthy());
+    expect(mockRemplacer).not.toHaveBeenCalled();
+    expect(screen.getByText('Réessayer')).toBeTruthy();
   });
 
   it('avec une session vérifiée mais sur nouveau-mot-de-passe, n’expulse jamais l’écran', async () => {

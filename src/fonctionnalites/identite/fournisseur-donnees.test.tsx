@@ -97,7 +97,11 @@ describe('useDonnees', () => {
     expect(result.current.profils).toEqual(etatAttendu);
   });
 
-  it('une lecture qui échoue résout quand même chargement, avec profils null', async () => {
+  // Décidé le 13 novembre 2026 : « une garde qui envoie quelqu'un dans le mauvais espace sur une
+  // lecture ratée, c'est le défaut ». Une lecture qui échoue n'est plus « profils null » tout
+  // court (ce que garde.ts prend pour « aucun profil », donc l'onboarding client) : elle se
+  // NOMME, et relire() permet de réessayer depuis l'écran.
+  it('une lecture qui échoue résout chargement, profils null, et le DIT : erreurLecture', async () => {
     const portAuth = creerFauxPortAuth();
     await compteConnecteEtVerifie(portAuth);
     const portDonnees = creerFauxPortDonnees();
@@ -109,6 +113,43 @@ describe('useDonnees', () => {
 
     await waitFor(() => expect(result.current.chargement).toBe(false));
     expect(result.current.profils).toBeNull();
+    expect(result.current.erreurLecture).toBe(true);
+  });
+
+  it('relire() après un échec : les profils arrivent, erreurLecture retombe', async () => {
+    const portAuth = creerFauxPortAuth();
+    await compteConnecteEtVerifie(portAuth);
+    const portDonnees = creerFauxPortDonnees();
+    const lecture = jest.spyOn(portDonnees, 'lireEtatProfils');
+    lecture.mockRejectedValueOnce(new Error('panne réseau'));
+
+    const { result } = await renderHook(() => useDonnees(), {
+      wrapper: envelopper(portAuth, portDonnees),
+    });
+    await waitFor(() => expect(result.current.erreurLecture).toBe(true));
+
+    await act(async () => {
+      await result.current.relire();
+    });
+
+    expect(result.current.erreurLecture).toBe(false);
+    expect(result.current.profils).not.toBeNull();
+  });
+
+  it('une lecture réussie, ou aucune session : erreurLecture est faux', async () => {
+    const portAuth = creerFauxPortAuth();
+    const { result: sansSession } = await renderHook(() => useDonnees(), {
+      wrapper: envelopper(portAuth, creerFauxPortDonnees()),
+    });
+    await waitFor(() => expect(sansSession.current.chargement).toBe(false));
+    expect(sansSession.current.erreurLecture).toBe(false);
+
+    await compteConnecteEtVerifie(portAuth);
+    const { result: avecSession } = await renderHook(() => useDonnees(), {
+      wrapper: envelopper(portAuth, creerFauxPortDonnees()),
+    });
+    await waitFor(() => expect(avecSession.current.profils).not.toBeNull());
+    expect(avecSession.current.erreurLecture).toBe(false);
   });
 
   it('ne relit pas au simple rafraîchissement de jeton (même compteId, même emailVerifie)', async () => {
