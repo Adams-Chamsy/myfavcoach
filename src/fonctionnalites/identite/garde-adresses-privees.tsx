@@ -10,6 +10,27 @@ import { determinerDestination } from './garde';
 // répartiteur (app/index.tsx) décident eux-mêmes.
 const GROUPES_PRIVES = new Set(['(client)', '(coach)', '(compte)', '(onboarding)']);
 
+// Les écrans privés par leur groupe, mais lisibles sans session : chacun nommé, avec sa raison.
+// Lus par la garde ci-dessous ET par src/test/destinations-privees-depuis-public.test.ts, qui
+// exige que toute adresse privée écrite dans un écran public (app/(public)/) en soit une : la
+// régression du 12 novembre 2026 (le lien d'invitation renvoyé à la bienvenue par cette garde
+// même) ne se reforme pas en silence.
+export const EXCEPTIONS_ADRESSES_PRIVEES: readonly {
+  segments: readonly string[];
+  raison: string;
+}[] = [
+  {
+    // app/(client)/coach/[id].tsx : docs/ecrans/L2-12-profil-coach-public.md. Le parcours
+    // d'invitation l'ouvre sans session (app/(public)/y/[jeton].tsx).
+    segments: ['(client)', 'coach'],
+    raison: 'profil public d’un coach, ouvert sans session par le lien d’invitation',
+  },
+];
+
+function estExceptionPublique(segments: readonly string[]): boolean {
+  return EXCEPTIONS_ADRESSES_PRIVEES.some((e) => e.segments.every((s, i) => segments[i] === s));
+}
+
 // Décidé le 12 novembre 2026 : une adresse privée ouverte sans session mène là où la garde le
 // dit (determinerDestination : l'espace public, ou la vérification de l'adresse), jamais à un
 // écran privé rendu à vide. Mesuré la veille sur le web (/pilotage : le cadre de l'espace coach
@@ -27,12 +48,7 @@ export function GardeAdressesPrivees(): null {
   const { chargement: chargementSession, session } = useSession();
   const { chargement: chargementDonnees, profils } = useDonnees();
 
-  // Exception nommée : le profil PUBLIC d'un coach (app/(client)/coach/[id].tsx) vit dans le
-  // groupe (client), mais il est lisible sans session (docs/ecrans/L2-12-profil-coach-public.md)
-  // et le parcours d'invitation l'ouvre ainsi (app/(public)/y/[jeton].tsx). Régression du jour
-  // même de cette garde, trouvée le 12 novembre 2026.
-  const profilCoachPublic = segments[0] === '(client)' && segments[1] === 'coach';
-  const groupePrive = GROUPES_PRIVES.has(segments[0] ?? '') && !profilCoachPublic;
+  const groupePrive = GROUPES_PRIVES.has(segments[0] ?? '') && !estExceptionPublique(segments);
   const sansSessionVerifiee = !session?.emailVerifie;
 
   useEffect(() => {
