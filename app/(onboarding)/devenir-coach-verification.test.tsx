@@ -287,4 +287,67 @@ describe('L2-06 · Devenir coach — étape 3/4 (vérification)', () => {
 
     await waitFor(() => expect(screen.queryByText('Déposée le 10/09/2026')).toBeTruthy());
   });
+
+  // Texte 3, validé par le développeur le 13 novembre 2026 : un coach refusé (ou révoqué) doit
+  // savoir que seules les TROIS pièces redéposées renvoient son dossier en examen (0053) — son
+  // écran montrait ses anciennes pièces « Déposée » sans un mot (docs/decisions-en-attente.md).
+  it('coach refusé : le bandeau dit de remplacer les trois documents ; il disparaît au départ en examen', async () => {
+    mockGetDocumentAsync.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///tmp/d.pdf', name: 'd.pdf', mimeType: 'application/pdf', size: 1 }],
+    });
+    await rendre(
+      [
+        { type: 'identite', deposeLe: '2026-09-10T10:00:00.000Z' },
+        { type: 'diplome_ou_certification', deposeLe: '2026-09-10T10:01:00.000Z' },
+        { type: 'assurance_rc_pro', deposeLe: '2026-09-10T10:02:00.000Z' },
+      ],
+      { statut: 'refusee', deposeLe: '2026-09-10T10:02:00.000Z', motif: 'Pièce illisible.' },
+    );
+
+    const bandeau = 'Remplace les trois documents : ton dossier repartira en examen.';
+    await waitFor(() => expect(screen.queryByText(bandeau)).toBeTruthy());
+
+    for (const piece of [
+      'la pièce d’identité',
+      'le diplôme ou la certification',
+      'l’attestation d’assurance RC pro',
+    ]) {
+      await fireEvent.press(screen.getByRole('button', { name: `Remplacer ${piece}` }));
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: `Remplacer ${piece}` })).toBeEnabled(),
+      );
+    }
+
+    await waitFor(() => expect(screen.queryByText(bandeau)).toBeNull());
+  });
+
+  it('coach jamais refusé : aucun bandeau', async () => {
+    await rendre([]);
+    expect(
+      screen.queryByText('Remplace les trois documents : ton dossier repartira en examen.'),
+    ).toBeNull();
+  });
+
+  // Texte 8, décidé le 13 novembre 2026 : le message de soumission (A1) s'écrit en phrase, comme
+  // la fiche — il s'affichait en capitales (style `label`, vu à la clôture de A2).
+  it('le message de soumission est en phrase, jamais en capitales', async () => {
+    mockGetDocumentAsync.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///tmp/a.pdf', name: 'a.pdf', mimeType: 'application/pdf', size: 1 }],
+    });
+    await rendre([
+      { type: 'identite', deposeLe: '2026-11-02T10:00:00.000Z' },
+      { type: 'diplome_ou_certification', deposeLe: '2026-11-02T10:01:00.000Z' },
+    ]);
+
+    await fireEvent.press(screen.getByText('Choisir un fichier'));
+
+    await waitFor(() =>
+      expect(screen.queryByText('Ton dossier est complet, il part en examen.')).toBeTruthy(),
+    );
+    expect(screen.getByText('Ton dossier est complet, il part en examen.')).not.toHaveStyle({
+      textTransform: 'uppercase',
+    });
+  });
 });

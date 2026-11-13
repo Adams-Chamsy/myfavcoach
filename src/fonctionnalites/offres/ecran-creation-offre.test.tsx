@@ -5,7 +5,7 @@ import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donne
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
 import { creerFauxPortDonnees, etatProfilsParDefaut } from '@/services/donnees/faux';
-import type { DossierVerification } from '@/services/donnees/port';
+import type { DossierVerification, Offre } from '@/services/donnees/port';
 import { FournisseurTheme } from '@/theme/fournisseur';
 import { EcranCreationOffre } from './ecran-creation-offre';
 
@@ -48,7 +48,11 @@ function publier() {
   return screen.getByRole('button', { name: 'Publier' });
 }
 
-async function rendre(dossier?: DossierVerification, onFermer: () => void = () => {}) {
+async function rendre(
+  dossier?: DossierVerification,
+  onFermer: () => void = () => {},
+  offreExistante?: Offre,
+) {
   const portAuth = creerFauxPortAuth();
   await portAuth.inscrire('coach@mfc.test', 'un-mot-de-passe-suffisant', '1990-01-01');
   portAuth.verifierEmailPourTest('coach@mfc.test');
@@ -64,7 +68,7 @@ async function rendre(dossier?: DossierVerification, onFermer: () => void = () =
       <FournisseurTheme>
         <FournisseurSession port={portAuth}>
           <FournisseurDonnees port={portDonnees}>
-            <EcranCreationOffre onFermer={onFermer} />
+            <EcranCreationOffre onFermer={onFermer} offreExistante={offreExistante} />
           </FournisseurDonnees>
         </FournisseurSession>
       </FournisseurTheme>
@@ -234,5 +238,24 @@ describe('L2-15 · Créer et publier une offre', () => {
     } finally {
       mockGarde.sortie = null;
     }
+  });
+
+  // Titre validé par le développeur le 13 novembre 2026 : « Modifier l'offre » quand l'écran
+  // ouvre une offre existante (chemin encore inatteignable : B1, L5 — le titre est prêt).
+  it('une offre existante : le titre « Modifier l’offre », pas « Nouvelle offre »', async () => {
+    await rendre(VERIFIE, () => {}, {
+      id: 'offre-1',
+      titre: 'Suivi complet',
+      description: null,
+      prixCentimes: 4900,
+      benefices: ['A', 'B', 'C'],
+      engagementHumain: ['bilan_mensuel'],
+      estMiseEnAvant: false,
+      publieeLe: null,
+      retireeLe: null,
+    });
+
+    expect(screen.getByText('Modifier l’offre')).toBeTruthy();
+    expect(screen.queryByText('Nouvelle offre')).toBeNull();
   });
 });

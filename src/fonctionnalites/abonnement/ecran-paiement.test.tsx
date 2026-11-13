@@ -253,6 +253,26 @@ describe('L4-04b · Récapitulatif et paiement', () => {
     expect(screen.queryByRole('button', { name: /^Payer/ })).toBeNull();
   });
 
+  // Constat `souscription_impossible` (docs/api.md §7 : payé, mais le coach écarté entre-temps).
+  // Texte validé par le développeur le 13 novembre 2026 ; la promesse de remboursement est
+  // rattachée à la dette de l'alerte sur les anomalies (docs/dette.md) : rien ne la déclenche
+  // encore. Jamais « Payer ».
+  it('souscription impossible : le paiement est arrivé, le suivi ne démarre pas, remboursement ; jamais « Payer »', async () => {
+    await rendre({ issue: 'constat', etat: 'souscription_impossible' });
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Payer 49,00 €' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          'Ton paiement est bien arrivé, mais ce suivi ne peut pas démarrer. Tu seras remboursé.',
+        ),
+      ).toBeTruthy(),
+    );
+    expect(screen.queryByRole('button', { name: /^Payer/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Revenir au profil de Yannick' })).toBeTruthy();
+  });
+
   // Retour sur web : l'écran constate dès son ouverture, avec le seul identifiant ; un 404
   // (intention d'un autre, inexistante) ne dit rien : retour à l'accueil client.
   it('retour sur web : constat immédiat ; une intention qui n’est pas la sienne ne dit rien', async () => {

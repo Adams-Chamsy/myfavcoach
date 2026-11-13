@@ -61,6 +61,13 @@ continuer pendant ce temps » ont été retirés : le premier promet un humain n
 encombre un message dont le seul rôle est de dire ce qui vient de se passer (« Continuer », juste
 dessous, le dit déjà).
 
+Écrit en phrase, jamais en capitales (corrigé le 13 novembre 2026).
+
+**Coach refusé ou révoqué** (ajouté le 13 novembre 2026, texte validé par le développeur) : un
+bandeau en tête de la liste — « Remplace les trois documents : ton dossier repartira en examen. »
+Seules les trois pièces redéposées après la décision renvoient le dossier en examen (0053). Le
+bandeau disparaît dès que le dossier repart.
+
 Pied fixe : « Continuer » (mène à l'étape 4, `L2-07`) — actif seulement quand **les trois**
 documents sont déposés ; sinon, texte sous le bouton nommant précisément ce qui manque
 (« Il manque l'attestation d'assurance. »).

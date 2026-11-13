@@ -232,7 +232,7 @@ export function EcranCreationOffre({
             accessibilityRole="header"
             style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal, flex: 1 }}
           >
-            {offreExistante ? '' : 'Nouvelle offre'}
+            {offreExistante ? 'Modifier l’offre' : 'Nouvelle offre'}
           </Text>
           <Bouton
             libelle="Enregistrer"

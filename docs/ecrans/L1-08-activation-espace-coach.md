@@ -41,6 +41,13 @@ Deux champs :
 
 Pied fixe : bouton primaire « Ouvrir mon espace coach ».
 
+**Sorties sans aucun profil** (ajouté le 13 novembre 2026, textes validés par le développeur —
+« personne ne reste enfermé sur un écran ») : une personne venue par la porte coach (L1-01) n'a
+aucun profil et rien derrière cet écran. Sous le bouton, deux liens discrets : « Je cherche plutôt
+un coach » (vers l'onboarding client, étape 1) et « Se déconnecter » (modale de l'écran compte,
+L1-07, mêmes textes). Avec un profil client, le retour de l'en-tête suffit : ces liens
+n'apparaissent pas.
+
 ---
 
 ## Après validation

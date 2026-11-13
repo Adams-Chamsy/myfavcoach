@@ -1,6 +1,6 @@
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
@@ -9,8 +9,10 @@ import { Chip } from '@/composants/chip';
 import { EtatErreur } from '@/composants/etats/etat-erreur';
 import { textesRepliErreur } from '@/composants/etats/textes';
 import { Icone, type NomIcone } from '@/composants/icones';
+import { Modale } from '@/composants/modale';
 import { EnteteOnboarding } from '@/fonctionnalites/identite/entete-onboarding';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
+import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import type { Discipline } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
 
@@ -52,6 +54,17 @@ export default function DevenirCoach() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { profils, port, creerProfilCoach } = useDonnees();
+  const { port: portAuth } = useSession();
+  // Texte 5 (13 novembre 2026, « personne ne reste enfermé sur un écran ») : une personne venue
+  // par la porte coach (D) n'a aucun profil, et rien derrière cet écran — deux sorties discrètes.
+  // Avec un profil client, le retour de l'en-tête suffit : les sorties n'apparaissent pas.
+  const sansAucunProfil = profils !== null && !profils.clientExiste;
+  const [confirmationDeconnexion, setConfirmationDeconnexion] = useState(false);
+  async function confirmerDeconnexion() {
+    setConfirmationDeconnexion(false);
+    await portAuth.deconnecter();
+    router.replace('/(public)' as Href);
+  }
 
   // Repris du profil client s'il existe, sans redemander (fiche, Règles + critère 6). Le nom
   // du client est facultatif (docs/domaine.md §3.2) alors que celui du coach est requis : si le
@@ -112,121 +125,157 @@ export default function DevenirCoach() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <EnteteOnboarding etape={1} desactive={chargement} />
+    // Même modale que l'écran compte (L1-07), textes identiques.
+    <Modale
+      ouverte={confirmationDeconnexion}
+      onFermer={() => setConfirmationDeconnexion(false)}
+      titre="Se déconnecter ?"
+      corps="Il faudra te reconnecter avec ton mot de passe."
+      libelleAction="Annuler"
+      onAction={() => setConfirmationDeconnexion(false)}
+      libelleDestructeur="Se déconnecter"
+      onDestructeur={() => void confirmerDeconnexion()}
+    >
+      <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+        <EnteteOnboarding etape={1} desactive={chargement} />
 
-      <ScrollView
-        contentContainerStyle={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[2],
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[4],
-        }}
-      >
-        <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-          Ouvre ton espace coach.
-        </Text>
-        <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
-          Ton compte reste le même. Tu passeras de l’un à l’autre quand tu veux.
-        </Text>
-
-        <View style={{ gap: theme.espace[3] }}>
-          {REASSURANCES.map((ligne) => (
-            <View
-              key={ligne.icone}
-              style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.espace[3] }}
-            >
-              <Icone nom={ligne.icone} couleur={theme.couleur.texte.secondaire} />
-              <Text
-                style={{ ...theme.texte.petit, flex: 1, color: theme.couleur.texte.secondaire }}
-              >
-                {ligne.texte}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={{ gap: theme.espace[2] }}>
-          <Text style={{ ...theme.texte.label, color: theme.couleur.texte.attenue }}>
-            Discipline
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: theme.espace.gouttiere,
+            paddingTop: theme.espace[2],
+            paddingBottom: theme.espace[6],
+            gap: theme.espace[4],
+          }}
+        >
+          <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
+            Ouvre ton espace coach.
           </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.espace[2] }}>
-            {disciplines.map((discipline) => (
-              <Chip
-                key={discipline.cle}
-                variante="selection"
-                libelle={discipline.libelle}
-                selectionne={disciplineChoisie === discipline.cle}
-                onPress={() => setDisciplineChoisie(discipline.cle)}
-              />
+          <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
+            Ton compte reste le même. Tu passeras de l’un à l’autre quand tu veux.
+          </Text>
+
+          <View style={{ gap: theme.espace[3] }}>
+            {REASSURANCES.map((ligne) => (
+              <View
+                key={ligne.icone}
+                style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.espace[3] }}
+              >
+                <Icone nom={ligne.icone} couleur={theme.couleur.texte.secondaire} />
+                <Text
+                  style={{ ...theme.texte.petit, flex: 1, color: theme.couleur.texte.secondaire }}
+                >
+                  {ligne.texte}
+                </Text>
+              </View>
             ))}
           </View>
-        </View>
 
-        {prenomReprise === '' ? (
+          <View style={{ gap: theme.espace[2] }}>
+            <Text style={{ ...theme.texte.label, color: theme.couleur.texte.attenue }}>
+              Discipline
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.espace[2] }}>
+              {disciplines.map((discipline) => (
+                <Chip
+                  key={discipline.cle}
+                  variante="selection"
+                  libelle={discipline.libelle}
+                  selectionne={disciplineChoisie === discipline.cle}
+                  onPress={() => setDisciplineChoisie(discipline.cle)}
+                />
+              ))}
+            </View>
+          </View>
+
+          {prenomReprise === '' ? (
+            <Champ
+              libelle="Prénom"
+              valeur={prenom}
+              onChangeTexte={setPrenom}
+              desactive={chargement}
+            />
+          ) : null}
+          {nomReprise === '' ? (
+            <Champ libelle="Nom" valeur={nom} onChangeTexte={setNom} desactive={chargement} />
+          ) : null}
+
           <Champ
-            libelle="Prénom"
-            valeur={prenom}
-            onChangeTexte={setPrenom}
+            libelle="Téléphone"
+            type="telephone"
+            valeur={telephone}
+            onChangeTexte={(valeur) => {
+              setTelephone(valeur);
+              if (erreurTelephone) setErreurTelephone(undefined);
+            }}
+            onBlur={() => {
+              if (telephone !== '' && !telephoneValide(telephone)) {
+                setErreurTelephone('Numéro de téléphone français attendu.');
+              }
+            }}
+            messageErreur={erreurTelephone}
             desactive={chargement}
           />
-        ) : null}
-        {nomReprise === '' ? (
-          <Champ libelle="Nom" valeur={nom} onChangeTexte={setNom} desactive={chargement} />
-        ) : null}
+        </ScrollView>
 
-        <Champ
-          libelle="Téléphone"
-          type="telephone"
-          valeur={telephone}
-          onChangeTexte={(valeur) => {
-            setTelephone(valeur);
-            if (erreurTelephone) setErreurTelephone(undefined);
-          }}
-          onBlur={() => {
-            if (telephone !== '' && !telephoneValide(telephone)) {
-              setErreurTelephone('Numéro de téléphone français attendu.');
-            }
-          }}
-          messageErreur={erreurTelephone}
-          desactive={chargement}
-        />
-      </ScrollView>
-
-      {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
+        {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
           (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B). « Réessayer » relance
           vraiment l'envoi ; le détail est le repli serveur, jamais le texte du port, qui
           répétait le titre. */}
-      <View style={{ paddingHorizontal: theme.espace.gouttiere }}>
-        {erreur ? (
-          <View accessibilityLiveRegion="polite">
-            <EtatErreur
-              titre={textesRepliErreur.serveur.titre}
-              explication={textesRepliErreur.serveur.explication}
-              nombreEchecs={0}
-              onReessayer={() => void surValider()}
-            />
-          </View>
-        ) : null}
-      </View>
+        <View style={{ paddingHorizontal: theme.espace.gouttiere }}>
+          {erreur ? (
+            <View accessibilityLiveRegion="polite">
+              <EtatErreur
+                titre={textesRepliErreur.serveur.titre}
+                explication={textesRepliErreur.serveur.explication}
+                nombreEchecs={0}
+                onReessayer={() => void surValider()}
+              />
+            </View>
+          ) : null}
+        </View>
 
-      <View
-        style={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[3],
-          paddingBottom: insets.bottom + theme.espace[3],
-          borderTopWidth: 1,
-          borderTopColor: theme.couleur.bordure.discrete,
-          backgroundColor: theme.couleur.fond.canevas,
-        }}
-      >
-        <Bouton
-          libelle="Ouvrir mon espace coach"
-          variante="primaire"
-          onPress={surValider}
-          desactive={!pretAValider || chargement}
-        />
+        <View
+          style={{
+            paddingHorizontal: theme.espace.gouttiere,
+            paddingTop: theme.espace[3],
+            paddingBottom: insets.bottom + theme.espace[3],
+            borderTopWidth: 1,
+            borderTopColor: theme.couleur.bordure.discrete,
+            backgroundColor: theme.couleur.fond.canevas,
+          }}
+        >
+          <Bouton
+            libelle="Ouvrir mon espace coach"
+            variante="primaire"
+            onPress={surValider}
+            desactive={!pretAValider || chargement}
+          />
+          {sansAucunProfil ? (
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: theme.espace[4] }}>
+              <Pressable
+                onPress={() => router.replace('/(onboarding)/1-identite' as Href)}
+                disabled={chargement}
+                accessibilityRole="link"
+                style={{ minHeight: theme.taille.tapMin, justifyContent: 'center' }}
+              >
+                <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+                  Je cherche plutôt un coach
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setConfirmationDeconnexion(true)}
+                disabled={chargement}
+                accessibilityRole="link"
+                style={{ minHeight: theme.taille.tapMin, justifyContent: 'center' }}
+              >
+                <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+                  Se déconnecter
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
       </View>
-    </View>
+    </Modale>
   );
 }

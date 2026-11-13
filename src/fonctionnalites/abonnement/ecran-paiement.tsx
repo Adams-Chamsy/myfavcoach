@@ -474,16 +474,29 @@ function EtatRetour({
         </View>
       );
     case 'souscription_impossible':
-      // Texte à écrire avec les écrans de confirmation (P4.7, docs/api.md §7 ; docs/dette.md) :
-      // aucun texte inventé ici, seulement une sortie.
-      return prenom ? (
-        <Bouton
-          libelle={`Revenir au profil de ${prenom}`}
-          variante="secondaire"
-          onPress={onRevenirProfil}
-        />
-      ) : (
-        <Bouton libelle="Voir mes abonnements" variante="secondaire" onPress={onVoirAbonnements} />
+      // Texte validé par le développeur le 13 novembre 2026 (docs/api.md §7 : payé, mais le coach
+      // écarté entre-temps ; aucun abonnement, anomalie à rembourser à la main). La promesse de
+      // remboursement ne part pas en production avant qu'une alerte sur les anomalies existe
+      // (docs/dette.md, « Aucune alerte sur les anomalies de paiement »). Jamais « Payer ».
+      return (
+        <View style={{ gap: theme.espace[3] }}>
+          {texte(
+            'Ton paiement est bien arrivé, mais ce suivi ne peut pas démarrer. Tu seras remboursé.',
+          )}
+          {prenom ? (
+            <Bouton
+              libelle={`Revenir au profil de ${prenom}`}
+              variante="secondaire"
+              onPress={onRevenirProfil}
+            />
+          ) : (
+            <Bouton
+              libelle="Voir mes abonnements"
+              variante="secondaire"
+              onPress={onVoirAbonnements}
+            />
+          )}
+        </View>
       );
     case 'demande_sans_reponse':
       return texte('Pas de connexion. Réessaie.');

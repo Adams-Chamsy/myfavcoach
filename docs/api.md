@@ -321,7 +321,9 @@ payée, mais le coach n'est plus `verifiee` au moment du traitement — ou, depu
 avait déjà un abonnement en cours chez ce coach (deux intentions payées en parallèle). Aucun abonnement n'est créé,
 le paiement est enregistré comme anomalie et remboursé à la main. Le motif précis (révocation,
 refus) n'est jamais transmis au client : c'est une décision d'examen qui concerne le coach. Le
-texte affiché est à écrire avec les écrans de confirmation (P4.7).
+texte affiché, validé le 13 novembre 2026 : « Ton paiement est bien arrivé, mais ce suivi ne peut pas
+démarrer. Tu seras remboursé. » (04b) — bloqué pour la production tant qu'aucune alerte sur les
+anomalies n'existe (`docs/dette.md`).
 
 **`paiement_recu` et `non_terminee` ne sont pas des états d'abonnement** : aucun abonnement
 n'existe encore. À ne jamais confondre avec `en_attente_confirmation` (SEPA,

@@ -70,7 +70,7 @@ async function rendre(options: { avecProfilClient?: boolean } = {}) {
   // asynchrone même contre le faux port — attendre une puce avant d'interagir, sinon les tests
   // qui pressent un libellé de discipline courent devant le rendu (CLAUDE.md §8).
   await waitFor(() => expect(screen.queryByText('Yoga')).toBeTruthy());
-  return { portDonnees };
+  return { portDonnees, portAuth };
 }
 
 function boutonDesactive() {
@@ -217,6 +217,11 @@ describe('DevenirCoach (docs/ecrans/L1-08-activation-espace-coach.md)', () => {
       '@/composants/etats/etat-erreur',
       '@/composants/etats/textes',
       '@/composants/icones',
+      // Texte 5 (13 novembre 2026) : la sortie « Se déconnecter » ouvre la modale de l'écran
+      // compte et ferme la session par le port d'authentification — deux modules de plus, jamais
+      // un adaptateur ni une variable d'environnement.
+      '@/composants/modale',
+      '@/fonctionnalites/identite/fournisseur-session',
       '@/fonctionnalites/identite/entete-onboarding',
       '@/fonctionnalites/identite/fournisseur-donnees',
       '@/services/donnees/port',
@@ -224,5 +229,36 @@ describe('DevenirCoach (docs/ecrans/L1-08-activation-espace-coach.md)', () => {
     ]);
     expect(modulesImportes.filter((nom) => !AUTORISES.has(nom))).toEqual([]);
     expect(source).not.toMatch(/process\.env|EXPO_PUBLIC_/);
+  });
+
+  // Texte 5, validé par le développeur le 13 novembre 2026 : « personne ne reste enfermé sur un
+  // écran ». Une personne venue par la porte coach (D) n'a aucun profil et rien derrière L1-08 :
+  // deux sorties discrètes sous le bouton principal.
+  it('sans profil client : « Je cherche plutôt un coach » mène à l’onboarding client', async () => {
+    await rendre({ avecProfilClient: false });
+
+    await fireEvent.press(screen.getByRole('link', { name: 'Je cherche plutôt un coach' }));
+
+    expect(mockRemplacer).toHaveBeenCalledWith('/(onboarding)/1-identite');
+  });
+
+  it('sans profil client : « Se déconnecter » demande confirmation, puis ferme la session', async () => {
+    const { portAuth } = await rendre({ avecProfilClient: false });
+    const espion = jest.spyOn(portAuth, 'deconnecter');
+
+    await fireEvent.press(screen.getByRole('link', { name: 'Se déconnecter' }));
+    expect(screen.getByText('Il faudra te reconnecter avec ton mot de passe.')).toBeTruthy();
+    expect(espion).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByRole('button', { name: 'Se déconnecter' }));
+
+    await waitFor(() => expect(espion).toHaveBeenCalledTimes(1));
+    expect(mockRemplacer).toHaveBeenCalledWith('/(public)');
+  });
+
+  it('avec un profil client (le retour existe) : aucune des deux sorties', async () => {
+    await rendre({ avecProfilClient: true });
+
+    expect(screen.queryByText('Je cherche plutôt un coach')).toBeNull();
+    expect(screen.queryByText('Se déconnecter')).toBeNull();
   });
 });

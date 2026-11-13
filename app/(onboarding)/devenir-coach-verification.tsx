@@ -12,7 +12,7 @@ import { EnteteOnboarding } from '@/fonctionnalites/identite/entete-onboarding';
 import { echeanceQuaranteHuitHeuresOuvrees } from '@/fonctionnalites/coach/echeance-verification';
 import { piecesEnVigueur } from '@/fonctionnalites/coach/pieces-en-vigueur';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
-import type { PieceDeposee, TypePiece } from '@/services/donnees/port';
+import type { PieceDeposee, StatutVerification, TypePiece } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
 
 // L2-06 : formats et taille max, non trouvés dans le dossier (fiche, "Ce qui a été inventé") —
@@ -81,6 +81,22 @@ export default function DevenirCoachVerification() {
   // L'écran le dit au moment où ça arrive, avec l'échéance — sinon le coach ne sait pas ce
   // qu'il vient de déclencher (trouvé sur iPhone le même jour). Texte validé par le développeur.
   const [echeanceSoumission, setEcheanceSoumission] = useState<Date | null>(null);
+  // Texte 3 (13 novembre 2026) : un coach refusé ou révoqué lit ce qu'il doit faire — les TROIS
+  // pièces redéposées après la décision renvoient le dossier en examen (0053). Le statut est lu au
+  // montage ; une lecture ratée cache seulement le bandeau (la lecture des pièces, elle, affiche
+  // son erreur), et le bandeau disparaît dès que le dossier repart en examen.
+  const [statutDossier, setStatutDossier] = useState<StatutVerification | null>(null);
+  useEffect(() => {
+    let monte = true;
+    void lireDossierVerification()
+      .then((d) => {
+        if (monte) setStatutDossier(d.statut);
+      })
+      .catch(() => {});
+    return () => {
+      monte = false;
+    };
+  }, [lireDossierVerification, cleTentative]);
 
   useEffect(() => {
     let monte = true;
@@ -138,6 +154,7 @@ export default function DevenirCoachVerification() {
     // (le dépôt, lui, a réussi), jamais une panne à la place d'un succès.
     try {
       const apres = await lireDossierVerification();
+      setStatutDossier(apres.statut);
       if (statutAvant !== 'en_examen' && apres.statut === 'en_examen' && apres.deposeLe) {
         setEcheanceSoumission(echeanceQuaranteHuitHeuresOuvrees(apres.deposeLe));
       }
@@ -172,6 +189,21 @@ export default function DevenirCoachVerification() {
         <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
           Une personne les examine sous 48 h ouvrées. Ils servent à ça et à rien d’autre.
         </Text>
+
+        {statutDossier === 'refusee' || statutDossier === 'revoquee' ? (
+          <View
+            accessibilityLiveRegion="polite"
+            style={{
+              backgroundColor: theme.couleur.etat.alerteTeinte,
+              borderRadius: theme.rayon.carte,
+              padding: theme.espace[3],
+            }}
+          >
+            <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.alerteEncre }}>
+              Remplace les trois documents : ton dossier repartira en examen.
+            </Text>
+          </View>
+        ) : null}
 
         {erreurLecture ? (
           <EtatErreur
@@ -307,7 +339,8 @@ export default function DevenirCoachVerification() {
             moment où le troisième document arrive. */}
         {echeanceSoumission ? (
           <View accessibilityLiveRegion="polite" style={{ gap: theme.espace[1] }}>
-            <Text style={{ ...theme.texte.label, color: theme.couleur.texte.principal }}>
+            {/* En phrase, comme la fiche (13 novembre 2026) : `label` l'affichait en capitales. */}
+            <Text style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal }}>
               Ton dossier est complet, il part en examen.
             </Text>
             <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>

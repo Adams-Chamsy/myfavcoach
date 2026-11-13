@@ -34,7 +34,8 @@ L0) en choisissant « Nouvelle offre ».
 
 **En-tête** (maquette, ajouté le 11 novembre 2026 — A3, trouvé sur iPhone le 2 novembre) : une
 croix « Fermer » à gauche, qui quitte l'écran ; le titre « Nouvelle offre » ; « Enregistrer » à
-droite. Sans la croix, le geste de retour était la seule sortie.
+droite. Sans la croix, le geste de retour était la seule sortie. En modification d'une offre existante, le titre est
+« Modifier l'offre » (validé le 13 novembre 2026).
 
 **Hiérarchie des actions** (maquette) : « Enregistrer » est un lien discret en en-tête —
 enregistrer un brouillon n'est pas l'action principale de cet écran, seulement un filet de
