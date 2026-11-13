@@ -51,8 +51,8 @@ réglages de L1-07.
 Toutes les dates viennent du serveur (`GET /abonnements`, `GET /abonnements/{id}` — « période de
 grâce restante », `docs/api.md` §7), aucune n'est calculée par l'écran (`docs/api.md` §15).
 
-**Mettre en pause** : feuille basse (`FeuilleBasse`) — durée à choisir parmi des valeurs bornées
-à 60 jours (voir « Ce qui a été inventé »), rappel « Une seule pause par période de 12 mois », puis
+**Mettre en pause** : feuille basse (`FeuilleBasse`) — durée à choisir parmi 2, 4, 6 ou 8 semaines
+(`docs/domaine.md` §4.3), rappel « Une seule pause par période de 12 mois », puis
 confirmation. Appelle `POST /abonnements/{id}/pause`.
 
 **Résilier** : confirmation (`Modale`) qui dit **la date d'effet** avant le geste : « Ton suivi
@@ -119,10 +119,10 @@ ne coûte rien et se refait).
 
 ## Ce qui a été inventé pour cette fiche
 
-- **Durées de pause proposées** : `docs/domaine.md` §4.3 borne la pause (≤ 60 jours) sans dire
-  comment on la choisit. Proposition : 2, 4, 6 ou 8 semaines (8 semaines = 56 jours ≤ 60), en
-  jetons — **pas de sélecteur de date** : `@react-native-community/datetimepicker` ne rend rien
-  sur web (`CLAUDE.md` §6). À valider, ou à remplacer par la maquette si elle précise.
+- **Durées de pause proposées** : **validé le 13 novembre 2026**, règle écrite dans
+  `docs/domaine.md` §4.3 — 2, 4, 6 ou 8 semaines, en jetons, pas de durée libre au jalon 1 ; le
+  domaine fixe le maximum (60 jours), le serveur le fait respecter. Pas de sélecteur de date :
+  `@react-native-community/datetimepicker` ne rend rien sur web (`CLAUDE.md` §6).
 - Libellés des états autres que ACTIF et EN PAUSE (seuls montrés par la maquette), et les lignes
   d'information correspondantes.
 - « Reprendre », « Régler », « Annuler la résiliation », « Garder mon abonnement » : aucun n'est

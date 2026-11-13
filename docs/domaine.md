@@ -733,6 +733,12 @@ Règles associées :
   d'ouverture du suivi à réévaluer en L6, quand le suivi aura un contenu réel.
 - **Aucun prorata à la souscription** : le premier prélèvement est plein, l'échéance suivante
   tombe au même jour du mois suivant.
+- **Durée d'une pause** (tranché le 13 novembre 2026) : le domaine fixe le **maximum, 60 jours**
+  (`pauseJusquLe` ≤ jour de la demande + 60), contrôlé par le serveur. Le client choisit parmi
+  **quatre durées proposées : 2, 4, 6 ou 8 semaines** (14, 28, 42 ou 56 jours, toutes sous la
+  borne). **Pas de durée libre au jalon 1** : ni date à saisir, ni curseur. Les quatre jetons sont
+  un choix d'interface, la borne de 60 jours reste la seule règle que le serveur fait respecter.
+  Une seule pause par période de 12 mois, comptée depuis `dernierePauseLe`.
 - En `en_pause`, aucun prélèvement, aucun accès au programme, la place chez le coach est
   conservée. La messagerie reste ouverte.
 - En `impaye`, **l'accès reste ouvert** (période de grâce, 7 jours). En `suspendu`, l'accès au
