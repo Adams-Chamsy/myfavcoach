@@ -36,12 +36,15 @@ export function OngletAvis({ coachId }: { coachId: string; prenom: string }) {
   const [lecture, setLecture] = useState<Lecture | null>(null);
   const [erreur, setErreur] = useState(false);
   const [filtre, setFiltre] = useState<string | null>(null);
+  // « Réessayer » rejoue les lectures (13 novembre 2026) : jusque-là, il effaçait l'erreur sans
+  // rien relire, et un échec de lireMonAvis passait pour « aucun » (la liste seule).
+  const [cleTentative, setCleTentative] = useState(0);
 
   useEffect(() => {
     let monte = true;
     // L'état du lecteur (27b) ne se lit qu'avec une session : anon n'a ni encart ni bouton.
     const monAvis: Promise<EtatMonAvis> = connecte
-      ? port.lireMonAvis(coachId).catch(() => ({ etat: 'aucun' }))
+      ? port.lireMonAvis(coachId)
       : Promise.resolve({ etat: 'aucun' });
     void Promise.all([port.lireAvisDuCoach(coachId), port.lireEtiquettesAvis(), monAvis])
       .then(([avis, etiquettes, mien]) => {
@@ -53,7 +56,7 @@ export function OngletAvis({ coachId }: { coachId: string; prenom: string }) {
     return () => {
       monte = false;
     };
-  }, [coachId, connecte, port]);
+  }, [coachId, connecte, port, cleTentative]);
 
   if (erreur) {
     return (
@@ -61,7 +64,10 @@ export function OngletAvis({ coachId }: { coachId: string; prenom: string }) {
         titre={textesRepliErreur.serveur.titre}
         explication={textesRepliErreur.serveur.explication}
         nombreEchecs={0}
-        onReessayer={() => setErreur(false)}
+        onReessayer={() => {
+          setErreur(false);
+          setCleTentative((c) => c + 1);
+        }}
       />
     );
   }

@@ -49,6 +49,14 @@ const DOSSIER = (statut: DossierVerification['statut']): DossierVerification => 
 });
 
 async function rendre(dossier: DossierVerification, offres: Offre[]) {
+  return rendreAvec(dossier, offres);
+}
+
+async function rendreAvec(
+  dossier: DossierVerification,
+  offres: Offre[],
+  saboter?: (port: ReturnType<typeof creerFauxPortDonnees>) => void,
+) {
   const portAuth = creerFauxPortAuth();
   await portAuth.inscrire('camille@exemple.fr', 'bon-mot-de-passe', '2000-01-01');
   portAuth.verifierEmailPourTest('camille@exemple.fr');
@@ -65,6 +73,7 @@ async function rendre(dossier: DossierVerification, offres: Offre[]) {
   );
   portDonnees.definirDossierVerificationPourTest(dossier);
   portDonnees.definirOffresPourTest(offres);
+  saboter?.(portDonnees);
   await render(
     <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
       <FournisseurTheme>
@@ -94,5 +103,22 @@ describe('pilotage : l’avatar ouvre la bascule dans CHAQUE état du coach (L1-
   ] as [string, DossierVerification, Offre[]][])('%s', async (_etat, dossier, offres) => {
     await rendre(dossier, offres);
     await appuyerSurLAvatarEtVoirLaFeuille();
+  });
+
+  // Décidé le 13 novembre 2026 : une lecture qui échoue affiche une erreur, jamais une valeur par
+  // défaut. Jusque-là, une des trois lectures du pilotage en échec laissait l'écran VIDE sous
+  // l'en-tête, sans un mot — et l'avatar (la seule sortie) devait rester au-dessus de l'erreur.
+  it('une lecture en échec : l’erreur avec « Réessayer », l’avatar toujours là ; au second essai, le contenu', async () => {
+    await rendreAvec(DOSSIER('verifiee'), [OFFRE_PUBLIEE], (port) => {
+      jest.spyOn(port, 'lireMesOffres').mockRejectedValueOnce(new Error('panne'));
+    });
+
+    await waitFor(() => expect(screen.queryByText('On a un souci de notre côté')).toBeTruthy());
+    expect(screen.getByLabelText("Ouvrir la bascule d'espace")).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Réessayer'));
+
+    await waitFor(() => expect(screen.queryByText('Importer mes clients')).toBeTruthy());
+    expect(screen.queryByText('On a un souci de notre côté')).toBeNull();
   });
 });

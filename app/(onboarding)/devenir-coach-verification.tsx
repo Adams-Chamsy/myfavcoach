@@ -5,6 +5,8 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
+import { EtatErreur } from '@/composants/etats/etat-erreur';
+import { textesRepliErreur } from '@/composants/etats/textes';
 import { Icone } from '@/composants/icones';
 import { EnteteOnboarding } from '@/fonctionnalites/identite/entete-onboarding';
 import { echeanceQuaranteHuitHeuresOuvrees } from '@/fonctionnalites/coach/echeance-verification';
@@ -71,6 +73,10 @@ export default function DevenirCoachVerification() {
   const [enCours, setEnCours] = useState<TypePiece | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [chargement, setChargement] = useState(true);
+  // Une lecture qui échoue s'affiche (13 novembre 2026) : la lecture des pièces au montage
+  // n'avait aucun `catch`, l'écran restait sur son squelette sans fin. cleTentative la rejoue.
+  const [erreurLecture, setErreurLecture] = useState(false);
+  const [cleTentative, setCleTentative] = useState(0);
   // A1 (2 novembre 2026) : le dossier part en examen tout seul au troisième document (0053).
   // L'écran le dit au moment où ça arrive, avec l'échéance — sinon le coach ne sait pas ce
   // qu'il vient de déclencher (trouvé sur iPhone le même jour). Texte validé par le développeur.
@@ -78,16 +84,22 @@ export default function DevenirCoachVerification() {
 
   useEffect(() => {
     let monte = true;
-    void lirePiecesDeposees().then((p) => {
-      if (monte) {
+    void lirePiecesDeposees()
+      .then((p) => {
+        if (!monte) return;
         setPieces(p);
+        setErreurLecture(false);
         setChargement(false);
-      }
-    });
+      })
+      .catch(() => {
+        if (!monte) return;
+        setErreurLecture(true);
+        setChargement(false);
+      });
     return () => {
       monte = false;
     };
-  }, [lirePiecesDeposees]);
+  }, [lirePiecesDeposees, cleTentative]);
 
   const deposees = new Set(pieces.map((p) => p.type));
   const toutesDeposees = ORDRE_PIECES.every((t) => deposees.has(t));
@@ -161,7 +173,18 @@ export default function DevenirCoachVerification() {
           Une personne les examine sous 48 h ouvrées. Ils servent à ça et à rien d’autre.
         </Text>
 
-        {!chargement
+        {erreurLecture ? (
+          <EtatErreur
+            titre={textesRepliErreur.serveur.titre}
+            explication={textesRepliErreur.serveur.explication}
+            nombreEchecs={0}
+            onReessayer={() => {
+              setChargement(true);
+              setCleTentative((c) => c + 1);
+            }}
+          />
+        ) : null}
+        {!chargement && !erreurLecture
           ? ORDRE_PIECES.map((type) => {
               const piece = piecesEnVigueur(pieces).find((p) => p.type === type);
               return (

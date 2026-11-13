@@ -54,6 +54,7 @@ async function rendre(
   avis: AvisDuCoach,
   monAvis: EtatMonAvis = { etat: 'aucun' },
   connecte = true,
+  saboter?: (port: ReturnType<typeof creerFauxPortDonnees>) => void,
 ) {
   const portAuth = creerFauxPortAuth();
   if (connecte) {
@@ -64,6 +65,7 @@ async function rendre(
   const portDonnees = creerFauxPortDonnees();
   portDonnees.definirAvisDuCoachPourTest({ 'coach-yannick': avis });
   portDonnees.definirMonAvisPourTest({ 'coach-yannick': monAvis });
+  saboter?.(portDonnees);
   await render(
     <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
       <FournisseurTheme>
@@ -174,5 +176,22 @@ describe('L2-13 · Onglet Avis, et 27b', () => {
     await rendre(avisDuCoach([SOPHIE, MARC]), { etat: 'pas_encore', joursRestants: 12 });
     await waitFor(() => expect(screen.queryByText('Sophie L.')).toBeTruthy());
     expect(libellesInterditsTrouves(screen.container as unknown as NoeudHote)).toEqual([]);
+  });
+
+  // Décidé le 13 novembre 2026 : une lecture qui échoue affiche une erreur, jamais une valeur par
+  // défaut. L'onglet transformait un échec de lireMonAvis en « aucun » (la liste seule, comme pour
+  // un visiteur), et son « Réessayer » ne relançait rien.
+  it('l’état du lecteur en échec : l’erreur, jamais « la liste seule » ; « Réessayer » relit', async () => {
+    await rendre(avisDuCoach([MARC]), { etat: 'pas_encore', joursRestants: 12 }, true, (port) => {
+      jest.spyOn(port, 'lireMonAvis').mockRejectedValueOnce(new Error('panne'));
+    });
+
+    await waitFor(() => expect(screen.queryByText('On a un souci de notre côté')).toBeTruthy());
+    expect(screen.queryByText('Marc T.')).toBeNull();
+
+    await fireEvent.press(screen.getByText('Réessayer'));
+
+    await waitFor(() => expect(screen.queryByText('Encore 12 jours')).toBeTruthy());
+    expect(screen.getByText('Marc T.')).toBeTruthy();
   });
 });

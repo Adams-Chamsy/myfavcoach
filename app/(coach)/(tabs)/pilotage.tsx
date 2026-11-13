@@ -3,6 +3,8 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { EcranProvisoire } from '@/composants/ecran-provisoire';
+import { EtatErreur } from '@/composants/etats/etat-erreur';
+import { textesRepliErreur } from '@/composants/etats/textes';
 import { AttenteVerification } from '@/fonctionnalites/coach/attente-verification';
 import { CarteImporterClients } from '@/fonctionnalites/coach/carte-importer-clients';
 import { EnTeteEspaceCoach } from '@/fonctionnalites/coach/en-tete-espace-coach';
@@ -27,6 +29,10 @@ export default function Pilotage() {
   const [dossier, setDossier] = useState<DossierVerification | null>(null);
   const [offres, setOffres] = useState<Offre[] | null>(null);
   const [informationsCompletes, setInformationsCompletes] = useState(false);
+  // Une lecture qui échoue s'affiche (13 novembre 2026) : jusque-là, l'écran restait vide sous
+  // l'en-tête, sans un mot. cleTentative rejoue les trois lectures sur « Réessayer ».
+  const [erreurLecture, setErreurLecture] = useState(false);
+  const [cleTentative, setCleTentative] = useState(0);
 
   const nom = profils
     ? [profils.identiteActive.prenom, profils.identiteActive.nom].filter(Boolean).join(' ')
@@ -39,22 +45,44 @@ export default function Pilotage() {
       port.lireDossierVerification(),
       port.lireMesOffres(),
       port.lireInformations(),
-    ]).then(([d, o, info]) => {
-      if (!monte) return;
-      setDossier(d);
-      setOffres(o);
-      setInformationsCompletes(info.profil === 'coach' && !!info.titreCourt && !!info.bio);
-    });
+    ])
+      .then(([d, o, info]) => {
+        if (!monte) return;
+        setDossier(d);
+        setOffres(o);
+        setInformationsCompletes(info.profil === 'coach' && !!info.titreCourt && !!info.bio);
+        setErreurLecture(false);
+      })
+      .catch(() => {
+        if (monte) setErreurLecture(true);
+      });
     return () => {
       monte = false;
     };
-  }, [port, profils]);
+  }, [port, profils, cleTentative]);
 
   // Le contenu dépend de l'état du coach ; l'EN-TÊTE, avec l'avatar de la bascule, n'en dépend
   // jamais (en-tete-espace-coach.tsx : une sortie qui vit dans une branche disparaît avec elle).
   let titre = 'Espace coach';
   let contenu: ReactNode;
-  if (!profils || profils.profilActif !== 'coach' || !profils.coachExiste || !dossier || !offres) {
+  if (erreurLecture) {
+    contenu = (
+      <View style={{ flex: 1, padding: theme.espace.gouttiere, justifyContent: 'center' }}>
+        <EtatErreur
+          titre={textesRepliErreur.serveur.titre}
+          explication={textesRepliErreur.serveur.explication}
+          nombreEchecs={0}
+          onReessayer={() => setCleTentative((c) => c + 1)}
+        />
+      </View>
+    );
+  } else if (
+    !profils ||
+    profils.profilActif !== 'coach' ||
+    !profils.coachExiste ||
+    !dossier ||
+    !offres
+  ) {
     contenu = <View style={{ flex: 1 }} />;
   } else if (dossier.statut !== 'verifiee') {
     contenu = <AttenteVerification dossier={dossier} />;

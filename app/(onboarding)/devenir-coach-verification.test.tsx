@@ -35,6 +35,7 @@ async function rendre(
   dossier?: Parameters<
     ReturnType<typeof creerFauxPortDonnees>['definirDossierVerificationPourTest']
   >[0],
+  saboter?: (port: ReturnType<typeof creerFauxPortDonnees>) => void,
 ) {
   const portAuth = creerFauxPortAuth();
   await portAuth.inscrire('coach@mfc.test', 'un-mot-de-passe-suffisant', '1990-01-01');
@@ -49,6 +50,7 @@ async function rendre(
     piecesDeposees as Parameters<typeof portDonnees.definirPiecesDeposeesPourTest>[0],
   );
   if (dossier) portDonnees.definirDossierVerificationPourTest(dossier);
+  saboter?.(portDonnees);
 
   render(
     <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
@@ -264,5 +266,25 @@ describe('L2-06 · Devenir coach — étape 3/4 (vérification)', () => {
     expect(screen.getByText('passeport.pdf')).toBeTruthy();
     expect(screen.getByText('Déposée le 12/09/2026 · 1,4 Mo')).toBeTruthy();
     expect(screen.getByText('Déposée le 12/09/2026')).toBeTruthy();
+  });
+
+  // Décidé le 13 novembre 2026 : une lecture qui échoue affiche une erreur, jamais une valeur par
+  // défaut. La lecture des pièces au montage n'avait aucun `catch` : l'écran restait sur son
+  // squelette, sans fin ni message.
+  it('la lecture des pièces en échec : l’erreur avec « Réessayer » ; au second essai, les lignes', async () => {
+    await rendre(
+      [{ type: 'identite', deposeLe: '2026-09-10T10:00:00.000Z' }],
+      undefined,
+      (port) => {
+        jest.spyOn(port, 'lirePiecesDeposees').mockRejectedValueOnce(new Error('panne'));
+      },
+    );
+
+    await waitFor(() => expect(screen.queryByText('On a un souci de notre côté')).toBeTruthy());
+    expect(screen.queryByText(/Déposée le/)).toBeNull();
+
+    await fireEvent.press(screen.getByText('Réessayer'));
+
+    await waitFor(() => expect(screen.queryByText('Déposée le 10/09/2026')).toBeTruthy());
   });
 });
