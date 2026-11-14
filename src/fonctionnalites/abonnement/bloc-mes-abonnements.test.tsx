@@ -156,6 +156,76 @@ describe('L4-24b · Mes abonnements', () => {
     expect(screen.getByText('EN PAUSE')).toBeTruthy();
   });
 
+  // Tableau des états : `actif` → « Mettre en pause », « Résilier ». Contenu de la feuille :
+  // docs/domaine.md §4.3 (2, 4, 6 ou 8 semaines, pas de durée libre ; aucun prélèvement, pas
+  // d'accès au programme, place gardée), textes validés par le développeur le 13 novembre 2026.
+  it('mettre en pause : la feuille propose 2, 4, 6 ou 8 semaines et dit ce que la pause coupe', async () => {
+    await rendre([abonnement('actif')]);
+    await waitFor(() => expect(screen.queryByText('ACTIF')).toBeTruthy());
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Mettre en pause' }));
+
+    await waitFor(() => expect(screen.queryByRole('button', { name: '2 semaines' })).toBeTruthy());
+    for (const duree of ['4 semaines', '6 semaines', '8 semaines']) {
+      expect(screen.getByRole('button', { name: duree })).toBeTruthy();
+    }
+    expect(
+      screen.getByText(
+        'Aucun prélèvement pendant la pause, et pas d’accès au programme. Ta place chez Yannick est gardée.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText('Une seule pause par période de 12 mois.')).toBeTruthy();
+    // Pas de durée libre au jalon 1 : aucun champ de saisie dans la feuille.
+    const racine = screen.container as unknown as NoeudHote;
+    expect(racine.queryAll((n) => n.type === 'TextInput')).toEqual([]);
+  });
+
+  // La pause se demande en jours, le serveur calcule la date de fin (0059) : l'écran envoie la
+  // durée choisie, jamais une date ; puis relit la carte (Règles : « Après chaque action, l'écran
+  // relit »).
+  it('mettre en pause : rien ne part sans durée choisie ; 4 semaines envoient 28 jours, puis la carte relue est EN PAUSE', async () => {
+    const { portDonnees } = await rendre([abonnement('actif')]);
+    await waitFor(() => expect(screen.queryByText('ACTIF')).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: 'Mettre en pause' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: '4 semaines' })).toBeTruthy());
+
+    const confirmer = screen.getByRole('button', { name: 'Mettre en pause' });
+    expect(confirmer.props.accessibilityState).toMatchObject({ disabled: true });
+    await fireEvent.press(confirmer);
+    expect(portDonnees.lirePausesPourTest()).toEqual([]);
+
+    await fireEvent.press(screen.getByRole('button', { name: '4 semaines' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Mettre en pause' }));
+
+    await waitFor(() => expect(screen.queryByText('EN PAUSE')).toBeTruthy());
+    expect(portDonnees.lirePausesPourTest()).toEqual([{ abonnementId: 'abonnement-1', jours: 28 }]);
+    expect(screen.queryByText(/^En pause jusqu’au /)).toBeTruthy();
+  });
+
+  // Critère 3 : « une seconde pause dans les 12 mois affiche le message de
+  // pause_deja_utilisee » — avec la date rendue par le serveur, au format des dates du produit,
+  // jamais l'ISO telle quelle (texte validé le 13 novembre 2026).
+  it('seconde pause dans les 12 mois : le refus dit à partir de quand, en toutes lettres', async () => {
+    const { portDonnees } = await rendre([abonnement('actif')]);
+    await waitFor(() => expect(screen.queryByText('ACTIF')).toBeTruthy());
+    portDonnees.refuserProchainePausePourTest('pause_deja_utilisee', '2027-11-14');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Mettre en pause' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: '2 semaines' })).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: '2 semaines' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Mettre en pause' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          'Tu as déjà fait une pause ces 12 derniers mois. Tu pourras en refaire une à partir du 14 novembre 2027.',
+        ),
+      ).toBeTruthy(),
+    );
+    expect(screen.queryByText(/2027-11-14/)).toBeNull();
+    expect(screen.getByText('ACTIF')).toBeTruthy();
+  });
+
   it('libellés interdits : aucun dans les textes rendus ni les libellés d’accessibilité', async () => {
     await rendre([abonnement('actif')]);
     await waitFor(() => expect(screen.queryByText('ACTIF')).toBeTruthy());

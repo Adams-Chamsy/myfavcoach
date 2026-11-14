@@ -51,9 +51,16 @@ réglages de L1-07.
 Toutes les dates viennent du serveur (`GET /abonnements`, `GET /abonnements/{id}` — « période de
 grâce restante », `docs/api.md` §7), aucune n'est calculée par l'écran (`docs/api.md` §15).
 
-**Mettre en pause** : feuille basse (`FeuilleBasse`) — durée à choisir parmi 2, 4, 6 ou 8 semaines
-(`docs/domaine.md` §4.3), rappel « Une seule pause par période de 12 mois », puis
-confirmation. Appelle `POST /abonnements/{id}/pause`.
+**Mettre en pause** : feuille basse (`FeuilleBasse`), titre « Mettre en pause » — durée à choisir
+parmi 2, 4, 6 ou 8 semaines (`docs/domaine.md` §4.3), en jetons, aucune présélectionnée ;
+« Aucun prélèvement pendant la pause, et pas d'accès au programme. Ta place chez {prénom} est
+gardée. » ; rappel « Une seule pause par période de 12 mois. » ; bouton « Mettre en pause », inactif
+tant qu'aucune durée n'est choisie. Appelle `POST /abonnements/{id}/pause` avec la durée **en
+jours** : la date de fin est calculée par le serveur (0059), jamais par l'écran. Refus
+`pause_deja_utilisee`, sur la carte : « Tu as déjà fait une pause ces 12 derniers mois. Tu pourras
+en refaire une à partir du {date}. » — `{date}` est `possibleLe` rendu par le serveur, écrit au
+format des autres dates du produit (« le 14 novembre 2027 »), jamais en ISO. Textes validés par le
+développeur le 13 novembre 2026.
 
 **Résilier** : confirmation (`Modale`) qui dit **la date d'effet** avant le geste : « Ton suivi
 avec {prénom} s'arrête le {fin de période payée}. Aucun autre prélèvement. » Actions « Garder mon
