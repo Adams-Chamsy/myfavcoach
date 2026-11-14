@@ -20,7 +20,6 @@ sont dans `/Users/chamsy/Documents/myfavcoach-captures/<étape>/`, hors du dép�
 
 | Étape | Question | Pourquoi Claude ne tranche pas | Ce qui est fait en attendant |
 |---|---|---|---|
-| Relais Stripe | **Le secret de signature du relais (`stripe listen`) s'est affiché une fois dans un journal d'outil de Claude** le 11 novembre 2026, jamais dans la conversation ni dans le dépôt. Renouvellement : voir le rapport du même jour (la procédure dépend d'une connexion de la CLI Stripe par le développeur). | Seul le développeur peut reconnecter la CLI Stripe à son compte. | Empreinte du secret actuel notée, pour vérifier après coup qu'il a changé. |
 | Étape serveur | **Une étape serveur à part, avant les écrans qui en dépendent** (décidé le 12 novembre 2026) : les trois trous de P4.7 (quatre derniers chiffres, changement de moyen de paiement, fin de la période de grâce) et la durée de suivi de 27a. Elle touche au moyen de paiement chez Stripe. | `CLAUDE.md` §7.2 : découverte en route, donc plan d'abord (décision du 12 novembre 2026). | Plan à présenter, rien d'écrit. |
 | Projet de test | **Isolation du banc par un projet Supabase de test** (plan Pro, payé par le développeur). Le développeur attend : le prix exact vérifié sur la page de Supabase, ce qu'il faut créer et reconfigurer, le temps que cela prend. | Une dépense et un compte : la décision et le paiement sont au développeur. | Chiffrage à rendre. |
 
@@ -85,3 +84,4 @@ sont dans `/Users/chamsy/Documents/myfavcoach-captures/<étape>/`, hors du dép�
 - **`CLAUDE.md` §7.2** : la liste d'étapes donnée par le développeur vaut validation de leurs plans ; ce qui est découvert en route (comme l'étape serveur) se présente en plan d'abord.
 - **Après un refus d'appel** : vérifier l'effet avant de conclure — règle écrite dans `CLAUDE.md` (§7, point 10).
 - **Textes validés le 13 novembre 2026** : 1 (date du prochain prélèvement en 04b), 2 (`souscription_impossible`, bloqué pour la production par l'alerte sur les anomalies), 3 (bandeau du coach refusé), 4 (« Modifier l'offre »), 5 (sorties de L1-08), 6 (titre de la modale de résiliation), 8 (message de soumission en phrase). Le 7 (durées de pause) est une règle de domaine, écrite dans `docs/domaine.md` §4.3.
+- **Secret du relais Stripe renouvelé** (14 novembre 2026) : le développeur a reconnecté la CLI Stripe le 11 (`stripe logout`, `stripe login`) puis reposé `STRIPE_WEBHOOK_SECRET` sur le dev le 14. Empreinte du nouveau secret : `f17bdab9676c` des deux côtés (relais et projet), différente de l'ancienne (`1ff562088e1f`). Point clos.
