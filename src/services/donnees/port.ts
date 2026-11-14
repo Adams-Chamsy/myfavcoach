@@ -322,6 +322,12 @@ export type AbonnementClient = {
 export type TransitionAbonnement = 'resilier' | 'annuler_resiliation' | 'reprendre';
 export type ResultatTransition = { succes: true } | { succes: false; code: string };
 
+// La pause (0059) : demandée en JOURS, la date de fin est calculée par le serveur à la date de
+// Paris — jamais par le téléphone (docs/domaine.md §4.3). Le refus `pause_deja_utilisee` porte le
+// premier jour où une nouvelle pause sera acceptée (AAAA-MM-JJ) ; null pour les autres refus.
+export type ResultatPause =
+  { succes: true } | { succes: false; code: string; possibleLe: string | null };
+
 // L4, avis (P4.9a ; docs/domaine.md §3.11, §5.1 ; docs/ecrans/L2-13-avis.md, L4-27a-depot-avis.md).
 // Tout est calculé par le serveur : la durée de suivi (jamais une date), la moyenne (à partir de 5
 // avis publiés seulement, sinon null), l'éligibilité et le nombre de jours restants.
@@ -593,6 +599,7 @@ export type PortDonnees = {
     abonnementId: string,
     transition: TransitionAbonnement,
   ): Promise<ResultatTransition>;
+  demanderPause(abonnementId: string, jours: number): Promise<ResultatPause>;
 
   // L4, avis (P4.9a). Lectures publiques (anon compris) : etiquettes_avis (table), avis_du_coach
   // et synthese_avis_du_coach (fonctions de base, 0049). Un coach non vérifié rend une liste vide.

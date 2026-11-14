@@ -354,7 +354,7 @@ champ reste distinct pour que le contrat n'ait pas à changer le jour où elle e
 |---|---|---|
 | `GET` | `/abonnements` | ceux du profil actif |
 | `GET` | `/abonnements/{id}` | statut, échéance, période de grâce restante |
-| `POST` | `/abonnements/{id}/pause` | `{ "jusquAu": "…" }` — 409 `pause_deja_utilisee` |
+| `POST` | `/abonnements/{id}/pause` | `{ "jours": n }` (1 à 60) — la date de fin est calculée par le serveur, à la date de Paris (0059), jamais envoyée par l'application. 409 `pause_deja_utilisee` avec `possibleLe` (AAAA-MM-JJ, premier jour où une pause sera acceptée) |
 | `POST` | `/abonnements/{id}/reprise` | |
 | `POST` | `/abonnements/{id}/resiliation` | fin de période, jamais immédiate |
 | `DELETE` | `/abonnements/{id}/resiliation` | annule la résiliation programmée |

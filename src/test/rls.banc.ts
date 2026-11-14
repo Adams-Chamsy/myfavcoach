@@ -3883,6 +3883,19 @@ function plusJours(jour: string, jours: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+// Miroir de « date + interval '12 months' » de Postgres : même jour l'année suivante, ramené au
+// dernier jour du mois s'il n'existe pas (29 février → 28 février). Sert à vérifier la date de
+// reprise possible rendue par demander_pause_jours (0059), jamais à décider quoi que ce soit.
+function plusDouzeMois(jour: string): string {
+  const [annee, mois, j] = jour.split('-').map(Number) as [number, number, number];
+  const dernierDuMois = new Date(Date.UTC(annee + 1, mois, 0)).getUTCDate();
+  return `${annee + 1}-${String(mois).padStart(2, '0')}-${String(Math.min(j, dernierDuMois)).padStart(2, '0')}`;
+}
+
+function detailDe(corps: unknown): string | undefined {
+  return (corps as { details?: string } | null)?.details ?? undefined;
+}
+
 function messageDe(corps: unknown): string {
   return (corps as { message?: string } | null)?.message ?? JSON.stringify(corps);
 }
@@ -4426,20 +4439,26 @@ describe('abonnements — L4 (0033)', () => {
       expect((await lire(abonnement1)).statut).toBe('actif');
     });
 
-    it('pause : 61 jours refusés, 30 jours acceptés (actif -> en_pause)', async () => {
-      const trop = await transition('demander_pause', client1, {
-        p_abonnement_id: abonnement1,
-        p_jusqu_au: plusJours(aujourdhuiParis(), 61),
-      });
-      expect(messageDe(trop.corps)).toBe('duree_pause_invalide');
+    // Contrat changé le 13 novembre 2026 (0058/0059) : la pause se demande en JOURS, la date de
+    // fin est calculée par le serveur à la date de Paris. Ces tests appelaient demander_pause avec
+    // une date choisie par l'appelant ; même règle prouvée (≤ 60 jours), autre entrée.
+    it('pause : 0 et 61 jours refusés, 56 acceptés (actif -> en_pause), fin calculée par le serveur', async () => {
+      for (const jours of [0, 61]) {
+        const refus = await transition('demander_pause_jours', client1, {
+          p_abonnement_id: abonnement1,
+          p_jours: jours,
+        });
+        expect(messageDe(refus.corps)).toBe('duree_pause_invalide');
+      }
       const avantPause = (await lire(abonnement1)).actif_depuis_le;
-      const pause = await transition('demander_pause', client1, {
+      const pause = await transition('demander_pause_jours', client1, {
         p_abonnement_id: abonnement1,
-        p_jusqu_au: plusJours(aujourdhuiParis(), 30),
+        p_jours: 56,
       });
       expect(pause.statut).toBe(204);
       const ligne = await lire(abonnement1);
       expect(ligne.statut).toBe('en_pause');
+      expect(ligne.pause_jusqu_le).toBe(plusJours(aujourdhuiParis(), 56));
       expect(ligne.derniere_pause_le).toBe(aujourdhuiParis());
       expect(ligne.actif_depuis_le).toBe(avantPause);
     });
@@ -4464,25 +4483,60 @@ describe('abonnements — L4 (0033)', () => {
       expect(messageDe(encore.corps)).toBe('transition_interdite');
     });
 
-    it('une seconde pause dans les 12 mois : pause_deja_utilisee ; possible une fois la dernière vieille de 13 mois', async () => {
-      const refus = await transition('demander_pause', client1, {
+    it('une seconde pause dans les 12 mois : pause_deja_utilisee, avec le jour où elle redevient possible', async () => {
+      const refus = await transition('demander_pause_jours', client1, {
         p_abonnement_id: abonnement1,
-        p_jusqu_au: plusJours(aujourdhuiParis(), 10),
+        p_jours: 14,
       });
       expect(messageDe(refus.corps)).toBe('pause_deja_utilisee');
+      // La dernière pause date d'aujourd'hui (test précédent) : possible dans 12 mois, pas avant.
+      expect(detailDe(refus.corps)).toBe(plusDouzeMois(aujourdhuiParis()));
+    });
 
-      // Ancienneté simulée par service_role (point 9 de docs/prompts/L4.md), jamais attendue.
+    it('la date rendue par le refus est tenue : refusée tant qu’elle n’est pas atteinte, acceptée dès qu’elle l’est', async () => {
+      // Ancienneté simulée par service_role (point 9 de docs/prompts/L4.md), jamais attendue. On
+      // cherche les dernières pauses dont la date de reprise tombe juste après, puis juste à ou
+      // avant, aujourd'hui : la frontière exacte (un 29 février n'a pas de « même jour » l'année
+      // suivante, d'où la recherche plutôt qu'une soustraction).
+      const aujourdhui = aujourdhuiParis();
+      const candidates = Array.from({ length: 40 }, (_, k) => plusJours(aujourdhui, -380 + k));
+      const veille = candidates.find((d) => plusDouzeMois(d) > aujourdhui) as string;
+      const atteinte = [...candidates]
+        .reverse()
+        .find((d) => plusDouzeMois(d) <= aujourdhui) as string;
+
       await appelRest(`/rest/v1/abonnements?id=eq.${abonnement1}`, {
         methode: 'PATCH',
         session: 'admin',
-        corps: { derniere_pause_le: plusJours(aujourdhuiParis(), -400) },
+        corps: { derniere_pause_le: veille },
       });
-      const accepte = await transition('demander_pause', client1, {
+      const refus = await transition('demander_pause_jours', client1, {
         p_abonnement_id: abonnement1,
-        p_jusqu_au: plusJours(aujourdhuiParis(), 10),
+        p_jours: 14,
+      });
+      expect(messageDe(refus.corps)).toBe('pause_deja_utilisee');
+      expect(detailDe(refus.corps)).toBe(plusDouzeMois(veille));
+
+      await appelRest(`/rest/v1/abonnements?id=eq.${abonnement1}`, {
+        methode: 'PATCH',
+        session: 'admin',
+        corps: { derniere_pause_le: atteinte },
+      });
+      const accepte = await transition('demander_pause_jours', client1, {
+        p_abonnement_id: abonnement1,
+        p_jours: 14,
       });
       expect(accepte.statut).toBe(204);
       await transition('reprendre_abonnement', client1, { p_abonnement_id: abonnement1 });
+      expect((await lire(abonnement1)).statut).toBe('actif');
+    });
+
+    it('l’ancienne demande par date (demander_pause) n’existe plus : le téléphone ne choisit pas la fin', async () => {
+      const ancienne = await transition('demander_pause', client1, {
+        p_abonnement_id: abonnement1,
+        p_jusqu_au: plusJours(aujourdhuiParis(), 10),
+      });
+      expect(ancienne.statut).toBe(404);
       expect((await lire(abonnement1)).statut).toBe('actif');
     });
 
@@ -4528,10 +4582,7 @@ describe('abonnements — L4 (0033)', () => {
         reference('carte-2'),
       );
       const id = idCarte as string;
-      await transition('demander_pause', client2, {
-        p_abonnement_id: id,
-        p_jusqu_au: plusJours(aujourdhuiParis(), 20),
-      });
+      await transition('demander_pause_jours', client2, { p_abonnement_id: id, p_jours: 20 });
       expect((await lire(id)).statut).toBe('en_pause');
       const { statut } = await transition('demander_resiliation', client2, { p_abonnement_id: id });
       expect(statut).toBe(204);
@@ -5129,7 +5180,7 @@ describe('abonnements — L4 (0033)', () => {
       const { id } = await nouvelAbonnement('p48-pause');
       const P = plusJours(aujourdhuiParis(), 20);
       expect(
-        (await transition('demander_pause', client2, { p_abonnement_id: id, p_jusqu_au: P }))
+        (await transition('demander_pause_jours', client2, { p_abonnement_id: id, p_jours: 20 }))
           .statut,
       ).toBe(204);
       await appliquer(plusJours(P, -1));
@@ -6520,10 +6571,10 @@ describe('avis — L4 (0048, 0049)', () => {
     it('en pause, 40 jours de suivi : refusé, avis_suivi_interrompu — et mon état le dit', async () => {
       const coach = await nouveauCoach('pause');
       const abo = await abonner(profilX, coach.offre, 'pause', 40);
-      const pause = await appelRest('/rest/v1/rpc/demander_pause', {
+      const pause = await appelRest('/rest/v1/rpc/demander_pause_jours', {
         methode: 'POST',
         session: X,
-        corps: { p_abonnement_id: abo, p_jusqu_au: plusJours(aujourdhuiParis(), 20) },
+        corps: { p_abonnement_id: abo, p_jours: 20 },
       });
       expect(pause.statut).toBe(204);
       expect(await monAvis(X, coach.profil)).toMatchObject({

@@ -738,7 +738,10 @@ Règles associées :
   **quatre durées proposées : 2, 4, 6 ou 8 semaines** (14, 28, 42 ou 56 jours, toutes sous la
   borne). **Pas de durée libre au jalon 1** : ni date à saisir, ni curseur. Les quatre jetons sont
   un choix d'interface, la borne de 60 jours reste la seule règle que le serveur fait respecter.
-  Une seule pause par période de 12 mois, comptée depuis `dernierePauseLe`.
+  Une seule pause par période de 12 mois, comptée depuis `dernierePauseLe` : une nouvelle pause
+  est possible à partir de `dernierePauseLe` + 12 mois, date que le refus rend au client. La pause
+  se demande en **jours** ; la date de fin (`pauseJusquLe`) est calculée par le serveur, à la date
+  de Paris, jamais par le téléphone (13 novembre 2026, 0059).
 - En `en_pause`, aucun prélèvement, aucun accès au programme, la place chez le coach est
   conservée. La messagerie reste ouverte.
 - En `impaye`, **l'accès reste ouvert** (période de grâce, 7 jours). En `suspendu`, l'accès au

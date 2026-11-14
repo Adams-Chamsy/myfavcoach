@@ -1073,6 +1073,21 @@ export const portDonneesSupabase: PortDonnees = {
     return { succes: true };
   },
 
+  async demanderPause(abonnementId, jours) {
+    const { error } = await supabase.rpc('demander_pause_jours', {
+      p_abonnement_id: abonnementId,
+      p_jours: jours,
+    });
+    if (error) {
+      return {
+        succes: false,
+        code: error.message,
+        possibleLe: error.message === 'pause_deja_utilisee' ? (error.details ?? null) : null,
+      };
+    }
+    return { succes: true };
+  },
+
   async lireEtiquettesAvis() {
     const { data, error } = await supabase
       .from('etiquettes_avis')

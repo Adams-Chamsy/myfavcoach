@@ -16,7 +16,7 @@
 // de chaque compte (les mêmes requêtes que src/services/donnees/supabase.ts) — creer_profil_client,
 // creer_profil_coach, les écritures d'onboarding, le dépôt des pièces (soumission automatique,
 // 0053), la décision par un vrai examinateur (decider_verification_coach), l'offre et
-// publier_offre, l'intention de paiement (abonnement-intention), demander_pause,
+// publier_offre, l'intention de paiement (abonnement-intention), demander_pause_jours,
 // demander_resiliation, le dépôt d'avis (Edge Function avis). Le rôle serveur ne sert qu'à :
 //   - créer les comptes déjà confirmés (sinon un courriel par compte, 2 par heure sur le dev) ;
 //   - LIRE l'état, pour savoir quelle étape reste à faire et pour écrire le fichier ;
@@ -315,11 +315,6 @@ async function seConnecter(cfg, email) {
   return r.access_token;
 }
 
-const aujourdhuiParis = (decalageJours = 0) =>
-  new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(
-    new Date(Date.now() + decalageJours * 86_400_000),
-  );
-
 // ---------------------------------------------------------------------------------------------
 // Les étapes, par le chemin de l'application
 // ---------------------------------------------------------------------------------------------
@@ -469,21 +464,17 @@ async function amenerAbonnement(cfg, jeton, compteId, def, coachYannickId, journ
   const id = abonnement.id;
 
   if (def.abonnement === 'en_pause' && abonnement.statut === 'actif') {
-    await rpc(cfg, jeton, 'demander_pause', {
-      p_abonnement_id: id,
-      p_jusqu_au: aujourdhuiParis(30),
-    });
-    journal.push('pause demandée (demander_pause)');
+    // 28 jours : une des quatre durées proposées à l'écran (docs/domaine.md §4.3). La date de fin
+    // est calculée par le serveur (0059), comme pour l'application.
+    await rpc(cfg, jeton, 'demander_pause_jours', { p_abonnement_id: id, p_jours: 28 });
+    journal.push('pause demandée (demander_pause_jours)');
   }
   if (def.abonnement === 'resilie') {
     if (abonnement.statut === 'actif') {
       // Depuis une pause, la résiliation prend effet le jour même (docs/domaine.md §4.3) : c'est
       // ce qui permet d'atteindre « résilié » sans attendre la fin d'une période payée.
-      await rpc(cfg, jeton, 'demander_pause', {
-        p_abonnement_id: id,
-        p_jusqu_au: aujourdhuiParis(30),
-      });
-      journal.push('pause demandée (demander_pause)');
+      await rpc(cfg, jeton, 'demander_pause_jours', { p_abonnement_id: id, p_jours: 28 });
+      journal.push('pause demandée (demander_pause_jours)');
       abonnement = await abonnementDe(cfg, compteId);
     }
     if (abonnement.statut === 'en_pause') {

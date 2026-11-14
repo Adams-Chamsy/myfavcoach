@@ -162,6 +162,8 @@ export type FauxPortDonnees = PortDonnees & {
   definirAbonnementsPourTest(abonnements: AbonnementClient[]): void;
   lireTransitionsPourTest(): { abonnementId: string; transition: TransitionAbonnement }[];
   refuserProchaineTransitionPourTest(code: string): void;
+  lirePausesPourTest(): { abonnementId: string; jours: number }[];
+  refuserProchainePausePourTest(code: string, possibleLe?: string): void;
   definirReponseConstatPourTest(reponse: ResultatConstat | ResultatConstat[]): void;
   lireNombreConstatsPourTest(): number;
   // Avis (P4.9a) : par coach ; sans réglage, aucun avis et l'état « aucun ».
@@ -241,6 +243,8 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
   let abonnements: AbonnementClient[] = [];
   let transitions: { abonnementId: string; transition: TransitionAbonnement }[] = [];
   let refusTransition: string | null = null;
+  let pauses: { abonnementId: string; jours: number }[] = [];
+  let refusPause: { code: string; possibleLe: string | null } | null = null;
   let reponsesConstat: ResultatConstat[] = [{ issue: 'sans_reponse' }];
   let nombreConstats = 0;
   let dossierVerification: DossierVerification = { statut: 'absente', deposeLe: null, motif: null };
@@ -766,6 +770,39 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     },
     refuserProchaineTransitionPourTest(code) {
       refusTransition = code;
+    },
+    lirePausesPourTest() {
+      return pauses;
+    },
+    refuserProchainePausePourTest(code, possibleLe) {
+      refusPause = { code, possibleLe: possibleLe ?? null };
+    },
+    async demanderPause(abonnementId, jours) {
+      pauses = [...pauses, { abonnementId, jours }];
+      if (refusPause) {
+        const refus = refusPause;
+        refusPause = null;
+        return { succes: false, ...refus };
+      }
+      // Miroir de 0059 : actif seulement, 1 à 60 jours, fin = aujourd'hui (Paris) + jours.
+      const a = abonnements.find((x) => x.id === abonnementId);
+      if (!a || a.statut !== 'actif') {
+        return { succes: false, code: 'transition_interdite', possibleLe: null };
+      }
+      if (jours < 1 || jours > 60) {
+        return { succes: false, code: 'duree_pause_invalide', possibleLe: null };
+      }
+      const aujourdhui = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(
+        new Date(),
+      );
+      const fin = new Date(`${aujourdhui}T12:00:00Z`);
+      fin.setUTCDate(fin.getUTCDate() + jours);
+      abonnements = abonnements.map((x) =>
+        x.id === abonnementId
+          ? { ...x, statut: 'en_pause', pauseJusquLe: fin.toISOString().slice(0, 10) }
+          : x,
+      );
+      return { succes: true };
     },
     async transitionAbonnement(abonnementId, transition) {
       transitions = [...transitions, { abonnementId, transition }];

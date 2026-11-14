@@ -273,6 +273,9 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0053_soumettre_dossier_regle.sql',
       'supabase/migrations/0054_preparer_file_attente_verification.sql',
       'supabase/migrations/0055_file_attente_verification_regle.sql',
+      // 0058/0059 : revoke EXECUTE de demander_pause_jours à service_role (convention de 0031).
+      'supabase/migrations/0058_preparer_pause_en_jours.sql',
+      'supabase/migrations/0059_pause_en_jours_regle.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',
