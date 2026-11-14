@@ -62,7 +62,11 @@ Deno.test('SEPA rejeté, débit non étendu : sepa lu sur l’erreur', () => {
 });
 
 Deno.test('les trois sources vides : indetermine, jamais une déduction', () => {
-  const vide = paiement({ ...SEPA_REJETE, latest_charge: null, last_payment_error: null });
+  const vide = paiement({
+    ...SEPA_REJETE,
+    latest_charge: null,
+    last_payment_error: null,
+  });
   strictEqual(moyenUtilise(vide), 'indetermine');
 });
 
@@ -117,9 +121,16 @@ Deno.test(
 
 Deno.test('les trois sources vides : anomalie moyen_indetermine, rien de métier', async () => {
   const appels: Appel[] = [];
-  const vide = paiement({ ...SEPA_REJETE, latest_charge: null, last_payment_error: null });
+  const vide = paiement({
+    ...SEPA_REJETE,
+    latest_charge: null,
+    last_payment_error: null,
+  });
   const resultat = await synchroniserSession(fauxServeur(appels), session(vide), null);
-  deepStrictEqual(resultat, { type: 'incoherence', motif: 'moyen_indetermine' });
+  deepStrictEqual(resultat, {
+    type: 'incoherence',
+    motif: 'moyen_indetermine',
+  });
   deepStrictEqual(
     appels.map((a) => [a.fonction, a.arguments.p_motif]),
     [['enregistrer_anomalie_paiement', 'moyen_indetermine']],
@@ -131,7 +142,7 @@ Deno.test('carte payée : le moyen de paiement est conservé après la synchroni
   const appels: Appel[] = [];
   const carte = paiement({
     status: 'succeeded',
-    payment_method: { id: 'pm_carte', type: 'card' },
+    payment_method: { id: 'pm_carte', type: 'card', card: { last4: '4242' } },
     latest_charge: { payment_method_details: { type: 'card' } },
     last_payment_error: null,
   });
@@ -141,10 +152,15 @@ Deno.test('carte payée : le moyen de paiement est conservé après la synchroni
   } as unknown as Stripe.Checkout.Session;
   await synchroniserSession(fauxServeur(appels), s, null);
   deepStrictEqual(
-    appels.map((a) => [a.fonction, a.arguments.p_moyen_prestataire ?? null]),
+    appels.map((a) => [
+      a.fonction,
+      a.arguments.p_moyen_prestataire ?? null,
+      a.arguments.p_derniers_chiffres ?? null,
+    ]),
     [
-      ['synchroniser_session_paiement', null],
-      ['memoriser_moyen_paiement', 'pm_carte'],
+      ['synchroniser_session_paiement', null, null],
+      // 0060 : les quatre derniers chiffres suivent le moyen conservé.
+      ['memoriser_moyen_paiement', 'pm_carte', '4242'],
     ],
   );
 });

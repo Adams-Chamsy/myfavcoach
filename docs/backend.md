@@ -785,23 +785,36 @@ l'app. Le retour passe donc par une page de **myfavcoach.fr** (prérequis hors c
 l'écran 04c relit donc l'état serveur, il ne suppose jamais qu'un retour signifie un abonnement
 créé.
 
-### Les trois fonctions (P4.5b)
+### Les trois fonctions (P4.5b), puis la quatrième (14 novembre 2026)
 
 | Edge Function | Chemin de `docs/api.md` §7 | Appelée par | Clients Postgres |
 |---|---|---|---|
 | `abonnement-intention` | `POST /abonnements/intention` → `POST /functions/v1/abonnement-intention` (corps `{ "offreId" }`, en-tête `Idempotency-Key`) | l'application, jeton du client | `clientDuClient` (idempotence, `creer_intention_souscription`) ; `clientServeur` (`attacher_session_intention`) |
 | `abonnement-constat` | `POST /abonnements/intention/{id}/constat` → `POST /functions/v1/abonnement-constat/{id}` | l'application, jeton du client | `clientDuClient` (`mon_intention`) ; `clientServeur` (`synchroniser_session_paiement`, lecture de l'abonnement créé) |
 | `webhook-paiement` | — (appelée par Stripe) | Stripe, signature vérifiée, `verify_jwt = false` | `clientServeur` seul |
+| `abonnement-moyen-paiement` | `POST /abonnements/{id}/moyen-paiement` → `POST /functions/v1/abonnement-moyen-paiement/{id}` ; `…/{id}/constat` | l'application, jeton du client | `clientDuClient` (`abonnement_pour_nouveau_moyen`, `detail_abonnement`) ; `clientServeur` (lecture du client Stripe, `poser_session_nouveau_moyen`, `remplacer_moyen_paiement`) |
 
 Code commun dans `supabase/functions/_partage/` : client Stripe (version de l'API figée), clients
 Postgres, et **la** lecture d'une session Checkout transmise à `synchroniser_session_paiement` —
 une seule, pour que le constat et le webhook ne puissent pas diverger.
 
+**Changement de moyen de paiement** (étape serveur de L4, 14 novembre 2026 ; 0060, 0061). Une
+session Checkout en mode `setup` sur le client Stripe de l'abonnement, créée par
+`abonnement-moyen-paiement` avec `metadata.abonnement_id` et `metadata.usage = nouveau_moyen` (posés
+par le serveur, même règle que l'intention) ; sa référence est conservée sur l'abonnement
+(`reference_session_nouveau_moyen`, serveur seulement). **La** lecture de cette session
+(`_partage/nouveau-moyen.ts`) est partagée par le webhook (`checkout.session.completed`, `mode =
+setup`) et le constat : le moyen lu sur `setup_intent.payment_method` (identifiant, type, quatre
+derniers chiffres) remplace l'ancien par `remplacer_moyen_paiement`, idempotente — le même moyen
+relivré ne reprogramme rien. La tentative de plus (le lendemain) est posée par cette fonction et
+lue par `tentative_due` (0061) ; aucun paiement n'est engagé par la page. Le retour revient par
+`URL_RETOUR_PAIEMENT?moyen=<abonnementId>`.
+
 **Secrets attendus** (projet de développement ; les deux secrets Stripe par
 `scripts/poser-secret-stripe.sh`, jamais `supabase secrets set` à la main — §« Secrets ») :
 `STRIPE_SECRET_KEY` (clé restreinte `rk_test_…`), `STRIPE_WEBHOOK_SECRET` (`whsec_…`),
 `URL_RETOUR_PAIEMENT` (adresse de retour de la page Stripe, sans paramètre ; la fonction y ajoute
-`?intention=<id>`). `SUPABASE_URL`, `SUPABASE_ANON_KEY` et `SUPABASE_SERVICE_ROLE_KEY` sont
+`?intention=<id>`, ou `?moyen=<abonnementId>` pour l'enregistrement d'un nouveau moyen). `SUPABASE_URL`, `SUPABASE_ANON_KEY` et `SUPABASE_SERVICE_ROLE_KEY` sont
 injectés par Supabase. Une fonction à qui il manque un secret répond 500 sans rien faire.
 
 ### Dépendances accordées (28 septembre 2026)

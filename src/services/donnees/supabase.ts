@@ -2,6 +2,10 @@ import { supabase } from '@/services/supabase/client';
 import type {
   AvisDuCoach,
   CommuneReference,
+  ConstatNouveauMoyen,
+  DetailAbonnement,
+  MotifBanque,
+  ResultatNouveauMoyen,
   Discipline,
   DossierVerification,
   EtatMonAvis,
@@ -29,7 +33,6 @@ import type {
   TypePiece,
   AbonnementClient,
   StatutAbonnement,
-  TransitionAbonnement,
 } from './port';
 
 // L4 : ce que supabase-js rend pour l'appel d'une Edge Function. Une réponse non 2xx arrive en
@@ -80,7 +83,75 @@ type LigneMonAvis = {
   etiquettes: string[] | null;
   texte: string | null;
   statut: string | null;
+  duree_suivi_mois: number | null;
 };
+
+// detail_abonnement (0060), en snake_case.
+type LigneDetailAbonnement = {
+  id: string;
+  statut: string;
+  moyen: 'carte' | 'sepa';
+  moyen_derniers_chiffres: string | null;
+  prix_fige_centimes: number;
+  prochain_prelevement_le: string | null;
+  pause_jusqu_le: string | null;
+  fin_acces_le: string | null;
+  offre_titre: string;
+  offre_engagement_humain: string[] | null;
+  coach_prenom: string;
+  coach_nom: string;
+  coach_commune_base: string | null;
+  derniere_facture_montant_centimes: number | null;
+  derniere_facture_payee_le: string | null;
+  dernier_echec_motif: string | null;
+  dernier_echec_echeance_le: string | null;
+  grace_jusqu_au: string | null;
+  regularisation_avant_le: string | null;
+  prochaine_tentative_le: string | null;
+};
+
+const MOTIFS_BANQUE: readonly MotifBanque[] = [
+  'fonds_insuffisants',
+  'carte_expiree',
+  'opposition',
+  'plafond_atteint',
+  'authentification_echouee',
+  'inconnu',
+];
+
+// « Jamais deviné » (docs/domaine.md §3.4bis) : un motif hors de la liste close de docs/api.md §7
+// s'affiche comme `inconnu`, jamais comme un septième libellé (fiche L4-20, critère 1).
+function motifBanque(valeur: string | null): MotifBanque | null {
+  if (valeur === null) return null;
+  return (MOTIFS_BANQUE as readonly string[]).includes(valeur)
+    ? (valeur as MotifBanque)
+    : 'inconnu';
+}
+
+function constatNouveauMoyen(data: unknown): ConstatNouveauMoyen {
+  const d = data as Partial<{
+    etat: unknown;
+    urlPaiement: unknown;
+    prochaineTentativeLe: unknown;
+  }> | null;
+  switch (d?.etat) {
+    case 'enregistre':
+      return {
+        issue: 'constat',
+        etat: 'enregistre',
+        prochaineTentativeLe: estTexte(d.prochaineTentativeLe) ? d.prochaineTentativeLe : null,
+      };
+    case 'non_terminee':
+      return estTexte(d.urlPaiement)
+        ? { issue: 'constat', etat: 'non_terminee', urlPaiement: d.urlPaiement }
+        : { issue: 'sans_reponse' };
+    case 'expiree':
+    case 'aucune':
+      return { issue: 'constat', etat: d.etat };
+    default:
+      return { issue: 'sans_reponse' };
+  }
+}
 
 // Dépôt (POST) ou modification (PATCH) par l'Edge Function `avis`. Une réponse 2xx sans
 // identifiant n'est pas un avis enregistré : rien ne permet de le dire à la personne.
@@ -144,12 +215,17 @@ function constat(data: unknown): ResultatConstat {
   const d = data as Partial<{
     etat: unknown;
     urlPaiement: unknown;
-    abonnement: Partial<{ statut: unknown }>;
+    abonnement: Partial<{ statut: unknown; id: unknown }>;
   }> | null;
   switch (d?.etat) {
     case 'abonne':
-      return estTexte(d.abonnement?.statut)
-        ? { issue: 'constat', etat: 'abonne', statutAbonnement: d.abonnement.statut }
+      return estTexte(d.abonnement?.statut) && estTexte(d.abonnement?.id)
+        ? {
+            issue: 'constat',
+            etat: 'abonne',
+            statutAbonnement: d.abonnement.statut,
+            abonnementId: d.abonnement.id,
+          }
         : { issue: 'sans_reponse' };
     case 'non_terminee':
       return estTexte(d.urlPaiement)
@@ -1088,6 +1164,64 @@ export const portDonneesSupabase: PortDonnees = {
     return { succes: true };
   },
 
+  async lireDetailAbonnement(abonnementId: string): Promise<DetailAbonnement> {
+    const { data, error } = await supabase.rpc('detail_abonnement', {
+      p_abonnement_id: abonnementId,
+    });
+    if (error) throw error;
+    const l = (data as LigneDetailAbonnement[])[0];
+    if (!l) throw new Error('abonnement_introuvable');
+    return {
+      id: l.id,
+      statut: l.statut as StatutAbonnement,
+      moyen: l.moyen,
+      moyenDerniersChiffres: l.moyen_derniers_chiffres,
+      prixFigeCentimes: l.prix_fige_centimes,
+      prochainPrelevementLe: l.prochain_prelevement_le,
+      pauseJusquLe: l.pause_jusqu_le,
+      finAccesLe: l.fin_acces_le,
+      offreTitre: l.offre_titre,
+      offreEngagementHumain: l.offre_engagement_humain ?? [],
+      coachPrenom: l.coach_prenom,
+      coachNom: l.coach_nom,
+      coachCommuneBase: l.coach_commune_base,
+      derniereFactureMontantCentimes: l.derniere_facture_montant_centimes,
+      derniereFacturePayeeLe: l.derniere_facture_payee_le,
+      dernierEchecMotif: motifBanque(l.dernier_echec_motif),
+      dernierEchecEcheanceLe: l.dernier_echec_echeance_le,
+      graceJusquAu: l.grace_jusqu_au,
+      regularisationAvantLe: l.regularisation_avant_le,
+      prochaineTentativeLe: l.prochaine_tentative_le,
+    };
+  },
+
+  // L'identifiant est encodé dans le chemin, comme pour le constat de souscription : le serveur
+  // décide s'il appartient au compte (abonnement_pour_nouveau_moyen, detail_abonnement, 0060).
+  async demanderNouveauMoyen(abonnementId: string): Promise<ResultatNouveauMoyen> {
+    const { data, error } = (await supabase.functions.invoke(
+      `abonnement-moyen-paiement/${encodeURIComponent(abonnementId)}`,
+      { method: 'POST' },
+    )) as AppelFonction;
+    if (error) {
+      const refus = await refusDe(error);
+      return refus ? { issue: 'refusee', refus } : { issue: 'sans_reponse' };
+    }
+    const url = (data as { urlPaiement?: unknown } | null)?.urlPaiement;
+    return estTexte(url) ? { issue: 'creee', urlPaiement: url } : { issue: 'sans_reponse' };
+  },
+
+  async constaterNouveauMoyen(abonnementId: string): Promise<ConstatNouveauMoyen> {
+    const { data, error } = (await supabase.functions.invoke(
+      `abonnement-moyen-paiement/${encodeURIComponent(abonnementId)}/constat`,
+      { method: 'POST' },
+    )) as AppelFonction;
+    if (error) {
+      const refus = await refusDe(error);
+      return refus ? { issue: 'refusee', refus } : { issue: 'sans_reponse' };
+    }
+    return constatNouveauMoyen(data);
+  },
+
   async lireEtiquettesAvis() {
     const { data, error } = await supabase
       .from('etiquettes_avis')
@@ -1130,6 +1264,7 @@ export const portDonneesSupabase: PortDonnees = {
     const l = (data as LigneMonAvis[])[0];
     if (l.etat === 'pas_encore')
       return { etat: 'pas_encore', joursRestants: l.jours_restants as number };
+    if (l.etat === 'possible') return { etat: 'possible', dureeSuiviMois: l.duree_suivi_mois ?? 1 };
     if (l.etat === 'modifiable' || l.etat === 'fige') {
       return {
         etat: l.etat,
@@ -1139,6 +1274,7 @@ export const portDonneesSupabase: PortDonnees = {
           texte: l.texte,
           statut: l.statut as MonAvis['statut'],
         },
+        dureeSuiviMois: l.duree_suivi_mois ?? 1,
       };
     }
     return { etat: l.etat };

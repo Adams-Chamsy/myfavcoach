@@ -5206,6 +5206,172 @@ describe('abonnements — L4 (0033)', () => {
       expect((await lire(id)).statut).toBe('resilie');
     });
 
+    // Étape serveur de L4 (0060 décor, 0061 règle ; docs/domaine.md §4.4 précisé le 14 novembre
+    // 2026) : un nouveau moyen de paiement enregistré après un refus programme UNE tentative de
+    // plus, le lendemain, hors du compte de trois ; son succès régularise, depuis impaye comme
+    // depuis suspendu.
+    const remplacer = (
+      abonnement: string,
+      moyen: string,
+      jour: string,
+      appelant: Appelant = 'admin',
+      type: 'carte' | 'sepa' = 'carte',
+    ) =>
+      appeler(
+        'remplacer_moyen_paiement',
+        {
+          p_abonnement_id: abonnement,
+          p_moyen_prestataire: moyen,
+          p_type: type,
+          p_derniers_chiffres: '4242',
+          p_jour: jour,
+        },
+        appelant,
+      );
+    type Detail = {
+      statut: string;
+      moyen: string;
+      moyen_derniers_chiffres: string | null;
+      dernier_echec_motif: string | null;
+      dernier_echec_echeance_le: string | null;
+      grace_jusqu_au: string | null;
+      regularisation_avant_le: string | null;
+      prochaine_tentative_le: string | null;
+      coach_prenom: string;
+      offre_titre: string;
+      derniere_facture_montant_centimes: number | null;
+    };
+    const detail = async (abonnement: string, session: Appelant = client2) => {
+      const r = await appeler('detail_abonnement', { p_abonnement_id: abonnement }, session);
+      return { statut: r.statut, corps: r.corps, ligne: (r.corps as Detail[])?.[0] };
+    };
+
+    it('nouveau moyen sur un impayé après trois échecs : une 4e tentative, due le lendemain seulement, une seule fois ; succès -> actif, facture', async () => {
+      const { id, E } = await nouvelAbonnement('p47-nouveau-moyen');
+      for (const n of [1, 2, 3] as const) await echouer(id, E, n, 'nm');
+      expect(await dues(plusJours(E, 4), id)).toEqual([]);
+      const r = await remplacer(id, 'pm_banc_nouveau', plusJours(E, 4));
+      expect([r.statut, r.corps]).toEqual([200, plusJours(E, 5)]);
+      // Le jour même : rien ; le lendemain : la tentative n° 4.
+      expect(await dues(plusJours(E, 4), id)).toEqual([]);
+      expect((await dues(plusJours(E, 5), id)).map((d) => d.tentative_numero)).toEqual([4]);
+      expect((await ouvrir(id, E, 4, tentative('nm-4'), plusJours(E, 5))).statut).toBe(200);
+      // La relance demandée est consommée à l'ouverture : plus rien de dû après.
+      expect((await lire(id)).statut).toBe('impaye');
+      expect((await conclure(tentative('nm-4'), true)).statut).toBe(200);
+      const ligne = await lire(id);
+      expect(ligne.statut).toBe('actif');
+      expect(ligne.prochain_prelevement_le > E).toBe(true);
+      expect((await facturesDe(id)).filter((f) => f.periode_du === E)).toHaveLength(1);
+      expect(await dues(plusJours(E, 6), id)).toEqual([]);
+    });
+
+    it('nouveau moyen sur un suspendu : la relance est due ; succès -> actif (paiement régularisé, §4.3)', async () => {
+      const { id, E } = await nouvelAbonnement('p47-suspendu-regularise');
+      for (const n of [1, 2, 3] as const) await echouer(id, E, n, 'sr');
+      await appliquer(plusJours(E, 7));
+      expect((await lire(id)).statut).toBe('suspendu');
+      await remplacer(id, 'pm_banc_regularise', plusJours(E, 10));
+      expect((await dues(plusJours(E, 11), id)).map((d) => d.tentative_numero)).toEqual([4]);
+      expect((await ouvrir(id, E, 4, tentative('sr-4'), plusJours(E, 11))).statut).toBe(200);
+      await conclure(tentative('sr-4'), true);
+      expect((await lire(id)).statut).toBe('actif');
+      expect((await facturesDe(id)).filter((f) => f.periode_du === E)).toHaveLength(1);
+    });
+
+    it('la relance échoue : le suspendu le reste, aucune relance de plus ; le même moyen relivré ne reprogramme rien', async () => {
+      const { id, E } = await nouvelAbonnement('p47-relance-echoue');
+      for (const n of [1, 2, 3] as const) await echouer(id, E, n, 're');
+      await appliquer(plusJours(E, 7));
+      await remplacer(id, 'pm_banc_encore_refuse', plusJours(E, 8));
+      // Relivraison du même enregistrement (webhook puis constat) : idempotent.
+      const encore = await remplacer(id, 'pm_banc_encore_refuse', plusJours(E, 20));
+      expect(encore.corps).toBe(plusJours(E, 9));
+      expect((await ouvrir(id, E, 4, tentative('re-4'), plusJours(E, 9))).statut).toBe(200);
+      await conclure(tentative('re-4'), false, 'carte_expiree');
+      expect((await lire(id)).statut).toBe('suspendu');
+      expect(await dues(plusJours(E, 10), id)).toEqual([]);
+      expect(await dues(plusJours(E, 30), id)).toEqual([]);
+      // Le délai de 30 jours de suspension court toujours.
+      await appliquer(plusJours(E, 37));
+      expect((await lire(id)).statut).toBe('resilie');
+    });
+
+    it('remplacer_moyen_paiement : le serveur seul ; abonnement_pour_nouveau_moyen : le client sur le sien, en défaut de paiement seulement', async () => {
+      const { id, E } = await nouvelAbonnement('p47-droits');
+      const vol = await remplacer(id, 'pm_banc_vole', E, client2);
+      expect(vol.statut).toBeGreaterThanOrEqual(400);
+      expect(JSON.stringify(vol.corps)).toMatch(/permission denied/i);
+
+      const actif = await appeler(
+        'abonnement_pour_nouveau_moyen',
+        { p_abonnement_id: id },
+        client2,
+      );
+      expect(messageDe(actif.corps)).toBe('changement_moyen_impossible');
+      await echouer(id, E, 1, 'droits');
+      const impaye = await appeler(
+        'abonnement_pour_nouveau_moyen',
+        { p_abonnement_id: id },
+        client2,
+      );
+      expect(impaye.statut).toBe(204);
+      const autre = await appeler(
+        'abonnement_pour_nouveau_moyen',
+        { p_abonnement_id: id },
+        client1,
+      );
+      expect(messageDe(autre.corps)).toBe('abonnement_introuvable');
+      const anon = await appeler('abonnement_pour_nouveau_moyen', { p_abonnement_id: id }, 'anon');
+      expect(JSON.stringify(anon.corps)).toMatch(/permission denied/i);
+    });
+
+    it('detail_abonnement : le client lit le sien — motif, fin de grâce à J+6, prochaine tentative à J+1 ; suspendu : régularisation avant J+37 ; rien sur celui d’un autre', async () => {
+      const { id, E } = await nouvelAbonnement('p47-detail');
+      const avant = await detail(id);
+      expect(avant.ligne).toMatchObject({
+        statut: 'actif',
+        moyen: 'carte',
+        moyen_derniers_chiffres: null,
+        coach_prenom: expect.any(String),
+        offre_titre: 'Suivi complet',
+        derniere_facture_montant_centimes: 4900,
+        grace_jusqu_au: null,
+        regularisation_avant_le: null,
+        prochaine_tentative_le: null,
+      });
+      await echouer(id, E, 1, 'detail');
+      expect((await detail(id)).ligne).toMatchObject({
+        statut: 'impaye',
+        dernier_echec_motif: 'fonds_insuffisants',
+        dernier_echec_echeance_le: E,
+        grace_jusqu_au: plusJours(E, 6),
+        regularisation_avant_le: null,
+        prochaine_tentative_le: plusJours(E, 1),
+      });
+      await echouer(id, E, 2, 'detail');
+      expect((await detail(id)).ligne.prochaine_tentative_le).toBe(plusJours(E, 3));
+      await echouer(id, E, 3, 'detail');
+      expect((await detail(id)).ligne.prochaine_tentative_le).toBeNull();
+      await appliquer(plusJours(E, 7));
+      expect((await detail(id)).ligne).toMatchObject({
+        statut: 'suspendu',
+        grace_jusqu_au: null,
+        regularisation_avant_le: plusJours(E, 37),
+        prochaine_tentative_le: null,
+      });
+      await remplacer(id, 'pm_banc_detail', plusJours(E, 8), 'admin', 'sepa');
+      expect((await detail(id)).ligne).toMatchObject({
+        moyen: 'sepa',
+        moyen_derniers_chiffres: '4242',
+        prochaine_tentative_le: plusJours(E, 9),
+      });
+      const autre = await detail(id, client1);
+      expect(messageDe(autre.corps)).toBe('abonnement_introuvable');
+      const anon = await detail(id, 'anon');
+      expect(JSON.stringify(anon.corps)).toMatch(/permission denied/i);
+    });
+
     it('conclure deux fois ne change rien la seconde ; un échec exige son motif', async () => {
       const { id, E } = await nouvelAbonnement('p48-deux-fois');
       await ouvrir(id, E, 1, tentative('deux-fois'), E);
@@ -6241,11 +6407,16 @@ describe('intentions et synchronisation — L4 (0037, 0038)', () => {
   // prélèvera hors session à chaque échéance. Réservé au serveur, comme le client du prestataire : jamais
   // lisible depuis l'application (CLAUDE.md §10), posé une seule fois.
   describe('moyen de paiement conservé (0046)', () => {
+    // 0060 : avec les quatre derniers chiffres, que 04c affiche (docs/ecrans/L4-04c).
     const memoriser = (ref: string, moyen: string, appelant: Appelant = 'admin') =>
       appelRest('/rest/v1/rpc/memoriser_moyen_paiement', {
         methode: 'POST',
         session: appelant,
-        corps: { p_reference_paiement: ref, p_moyen_prestataire: moyen },
+        corps: {
+          p_reference_paiement: ref,
+          p_moyen_prestataire: moyen,
+          p_derniers_chiffres: '4242',
+        },
       });
 
     // 0047 : la tâche planifiée déclenche les prélèvements ; seul pg_cron l'exécute (en tant que
@@ -6279,6 +6450,14 @@ describe('intentions et synchronisation — L4 (0037, 0038)', () => {
         { session: 'admin' },
       );
       expect(corps).toEqual([{ reference_moyen_prestataire: 'pm_banc_premier' }]);
+      // Les quatre derniers chiffres suivent le moyen, et le client les lit (0060) -- par l'id :
+      // filtrer sur reference_paiement exigerait de pouvoir la lire, ce qu'il ne peut pas.
+      const [{ id: idAbonnement }] = await abonnementsDe(s);
+      const chiffres = await appelRest(
+        `/rest/v1/abonnements?id=eq.${idAbonnement}&select=moyen_derniers_chiffres`,
+        { session: A },
+      );
+      expect(chiffres.corps).toEqual([{ moyen_derniers_chiffres: '4242' }]);
 
       const lecture = await appelRest(
         `/rest/v1/abonnements?reference_paiement=eq.${s}&select=reference_moyen_prestataire`,
@@ -6286,6 +6465,15 @@ describe('intentions et synchronisation — L4 (0037, 0038)', () => {
       );
       expect(lecture.statut).toBeGreaterThanOrEqual(400);
       expect(JSON.stringify(lecture.corps)).toMatch(/permission denied/i);
+    });
+
+    it('l’ancienne signature sans les chiffres (0046) n’existe plus (0061)', async () => {
+      const { statut } = await appelRest('/rest/v1/rpc/memoriser_moyen_paiement', {
+        methode: 'POST',
+        session: 'admin',
+        corps: { p_reference_paiement: 'cs_banc_absente', p_moyen_prestataire: 'pm_banc_x' },
+      });
+      expect(statut).toBe(404);
     });
   });
 });
@@ -6446,6 +6634,7 @@ describe('avis — L4 (0048, 0049)', () => {
     etiquettes: string[] | null;
     texte: string | null;
     statut: string | null;
+    duree_suivi_mois: number | null;
   };
   async function monAvis(session: Session, coach: string): Promise<EtatAvis> {
     const { statut, corps } = await appelRest('/rest/v1/rpc/mon_avis_possible', {
@@ -6525,9 +6714,17 @@ describe('avis — L4 (0048, 0049)', () => {
     it('note seule, sans texte ni étiquette, après 30 jours de suivi : acceptée', async () => {
       const coach = await nouveauCoach('note-seule');
       await abonner(profilX, coach.offre, 'note-seule', 30);
+      // 27a, « Suivi depuis {durée} » : la durée vient du serveur (0061), avant comme après le dépôt.
+      expect(await monAvis(X, coach.profil)).toMatchObject({
+        etat: 'possible',
+        duree_suivi_mois: 1,
+      });
       const { statut, corps } = await deposer(X, coach.profil, { note: 4 });
       expect([statut, messageDe(corps)]).toEqual([200, expect.any(String)]);
-      expect((await monAvis(X, coach.profil)).etat).toBe('modifiable');
+      expect(await monAvis(X, coach.profil)).toMatchObject({
+        etat: 'modifiable',
+        duree_suivi_mois: 1,
+      });
     });
 
     it('actif depuis 29 jours : refusé, avis_pas_encore, il reste 1 jour — et mon état le dit', async () => {

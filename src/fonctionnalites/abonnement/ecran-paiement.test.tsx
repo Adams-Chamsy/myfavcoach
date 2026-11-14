@@ -132,6 +132,7 @@ describe('L4-04b · Récapitulatif et paiement', () => {
       issue: 'constat',
       etat: 'abonne',
       statutAbonnement: 'actif',
+      abonnementId: 'abonnement-1',
     });
 
     const payer = screen.getByRole('button', { name: 'Payer 49,00 €' });

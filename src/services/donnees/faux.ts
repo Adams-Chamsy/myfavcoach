@@ -1,4 +1,7 @@
 import type {
+  ConstatNouveauMoyen,
+  DetailAbonnement,
+  ResultatNouveauMoyen,
   AvisDuCoach,
   CommuneReference,
   Discipline,
@@ -166,6 +169,13 @@ export type FauxPortDonnees = PortDonnees & {
   refuserProchainePausePourTest(code: string, possibleLe?: string): void;
   definirReponseConstatPourTest(reponse: ResultatConstat | ResultatConstat[]): void;
   lireNombreConstatsPourTest(): number;
+  // Étape serveur de L4 : le détail d'un abonnement (04c, écran 20), par identifiant ; sans
+  // réglage, lireDetailAbonnement lève (abonnement_introuvable).
+  definirDetailAbonnementPourTest(table: Record<string, DetailAbonnement>): void;
+  // Écran 20 : la page d'un nouveau moyen, et son constat au retour.
+  definirReponseNouveauMoyenPourTest(reponse: ResultatNouveauMoyen): void;
+  lireDemandesNouveauMoyenPourTest(): string[];
+  definirConstatNouveauMoyenPourTest(reponse: ConstatNouveauMoyen): void;
   // Avis (P4.9a) : par coach ; sans réglage, aucun avis et l'état « aucun ».
   definirAvisDuCoachPourTest(table: Record<string, AvisDuCoach>): void;
   definirMonAvisPourTest(table: Record<string, EtatMonAvis>): void;
@@ -246,6 +256,10 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
   let pauses: { abonnementId: string; jours: number }[] = [];
   let refusPause: { code: string; possibleLe: string | null } | null = null;
   let reponsesConstat: ResultatConstat[] = [{ issue: 'sans_reponse' }];
+  let detailsAbonnement: Record<string, DetailAbonnement> = {};
+  let reponseNouveauMoyen: ResultatNouveauMoyen = { issue: 'sans_reponse' };
+  let demandesNouveauMoyen: string[] = [];
+  let constatNouveauMoyen: ConstatNouveauMoyen = { issue: 'constat', etat: 'aucune' };
   let nombreConstats = 0;
   let dossierVerification: DossierVerification = { statut: 'absente', deposeLe: null, motif: null };
   let piecesDeposees: PieceDeposee[] = [];
@@ -855,6 +869,30 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     },
     lireNombreConstatsPourTest() {
       return nombreConstats;
+    },
+    async lireDetailAbonnement(abonnementId) {
+      const detail = detailsAbonnement[abonnementId];
+      if (!detail) throw new Error('abonnement_introuvable');
+      return detail;
+    },
+    definirDetailAbonnementPourTest(table) {
+      detailsAbonnement = table;
+    },
+    async demanderNouveauMoyen(abonnementId) {
+      demandesNouveauMoyen = [...demandesNouveauMoyen, abonnementId];
+      return reponseNouveauMoyen;
+    },
+    definirReponseNouveauMoyenPourTest(reponse) {
+      reponseNouveauMoyen = reponse;
+    },
+    lireDemandesNouveauMoyenPourTest() {
+      return demandesNouveauMoyen;
+    },
+    async constaterNouveauMoyen() {
+      return constatNouveauMoyen;
+    },
+    definirConstatNouveauMoyenPourTest(reponse) {
+      constatNouveauMoyen = reponse;
     },
 
     async lireEtiquettesAvis() {

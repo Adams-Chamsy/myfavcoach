@@ -280,6 +280,10 @@ describe('secrets interdits côté application', () => {
       // 0058/0059 : revoke EXECUTE de demander_pause_jours à service_role (convention de 0031).
       'supabase/migrations/0058_preparer_pause_en_jours.sql',
       'supabase/migrations/0059_pause_en_jours_regle.sql',
+      // 0060/0061 : grants/revokes de service_role sur les fonctions du changement de moyen de
+      // paiement (convention de 0031).
+      'supabase/migrations/0060_preparer_moyen_paiement_et_detail.sql',
+      'supabase/migrations/0061_moyen_paiement_et_detail_regle.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

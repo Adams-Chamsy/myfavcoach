@@ -547,9 +547,16 @@ describe('portDonneesSupabase', () => {
     it('rend chaque état du constat', async () => {
       const cas: [unknown, unknown][] = [
         [
-          { etat: 'abonne', abonnement: { statut: 'en_attente_confirmation' } },
-          { issue: 'constat', etat: 'abonne', statutAbonnement: 'en_attente_confirmation' },
+          { etat: 'abonne', abonnement: { id: 'abo-1', statut: 'en_attente_confirmation' } },
+          {
+            issue: 'constat',
+            etat: 'abonne',
+            statutAbonnement: 'en_attente_confirmation',
+            abonnementId: 'abo-1',
+          },
         ],
+        // Un abonné sans identifiant : 04c n'aurait rien à lire — pas une réponse exploitable.
+        [{ etat: 'abonne', abonnement: { statut: 'actif' } }, { issue: 'sans_reponse' }],
         [
           { etat: 'non_terminee', urlPaiement: 'https://paiement.exemple/session-ouverte' },
           {
@@ -589,6 +596,139 @@ describe('portDonneesSupabase', () => {
           detail: 'Reviens au profil du coach pour recommencer.',
         },
       });
+    });
+  });
+
+  describe('détail d’un abonnement et nouveau moyen de paiement (étape serveur de L4)', () => {
+    const LIGNE = {
+      id: 'abo-1',
+      statut: 'impaye',
+      moyen: 'carte',
+      moyen_derniers_chiffres: '4242',
+      prix_fige_centimes: 4900,
+      prochain_prelevement_le: '2026-12-03',
+      pause_jusqu_le: null,
+      fin_acces_le: null,
+      offre_titre: 'Suivi complet',
+      offre_engagement_humain: ['ajustement_hebdomadaire'],
+      coach_prenom: 'Yannick',
+      coach_nom: 'Berthaud',
+      coach_commune_base: 'Lyon',
+      derniere_facture_montant_centimes: 4900,
+      derniere_facture_payee_le: '2026-11-03T10:00:00Z',
+      dernier_echec_motif: 'fonds_insuffisants',
+      dernier_echec_echeance_le: '2026-12-03',
+      grace_jusqu_au: '2026-12-09',
+      regularisation_avant_le: null,
+      prochaine_tentative_le: '2026-12-04',
+    };
+
+    it('lireDetailAbonnement appelle detail_abonnement et traduit la ligne', async () => {
+      supabaseMock.rpc.mockResolvedValue({ data: [LIGNE], error: null });
+      expect(await portDonneesSupabase.lireDetailAbonnement('abo-1')).toEqual({
+        id: 'abo-1',
+        statut: 'impaye',
+        moyen: 'carte',
+        moyenDerniersChiffres: '4242',
+        prixFigeCentimes: 4900,
+        prochainPrelevementLe: '2026-12-03',
+        pauseJusquLe: null,
+        finAccesLe: null,
+        offreTitre: 'Suivi complet',
+        offreEngagementHumain: ['ajustement_hebdomadaire'],
+        coachPrenom: 'Yannick',
+        coachNom: 'Berthaud',
+        coachCommuneBase: 'Lyon',
+        derniereFactureMontantCentimes: 4900,
+        derniereFacturePayeeLe: '2026-11-03T10:00:00Z',
+        dernierEchecMotif: 'fonds_insuffisants',
+        dernierEchecEcheanceLe: '2026-12-03',
+        graceJusquAu: '2026-12-09',
+        regularisationAvantLe: null,
+        prochaineTentativeLe: '2026-12-04',
+      });
+      expect(supabaseMock.rpc).toHaveBeenCalledWith('detail_abonnement', {
+        p_abonnement_id: 'abo-1',
+      });
+    });
+
+    // Fiche L4-20, critère 1 : un code inconnu du serveur n'affiche jamais autre chose qu'inconnu.
+    it('un motif hors de la liste close devient inconnu ; une lecture refusée lève', async () => {
+      supabaseMock.rpc.mockResolvedValue({
+        data: [{ ...LIGNE, dernier_echec_motif: 'nouveau_code_banque' }],
+        error: null,
+      });
+      expect((await portDonneesSupabase.lireDetailAbonnement('abo-1')).dernierEchecMotif).toBe(
+        'inconnu',
+      );
+      supabaseMock.rpc.mockResolvedValue({
+        data: null,
+        error: { message: 'abonnement_introuvable', code: 'P0001' },
+      });
+      await expect(portDonneesSupabase.lireDetailAbonnement('abo-autre')).rejects.toBeTruthy();
+    });
+
+    it('demanderNouveauMoyen appelle abonnement-moyen-paiement/{id}, rend la page ou le refus', async () => {
+      supabaseMock.functions.invoke.mockResolvedValue({
+        data: { urlPaiement: 'https://paiement.exemple/enregistrement' },
+        error: null,
+      });
+      expect(await portDonneesSupabase.demanderNouveauMoyen('abo-1')).toEqual({
+        issue: 'creee',
+        urlPaiement: 'https://paiement.exemple/enregistrement',
+      });
+      expect(supabaseMock.functions.invoke).toHaveBeenCalledWith(
+        'abonnement-moyen-paiement/abo-1',
+        { method: 'POST' },
+      );
+      supabaseMock.functions.invoke.mockResolvedValue(
+        refusHttp(409, {
+          code: 'changement_moyen_impossible',
+          title: 'Pas de changement de moyen de paiement ici',
+          detail: "Il n'est possible qu'après un prélèvement refusé. Rien n'a été débité.",
+          status: 409,
+        }),
+      );
+      expect(await portDonneesSupabase.demanderNouveauMoyen('abo-1')).toEqual({
+        issue: 'refusee',
+        refus: {
+          code: 'changement_moyen_impossible',
+          title: 'Pas de changement de moyen de paiement ici',
+          detail: "Il n'est possible qu'après un prélèvement refusé. Rien n'a été débité.",
+        },
+      });
+    });
+
+    it('constaterNouveauMoyen appelle …/{id}/constat et rend chaque état', async () => {
+      const cas: [unknown, unknown][] = [
+        [
+          { etat: 'enregistre', prochaineTentativeLe: '2026-12-05' },
+          { issue: 'constat', etat: 'enregistre', prochaineTentativeLe: '2026-12-05' },
+        ],
+        [
+          { etat: 'enregistre', prochaineTentativeLe: null },
+          { issue: 'constat', etat: 'enregistre', prochaineTentativeLe: null },
+        ],
+        [
+          { etat: 'non_terminee', urlPaiement: 'https://paiement.exemple/ouverte' },
+          {
+            issue: 'constat',
+            etat: 'non_terminee',
+            urlPaiement: 'https://paiement.exemple/ouverte',
+          },
+        ],
+        [{ etat: 'expiree' }, { issue: 'constat', etat: 'expiree' }],
+        [{ etat: 'aucune' }, { issue: 'constat', etat: 'aucune' }],
+        [{ etat: 'inconnu_du_contrat' }, { issue: 'sans_reponse' }],
+      ];
+      for (const [corps, attendu] of cas) {
+        supabaseMock.functions.invoke.mockResolvedValue({ data: corps, error: null });
+        expect(await portDonneesSupabase.constaterNouveauMoyen('abo-1')).toEqual(attendu);
+      }
+      expect(supabaseMock.functions.invoke).toHaveBeenLastCalledWith(
+        'abonnement-moyen-paiement/abo-1/constat',
+        { method: 'POST' },
+      );
     });
   });
 
@@ -668,17 +808,28 @@ describe('portDonneesSupabase', () => {
     it('lireMonAvis rend chaque état du serveur', async () => {
       const cas: [unknown, unknown][] = [
         [{ etat: 'aucun' }, { etat: 'aucun' }],
-        [{ etat: 'possible' }, { etat: 'possible' }],
+        [
+          { etat: 'possible', duree_suivi_mois: 4 },
+          { etat: 'possible', dureeSuiviMois: 4 },
+        ],
         [{ etat: 'suivi_interrompu' }, { etat: 'suivi_interrompu' }],
         [
           { etat: 'pas_encore', jours_restants: 3 },
           { etat: 'pas_encore', joursRestants: 3 },
         ],
         [
-          { etat: 'fige', note: 4, etiquettes: ['ecoute'], texte: null, statut: 'signale' },
+          {
+            etat: 'fige',
+            note: 4,
+            etiquettes: ['ecoute'],
+            texte: null,
+            statut: 'signale',
+            duree_suivi_mois: 7,
+          },
           {
             etat: 'fige',
             avis: { note: 4, etiquettes: ['ecoute'], texte: null, statut: 'signale' },
+            dureeSuiviMois: 7,
           },
         ],
       ];
@@ -691,6 +842,7 @@ describe('portDonneesSupabase', () => {
               etiquettes: null,
               texte: null,
               statut: null,
+              duree_suivi_mois: null,
               ...(ligne as object),
             },
           ],

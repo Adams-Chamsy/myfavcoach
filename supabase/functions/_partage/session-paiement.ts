@@ -111,6 +111,17 @@ export function moyenUtilise(paiement: Stripe.PaymentIntent | null): MoyenLu {
   return 'autre';
 }
 
+// Carte : card.last4 ; prélèvement SEPA : sepa_debit.last4. Quatre chiffres, ou rien.
+export function derniersChiffres(moyen: unknown): string | null {
+  if (!moyen || typeof moyen !== 'object') return null;
+  const m = moyen as {
+    card?: { last4?: unknown };
+    sepa_debit?: { last4?: unknown };
+  };
+  const valeur = m.card?.last4 ?? m.sepa_debit?.last4;
+  return typeof valeur === 'string' && /^[0-9]{4}$/.test(valeur) ? valeur : null;
+}
+
 async function consignerIncoherence(
   serveur: ClientPostgres,
   session: string,
@@ -175,7 +186,9 @@ export async function synchroniserSession(
 
   if (error) {
     const code = codeMetier(error);
-    if (estIncoherence(code)) return consignerIncoherence(serveur, session.id, intention, code);
+    if (estIncoherence(code)) {
+      return consignerIncoherence(serveur, session.id, intention, code);
+    }
     // Tout le reste -- base injoignable, délai, invariant violé -- : 5xx. Un invariant violé
     // (coach_non_verifie, commission_non_initialisee...) est un défaut : le 5xx le rend visible.
     throw new ErreurPassagere(code ?? 'synchronisation_echouee');
@@ -196,6 +209,9 @@ export async function synchroniserSession(
     const conserve = await serveur.rpc('memoriser_moyen_paiement', {
       p_reference_paiement: session.id,
       p_moyen_prestataire: moyenEnregistre,
+      // Les quatre derniers chiffres, pour 04c et l'écran 20 (0060) : lus sur le moyen développé,
+      // null si Stripe ne les donne pas (moyen non développé, autre type).
+      p_derniers_chiffres: derniersChiffres(paiement?.payment_method),
     });
     // Un nouvel essai (relivraison, constat suivant) peut réussir : 5xx.
     if (conserve.error) throw new ErreurPassagere('moyen_non_conserve');

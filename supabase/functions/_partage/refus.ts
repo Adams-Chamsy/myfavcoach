@@ -54,6 +54,16 @@ export const TEXTES_REFUS = {
     title: 'Ce paiement est introuvable',
     detail: 'Reviens au profil du coach pour recommencer.',
   },
+  // abonnement-moyen-paiement (étape serveur de L4, 14 novembre 2026 ; textes à relire,
+  // docs/decisions-en-attente.md).
+  abonnement_introuvable: {
+    title: 'Cet abonnement est introuvable',
+    detail: 'Reviens à ton compte, rubrique Mes abonnements.',
+  },
+  changement_moyen_impossible: {
+    title: 'Pas de changement de moyen de paiement ici',
+    detail: "Il n'est possible qu'après un prélèvement refusé. Rien n'a été débité.",
+  },
   // avis (textes validés le 1er novembre 2026). « {n} jours » : le nombre vient du serveur
   // (0049, DETAIL de la levée), accordé par corpsRefus ; sans lui, detailSansNombre.
   avis_pas_encore: {
@@ -100,7 +110,12 @@ export const TEXTES_REFUS = {
 
 export type CodeRefus = keyof typeof TEXTES_REFUS;
 
-export type CorpsRefus = { code: CodeRefus; title: string; detail: string; status: number };
+export type CorpsRefus = {
+  code: CodeRefus;
+  title: string;
+  detail: string;
+  status: number;
+};
 
 // Un texte qui porte « {n} jours » reçoit le nombre rendu par le serveur, accordé (« 1 jour ») ;
 // sans nombre utilisable, son texte de repli, sans chiffre.
@@ -136,7 +151,11 @@ export function reponseRefus(
 ): Response {
   return new Response(JSON.stringify(corpsRefus(statut, code, nombre)), {
     status: statut,
-    headers: { 'Content-Type': 'application/problem+json', ...ENTETES_CORS, ...entetes },
+    headers: {
+      'Content-Type': 'application/problem+json',
+      ...ENTETES_CORS,
+      ...entetes,
+    },
   });
 }
 

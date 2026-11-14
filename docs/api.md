@@ -353,12 +353,13 @@ champ reste distinct pour que le contrat n'ait pas à changer le jour où elle e
 | Verbe | Chemin | Notes |
 |---|---|---|
 | `GET` | `/abonnements` | ceux du profil actif |
-| `GET` | `/abonnements/{id}` | statut, échéance, période de grâce restante |
+| `GET` | `/abonnements/{id}` | statut, échéance, période de grâce restante. Servi par la fonction de base `detail_abonnement(p_abonnement_id)` (0060, 14 novembre 2026), sur SON abonnement seulement : statut, moyen et ses quatre derniers chiffres (posés par le serveur depuis le prestataire), prix figé, prochain prélèvement, offre (titre, engagement humain), coach (prénom, nom, commune de base), dernière facture (montant, date), dernier échec (motif, échéance), `grace_jusqu_au` (impayé : dernier jour de suivi, J+6), `regularisation_avant_le` (suspendu : J+37), `prochaine_tentative_le` |
 | `POST` | `/abonnements/{id}/pause` | `{ "jours": n }` (1 à 60) — la date de fin est calculée par le serveur, à la date de Paris (0059), jamais envoyée par l'application. 409 `pause_deja_utilisee` avec `possibleLe` (AAAA-MM-JJ, premier jour où une pause sera acceptée) |
 | `POST` | `/abonnements/{id}/reprise` | |
 | `POST` | `/abonnements/{id}/resiliation` | fin de période, jamais immédiate |
 | `DELETE` | `/abonnements/{id}/resiliation` | annule la résiliation programmée |
-| `POST` | `/abonnements/{id}/moyen-paiement` | remplacement après échec : rend une `urlPaiement` Stripe (page hébergée, enregistrement du nouveau moyen), même mécanisme que la souscription |
+| `POST` | `/abonnements/{id}/moyen-paiement` | remplacement après échec (`impaye`, `suspendu` seulement — 409 `changement_moyen_impossible` sinon ; 404 `abonnement_introuvable` pour l'abonnement d'un autre) : rend une `urlPaiement` Stripe (page hébergée, enregistrement du nouveau moyen, aucun paiement engagé), même mécanisme que la souscription. Servi par `POST /functions/v1/abonnement-moyen-paiement/{id}` (14 novembre 2026) |
+| `POST` | `/abonnements/{id}/moyen-paiement/constat` | au retour de cette page, ou sans retour : le serveur relit la session chez Stripe et applique le même traitement que le webhook. `200 { "etat": "enregistre", "prochaineTentativeLe": "AAAA-MM-JJ" \| null }` (moyen remplacé ; la tentative programmée le lendemain, `docs/domaine.md` §4.4 ; null si l'abonnement n'était plus en défaut de paiement), `{ "etat": "non_terminee", "urlPaiement" }`, `{ "etat": "expiree" }`, `{ "etat": "aucune" }` (aucune page jamais ouverte). Servi par `…/abonnement-moyen-paiement/{id}/constat` |
 | `GET` | `/factures` | |
 | `GET` | `/factures/{id}/pdf` | URL signée, 5 minutes |
 

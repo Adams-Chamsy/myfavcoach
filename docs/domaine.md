@@ -789,6 +789,16 @@ réussie à J+1 ou J+3 fait passer l'abonnement `impaye --(paiement récupéré)
 Chaque échec notifie le client avec **le motif transmis par la banque**, et la phrase « rien
 n'a été débité ». Le coach est informé au premier échec, sans détail bancaire.
 
+**Nouveau moyen de paiement après un refus** (précisé le 14 novembre 2026, étape serveur de L4 ;
+`docs/ecrans/L4-20-paiement-refuse.md`). Depuis `impaye` ou `suspendu`, le client peut enregistrer
+un autre moyen de paiement (page du prestataire, aucun paiement engagé sur-le-champ). Le serveur
+programme alors **une tentative de plus pour l'échéance restée impayée, le lendemain**, numérotée
+à la suite (n° 4, 5…), **hors du compte de trois** — ce compte borne les relances automatiques,
+pas une tentative que le client a lui-même provoquée. Son succès émet la facture et régularise :
+`impaye --(paiement récupéré)--> actif`, ou `suspendu --(paiement régularisé ≤ 30 j)--> actif`
+(§4.3) ; son échec laisse l'état tel quel, sans autre relance. Un même moyen enregistré deux fois
+ne programme rien de plus. Les 30 jours de suspension courent toujours pendant ce temps.
+
 ### 4.5 SeanceProgrammee / ExecutionSeance
 
 ```

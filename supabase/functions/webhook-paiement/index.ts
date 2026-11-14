@@ -13,6 +13,7 @@
 //          configuration incomplète.
 import { ConfigurationIncomplete, lireSecret } from '../_partage/environnement.ts';
 import { conclureDepuisPaiement } from '../_partage/prelevement.ts';
+import { appliquerNouveauMoyen, relireSessionNouveauMoyen } from '../_partage/nouveau-moyen.ts';
 import { clientServeur } from '../_partage/postgres.ts';
 import { paiementDepuisStripe } from '../_partage/prestataire-stripe.ts';
 import {
@@ -22,9 +23,9 @@ import {
 } from '../_partage/session-paiement.ts';
 import {
   clientStripe,
+  descriptionErreurStripe,
   erreurStripeDefinitive,
   Stripe,
-  descriptionErreurStripe,
 } from '../_partage/stripe.ts';
 
 const TYPES_TRAITES = new Set([
@@ -51,7 +52,9 @@ function reponse(statut: number, corps: Record<string, string>): Response {
 }
 
 async function traiter(requete: Request): Promise<Response> {
-  if (requete.method !== 'POST') return reponse(405, { code: 'methode_interdite' });
+  if (requete.method !== 'POST') {
+    return reponse(405, { code: 'methode_interdite' });
+  }
 
   // 1. La signature, d'abord. Le corps est lu en TEXTE BRUT, octet pour octet : la signature
   //    porte sur ces octets exacts, et un JSON.parse puis une re-sérialisation la casseraient.
@@ -81,9 +84,13 @@ async function traiter(requete: Request): Promise<Response> {
   if (TYPES_PAIEMENT_ECHEANCE.has(evenement.type)) {
     return traiterPaiementEcheance(stripe, evenement);
   }
-  if (!TYPES_TRAITES.has(evenement.type)) return reponse(200, { resultat: 'type_ignore' });
+  if (!TYPES_TRAITES.has(evenement.type)) {
+    return reponse(200, { resultat: 'type_ignore' });
+  }
   const idSession = (evenement.data.object as { id?: unknown }).id;
-  if (typeof idSession !== 'string') return reponse(200, { resultat: 'type_ignore' });
+  if (typeof idSession !== 'string') {
+    return reponse(200, { resultat: 'type_ignore' });
+  }
 
   let session: Stripe.Checkout.Session;
   try {
@@ -97,6 +104,19 @@ async function traiter(requete: Request): Promise<Response> {
     throw erreur;
   }
 
+  // Étape serveur de L4 (0060) : une session d'ENREGISTREMENT d'un nouveau moyen de paiement
+  // (mode setup, abonnement-moyen-paiement), pas une souscription. Relue avec son moyen, puis le
+  // même traitement que le constat (_partage/nouveau-moyen.ts). Idempotent : le même moyen
+  // relivré ne reprogramme rien.
+  if (session.mode === 'setup') {
+    const complete = await relireSessionNouveauMoyen(stripe, session.id);
+    const resultat = await appliquerNouveauMoyen(clientServeur(), complete);
+    if (resultat.type === 'moyen_illisible') {
+      console.error(`webhook-paiement ${evenement.id} : moyen_illisible`);
+    }
+    return reponse(200, { resultat: `nouveau_moyen_${resultat.type}` });
+  }
+
   const synchronisation = await synchroniserSession(clientServeur(), session, {
     id: evenement.id,
     type: evenement.type,
@@ -107,7 +127,10 @@ async function traiter(requete: Request): Promise<Response> {
     case 'incoherence':
       // Une erreur, consignée en anomalie : visible au rapprochement, jamais relivrée en boucle.
       console.error(`webhook-paiement ${evenement.id} : ${synchronisation.motif}`);
-      return reponse(200, { resultat: 'anomalie', motif: synchronisation.motif });
+      return reponse(200, {
+        resultat: 'anomalie',
+        motif: synchronisation.motif,
+      });
     case 'resultat':
       return reponse(200, { resultat: synchronisation.resultat });
   }
@@ -118,7 +141,9 @@ async function traiter(requete: Request): Promise<Response> {
 // relivré ne refait rien.
 async function traiterPaiementEcheance(stripe: Stripe, evenement: Stripe.Event): Promise<Response> {
   const idPaiement = (evenement.data.object as { id?: unknown }).id;
-  if (typeof idPaiement !== 'string') return reponse(200, { resultat: 'type_ignore' });
+  if (typeof idPaiement !== 'string') {
+    return reponse(200, { resultat: 'type_ignore' });
+  }
   let paiement: Stripe.PaymentIntent;
   try {
     paiement = await stripe.paymentIntents.retrieve(idPaiement);

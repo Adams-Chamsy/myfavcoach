@@ -285,7 +285,8 @@ export type ResultatIntention =
 
 // docs/api.md §7, « Constat » : seul le serveur conclut, jamais l'écran.
 export type ResultatConstat =
-  | { issue: 'constat'; etat: 'abonne'; statutAbonnement: string }
+  // `abonnementId` (étape serveur de L4) : ce que 04c lit par lireDetailAbonnement.
+  | { issue: 'constat'; etat: 'abonne'; statutAbonnement: string; abonnementId: string }
   | { issue: 'constat'; etat: 'non_terminee'; urlPaiement: string }
   | { issue: 'constat'; etat: 'paiement_recu' | 'expiree' | 'souscription_impossible' }
   | { issue: 'refusee'; refus: RefusServeur }
@@ -321,6 +322,59 @@ export type AbonnementClient = {
 // reprendre_abonnement. Le serveur tranche ; un refus porte son code (`transition_interdite`…).
 export type TransitionAbonnement = 'resilier' | 'annuler_resiliation' | 'reprendre';
 export type ResultatTransition = { succes: true } | { succes: false; code: string };
+
+// Étape serveur de L4 (0060, detail_abonnement) : ce que 04c, l'écran 20 et 24b lisent d'UN
+// abonnement du client. Toutes les dates et tous les montants viennent du serveur (docs/api.md
+// §15) : la fin de la période de grâce, la date limite de régularisation, la prochaine tentative.
+// Les quatre derniers chiffres sont posés par le serveur depuis le prestataire, jamais par
+// l'application (docs/ecrans/L4-04c-confirmation-abonnement.md).
+export type MotifBanque =
+  | 'fonds_insuffisants'
+  | 'carte_expiree'
+  | 'opposition'
+  | 'plafond_atteint'
+  | 'authentification_echouee'
+  | 'inconnu';
+
+export type DetailAbonnement = {
+  id: string;
+  statut: StatutAbonnement;
+  moyen: 'carte' | 'sepa';
+  moyenDerniersChiffres: string | null;
+  prixFigeCentimes: number;
+  prochainPrelevementLe: string | null;
+  pauseJusquLe: string | null;
+  finAccesLe: string | null;
+  offreTitre: string;
+  offreEngagementHumain: string[];
+  coachPrenom: string;
+  coachNom: string;
+  coachCommuneBase: string | null;
+  derniereFactureMontantCentimes: number | null;
+  derniereFacturePayeeLe: string | null;
+  dernierEchecMotif: MotifBanque | null;
+  dernierEchecEcheanceLe: string | null;
+  // impaye : dernier jour de suivi avant la suspension (J+6).
+  graceJusquAu: string | null;
+  // suspendu : le jour où l'abonnement devient résilié (J+37).
+  regularisationAvantLe: string | null;
+  prochaineTentativeLe: string | null;
+};
+
+// docs/api.md §7, POST /abonnements/{id}/moyen-paiement : la page du prestataire où enregistrer
+// un nouveau moyen après un refus (écran 20). Mêmes trois issues que ResultatIntention.
+export type ResultatNouveauMoyen =
+  | { issue: 'creee'; urlPaiement: string }
+  | { issue: 'refusee'; refus: RefusServeur }
+  | { issue: 'sans_reponse' };
+
+// Le constat au retour de cette page : seul le serveur conclut (relecture chez le prestataire).
+export type ConstatNouveauMoyen =
+  | { issue: 'constat'; etat: 'enregistre'; prochaineTentativeLe: string | null }
+  | { issue: 'constat'; etat: 'non_terminee'; urlPaiement: string }
+  | { issue: 'constat'; etat: 'expiree' | 'aucune' }
+  | { issue: 'refusee'; refus: RefusServeur }
+  | { issue: 'sans_reponse' };
 
 // La pause (0059) : demandée en JOURS, la date de fin est calculée par le serveur à la date de
 // Paris — jamais par le téléphone (docs/domaine.md §4.3). Le refus `pause_deja_utilisee` porte le
@@ -363,10 +417,13 @@ export type MonAvis = {
 };
 
 // L'état du client connecté pour ce coach (27a, 27b). `aucun` : ni encart ni bouton.
+// `dureeSuiviMois` (0061) : « Suivi depuis {durée} » de 27a, calculée par le serveur comme sous
+// chaque avis ; présente dès qu'un abonnement fonde l'état.
 export type EtatMonAvis =
-  | { etat: 'aucun' | 'possible' | 'suivi_interrompu' }
+  | { etat: 'aucun' | 'suivi_interrompu' }
+  | { etat: 'possible'; dureeSuiviMois: number }
   | { etat: 'pas_encore'; joursRestants: number }
-  | { etat: 'modifiable' | 'fige'; avis: MonAvis };
+  | { etat: 'modifiable' | 'fige'; avis: MonAvis; dureeSuiviMois: number };
 
 export type SaisieAvis = { note: number; etiquettes: string[]; texte: string | null };
 
@@ -600,6 +657,14 @@ export type PortDonnees = {
     transition: TransitionAbonnement,
   ): Promise<ResultatTransition>;
   demanderPause(abonnementId: string, jours: number): Promise<ResultatPause>;
+
+  // Étape serveur de L4 : le détail d'UN abonnement (detail_abonnement, 0060), pour 04c, l'écran
+  // 20 et 24b. L'identifiant peut venir d'une adresse : le serveur décide s'il est au compte
+  // connecté. Une erreur de lecture lève.
+  lireDetailAbonnement(abonnementId: string): Promise<DetailAbonnement>;
+  // Écran 20 : la page où enregistrer un nouveau moyen de paiement, puis son constat au retour.
+  demanderNouveauMoyen(abonnementId: string): Promise<ResultatNouveauMoyen>;
+  constaterNouveauMoyen(abonnementId: string): Promise<ConstatNouveauMoyen>;
 
   // L4, avis (P4.9a). Lectures publiques (anon compris) : etiquettes_avis (table), avis_du_coach
   // et synthese_avis_du_coach (fonctions de base, 0049). Un coach non vérifié rend une liste vide.

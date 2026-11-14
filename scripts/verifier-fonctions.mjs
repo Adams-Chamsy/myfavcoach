@@ -19,6 +19,7 @@ const dossierFonctions = path.join(racine, 'supabase', 'functions');
 const FONCTIONS = [
   'abonnement-intention/index.ts',
   'abonnement-constat/index.ts',
+  'abonnement-moyen-paiement/index.ts',
   'webhook-paiement/index.ts',
   'anomalies-retraitement/index.ts',
   'echeances-quotidiennes/index.ts',
