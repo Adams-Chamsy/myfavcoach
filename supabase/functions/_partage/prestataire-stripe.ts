@@ -2,6 +2,7 @@
 // moyen enregistré au premier paiement (docs/backend.md, « Pas de Stripe Billing »). Seul fichier
 // qui traduit un paiement Stripe vers le vocabulaire de _partage/prelevement.ts.
 import { type PaiementPrestataire, type Prestataire } from './prelevement.ts';
+import { type Encaissement, type PrestataireRapprochement } from './rapprochement.ts';
 import { Stripe } from './stripe.ts';
 
 // Le code le plus précis d'abord : decline_code (« insufficient_funds ») avant code
@@ -50,6 +51,55 @@ export function prestataireStripe(stripe: Stripe): Prestataire {
             codeRefus: codeDeLErreur(erreur),
           };
         }
+        throw erreur;
+      }
+    },
+  };
+}
+
+// Le rapprochement quotidien (P4.11a, _partage/rapprochement.ts) : ce que Stripe a encaissé, sous
+// la référence que porte la facture chez nous.
+//   - une échéance (paiement hors session, métadonnée echeance_le) : le paiement lui-même, pi_… ;
+//   - une souscription : la session de paiement qui a créé ce paiement, cs_… ;
+//   - un paiement sans l'une ni l'autre (créé à la main dans le tableau de bord, par exemple) :
+//     le paiement lui-même — aucune facture ne le portera, et c'est ce qu'il faut signaler.
+function introuvable(erreur: unknown): boolean {
+  return erreur instanceof Stripe.errors.StripeInvalidRequestError && erreur.statusCode === 404;
+}
+
+export function rapprochementStripe(stripe: Stripe): PrestataireRapprochement {
+  return {
+    async listerEncaissements(depuis, jusqua) {
+      const encaissements: Encaissement[] = [];
+      const paiements = stripe.paymentIntents.list({
+        created: { gte: depuis, lt: jusqua },
+        limit: 100,
+      });
+      for await (const paiement of paiements) {
+        if (paiement.status !== 'succeeded') continue;
+        let reference = paiement.id;
+        if (!paiement.metadata?.echeance_le) {
+          const sessions = await stripe.checkout.sessions.list({
+            payment_intent: paiement.id,
+            limit: 1,
+          });
+          reference = sessions.data[0]?.id ?? paiement.id;
+        }
+        encaissements.push({ reference, montantCentimes: paiement.amount_received });
+      }
+      return encaissements;
+    },
+    async lireEncaissement(reference) {
+      try {
+        if (reference.startsWith('cs_')) {
+          const session = await stripe.checkout.sessions.retrieve(reference);
+          return session.payment_status === 'paid' ? session.amount_total : null;
+        }
+        const paiement = await stripe.paymentIntents.retrieve(reference);
+        return paiement.status === 'succeeded' ? paiement.amount_received : null;
+      } catch (erreur) {
+        // Une référence que Stripe ne connaît pas n'est pas une panne : c'est la réponse.
+        if (introuvable(erreur)) return null;
         throw erreur;
       }
     },

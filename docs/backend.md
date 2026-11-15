@@ -820,6 +820,40 @@ lue par `tentative_due` (0061) ; aucun paiement n'est engagé par la page. Le re
 `?intention=<id>`, ou `?moyen=<abonnementId>` pour l'enregistrement d'un nouveau moyen). `SUPABASE_URL`, `SUPABASE_ANON_KEY` et `SUPABASE_SERVICE_ROLE_KEY` sont
 injectés par Supabase. Une fonction à qui il manque un secret répond 500 sans rien faire.
 
+### Rapprochement quotidien (15 novembre 2026, P4.11a)
+
+Le mécanisme proposé au point 12 de `docs/prompts/L4.md` est retenu et construit. **Il vit dans
+la tâche quotidienne existante** (`echeances-quotidiennes`), après les prélèvements : ni nouvelle
+fonction, ni nouvelle clé, ni nouvelle tâche planifiée. Son échec ne défait rien de ce qui vient
+d'être prélevé ; il est dit au bilan de la tâche et à son journal.
+
+- **Deux recherches exactes par référence**, pas la comparaison de deux listes (un prélèvement
+  SEPA naît un jour et réussit trois jours plus tard : les bords de fenêtre fabriqueraient de faux
+  écarts). Chaque paiement réussi chez Stripe sur les trois jours pleins qui précèdent cherche sa
+  facture, quelle que soit sa date ; chaque facture payée sur ces trois jours cherche son paiement.
+- **La référence commune** est `factures.reference_prestataire` : la session de paiement
+  (`cs_…`) pour une souscription, le paiement lui-même (`pi_…`) pour une échéance.
+- **Trois classes d'écart**, écrites une seule fois chacune dans `ecarts_rapprochement` (0066) :
+  `encaisse_sans_facture`, `facture_sans_encaissement`, `montant_different`. **Il signale, il ne
+  corrige jamais** ; `traite_le` se pose à la main.
+- **Rattrapage à la main** : `select public.declencher_echeances('AAAA-MM-JJ', true)` ne fait que
+  le rapprochement des trois jours qui précèdent ce jour, et de ce jour lui-même, sans rejouer
+  ses prélèvements. La réponse se lit dans `net._http_response`.
+- **Sur le projet de développement**, les factures du banc (références `cs_banc_…`, `pi_banc_…`,
+  `banc-…`, que Stripe n'a pas pu émettre) ressortent chaque matin « facture sans encaissement »,
+  sans qu'aucun appel ne soit fait à Stripe pour elles. `select
+  public.purger_ecarts_rapprochement_banc()` les retire avant de lire la table ; ce bruit
+  disparaît avec le projet de test dédié (`docs/dette.md`).
+- **Deux plafonds, dits plutôt que subis** : la lecture des factures est paginée par mille (l'API
+  de la base tronque à mille lignes sans le dire, trouvé à la preuve) ; au plus cent lectures
+  unitaires chez Stripe par passage, les factures au-delà étant comptées (`nonVerifiees`) et
+  écrites au journal.
+- **Ce qu'il ne couvre pas** : remboursements et litiges (reportés, `docs/perimetre.md` §3). Un
+  remboursement fait à la main dans le tableau de bord Stripe ne change pas le statut du paiement :
+  il ne ressort pas ici.
+- **Personne n'est prévenu** : les écarts s'écrivent, aucune alerte ne part (même dette que les
+  anomalies de paiement, échéance L12).
+
 ### Dépendances accordées (28 septembre 2026)
 
 | Paquet | Où | Pourquoi | Frontière |

@@ -5,7 +5,7 @@
 // pas. Ce qui la protège : l'en-tête x-cle-tache, comparé à CLE_TACHE_PLANIFIEE avant toute
 // action — sans lui, n'importe qui pourrait déclencher des prélèvements.
 //
-// Corps facultatif : { "jour": "AAAA-MM-JJ" } — le jour traité, pour rattraper un matin manqué ou
+// Corps facultatif : { "jour": "AAAA-MM-JJ", "rapprochementSeul": true } — le jour traité, pour rattraper un matin manqué ou
 // pour l'essai de P4.8b. Par défaut : aujourd'hui, Europe/Paris.
 //
 // Le bilan ne porte que des identifiants et des issues : jamais un moyen de paiement, un client
@@ -14,7 +14,13 @@ import { ConfigurationIncomplete, lireSecret } from '../_partage/environnement.t
 import { reponseCode, reponseJson } from '../_partage/http.ts';
 import { executerJournee } from '../_partage/prelevement.ts';
 import { clientServeur } from '../_partage/postgres.ts';
-import { prestataireStripe } from '../_partage/prestataire-stripe.ts';
+import { prestataireStripe, rapprochementStripe } from '../_partage/prestataire-stripe.ts';
+import {
+  type BilanRapprochement,
+  type Ecart,
+  decalerJour,
+  executerRapprochement,
+} from '../_partage/rapprochement.ts';
 import { ErreurPassagere } from '../_partage/session-paiement.ts';
 import { clientStripe, descriptionErreurStripe } from '../_partage/stripe.ts';
 
@@ -36,6 +42,12 @@ function aujourdhuiParis(): string {
   return new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date());
 }
 
+function compterParClasse(ecarts: Ecart[]): Record<string, number> {
+  const compte: Record<string, number> = {};
+  for (const e of ecarts) compte[e.classe] = (compte[e.classe] ?? 0) + 1;
+  return compte;
+}
+
 async function traiter(requete: Request): Promise<Response> {
   if (requete.method !== 'POST') return reponseCode(405, 'methode_interdite');
   const cle = requete.headers.get('x-cle-tache') ?? '';
@@ -43,10 +55,13 @@ async function traiter(requete: Request): Promise<Response> {
     return reponseCode(401, 'non_autorise');
   }
   let jour = aujourdhuiParis();
+  let rapprochementSeul = false;
   const texte = await requete.text();
   if (texte.trim() !== '') {
     try {
-      const demande = (JSON.parse(texte) as { jour?: unknown }).jour;
+      const corps = JSON.parse(texte) as { jour?: unknown; rapprochementSeul?: unknown };
+      rapprochementSeul = corps.rapprochementSeul === true;
+      const demande = corps.jour;
       if (demande !== undefined) {
         if (typeof demande !== 'string' || !FORMAT_JOUR.test(demande)) {
           return reponseCode(400, 'jour_invalide');
@@ -57,8 +72,50 @@ async function traiter(requete: Request): Promise<Response> {
       return reponseCode(400, 'corps_invalide');
     }
   }
-  const bilan = await executerJournee(clientServeur(), prestataireStripe(clientStripe()), jour);
-  return reponseJson(200, bilan);
+  const serveur = clientServeur();
+  const stripe = clientStripe();
+  // Les prélèvements d'abord ; « rapprochementSeul » (rattrapage à la main, preuve de la porte de
+  // sortie de L4) ne rejoue pas ceux du jour.
+  const bilan = rapprochementSeul
+    ? { jour }
+    : await executerJournee(serveur, prestataireStripe(stripe), jour);
+
+  // Puis le rapprochement (P4.11a) : les trois jours pleins qui précèdent — la nuit laisse au
+  // webhook le temps d'arriver —, et le jour lui-même quand on ne fait que rapprocher. Son échec
+  // ne défait rien de ce qui vient d'être prélevé : il est dit au bilan et au journal.
+  let rapprochement: BilanRapprochement | { erreur: string };
+  try {
+    rapprochement = await executerRapprochement(
+      serveur,
+      rapprochementStripe(stripe),
+      decalerJour(jour, -3),
+      rapprochementSeul ? jour : decalerJour(jour, -1),
+    );
+    if (rapprochement.nouveaux > 0 || rapprochement.nonVerifiees > 0) {
+      console.error(
+        `echeances-quotidiennes : rapprochement, ${rapprochement.nouveaux} écart(s) nouveau(x), ` +
+          `${rapprochement.nonVerifiees} facture(s) non vérifiée(s)`,
+      );
+    }
+  } catch (erreur) {
+    const code =
+      erreur instanceof ErreurPassagere
+        ? erreur.message
+        : (descriptionErreurStripe(erreur) ?? 'rapprochement_impossible');
+    console.error(`echeances-quotidiennes : rapprochement en échec, ${code}`);
+    rapprochement = { erreur: code };
+  }
+  // La réponse porte le compte par classe et les cinquante premiers écarts : la liste entière est
+  // dans la table (ecarts_rapprochement), et la réponse d'une tâche planifiée reste petite.
+  const resume =
+    'erreur' in rapprochement
+      ? rapprochement
+      : {
+          ...rapprochement,
+          parClasse: compterParClasse(rapprochement.ecarts),
+          ecarts: rapprochement.ecarts.slice(0, 50),
+        };
+  return reponseJson(200, { ...bilan, rapprochement: resume });
 }
 
 Deno.serve(async (requete) => {

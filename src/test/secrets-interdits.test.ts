@@ -293,6 +293,9 @@ describe('secrets interdits côté application', () => {
       // 0065 : revoke EXECUTE de terme_interdit_dans et de publier_offre à service_role
       // (convention de 0031).
       'supabase/migrations/0065_controler_publication_offre.sql',
+      // 0066 : grants et revokes de service_role sur la table et les fonctions du rapprochement
+      // (convention de 0031).
+      'supabase/migrations/0066_creer_rapprochement.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

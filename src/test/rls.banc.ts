@@ -5536,6 +5536,148 @@ describe('abonnements — L4 (0033)', () => {
 // d'administration, sans connexion. Règle 13 (docs/prompts/L4.md) : ce bloc ne suppose rien de
 // l'état que d'autres blocs ont donné à A et B -- il crée leur profil client s'il manque et les
 // bascule lui-même en espace client.
+// Rapprochement quotidien (0066, P4.11a ; docs/prompts/L4.md, point 12). La comparaison avec le
+// prestataire est dans la fonction serveur (supabase/functions/_partage/rapprochement.ts, tests
+// Deno) ; ici, ce que la base lui offre : le serveur seul lit les factures à rapprocher et écrit
+// les écarts, une fois chacun. Placé après « abonnements — L4 », qui a émis des factures du banc.
+describe('rapprochement — L4 (0066)', () => {
+  const rpc = (
+    fonction: string,
+    corps: Record<string, unknown>,
+    session: Session | 'admin' | 'anon',
+  ) => appelRest(`/rest/v1/rpc/${fonction}`, { methode: 'POST', session, corps });
+  const aujourdhui = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(
+    new Date(),
+  );
+  const reference = `banc-${SUFFIXE_COMPTE}-ecart-${Date.now()}`;
+  const ecart = {
+    p_classe: 'facture_sans_encaissement',
+    p_reference: reference,
+    p_montant_prestataire: null,
+    p_montant_facture: 4900,
+  };
+
+  afterAll(async () => {
+    await rpc('purger_ecarts_rapprochement_banc', {}, 'admin');
+  });
+
+  it('le serveur lit les factures payées un jour donné, puis les retrouve par leur référence', async () => {
+    const duJour = await rpc(
+      'factures_payees_entre',
+      { p_du: aujourdhui, p_au: aujourdhui },
+      'admin',
+    );
+    expect(duJour.statut).toBe(200);
+    const lignes = duJour.corps as {
+      reference_prestataire: string;
+      montant_ttc_centimes: number;
+    }[];
+    const duBanc = lignes.filter((l) => l.reference_prestataire.includes(String(SUFFIXE_COMPTE)));
+    expect(duBanc.length).toBeGreaterThan(0);
+    expect(duBanc[0].montant_ttc_centimes).toBeGreaterThan(0);
+
+    const parReference = await rpc(
+      'factures_par_reference',
+      { p_references: [duBanc[0].reference_prestataire, 'pi_jamais_facturee'] },
+      'admin',
+    );
+    expect(parReference.corps).toEqual([duBanc[0]]);
+
+    const hier = await rpc(
+      'factures_payees_entre',
+      { p_du: '2000-01-01', p_au: '2000-01-02' },
+      'admin',
+    );
+    expect(hier.corps).toEqual([]);
+  });
+
+  it('le serveur écrit un écart une seule fois : vrai la première fois, faux ensuite, une ligne', async () => {
+    const premier = await rpc('enregistrer_ecart_rapprochement', ecart, 'admin');
+    expect(premier.statut).toBe(200);
+    expect(premier.corps).toBe(true);
+    const second = await rpc('enregistrer_ecart_rapprochement', ecart, 'admin');
+    expect(second.corps).toBe(false);
+
+    const lus = await appelRest(
+      `/rest/v1/ecarts_rapprochement?reference_prestataire=eq.${reference}&select=classe,montant_facture_centimes,montant_prestataire_centimes,traite_le`,
+      { session: 'admin' },
+    );
+    expect(lus.corps).toEqual([
+      {
+        classe: 'facture_sans_encaissement',
+        montant_facture_centimes: 4900,
+        montant_prestataire_centimes: null,
+        traite_le: null,
+      },
+    ]);
+  });
+
+  it('une classe hors de la liste, ou une référence vide : refusées', async () => {
+    const classe = await rpc(
+      'enregistrer_ecart_rapprochement',
+      { ...ecart, p_classe: 'autre_chose' },
+      'admin',
+    );
+    expect(classe.statut).toBeGreaterThanOrEqual(400);
+    const vide = await rpc(
+      'enregistrer_ecart_rapprochement',
+      { ...ecart, p_reference: '' },
+      'admin',
+    );
+    expect(messageDe(vide.corps)).toBe('reference_requise');
+  });
+
+  it.each([
+    'factures_payees_entre',
+    'factures_par_reference',
+    'enregistrer_ecart_rapprochement',
+    'purger_ecarts_rapprochement_banc',
+  ])('%s : ni un client connecté ni anon ne l’exécutent', async (fonction) => {
+    const corps =
+      fonction === 'factures_payees_entre'
+        ? { p_du: aujourdhui, p_au: aujourdhui }
+        : fonction === 'factures_par_reference'
+          ? { p_references: [reference] }
+          : fonction === 'enregistrer_ecart_rapprochement'
+            ? ecart
+            : {};
+    for (const session of [A, 'anon'] as const) {
+      const { statut, corps: reponse } = await rpc(fonction, corps, session);
+      expect(statut).toBeGreaterThanOrEqual(400);
+      expect(JSON.stringify(reponse)).toMatch(/permission denied/i);
+    }
+  });
+
+  it('la table des écarts : illisible et inscriptible par personne depuis l’application, pas même par le serveur en écriture directe', async () => {
+    for (const session of [A, 'anon'] as const) {
+      const lecture = await appelRest('/rest/v1/ecarts_rapprochement?select=id', { session });
+      expect(lecture.statut).toBeGreaterThanOrEqual(400);
+    }
+    const ecriture = await appelRest('/rest/v1/ecarts_rapprochement', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { classe: 'montant_different', reference_prestataire: `${reference}-direct` },
+    });
+    expect(ecriture.statut).toBeGreaterThanOrEqual(400);
+  });
+
+  // La purge retire les écarts écrits sous une référence du banc. Qu'elle épargne une vraie
+  // référence n'est PAS prouvé ici : le banc ne pourrait plus retirer la ligne témoin (personne
+  // n'a le droit de supprimer dans cette table). Prouvé une fois à la main sur le dev, par SQL
+  // (docs/decisions-en-attente.md, 15 novembre 2026).
+  it('la purge du banc retire les écarts écrits sous une référence du banc', async () => {
+    await rpc('enregistrer_ecart_rapprochement', ecart, 'admin');
+    const purge = await rpc('purger_ecarts_rapprochement_banc', {}, 'admin');
+    expect(purge.statut).toBe(200);
+    expect(purge.corps as number).toBeGreaterThanOrEqual(1);
+    const restants = await appelRest(
+      `/rest/v1/ecarts_rapprochement?reference_prestataire=eq.${reference}&select=id`,
+      { session: 'admin' },
+    );
+    expect(restants.corps).toEqual([]);
+  });
+});
+
 describe('intentions et synchronisation — L4 (0037, 0038)', () => {
   let coachCompteId: string;
   let coachEcarteCompteId: string;
