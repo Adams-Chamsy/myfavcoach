@@ -28,6 +28,12 @@ export type ProprietesChamp = {
   placeholder?: string;
   desactive?: boolean;
   type?: TypeChamp;
+  // Saisie sur plusieurs lignes (docs/ecrans/L4-27a-depot-avis.md, « Raconte, si tu veux ») :
+  // le champ grandit avec le texte, à partir de deux hauteurs de contrôle.
+  multiligne?: boolean;
+  // Longueur maximale, posée sur le champ lui-même : la frappe s'arrête, rien n'est tronqué
+  // après coup. Le serveur garde la règle (docs/domaine.md §3.11 pour l'avis).
+  longueurMax?: number;
 };
 
 // Ref transmise (React.forwardRef) : docs/ecrans/L1-04-connexion.md, États, "Échec
@@ -48,6 +54,8 @@ export const Champ = forwardRef<TextInputInstance, ProprietesChamp>(function Cha
     placeholder,
     desactive = false,
     type = 'texte',
+    multiligne = false,
+    longueurMax,
   },
   ref,
 ) {
@@ -129,8 +137,11 @@ export const Champ = forwardRef<TextInputInstance, ProprietesChamp>(function Cha
           }
           autoCorrect={type === 'email' ? false : true}
           secureTextEntry={estMotDePasse && !motDePasseVisible}
+          multiline={multiligne}
+          maxLength={longueurMax}
           style={{
-            minHeight: theme.taille.controle,
+            minHeight: multiligne ? theme.taille.controle * 2 : theme.taille.controle,
+            textAlignVertical: multiligne ? 'top' : 'center',
             paddingVertical: theme.espace[3],
             borderRadius: theme.rayon.saisie,
             borderWidth: theme.taille.focusContour,

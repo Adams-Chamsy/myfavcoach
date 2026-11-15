@@ -186,7 +186,15 @@ export function CorpsProfilCoachPublic({ id }: { id: string | undefined }) {
               onChangement={setOnglet}
             />
             {onglet === 'offres' ? <OngletOffres offres={offres} /> : null}
-            {onglet === 'avis' ? <OngletAvis coachId={profil.id} prenom={profil.prenom} /> : null}
+            {onglet === 'avis' ? (
+              <OngletAvis
+                coachId={profil.id}
+                prenom={profil.prenom}
+                onDonnerAvis={() =>
+                  router.push(`/(client)/avis/${encodeURIComponent(profil.id)}` as Href)
+                }
+              />
+            ) : null}
             {onglet === 'parcours' ? <OngletParcours profil={profil} /> : null}
           </View>
           {large ? (

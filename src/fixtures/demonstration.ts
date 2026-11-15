@@ -287,6 +287,17 @@ export const avisDemonstration: AvisDemonstration[] = [
   },
 ];
 
+// L4-27a — l'avis en cours de saisie de la maquette 27a (maquettes/MyFavCoach-Avis_dc.html,
+// « 27a Deposer un avis ») : cinq étoiles, « Écoute » et « Exigence » cochées, le texte tel
+// quel, « depuis 4 mois ». Sert à la galerie et au corpus d'accessibilité (27a, modification).
+export const saisieAvisDemonstration = {
+  dureeSuiviMois: 4,
+  note: 5,
+  etiquettes: ['ecoute', 'exigence'],
+  texte:
+    'Il adapte vraiment le programme quand je lui dis que quelque chose coince. Le genou dont je lui parlais a été pris au sérieux dès la semaine suivante.',
+} as const;
+
 // docs/domaine.md §3.8. "quandAffiche" reprend tel quel le libellé relatif de la maquette
 // ("hier", "lundi"...) : aucune des deux maquettes lues ne fixe de date de référence absolue
 // pour "aujourd'hui", donc aucune ne permet de calculer un envoyeLe ISO 8601 réel sans

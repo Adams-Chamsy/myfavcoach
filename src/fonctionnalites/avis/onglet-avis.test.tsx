@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
@@ -8,6 +8,7 @@ import { creerFauxPortDonnees } from '@/services/donnees/faux';
 import type { AvisDuCoach, AvisPublic, EtatMonAvis } from '@/services/donnees/port';
 import { libellesInterditsTrouves, type NoeudHote } from '@/test/libelles-interdits';
 import { FournisseurTheme } from '@/theme/fournisseur';
+import { signalerAvisEnregistre } from './avis-enregistre';
 import { OngletAvis } from './onglet-avis';
 
 // docs/ecrans/L2-13-avis.md (onglet Avis) et docs/ecrans/L4-27a-depot-avis.md (27b, état de
@@ -66,17 +67,19 @@ async function rendre(
   portDonnees.definirAvisDuCoachPourTest({ 'coach-yannick': avis });
   portDonnees.definirMonAvisPourTest({ 'coach-yannick': monAvis });
   saboter?.(portDonnees);
+  const onDonnerAvis = jest.fn();
   await render(
     <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
       <FournisseurTheme>
         <FournisseurSession port={portAuth}>
           <FournisseurDonnees port={portDonnees}>
-            <OngletAvis coachId="coach-yannick" prenom="Yannick" />
+            <OngletAvis coachId="coach-yannick" prenom="Yannick" onDonnerAvis={onDonnerAvis} />
           </FournisseurDonnees>
         </FournisseurSession>
       </FournisseurTheme>
     </SafeAreaProvider>,
   );
+  return { portDonnees, onDonnerAvis };
 }
 
 describe('L2-13 · Onglet Avis, et 27b', () => {
@@ -162,6 +165,64 @@ describe('L2-13 · Onglet Avis, et 27b', () => {
     expect(screen.queryByText(/^Encore/)).toBeNull();
     const bouton = screen.getByRole('button', { name: /^Donner mon avis/ });
     expect(bouton.props.accessibilityState?.disabled).toBe(true);
+  });
+
+  // Fiche 27a, États : « Onglet Avis, abonné éligible : bouton "Donner mon avis" actif, sans
+  // encart » — il ouvre 27a.
+  it('client éligible : « Donner mon avis » actif, sans encart, ouvre 27a', async () => {
+    const { onDonnerAvis } = await rendre(avisDuCoach([MARC]), {
+      etat: 'possible',
+      dureeSuiviMois: 2,
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Donner mon avis' })).toBeTruthy(),
+    );
+    expect(screen.queryByText(/^Encore/)).toBeNull();
+    expect(screen.queryByText('Ce que disent les autres')).toBeNull();
+    const bouton = screen.getByRole('button', { name: 'Donner mon avis' });
+    expect(bouton.props.accessibilityState?.disabled).toBeFalsy();
+    await fireEvent.press(bouton);
+    expect(onDonnerAvis).toHaveBeenCalledTimes(1);
+  });
+
+  // Fiche 27a, Règles : « Un client qui a déjà déposé arrive en modification (≤ 14 jours) ou ne
+  // voit plus le bouton (au-delà). »
+  it('avis déposé il y a moins de 14 jours : « Modifier mon avis » ; figé : plus de bouton', async () => {
+    const avis = { note: 4, etiquettes: [], texte: null, statut: 'publie' as const };
+    const { onDonnerAvis } = await rendre(avisDuCoach([MARC]), {
+      etat: 'modifiable',
+      dureeSuiviMois: 2,
+      avis,
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Modifier mon avis' })).toBeTruthy(),
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Modifier mon avis' }));
+    expect(onDonnerAvis).toHaveBeenCalledTimes(1);
+    screen.unmount();
+
+    await rendre(avisDuCoach([MARC]), { etat: 'fige', dureeSuiviMois: 2, avis });
+    await waitFor(() => expect(screen.queryByText('Marc T.')).toBeTruthy());
+    expect(screen.queryByText(/mon avis/)).toBeNull();
+  });
+
+  // Fiche 27a, États : « 27a, succès : retour à l'onglet Avis, avis visible ». L'onglet reste
+  // monté derrière 27a : il relit quand 27a signale l'enregistrement, pour CE coach seulement.
+  it('un avis enregistré pour ce coach fait relire l’onglet ; pour un autre coach, non', async () => {
+    const { portDonnees } = await rendre(avisDuCoach([MARC]), {
+      etat: 'possible',
+      dureeSuiviMois: 2,
+    });
+    await waitFor(() => expect(screen.queryByText('Marc T.')).toBeTruthy());
+    const lectures = jest.spyOn(portDonnees, 'lireAvisDuCoach');
+
+    await act(async () => signalerAvisEnregistre('un-autre-coach'));
+    expect(lectures).not.toHaveBeenCalled();
+
+    portDonnees.definirAvisDuCoachPourTest({ 'coach-yannick': avisDuCoach([MARC, SOPHIE]) });
+    await act(async () => signalerAvisEnregistre('coach-yannick'));
+    await waitFor(() => expect(screen.queryByText('Sophie L.')).toBeTruthy());
+    expect(lectures).toHaveBeenCalledWith('coach-yannick');
   });
 
   // Lecteur sans abonnement chez ce coach (et anon) : ni encart ni bouton, seulement la liste.

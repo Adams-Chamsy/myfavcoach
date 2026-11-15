@@ -29,3 +29,8 @@ réseau. Comptes : `comptes-scenarios.local.md`.
       sur un compte au choix juste avant la séance.
 - [ ] **Écran 20, zones sûres.** L'en-tête sous l'encoche, le bouton « Changer de moyen de
       paiement » au-dessus de la barre gestuelle.
+- [ ] **27a, clavier.** Le champ « Raconte, si tu veux » sur plusieurs lignes : le clavier ne
+      cache ni le champ ni « Publier mon avis » ; les cinq étoiles se touchent sans viser ; à
+      200 %, les huit étiquettes passent à la ligne sans être tronquées. Il faut un client
+      dont le suivi a 30 jours : Claude en prépare un juste avant la séance (même préparation
+      que la clôture de 27a, `docs/decisions-en-attente.md`).

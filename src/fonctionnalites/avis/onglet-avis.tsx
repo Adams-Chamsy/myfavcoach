@@ -12,15 +12,18 @@ import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import type { AvisDuCoach, AvisPublic, EtatMonAvis, EtiquetteAvis } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
+import { ecouterAvisEnregistre } from './avis-enregistre';
 
 // docs/ecrans/L2-13-avis.md (l'onglet Avis du profil coach, maquette 27) et l'état 27b de
 // docs/ecrans/L4-27a-depot-avis.md (maquette 27b). Tout vient du serveur (P4.9a) : la durée de
 // suivi (jamais une date), la moyenne (rendue à partir de 5 avis seulement), l'éligibilité et le
 // nombre de jours restants. Les avis `signale` et `masque` ne sortent jamais de avis_du_coach.
 //
-// 27a (le dépôt) n'est pas encore construit : il attend la durée de suivi du client, que l'étape
-// serveur à venir rendra (docs/decisions-en-attente.md). D'ici là, « Donner mon avis » n'existe
-// que dans son état INACTIF (27b) — jamais actif vers un écran absent.
+// « Donner mon avis » (fiche 27a) : inactif avec sa raison pour un abonné pas encore éligible
+// (27b), actif pour un client éligible, « Modifier mon avis » pendant les 14 jours où l'avis se
+// modifie ; absent pour tout autre lecteur et pour un avis figé. Le bouton mène à 27a
+// (onDonnerAvis, fourni par l'écran du profil) ; quand 27a enregistre, l'onglet relit
+// (avis-enregistre.ts).
 
 type Lecture = { avis: AvisDuCoach; etiquettes: EtiquetteAvis[]; monAvis: EtatMonAvis };
 
@@ -28,7 +31,14 @@ function auteur(a: AvisPublic): string {
   return a.initialeNom ? `${a.prenom} ${a.initialeNom}.` : a.prenom;
 }
 
-export function OngletAvis({ coachId }: { coachId: string; prenom: string }) {
+export type ProprietesOngletAvis = {
+  coachId: string;
+  prenom: string;
+  // Ouvre 27a pour ce coach. Absent (galerie) : le bouton s'affiche, sans effet.
+  onDonnerAvis?: () => void;
+};
+
+export function OngletAvis({ coachId, onDonnerAvis }: ProprietesOngletAvis) {
   const theme = useTheme();
   const { port } = useDonnees();
   const { session } = useSession();
@@ -57,6 +67,16 @@ export function OngletAvis({ coachId }: { coachId: string; prenom: string }) {
       monte = false;
     };
   }, [coachId, connecte, port, cleTentative]);
+
+  // Un avis vient d'être déposé ou modifié pour ce coach (27a) : la liste et l'état du lecteur
+  // se relisent, l'écran n'ayant pas été remonté par le retour.
+  useEffect(
+    () =>
+      ecouterAvisEnregistre((enregistrePour) => {
+        if (enregistrePour === coachId) setCleTentative((c) => c + 1);
+      }),
+    [coachId],
+  );
 
   if (erreur) {
     return (
@@ -181,6 +201,14 @@ export function OngletAvis({ coachId }: { coachId: string; prenom: string }) {
           ))}
         </>
       )}
+
+      {monAvis.etat === 'possible' || monAvis.etat === 'modifiable' ? (
+        <Bouton
+          libelle={monAvis.etat === 'modifiable' ? 'Modifier mon avis' : 'Donner mon avis'}
+          variante="primaire"
+          onPress={() => onDonnerAvis?.()}
+        />
+      ) : null}
 
       {encart ? (
         <Bouton

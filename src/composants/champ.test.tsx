@@ -97,6 +97,22 @@ describe('Champ', () => {
     });
   });
 
+  // docs/ecrans/L4-27a-depot-avis.md : texte facultatif sur plusieurs lignes, 600 caractères au
+  // plus — la limite est posée sur le champ, la frappe s'arrête d'elle-même.
+  it('multiligne et longueurMax : saisie sur plusieurs lignes, limite posée sur le champ', async () => {
+    await rendreChamp({ multiligne: true, longueurMax: 600 });
+    const champ = screen.getByLabelText('Objectif');
+    expect(champ.props.multiline).toBe(true);
+    expect(champ.props.maxLength).toBe(600);
+  });
+
+  it('par défaut : une seule ligne, aucune limite de longueur', async () => {
+    await rendreChamp();
+    const champ = screen.getByLabelText('Objectif');
+    expect(champ.props.multiline).toBe(false);
+    expect(champ.props.maxLength).toBeUndefined();
+  });
+
   it('type texte (défaut) : aucun bouton œil, aucun clavier spécial', async () => {
     await rendreChamp();
 

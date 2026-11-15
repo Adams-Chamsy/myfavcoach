@@ -32,6 +32,7 @@ import {
   detailAbonnementDemonstration,
   detailAbonnementImpayeDemonstration,
   detailAbonnementSuspenduDemonstration,
+  saisieAvisDemonstration,
 } from '@/fixtures/demonstration';
 import { EcranCompte } from '@/fonctionnalites/compte/ecran-compte';
 import { FeuilleBascule } from '@/fonctionnalites/identite/feuille-bascule';
@@ -73,6 +74,7 @@ import { BlocMesAbonnements } from '@/fonctionnalites/abonnement/bloc-mes-abonne
 import { EcranConfirmation } from '@/fonctionnalites/abonnement/ecran-confirmation';
 import { EcranPaiementRefuse } from '@/fonctionnalites/abonnement/ecran-paiement-refuse';
 import { EcranPaiement } from '@/fonctionnalites/abonnement/ecran-paiement';
+import { EcranDepotAvis } from '@/fonctionnalites/avis/ecran-depot-avis';
 import { OngletAvis } from '@/fonctionnalites/avis/onglet-avis';
 import Accueil from './(client)/(tabs)/accueil';
 import { CorpsExplorer } from './(client)/(tabs)/explorer';
@@ -2058,6 +2060,49 @@ function OngletAvisAvecFixture({
   );
 }
 
+// L4-27a : le dépôt (rien de saisi) et la modification (l'avis de la maquette 27a, pré-rempli).
+function DepotAvisAvecFixture({ modification }: { modification: boolean }) {
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    p.definirProfilsCoachPublicsPourTest({
+      'coach-yannick': {
+        id: 'coach-yannick',
+        prenom: 'Yannick',
+        nom: 'Berthaud',
+        photoUrl: null,
+        discipline: 'préparation physique',
+        titreCourt: null,
+        bio: null,
+        verifiee: true,
+        verifieeDepuisLe: null,
+        parcoursTexte: null,
+        langues: [],
+      },
+    });
+    const { dureeSuiviMois, note, etiquettes, texte } = saisieAvisDemonstration;
+    p.definirMonAvisPourTest({
+      'coach-yannick': modification
+        ? {
+            etat: 'modifiable',
+            dureeSuiviMois,
+            avis: { note, etiquettes: [...etiquettes], texte, statut: 'publie' },
+          }
+        : { etat: 'possible', dureeSuiviMois },
+    });
+    return p;
+  });
+  return (
+    <FournisseurDonnees port={port}>
+      <EcranDepotAvis
+        coachId="coach-yannick"
+        onRetour={() => {}}
+        onEnregistre={() => {}}
+        onRienADeposer={() => {}}
+      />
+    </FournisseurDonnees>
+  );
+}
+
 const ECRANS_L4: { titre: string; rendu: () => ReactNode }[] = [
   { titre: 'L4-04a · Choix de l’offre', rendu: () => <ChoixOffreAvecFixture avecOffre /> },
   {
@@ -2081,6 +2126,8 @@ const ECRANS_L4: { titre: string; rendu: () => ReactNode }[] = [
   { titre: 'L4-24b · Mes abonnements, chaque état', rendu: () => <MesAbonnementsAvecFixture /> },
   { titre: 'L2-13 · Onglet Avis, 1 avis', rendu: () => <OngletAvisAvecFixture nombre={1} /> },
   { titre: 'L2-13 · Onglet Avis, 5 avis', rendu: () => <OngletAvisAvecFixture nombre={5} /> },
+  { titre: 'L4-27a · Déposer un avis', rendu: () => <DepotAvisAvecFixture modification={false} /> },
+  { titre: 'L4-27a · Modifier un avis', rendu: () => <DepotAvisAvecFixture modification /> },
   {
     titre: 'L4-27b · Avis pas encore possible',
     rendu: () => (

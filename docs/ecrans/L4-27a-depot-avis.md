@@ -1,7 +1,6 @@
 # L4-27a · Déposer ou modifier un avis (27a) — et 27b, avis pas encore possible
 
-**Lot** L4 · **Rôle** client · **Route** `app/(client)/avis/[coachId].tsx` pour 27a (nom
-inventé) ; 27b n'est pas une route, c'est un état de l'onglet Avis du profil coach
+**Lot** L4 · **Rôle** client · **Route** `app/(client)/avis/[coachId].tsx` pour 27a ; 27b n'est pas une route, c'est un état de l'onglet Avis du profil coach
 (`docs/ecrans/L2-13-avis.md`).
 **Référence visuelle** `maquettes/MyFavCoach-Avis_dc.html` : bloc « 27a · Déposer un avis »
 (`data-screen-label="27a Deposer un avis"`) et bloc « 27b · Pas encore d'avis possible »
@@ -46,7 +45,9 @@ Dans l'onglet Avis du profil coach (`L2-13`), pour un client **abonné à ce coa
 - Le bouton **« Donner mon avis »** reste visible mais **inactif**, avec l'état d'accessibilité
   `disabled` et un libellé qui dit pourquoi (« Donner mon avis, possible dans {n} jours »).
 
-Pour un client éligible, le même bouton est actif et ouvre 27a. Pour tout autre lecteur
+Pour un client éligible, le même bouton est actif et ouvre 27a. Pour un client dont l'avis se
+modifie encore (≤ 14 jours), le bouton s'appelle **« Modifier mon avis »** et ouvre 27a en
+modification ; une fois l'avis figé, plus de bouton (construit le 15 novembre 2026). Pour tout autre lecteur
 (`anon`, client sans abonnement chez ce coach, suivi terminé depuis plus de 60 jours) : ni
 encart ni bouton, **seulement la liste**. Pour un client en `en_pause`, `impaye`, `suspendu` ou
 `en_attente_confirmation` qui a déjà 30 jours de suivi : même encart que 27b, sans compte à
@@ -101,7 +102,9 @@ rebours — « Tu pourras donner ton avis quand ton suivi aura repris. »
 | 27a, modification (≤ 14 j) | Champs pré-remplis depuis l'avis existant, relu du serveur |
 | 27a, envoi en cours | Bouton en chargement, non pressable deux fois |
 | 27a, refus serveur (non éligible, délai dépassé, déjà déposé) | Message rendu tel quel, aucun champ perdu |
-| 27a, succès | Retour à l'onglet Avis, avis visible |
+| 27a, succès | Retour à l'onglet Avis, avis visible — l'onglet, resté monté derrière 27a, relit quand 27a signale l'enregistrement (`src/fonctionnalites/avis/avis-enregistre.ts`) |
+| 27a, envoi sans réponse | « Pas de connexion. Réessaie. » (même phrase que 04b), aucun champ perdu |
+| 27a ouvert par un lecteur qui ne peut ni déposer ni modifier | Retour au profil du coach, aucune saisie proposée (l'état vient du serveur) |
 | 27b, abonné pas encore éligible | Encart « Encore {n} jours », bouton inactif |
 | Onglet Avis, abonné éligible | Bouton « Donner mon avis » actif, sans encart |
 
@@ -116,6 +119,9 @@ rebours — « Tu pourras donner ton avis quand ton suivi aura repris. »
   encart ni bouton — seulement la liste d'avis.
 - Le refus explicite d'une quatrième étiquette.
 - Nom de route de 27a.
+- « Modifier mon avis », le message de la quatrième étiquette (« Trois étiquettes au plus.
+  Retires-en une pour en choisir une autre. ») et les trois derniers états du tableau
+  (15 novembre 2026, `docs/decisions-en-attente.md`).
 
 ---
 

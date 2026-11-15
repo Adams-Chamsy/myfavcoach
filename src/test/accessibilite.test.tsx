@@ -44,11 +44,13 @@ import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donne
 import { EcranChoixOffre } from '@/fonctionnalites/abonnement/ecran-choix-offre';
 import { EcranConfirmation } from '@/fonctionnalites/abonnement/ecran-confirmation';
 import { EcranPaiementRefuse } from '@/fonctionnalites/abonnement/ecran-paiement-refuse';
+import { EcranDepotAvis } from '@/fonctionnalites/avis/ecran-depot-avis';
 import { EcranPaiement } from '@/fonctionnalites/abonnement/ecran-paiement';
 import {
   recapitulatifPaiementDemonstration,
   detailAbonnementDemonstration,
   detailAbonnementImpayeDemonstration,
+  saisieAvisDemonstration,
 } from '@/fixtures/demonstration';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
@@ -539,6 +541,35 @@ const CORPUS: EntreeCorpus[] = [
             <EcranConfirmation
               abonnementId={detailAbonnementDemonstration.id}
               onVoirProfil={() => {}}
+            />
+          </FournisseurDonnees>
+        </FournisseurSession>
+      );
+    },
+  },
+  {
+    // P4.9b, 27a : rendu par son composant (la route lit useLocalSearchParams), en modification
+    // pour que les étoiles, les jetons cochés et le texte soient mesurés. Données :
+    // src/fixtures/demonstration.ts (saisieAvisDemonstration).
+    nom: 'app/(client)/avis/[coachId].tsx',
+    creerElement: () => {
+      const p = portDonneesChoixOffre();
+      const { dureeSuiviMois, note, etiquettes, texte } = saisieAvisDemonstration;
+      p.definirMonAvisPourTest({
+        'coach-yannick': {
+          etat: 'modifiable',
+          dureeSuiviMois,
+          avis: { note, etiquettes: [...etiquettes], texte, statut: 'publie' },
+        },
+      });
+      return (
+        <FournisseurSession key="depot-avis" port={portAuthOnboarding}>
+          <FournisseurDonnees port={p}>
+            <EcranDepotAvis
+              coachId="coach-yannick"
+              onRetour={() => {}}
+              onEnregistre={() => {}}
+              onRienADeposer={() => {}}
             />
           </FournisseurDonnees>
         </FournisseurSession>
