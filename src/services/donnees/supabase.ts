@@ -795,13 +795,16 @@ export const portDonneesSupabase: PortDonnees = {
     return { succes: true };
   },
 
-  // Textes exacts (docs/ecrans/L2-15-creation-offre-coach.md, Règles) : l'écran les choisit à
-  // partir du code, jamais un message brut du serveur.
+  // L'identifiant est dans le chemin ; le serveur décide si l'offre est celle du coach connecté
+  // (publier_offre, 0008 et 0065) et rend son refus avec son texte (docs/api.md §1).
   async publierOffre(id) {
-    const { error } = await supabase.rpc('publier_offre', { offre_id: id });
-    if (!error) return { succes: true };
-    const code = (error.message.match(/engagement_humain_requis|coach_non_verifie/) ?? [])[0];
-    return { succes: false, code: code ?? 'inconnu' };
+    const { error } = (await supabase.functions.invoke(
+      `offre-publication/${encodeURIComponent(id)}`,
+      { method: 'POST' },
+    )) as AppelFonction;
+    if (!error) return { issue: 'publiee' };
+    const refus = await refusDe(error);
+    return refus ? { issue: 'refusee', refus } : { issue: 'sans_reponse' };
   },
 
   async retirerOffre(id) {

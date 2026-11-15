@@ -76,7 +76,7 @@ L'application n'écrit elle-même que ce que le serveur ne peut pas dire : l'abs
 (aucune réponse n'est arrivée). Les textes suivent le registre du tableau des messages de
 `docs/ecrans/L1-02-creation-compte.md` : tutoiement, pas de jargon, jamais un code technique à
 l'écran. Hors champ : les réponses du webhook, destinées au prestataire de paiement, jamais à
-une personne. Exception existante, à aligner : `publierOffre` (`docs/dette.md`).
+une personne. L'exception `publierOffre` est alignée depuis le 15 novembre 2026 (§5).
 
 Codes de statut utilisés : 200, 201, 202, 204, 400, 401, 403, 404, 409, 410, 422, 429, 503.
 Un 503 porte toujours `Retry-After`.

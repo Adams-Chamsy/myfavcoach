@@ -705,6 +705,34 @@ describe('portDonneesSupabase', () => {
       });
     });
 
+    // docs/api.md §5 (P4.11) : la publication passe par la fonction offre-publication, qui rend
+    // ses refus avec leur texte ; une erreur sans corps lisible n'est pas un refus.
+    it('publierOffre appelle offre-publication/{id} : publiée, refus avec son texte, ou sans réponse', async () => {
+      supabaseMock.functions.invoke.mockResolvedValue({ data: { publiee: true }, error: null });
+      expect(await portDonneesSupabase.publierOffre('offre-1')).toEqual({ issue: 'publiee' });
+      expect(supabaseMock.functions.invoke).toHaveBeenCalledWith('offre-publication/offre-1', {
+        method: 'POST',
+      });
+      supabaseMock.functions.invoke.mockResolvedValue(
+        refusHttp(422, {
+          code: 'termes_interdits',
+          title: 'Cette offre ne peut pas être publiée telle quelle',
+          detail: 'Reformule, puis publie.',
+          status: 422,
+        }),
+      );
+      expect(await portDonneesSupabase.publierOffre('offre-1')).toEqual({
+        issue: 'refusee',
+        refus: {
+          code: 'termes_interdits',
+          title: 'Cette offre ne peut pas être publiée telle quelle',
+          detail: 'Reformule, puis publie.',
+        },
+      });
+      supabaseMock.functions.invoke.mockResolvedValue({ data: null, error: new Error('réseau') });
+      expect(await portDonneesSupabase.publierOffre('offre-1')).toEqual({ issue: 'sans_reponse' });
+    });
+
     it('constaterNouveauMoyen appelle …/{id}/constat et rend chaque état', async () => {
       const cas: [unknown, unknown][] = [
         [

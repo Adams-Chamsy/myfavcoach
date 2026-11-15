@@ -259,6 +259,11 @@ export type ProfilCoachPublic = {
 // Les textes vivent côté serveur (supabase/functions/_partage/refus.ts), source unique.
 export type RefusServeur = { code: string; title: string; detail: string };
 
+// Mêmes trois issues que ResultatIntention : la publication a eu lieu, le serveur a refusé avec
+// son texte, ou aucune réponse exploitable n'est arrivée.
+export type ResultatPublicationOffre =
+  { issue: 'publiee' } | { issue: 'refusee'; refus: RefusServeur } | { issue: 'sans_reponse' };
+
 // docs/api.md §7, « Intention » : tout vient du serveur, rien n'est calculé par l'application.
 export type RecapitulatifIntention = {
   prixCentimes: number;
@@ -544,9 +549,9 @@ export type PortDonnees = {
     modifs: ModificationsOffre,
   ): Promise<{ succes: true; id: string } | { succes: false; erreur: string }>;
   modifierOffre(id: string, modifs: ModificationsOffre): Promise<ResultatEcriture>;
-  // Textes exacts des deux refus possibles (docs/api.md §5) : 'coach_non_verifie' |
-  // 'engagement_humain_requis' — l'écran choisit son propre libellé à partir du code.
-  publierOffre(id: string): Promise<{ succes: true } | { succes: false; code: string }>;
+  // docs/api.md §5, POST /coach/offres/{id}/publication (fonction offre-publication, P4.11) : le
+  // serveur décide et rend son refus avec son titre et son détail ; l'écran les affiche tels quels.
+  publierOffre(id: string): Promise<ResultatPublicationOffre>;
   retirerOffre(id: string): Promise<ResultatEcriture>;
 
   // L2-12/13/14 : lecture publique (anon compris), jamais authentifiée. null si le coach

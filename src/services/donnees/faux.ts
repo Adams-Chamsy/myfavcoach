@@ -20,7 +20,9 @@ import type {
   PortDonnees,
   ProfilCoachPublic,
   ProfilOnboarding,
+  RefusServeur,
   ResultatAvis,
+  ResultatPublicationOffre,
   ResultatConstat,
   ResultatEcriture,
   ResultatIntention,
@@ -111,9 +113,11 @@ export type FauxPortDonnees = PortDonnees & {
   definirDossierVerificationPourTest(dossier: DossierVerification): void;
   definirPiecesDeposeesPourTest(pieces: PieceDeposee[]): void;
   definirOffresPourTest(offres: Offre[]): void;
-  // publierOffre échoue avec ce code au prochain appel, une seule fois — sert les deux refus
-  // testés par L2-15 (coach_non_verifie, engagement_humain_requis).
-  echouerProchainePublicationPourTest(code: string): void;
+  // publierOffre rend cette issue au prochain appel, une seule fois : un refus du serveur avec
+  // son texte, ou l'absence de réponse.
+  echouerProchainePublicationPourTest(
+    issue: { issue: 'refusee'; refus: RefusServeur } | { issue: 'sans_reponse' },
+  ): void;
   definirProfilsCoachPublicsPourTest(profils: Record<string, ProfilCoachPublic>): void;
   definirOffresPubliquesPourTest(offres: Record<string, Offre[]>): void;
   // L3-01/L3-02 : rechercherCoachs prend une FONCTION, pas un tableau fixe — un test d'écran a
@@ -268,7 +272,8 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
   // Remis à zéro quand un test pose un dossier (définir un dossier = une décision prise).
   let typesDepuisDecision = new Set<TypePiece>();
   let offres: Offre[] = [];
-  let prochainePublicationEchoue: string | null = null;
+  let prochainePublicationEchoue:
+    { issue: 'refusee'; refus: RefusServeur } | { issue: 'sans_reponse' } | null = null;
   let profilsCoachPublics: Record<string, ProfilCoachPublic> = {};
   let offresPubliques: Record<string, Offre[]> = {};
   let gestionnaireRecherche: (parametres: ParametresRecherche) => ResultatRecherche = () => ({
@@ -598,19 +603,19 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
       return { succes: true };
     },
 
-    echouerProchainePublicationPourTest(code) {
-      prochainePublicationEchoue = code;
+    echouerProchainePublicationPourTest(issue) {
+      prochainePublicationEchoue = issue;
     },
-    async publierOffre(id: string) {
+    async publierOffre(id: string): Promise<ResultatPublicationOffre> {
       if (prochainePublicationEchoue !== null) {
-        const code = prochainePublicationEchoue;
+        const issue = prochainePublicationEchoue;
         prochainePublicationEchoue = null;
-        return { succes: false, code };
+        return issue;
       }
       offres = offres.map((o) =>
         o.id === id ? { ...o, publieeLe: new Date().toISOString(), retireeLe: null } : o,
       );
-      return { succes: true };
+      return { issue: 'publiee' };
     },
 
     async retirerOffre(id: string) {

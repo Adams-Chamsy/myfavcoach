@@ -170,7 +170,14 @@ describe('L2-15 · Créer et publier une offre', () => {
     // Le faux port n'impose pas la règle serveur elle-même (engagement_humain_requis vient de
     // publier_offre, 0008_politiques_offres.sql, déjà prouvé au banc RLS) — ce test-ci vérifie
     // que l'ÉCRAN affiche le texte exact quand le serveur refuse pour cette raison.
-    portDonnees.echouerProchainePublicationPourTest('engagement_humain_requis');
+    portDonnees.echouerProchainePublicationPourTest({
+      issue: 'refusee',
+      refus: {
+        code: 'engagement_humain_requis',
+        title: 'Il manque un engagement humain',
+        detail: 'Choisis au moins un engagement humain.',
+      },
+    });
     await fireEvent.press(screen.getByRole('button', { name: 'Publier' }));
     await waitFor(() =>
       expect(screen.getByText('Choisis au moins un engagement humain.')).toBeTruthy(),
@@ -178,6 +185,63 @@ describe('L2-15 · Créer et publier une offre', () => {
     expect(dansLaZoneDeDefilement(screen.getByText('Choisis au moins un engagement humain.'))).toBe(
       false,
     );
+  });
+
+  // docs/api.md §1 et §5 (P4.11) : l'écran affiche le titre ET le détail que le serveur rend,
+  // tels quels — il ne choisit plus son libellé à partir du code. Le texte ci-dessous n'existe
+  // nulle part dans l'écran : s'il s'affiche, c'est qu'il vient de la réponse.
+  it('un refus de publication s’affiche avec le titre et le détail rendus par le serveur, hors de la zone de défilement, et l’offre n’est pas publiée', async () => {
+    const { portDonnees } = await rendre(VERIFIE);
+    await remplirBrouillonComplet();
+    portDonnees.echouerProchainePublicationPourTest({
+      issue: 'refusee',
+      refus: {
+        code: 'termes_interdits',
+        title: 'Titre rendu par le serveur',
+        detail: 'Détail rendu par le serveur, jamais écrit dans l’écran.',
+      },
+    });
+    await fireEvent.press(screen.getByRole('button', { name: 'Publier' }));
+    await waitFor(() => expect(screen.queryByText('Titre rendu par le serveur')).toBeTruthy());
+    const detail = screen.getByText('Détail rendu par le serveur, jamais écrit dans l’écran.');
+    expect(dansLaZoneDeDefilement(detail)).toBe(false);
+    expect(screen.queryByRole('button', { name: 'Retirer' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Publier' })).toBeTruthy();
+  });
+
+  // Trouvé à la clôture de P4.11 sur la base de dev (15 novembre 2026) : après un refus, le
+  // coach corrige son offre et appuie de nouveau sur « Publier ». Ce qui est publié doit être ce
+  // qu'il a sous les yeux — jusque-là, le brouillon créé au premier appui était republié tel
+  // quel, sans la correction, et le même refus revenait.
+  it('après un refus, « Publier » enregistre d’abord la correction : c’est l’offre affichée qui est publiée', async () => {
+    const { portDonnees } = await rendre(VERIFIE);
+    await remplirBrouillonComplet();
+    portDonnees.echouerProchainePublicationPourTest({
+      issue: 'refusee',
+      refus: { code: 'termes_interdits', title: 'Refus du serveur', detail: 'Reformule.' },
+    });
+    await fireEvent.press(screen.getByRole('button', { name: 'Publier' }));
+    await waitFor(() => expect(screen.queryByText('Refus du serveur')).toBeTruthy());
+
+    await fireEvent.changeText(screen.getByLabelText('Titre'), 'Titre corrigé');
+    await fireEvent.press(screen.getByRole('button', { name: 'Publier' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Retirer' })).toBeTruthy());
+
+    const offres = await portDonnees.lireMesOffres();
+    expect(offres).toHaveLength(1);
+    expect(offres[0]).toMatchObject({ titre: 'Titre corrigé' });
+    expect(offres[0]?.publieeLe).not.toBeNull();
+    expect(screen.queryByText('Refus du serveur')).toBeNull();
+  });
+
+  // Aucune réponse du serveur : le repli (L0-03), jamais un faux succès.
+  it('publication sans réponse du serveur : le repli « On a un souci de notre côté », l’offre n’est pas publiée', async () => {
+    const { portDonnees } = await rendre(VERIFIE);
+    await remplirBrouillonComplet();
+    portDonnees.echouerProchainePublicationPourTest({ issue: 'sans_reponse' });
+    await fireEvent.press(screen.getByRole('button', { name: 'Publier' }));
+    await waitFor(() => expect(screen.queryByText('On a un souci de notre côté')).toBeTruthy());
+    expect(screen.queryByRole('button', { name: 'Retirer' })).toBeNull();
   });
 
   it('le retrait appelle retirerOffre, jamais une suppression : l’offre reste modifiable', async () => {

@@ -11,7 +11,7 @@ import { Modale } from '@/composants/modale';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { useGardeSortie } from '@/fonctionnalites/navigation/garde-sortie';
 import { textesRepliErreur } from '@/composants/etats/textes';
-import type { Offre, StatutVerification } from '@/services/donnees/port';
+import type { Offre, ResultatPublicationOffre, StatutVerification } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
 import { centimesDepuisSaisieEuros, saisieEurosDepuisCentimes } from './prix';
 
@@ -28,13 +28,10 @@ const ENGAGEMENTS_POSSIBLES = [
 const NOMBRE_BENEFICES_MIN = 3;
 const NOMBRE_BENEFICES_MAX = 5;
 
-// Refus de publier_offre. coach_non_verifie reste une défense du serveur : il n'est plus
-// atteignable depuis l'écran, qui désactive « Publier » pour un coach non vérifié (fiche L2-15,
-// décision du 1er novembre 2026). Un code inconnu prend le repli serveur (titre et détail).
-const TEXTES_REFUS: Record<string, string> = {
-  coach_non_verifie: 'Ton identité doit être vérifiée avant de publier une offre.',
-  engagement_humain_requis: 'Choisis au moins un engagement humain.',
-};
+// Refus de publication (P4.11, 15 novembre 2026) : le serveur rend son titre et son détail
+// (fonction offre-publication, docs/api.md §1), l'écran les affiche tels quels — il ne choisit
+// plus son propre libellé à partir d'un code. Le refus pour identité non vérifiée reste une
+// défense du serveur : l'écran désactive « Publier » pour un coach non vérifié (fiche L2-15).
 
 // Textes validés un par un le 1er novembre 2026 (docs/ecrans/L2-15-creation-offre-coach.md,
 // « Retours à l'écran »). Un seul manque à la fois, dans l'ordre des champs de l'écran.
@@ -57,7 +54,7 @@ function attenteVerification(statut: StatutVerification | null): string | null {
 type Retour =
   | { type: 'enregistre' }
   | { type: 'echec'; titre: string; detail: string }
-  | { type: 'refus'; texte: string };
+  | { type: 'refus'; titre: string; detail: string };
 
 export function EcranCreationOffre({
   offreExistante,
@@ -158,9 +155,11 @@ export function EcranCreationOffre({
     setEmpreinteEnregistree(JSON.stringify(modifications()));
   }
 
-  function refusDePublication(code: string): Retour {
-    const texte = TEXTES_REFUS[code];
-    return texte ? { type: 'refus', texte } : echecServeur;
+  // Sans réponse du serveur : le repli (« On a un souci de notre côté »), comme avant.
+  function retourDePublication(resultat: ResultatPublicationOffre): Retour | null {
+    if (resultat.issue === 'publiee') return null;
+    if (resultat.issue === 'sans_reponse') return echecServeur;
+    return { type: 'refus', titre: resultat.refus.title, detail: resultat.refus.detail };
   }
 
   async function surPublier() {
@@ -175,19 +174,31 @@ export function EcranCreationOffre({
       }
       setId(cree.id);
       setEmpreinteEnregistree(JSON.stringify(modifications()));
-      const resultat = await port.publierOffre(cree.id);
+      const echec = retourDePublication(await port.publierOffre(cree.id));
       setChargement(false);
-      if (!resultat.succes) {
-        setRetour(refusDePublication(resultat.code));
+      if (echec) {
+        setRetour(echec);
         return;
       }
       setPublieeLe(new Date().toISOString());
       return;
     }
-    const resultat = await port.publierOffre(id);
+    // Ce qui est publié est ce que le coach a sous les yeux : une modification pas encore
+    // enregistrée (une correction après un refus, par exemple) part d'abord. Sans cela, le
+    // brouillon était republié tel quel et le même refus revenait (trouvé à la clôture de P4.11).
+    if (modifie) {
+      const enregistre = await port.modifierOffre(id, modifications());
+      if (!enregistre.succes) {
+        setChargement(false);
+        setRetour(echecServeur);
+        return;
+      }
+      setEmpreinteEnregistree(JSON.stringify(modifications()));
+    }
+    const echec = retourDePublication(await port.publierOffre(id));
     setChargement(false);
-    if (!resultat.succes) {
-      setRetour(refusDePublication(resultat.code));
+    if (echec) {
+      setRetour(echec);
       return;
     }
     setPublieeLe(new Date().toISOString());
@@ -394,12 +405,14 @@ export function EcranCreationOffre({
           }}
         >
           {retour?.type === 'refus' ? (
-            <Text
-              accessibilityLiveRegion="polite"
-              style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}
-            >
-              {retour.texte}
-            </Text>
+            <View accessibilityLiveRegion="polite" style={{ gap: theme.espace[1] }}>
+              <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
+                {retour.titre}
+              </Text>
+              <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
+                {retour.detail}
+              </Text>
+            </View>
           ) : null}
           {!(publieeLe && !retireeLe) && raisonInactif ? (
             <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>

@@ -196,6 +196,16 @@ export async function ouvrir({ largeur = 430, hauteur = 932, journal = false } =
   const connecter = async (email, base = 'http://localhost:8081') => {
     await aller(`${base}/connexion`, /Mot de passe oublié/);
     await attendreChamps();
+    // La signature de marque (ouverture-marque.tsx, 15 novembre 2026) recouvre l'écran environ
+    // deux secondes à la première ouverture : un clic fait pendant ce temps tombe sur elle, pas
+    // sur le champ. On attend que le premier champ soit réellement ce qu'il y a sous le pointeur.
+    for (let i = 0; i < 100; i++) {
+      const degage = await evaluer(
+        `(() => { const c = document.querySelectorAll('input')[0]; if (!c) return false; const r = c.getBoundingClientRect(); return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === c; })()`,
+      ).catch(() => false);
+      if (degage) break;
+      await pause(200);
+    }
     await saisir(`document.querySelectorAll('input')[0]`, email);
     await saisir(`document.querySelectorAll('input')[1]`, MDP);
     await appuyer(/^Se connecter$/);

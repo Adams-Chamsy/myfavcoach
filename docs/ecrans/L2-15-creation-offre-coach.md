@@ -67,8 +67,13 @@ Le reste des règles :
   Rien dans `docs/api.md` §5 ne gate `POST /coach/offres` sur le statut de vérification, à la
   différence de la publication.
 - **La publication appelle `publier_offre`, jamais un `UPDATE` direct** sur `publiee_le`
-  (`docs/modele-offres.md` §2.4). Deux refus possibles, à afficher avec leur texte
-  exact :
+  (`docs/modele-offres.md` §2.4). **Depuis le 15 novembre 2026 (P4.11)**, elle passe par la
+  fonction `offre-publication` (`docs/api.md` §5), et l'écran affiche le **titre et le détail
+  rendus par le serveur**, tels quels : il ne choisit plus son libellé à partir d'un code. Aux
+  deux refus ci-dessous s'ajoutent `termes_interdits` et `engagement_messagerie_indisponible`
+  (`docs/domaine.md` §2 et §3.3). **« Publier » enregistre d'abord ce que le coach a modifié** :
+  c'est l'offre affichée qui est publiée (sans cela, une correction faite après un refus n'était
+  jamais prise en compte). Les deux refus d'origine, avec leur détail :
   - `coach_non_verifie` (409) : « Ton identité doit être vérifiée avant de publier une offre. »
     → lien vers `L2-06`/`L2-09` selon l'état du dossier.
   - `engagement_humain_requis` (422) : « Choisis au moins un engagement humain. » → focus sur le
@@ -130,7 +135,7 @@ Le reste des règles :
 | Brouillon complet | « Enregistrer » et « Publier » actifs |
 | Publiée | Champs toujours modifiables (sauf ce que `docs/modele-offres.md` §2.2 protège), bouton « Retirer » remplace « Publier » en pied |
 | Retirée | Bandeau : « Cette offre n'est plus en vente. Tes abonnés en cours gardent l'accès. » Bouton « Republier » — **non tranché**, voir Ce qui a été inventé |
-| Erreur de publication | Message exact selon le code (`coach_non_verifie` / `engagement_humain_requis`), aucun champ perdu |
+| Erreur de publication | Titre et détail rendus par le serveur (`docs/api.md` §5), hors de la zone de défilement, aucun champ perdu ; sans réponse du serveur, le repli de L0-03 |
 
 ---
 
