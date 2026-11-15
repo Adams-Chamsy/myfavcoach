@@ -420,4 +420,30 @@ export const detailAbonnementDemonstration: DetailAbonnement = {
   graceJusquAu: null,
   regularisationAvantLe: null,
   prochaineTentativeLe: null,
+  nouveauMoyenEnregistre: false,
+};
+
+// L4-20 (P4.7) — le même abonnement, après un prélèvement d'échéance refusé. Le motif (« plafond
+// de carte atteint ») et la carte •••• 4218 sont ceux de la maquette 20 (MyFavCoach-Etats_dc.html).
+// La maquette ne donne aucune date : elles sont choisies ici (docs/decisions-en-attente.md,
+// 15 novembre 2026) à partir de l'échéance du 18 décembre 2026 — fin de la période de grâce à
+// J+6, régularisation avant J+37, prochaine tentative le lendemain (docs/domaine.md §4.4).
+export const detailAbonnementImpayeDemonstration: DetailAbonnement = {
+  ...detailAbonnementDemonstration,
+  statut: 'impaye',
+  moyenDerniersChiffres: '4218',
+  prochainPrelevementLe: null,
+  dernierEchecMotif: 'plafond_atteint',
+  dernierEchecEcheanceLe: '2026-12-18',
+  graceJusquAu: '2026-12-24',
+  regularisationAvantLe: null,
+  prochaineTentativeLe: '2026-12-19',
+};
+
+export const detailAbonnementSuspenduDemonstration: DetailAbonnement = {
+  ...detailAbonnementImpayeDemonstration,
+  statut: 'suspendu',
+  graceJusquAu: null,
+  regularisationAvantLe: '2027-01-24',
+  prochaineTentativeLe: null,
 };

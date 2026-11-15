@@ -43,10 +43,12 @@ import { creerSessionDemonstration } from '@/fixtures/session-demonstration';
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { EcranChoixOffre } from '@/fonctionnalites/abonnement/ecran-choix-offre';
 import { EcranConfirmation } from '@/fonctionnalites/abonnement/ecran-confirmation';
+import { EcranPaiementRefuse } from '@/fonctionnalites/abonnement/ecran-paiement-refuse';
 import { EcranPaiement } from '@/fonctionnalites/abonnement/ecran-paiement';
 import {
   recapitulatifPaiementDemonstration,
   detailAbonnementDemonstration,
+  detailAbonnementImpayeDemonstration,
 } from '@/fixtures/demonstration';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
@@ -537,6 +539,30 @@ const CORPUS: EntreeCorpus[] = [
             <EcranConfirmation
               abonnementId={detailAbonnementDemonstration.id}
               onVoirProfil={() => {}}
+            />
+          </FournisseurDonnees>
+        </FournisseurSession>
+      );
+    },
+  },
+  {
+    // P4.7, écran 20 : rendu par son composant (la route lit useLocalSearchParams). Données :
+    // src/fixtures/demonstration.ts (detailAbonnementImpayeDemonstration).
+    nom: 'app/(client)/abonnement/[id]/refus.tsx',
+    creerElement: () => {
+      const p = portDonneesChoixOffre();
+      p.definirDetailAbonnementPourTest({
+        [detailAbonnementImpayeDemonstration.id]: { ...detailAbonnementImpayeDemonstration },
+      });
+      return (
+        <FournisseurSession key="paiement-refuse" port={portAuthOnboarding}>
+          <FournisseurDonnees port={p}>
+            <EcranPaiementRefuse
+              abonnementId={detailAbonnementImpayeDemonstration.id}
+              auRetourDeLaPage={false}
+              onRetour={() => {}}
+              ouvrirPage={async () => {}}
+              onRienARegler={() => {}}
             />
           </FournisseurDonnees>
         </FournisseurSession>

@@ -30,6 +30,8 @@ import {
   recapitulatifPaiementDemonstration,
   avisDemonstration,
   detailAbonnementDemonstration,
+  detailAbonnementImpayeDemonstration,
+  detailAbonnementSuspenduDemonstration,
 } from '@/fixtures/demonstration';
 import { EcranCompte } from '@/fonctionnalites/compte/ecran-compte';
 import { FeuilleBascule } from '@/fonctionnalites/identite/feuille-bascule';
@@ -69,6 +71,7 @@ import { CorpsProfilCoachPublic } from './(client)/coach/[id]';
 import { EcranChoixOffre } from '@/fonctionnalites/abonnement/ecran-choix-offre';
 import { BlocMesAbonnements } from '@/fonctionnalites/abonnement/bloc-mes-abonnements';
 import { EcranConfirmation } from '@/fonctionnalites/abonnement/ecran-confirmation';
+import { EcranPaiementRefuse } from '@/fonctionnalites/abonnement/ecran-paiement-refuse';
 import { EcranPaiement } from '@/fonctionnalites/abonnement/ecran-paiement';
 import { OngletAvis } from '@/fonctionnalites/avis/onglet-avis';
 import Accueil from './(client)/(tabs)/accueil';
@@ -1954,6 +1957,29 @@ function ConfirmationAvecFixture({ sepa }: { sepa: boolean }) {
   );
 }
 
+// L4-20 (P4.7) : le paiement refusé, dans ses deux états (jeu de démonstration).
+function PaiementRefuseAvecFixture({ suspendu }: { suspendu: boolean }) {
+  const detail = suspendu
+    ? detailAbonnementSuspenduDemonstration
+    : detailAbonnementImpayeDemonstration;
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    p.definirDetailAbonnementPourTest({ [detail.id]: { ...detail } });
+    return p;
+  });
+  return (
+    <FournisseurDonnees port={port}>
+      <EcranPaiementRefuse
+        abonnementId={detail.id}
+        auRetourDeLaPage={false}
+        onRetour={() => {}}
+        ouvrirPage={async () => {}}
+        onRienARegler={() => {}}
+      />
+    </FournisseurDonnees>
+  );
+}
+
 // L4-24b : un abonnement par état affiché (jeu de démonstration : Yannick Berthaud, « Suivi
 // complet », 49 €/mois ; dates : celle de recapitulatifPaiementDemonstration).
 function MesAbonnementsAvecFixture() {
@@ -1969,6 +1995,11 @@ function MesAbonnementsAvecFixture() {
       pauseJusquLe: null,
       finAccesLe: null,
     };
+    // Les deux abonnements en défaut de paiement lisent leurs dates dans le détail (P4.7).
+    p.definirDetailAbonnementPourTest({
+      'galerie-impaye': { ...detailAbonnementImpayeDemonstration, id: 'galerie-impaye' },
+      'galerie-suspendu': { ...detailAbonnementSuspenduDemonstration, id: 'galerie-suspendu' },
+    });
     p.definirAbonnementsPourTest([
       { ...base, id: 'galerie-actif', statut: 'actif' },
       { ...base, id: 'galerie-attente', statut: 'en_attente_confirmation' },
@@ -1981,7 +2012,7 @@ function MesAbonnementsAvecFixture() {
   });
   return (
     <FournisseurDonnees port={port}>
-      <BlocMesAbonnements />
+      <BlocMesAbonnements onRegler={() => {}} />
     </FournisseurDonnees>
   );
 }
@@ -2038,6 +2069,14 @@ const ECRANS_L4: { titre: string; rendu: () => ReactNode }[] = [
   {
     titre: 'L4-04c · Confirmation, SEPA en attente',
     rendu: () => <ConfirmationAvecFixture sepa />,
+  },
+  {
+    titre: 'L4-20 · Paiement refusé, impayé',
+    rendu: () => <PaiementRefuseAvecFixture suspendu={false} />,
+  },
+  {
+    titre: 'L4-20 · Paiement refusé, suspendu',
+    rendu: () => <PaiementRefuseAvecFixture suspendu />,
   },
   { titre: 'L4-24b · Mes abonnements, chaque état', rendu: () => <MesAbonnementsAvecFixture /> },
   { titre: 'L2-13 · Onglet Avis, 1 avis', rendu: () => <OngletAvisAvecFixture nombre={1} /> },

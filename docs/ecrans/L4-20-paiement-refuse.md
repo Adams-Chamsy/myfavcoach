@@ -1,6 +1,6 @@
 # L4-20 · Paiement refusé (20)
 
-**Lot** L4 · **Rôle** client · **Route** `app/(client)/abonnement/[id]/refus.tsx` (nom inventé)
+**Lot** L4 · **Rôle** client · **Route** `app/(client)/abonnement/[id]/refus.tsx`
 **Référence visuelle** `maquettes/MyFavCoach-Etats_dc.html`, bloc « 20 · Paiement refusé »,
 `data-screen-label="20 Paiement refuse"`. **Trois corrections, lues en Règles.**
 
@@ -37,7 +37,7 @@ En-tête : « Paiement refusé », retour vers l'écran compte (voir Règles).
 | `carte_expiree` | « carte expirée » |
 | `opposition` | « carte en opposition » |
 | `plafond_atteint` | « plafond de carte atteint » (texte exact de la maquette) |
-| `authentification_echouee` | « l'authentification auprès de ta banque n'a pas abouti » |
+| `authentification_echouee` | « ta banque demande que tu confirmes toi-même le paiement » (corrigé le 15 novembre 2026, à la construction : `docs/prompts/L4.md`, P4.7 point 2, décision du 1er novembre — la banque n'a pas dit que l'authentification avait échoué, elle exige le client présent) |
 | `inconnu` | « ta banque n'a pas précisé de motif » |
 
 **Vérifié : la maquette n'introduit aucun septième motif.** Le seul motif qu'elle affiche est
@@ -101,6 +101,9 @@ L'en-tête « Paiement · Étape 3 sur 3 » de la maquette ne s'applique plus : 
 | `impaye` | Contenu ci-dessus, avec la période de grâce restante |
 | `suspendu` | Contenu ci-dessus, « Suivi interrompu » à la place de la période de grâce |
 | Moyen de paiement changé | Retour de la page Stripe → relecture de l'abonnement ; « Nouveau moyen enregistré, le prochain essai aura lieu le {date} » (date servie par le serveur) |
+| Nouveau moyen en attente de son essai | **Ajouté le 15 novembre 2026, à la clôture sur la base de dev.** Tant que l'essai n'a pas eu lieu (`nouveauMoyenEnregistre`, servi par le serveur, migrations 0063 et 0064), l'écran rouvert redit « Nouveau moyen enregistré, le prochain essai aura lieu le {date} », affiche les 4 chiffres du nouveau moyen **sans** « REFUSÉ » (ce n'est pas lui que la banque a refusé) et ne propose plus la phrase SEPA. Le refus, son motif et « Rien n'a été débité. » restent |
+| Page quittée sans rien enregistrer | « Aucun nouveau moyen n'a été enregistré. Rien n'a été débité. » ; l'action principale reste disponible et redemande une page |
+| Abonnement ni `impaye` ni `suspendu` | Rien à régler : retour à l'écran compte, jamais un écran de refus sur un abonnement à jour |
 
 ---
 
@@ -113,6 +116,8 @@ L'en-tête « Paiement · Étape 3 sur 3 » de la maquette ne s'applique plus : 
 - Le libellé « REFUSÉ » (la maquette écrit « REFUSÉE », accordé à « carte » ; le masculin couvre
   aussi le prélèvement SEPA).
 - Nom de route.
+- Les trois derniers états du tableau, et le texte « Aucun nouveau moyen n'a été enregistré. Rien
+  n'a été débité. » (15 novembre 2026).
 
 ---
 

@@ -110,6 +110,7 @@ type LigneDetailAbonnement = {
   grace_jusqu_au: string | null;
   regularisation_avant_le: string | null;
   prochaine_tentative_le: string | null;
+  nouveau_moyen_enregistre: boolean | null;
 };
 
 const MOTIFS_BANQUE: readonly MotifBanque[] = [
@@ -1196,6 +1197,7 @@ export const portDonneesSupabase: PortDonnees = {
       graceJusquAu: l.grace_jusqu_au,
       regularisationAvantLe: l.regularisation_avant_le,
       prochaineTentativeLe: l.prochaine_tentative_le,
+      nouveauMoyenEnregistre: l.nouveau_moyen_enregistre === true,
     };
   },
 

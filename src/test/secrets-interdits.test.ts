@@ -286,6 +286,10 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0061_moyen_paiement_et_detail_regle.sql',
       // 0062 : revoke EXECUTE de detail_abonnement à service_role (convention de 0031).
       'supabase/migrations/0062_detail_abonnement_coach_et_offre.sql',
+      // 0063 : même revoke, la fonction est recréée (une colonne de plus).
+      'supabase/migrations/0063_detail_abonnement_nouveau_moyen.sql',
+      // 0064 : correction de 0063, même revoke.
+      'supabase/migrations/0064_corriger_detail_abonnement.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

@@ -47,6 +47,11 @@ réglages de L1-07.
 | `suspendu` | SUSPENDU | « Suivi interrompu. Règle le paiement avant le {date} pour le reprendre. » | « Régler » → écran 20, contexte échéance |
 | `resiliation_programmee` | RÉSILIATION PROGRAMMÉE | « Ton suivi s'arrête le {finAccesLe}. » | « Annuler la résiliation » |
 
+Pour `impaye` et `suspendu`, les deux dates viennent du détail de l'abonnement
+(`detail_abonnement` : `graceJusquAu`, `regularisationAvantLe`), lu pour ces seuls abonnements
+(15 novembre 2026). Si ce détail ne se lit pas, la carte garde son étiquette et « Régler », sans
+ligne datée.
+
 `resilie` et `annule` n'apparaissent pas : l'historique relève des factures et reçus (C-05, L5).
 Toutes les dates viennent du serveur (`GET /abonnements`, `GET /abonnements/{id}` — « période de
 grâce restante », `docs/api.md` §7), aucune n'est calculée par l'écran (`docs/api.md` §15).

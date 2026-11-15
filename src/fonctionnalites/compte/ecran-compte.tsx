@@ -193,7 +193,15 @@ export function EcranCompte() {
 
                 {/* L4-24b : entre l'en-tête et la liste de réglages, espace client seulement (les
                     abonnés d'un coach sont une autre lecture, L7). */}
-                {profils?.profilActif === 'client' ? <BlocMesAbonnements /> : null}
+                {profils?.profilActif === 'client' ? (
+                  <BlocMesAbonnements
+                    onRegler={(abonnementId) =>
+                      router.push(
+                        `/(client)/abonnement/${encodeURIComponent(abonnementId)}/refus` as Href,
+                      )
+                    }
+                  />
+                ) : null}
 
                 <Carte>
                   {LIGNES_REGLAGES.map((ligne, index) => (

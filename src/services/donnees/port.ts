@@ -361,6 +361,9 @@ export type DetailAbonnement = {
   // suspendu : le jour où l'abonnement devient résilié (J+37).
   regularisationAvantLe: string | null;
   prochaineTentativeLe: string | null;
+  // Vrai tant qu'un nouveau moyen enregistré après le refus attend son essai (0063) : le moyen
+  // affiché n'est alors plus celui que la banque a refusé.
+  nouveauMoyenEnregistre: boolean;
 };
 
 // docs/api.md §7, POST /abonnements/{id}/moyen-paiement : la page du prestataire où enregistrer

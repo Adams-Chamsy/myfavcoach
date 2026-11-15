@@ -5237,6 +5237,7 @@ describe('abonnements — L4 (0033)', () => {
       grace_jusqu_au: string | null;
       regularisation_avant_le: string | null;
       prochaine_tentative_le: string | null;
+      nouveau_moyen_enregistre: boolean;
       coach_prenom: string;
       offre_titre: string;
       derniere_facture_montant_centimes: number | null;
@@ -5350,6 +5351,8 @@ describe('abonnements — L4 (0033)', () => {
         grace_jusqu_au: plusJours(E, 6),
         regularisation_avant_le: null,
         prochaine_tentative_le: plusJours(E, 1),
+        // 0063 : une relance du calendrier n'est pas un nouveau moyen.
+        nouveau_moyen_enregistre: false,
       });
       await echouer(id, E, 2, 'detail');
       expect((await detail(id)).ligne.prochaine_tentative_le).toBe(plusJours(E, 3));
@@ -5367,6 +5370,8 @@ describe('abonnements — L4 (0033)', () => {
         moyen: 'sepa',
         moyen_derniers_chiffres: '4242',
         prochaine_tentative_le: plusJours(E, 9),
+        // 0063 : le nouveau moyen attend son essai.
+        nouveau_moyen_enregistre: true,
       });
       const autre = await detail(id, client1);
       expect(messageDe(autre.corps)).toBe('abonnement_introuvable');

@@ -14,7 +14,7 @@ import Index from './index';
 // qu'un import en tete de fichier : le factory de jest.mock() ne peut pas referencer une
 // variable hors de sa portee (elle est hoistee au-dessus des imports), sauf via require()
 // appele a l'interieur du factory lui-meme.
-let mockParams: { intention?: string } = {};
+let mockParams: { intention?: string; moyen?: string } = {};
 jest.mock('expo-router', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- voir commentaire ci-dessus
   const { Text } = require('react-native');
@@ -200,6 +200,32 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       await waitFor(() => {
         expect(screen.getByTestId('redirection').props.children).toBe(
           '/(client)/souscription/paiement?intention=intention-1',
+        );
+      });
+      mockParams = {};
+    });
+
+    // P4.7 — docs/ecrans/L4-20-paiement-refuse.md, Règles : la page où enregistrer un nouveau
+    // moyen revient par la même adresse, `/?moyen={abonnementId}`. Avec une session client,
+    // l'accueil ouvre l'écran 20 en mode retour, qui ne fait que demander le constat.
+    it('retour d’un changement de moyen sur web (?moyen=…) avec une session client : ouvre l’écran 20 en mode retour', async () => {
+      mockParams = { moyen: 'abonnement-1' };
+      const session: SessionAuth = { ...sessionNonVerifiee(), emailVerifie: true };
+      const portDonnees = creerFauxPortDonnees();
+      portDonnees.definirEtatProfilsPourTest(
+        etatProfilsParDefaut({
+          profilActif: 'client',
+          clientExiste: true,
+          clientOnboardingEtape: 5,
+          coachExiste: false,
+        }),
+      );
+
+      await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('redirection').props.children).toBe(
+          '/(client)/abonnement/abonnement-1/refus?retour=1',
         );
       });
       mockParams = {};

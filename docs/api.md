@@ -342,6 +342,10 @@ motif est porté par l'abonnement, lu par `GET /abonnements/{id}` :
                     "graceJusquAu": "2026-10-07T00:00:00Z" } }
 ```
 
+`nouveauMoyenEnregistre` (booléen, 15 novembre 2026, `detail_abonnement`, migrations 0063 et
+0064) : vrai tant qu'un moyen de paiement enregistré après le refus attend son essai. L'écran 20
+n'étiquette alors plus le moyen affiché comme refusé, et annonce la date du prochain essai.
+
 **Pas de code promo au jalon 1** (retiré le 28 septembre 2026) : aucune règle de domaine ne dit
 qui finance une remise ni sur quel montant porte alors la commission. Reporté au jalon 2
 (`docs/jalon-2.md`) ; `totalCentimes` vaut `prixCentimes` tant qu'aucune remise n'existe — le

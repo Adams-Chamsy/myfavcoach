@@ -5,7 +5,11 @@ import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donne
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
 import { creerFauxPortDonnees } from '@/services/donnees/faux';
-import type { AbonnementClient } from '@/services/donnees/port';
+import {
+  detailAbonnementImpayeDemonstration,
+  detailAbonnementSuspenduDemonstration,
+} from '@/fixtures/demonstration';
+import type { AbonnementClient, DetailAbonnement } from '@/services/donnees/port';
 import { libellesInterditsTrouves, type NoeudHote } from '@/test/libelles-interdits';
 import { FournisseurTheme } from '@/theme/fournisseur';
 import { BlocMesAbonnements } from './bloc-mes-abonnements';
@@ -35,19 +39,26 @@ function abonnement(
   };
 }
 
-async function rendre(abonnements: AbonnementClient[]) {
+const onRegler = jest.fn();
+beforeEach(() => onRegler.mockClear());
+
+async function rendre(
+  abonnements: AbonnementClient[],
+  details: Record<string, DetailAbonnement> = {},
+) {
   const portAuth = creerFauxPortAuth();
   await portAuth.inscrire('camille@exemple.fr', 'bon-mot-de-passe', '2000-01-01');
   portAuth.verifierEmailPourTest('camille@exemple.fr');
   await portAuth.connecter('camille@exemple.fr', 'bon-mot-de-passe');
   const portDonnees = creerFauxPortDonnees();
   portDonnees.definirAbonnementsPourTest(abonnements);
+  portDonnees.definirDetailAbonnementPourTest(details);
   await render(
     <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
       <FournisseurTheme>
         <FournisseurSession port={portAuth}>
           <FournisseurDonnees port={portDonnees}>
-            <BlocMesAbonnements />
+            <BlocMesAbonnements onRegler={onRegler} />
           </FournisseurDonnees>
         </FournisseurSession>
       </FournisseurTheme>
@@ -57,6 +68,48 @@ async function rendre(abonnements: AbonnementClient[]) {
 }
 
 describe('L4-24b · Mes abonnements', () => {
+  // Tableau des états, ligne `impaye` : étiquette, « Ton suivi continue jusqu'au {fin de la
+  // période de grâce} » (date du serveur), « Régler » → écran 20 (critères 1 et 4).
+  it('impayé : PAIEMENT REFUSÉ, le suivi continue jusqu’à la date du serveur, « Régler » mène à l’écran 20', async () => {
+    await rendre([abonnement('impaye')], {
+      'abonnement-1': { ...detailAbonnementImpayeDemonstration, id: 'abonnement-1' },
+    });
+    await waitFor(() => expect(screen.queryByText('PAIEMENT REFUSÉ')).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.queryByText('Ton suivi continue jusqu’au 24 décembre 2026.')).toBeTruthy(),
+    );
+    expect(screen.queryByRole('button', { name: 'Résilier' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Mettre en pause' })).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Régler' }));
+    expect(onRegler).toHaveBeenCalledWith('abonnement-1');
+  });
+
+  // Tableau des états, ligne `suspendu`.
+  it('suspendu : SUSPENDU, « Suivi interrompu. Règle le paiement avant le {date} pour le reprendre. », « Régler »', async () => {
+    await rendre([abonnement('suspendu')], {
+      'abonnement-1': { ...detailAbonnementSuspenduDemonstration, id: 'abonnement-1' },
+    });
+    await waitFor(() => expect(screen.queryByText('SUSPENDU')).toBeTruthy());
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          'Suivi interrompu. Règle le paiement avant le 24 janvier 2027 pour le reprendre.',
+        ),
+      ).toBeTruthy(),
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Régler' }));
+    expect(onRegler).toHaveBeenCalledWith('abonnement-1');
+  });
+
+  // Critère 5 : aucune date calculée par l'écran — sans détail lisible, pas de ligne datée, mais
+  // l'entrée vers l'écran 20 reste (seul chemin vers le changement de moyen, fiche, Raison d'être).
+  it('impayé dont le détail ne se lit pas : aucune date inventée, « Régler » reste', async () => {
+    await rendre([abonnement('impaye')]);
+    await waitFor(() => expect(screen.queryByText('PAIEMENT REFUSÉ')).toBeTruthy());
+    expect(screen.queryByText(/Ton suivi continue/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Régler' })).toBeTruthy();
+  });
+
   // Règles : « Aucun abonnement : le bloc entier est absent ».
   it('aucun abonnement : le bloc est absent', async () => {
     await rendre([]);

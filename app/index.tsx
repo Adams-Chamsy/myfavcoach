@@ -86,7 +86,9 @@ export default function Index() {
   // « Retour sur web ») : `/?intention={id}`, adresse posée par le serveur. Une donnée venue de
   // l'extérieur : 04b ne fait que demander le constat, et le serveur décide (404 si elle n'est
   // pas au compte connecté).
-  const { intention } = useLocalSearchParams<{ intention?: string }>();
+  // Écran 20 (P4.7) : même mécanisme pour le retour de la page où enregistrer un nouveau moyen de
+  // paiement, `/?moyen={abonnementId}` (abonnement-moyen-paiement). L'écran 20 demande le constat.
+  const { intention, moyen } = useLocalSearchParams<{ intention?: string; moyen?: string }>();
   // P1.10 : le profil actif vient du serveur (src/services/donnees/), pas seulement la session
   // — determinerDestination attend les DEUX avant de trancher. FournisseurDonnees ne lit
   // jamais le port tant qu'aucune session vérifiée n'existe, donc chargementDonnees se résout
@@ -156,6 +158,13 @@ export default function Index() {
           href={
             `/(client)/souscription/paiement?intention=${encodeURIComponent(intention)}` as Href
           }
+        />
+      );
+    }
+    if (moyen && session?.emailVerifie && profils?.clientExiste) {
+      return (
+        <Redirect
+          href={`/(client)/abonnement/${encodeURIComponent(moyen)}/refus?retour=1` as Href}
         />
       );
     }

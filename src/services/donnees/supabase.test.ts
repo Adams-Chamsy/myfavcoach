@@ -623,6 +623,7 @@ describe('portDonneesSupabase', () => {
       grace_jusqu_au: '2026-12-09',
       regularisation_avant_le: null,
       prochaine_tentative_le: '2026-12-04',
+      nouveau_moyen_enregistre: true,
     };
 
     it('lireDetailAbonnement appelle detail_abonnement et traduit la ligne', async () => {
@@ -650,6 +651,7 @@ describe('portDonneesSupabase', () => {
         graceJusquAu: '2026-12-09',
         regularisationAvantLe: null,
         prochaineTentativeLe: '2026-12-04',
+        nouveauMoyenEnregistre: true,
       });
       expect(supabaseMock.rpc).toHaveBeenCalledWith('detail_abonnement', {
         p_abonnement_id: 'abo-1',

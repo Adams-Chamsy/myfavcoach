@@ -13,6 +13,7 @@ import { Squelette } from '@/composants/squelette';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import type {
   AbonnementClient,
+  DetailAbonnement,
   StatutAbonnement,
   TransitionAbonnement,
 } from '@/services/donnees/port';
@@ -29,8 +30,10 @@ import { useTheme } from '@/theme/fournisseur';
 // (docs/domaine.md §4.3). L'écran envoie une durée en jours, le serveur calcule la date de fin
 // (0059) : aucune date n'est calculée ici.
 //
-// Encore en attente (docs/decisions-en-attente.md) : pour `impaye` et `suspendu`, la ligne datée
-// et l'action « Régler » (date servie par l'étape serveur à venir, écran 20 pas encore construit).
+// `impaye` et `suspendu` (P4.7) : la ligne datée vient du détail de l'abonnement
+// (detail_abonnement, 0060 : fin de la période de grâce, date limite de régularisation), lu pour
+// ces seuls abonnements ; « Régler » mène à l'écran 20. Si ce détail ne se lit pas, la carte garde
+// son étiquette et « Régler », sans ligne datée : jamais une date calculée ici.
 
 const DUREES_PAUSE_SEMAINES = [2, 4, 6, 8] as const;
 
@@ -57,7 +60,9 @@ function prixMensuel(centimes: number): string {
   return `${(centimes / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €/mois`;
 }
 
-function ligneInformation(a: AbonnementClient): string | null {
+type DatesDefaut = Pick<DetailAbonnement, 'graceJusquAu' | 'regularisationAvantLe'>;
+
+function ligneInformation(a: AbonnementClient, dates: DatesDefaut | undefined): string | null {
   switch (a.statut) {
     case 'actif':
       return a.prochainPrelevementLe
@@ -69,12 +74,25 @@ function ligneInformation(a: AbonnementClient): string | null {
       return a.pauseJusquLe ? `En pause jusqu’au ${dateLongue(a.pauseJusquLe)}.` : null;
     case 'resiliation_programmee':
       return a.finAccesLe ? `Ton suivi s’arrête le ${dateLongue(a.finAccesLe)}.` : null;
+    case 'impaye':
+      return dates?.graceJusquAu
+        ? `Ton suivi continue jusqu’au ${dateLongue(dates.graceJusquAu)}.`
+        : null;
+    case 'suspendu':
+      return dates?.regularisationAvantLe
+        ? `Suivi interrompu. Règle le paiement avant le ${dateLongue(dates.regularisationAvantLe)} pour le reprendre.`
+        : 'Suivi interrompu.';
     default:
       return null;
   }
 }
 
-export function BlocMesAbonnements() {
+export type ProprietesBlocMesAbonnements = {
+  // « Régler » d'un abonnement `impaye` ou `suspendu` : l'écran compte mène à l'écran 20.
+  onRegler: (abonnementId: string) => void;
+};
+
+export function BlocMesAbonnements({ onRegler }: ProprietesBlocMesAbonnements) {
   const theme = useTheme();
   const { port } = useDonnees();
   const [abonnements, setAbonnements] = useState<AbonnementClient[] | null>(null);
@@ -92,21 +110,52 @@ export function BlocMesAbonnements() {
     possibleLe: string | null;
   } | null>(null);
 
+  const [datesDefaut, setDatesDefaut] = useState<Record<string, DatesDefaut>>({});
+
+  // Les dates des abonnements en défaut de paiement, une lecture par abonnement concerné. Un
+  // échec ici ne casse pas le bloc : la carte s'affiche sans sa ligne datée.
+  const lireDatesDefaut = useCallback(
+    async (lus: AbonnementClient[]): Promise<Record<string, DatesDefaut>> => {
+      const enDefaut = lus.filter((a) => a.statut === 'impaye' || a.statut === 'suspendu');
+      const paires = await Promise.all(
+        enDefaut.map(async (a) => {
+          try {
+            const d = await port.lireDetailAbonnement(a.id);
+            return [
+              a.id,
+              { graceJusquAu: d.graceJusquAu, regularisationAvantLe: d.regularisationAvantLe },
+            ] as const;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      return Object.fromEntries(paires.filter((p) => p !== null));
+    },
+    [port],
+  );
+
   const relire = useCallback(async () => {
     try {
-      setAbonnements(await port.lireMesAbonnements());
+      const lus = await port.lireMesAbonnements();
+      const dates = await lireDatesDefaut(lus);
+      setDatesDefaut(dates);
+      setAbonnements(lus);
       setErreurLecture(false);
     } catch {
       setErreurLecture(true);
     }
-  }, [port]);
+  }, [port, lireDatesDefaut]);
 
   useEffect(() => {
     let monte = true;
     void port
       .lireMesAbonnements()
-      .then((lus) => {
-        if (monte) setAbonnements(lus);
+      .then(async (lus) => {
+        const dates = await lireDatesDefaut(lus);
+        if (!monte) return;
+        setDatesDefaut(dates);
+        setAbonnements(lus);
       })
       .catch(() => {
         if (monte) setErreurLecture(true);
@@ -114,7 +163,7 @@ export function BlocMesAbonnements() {
     return () => {
       monte = false;
     };
-  }, [port]);
+  }, [port, lireDatesDefaut]);
 
   async function agir(a: AbonnementClient, transition: TransitionAbonnement) {
     setRefus(null);
@@ -233,7 +282,7 @@ export function BlocMesAbonnements() {
           </Text>
           {visibles.map((a) => {
             const etat = ETATS[a.statut]!;
-            const ligne = ligneInformation(a);
+            const ligne = ligneInformation(a, datesDefaut[a.id]);
             const occupe = enCours === a.id;
             return (
               <Carte key={a.id}>
@@ -314,6 +363,14 @@ export function BlocMesAbonnements() {
                       libelle="Reprendre"
                       variante="secondaire"
                       onPress={() => void agir(a, 'reprendre')}
+                      desactive={occupe}
+                    />
+                  ) : null}
+                  {a.statut === 'impaye' || a.statut === 'suspendu' ? (
+                    <Bouton
+                      libelle="Régler"
+                      variante="primaire"
+                      onPress={() => onRegler(a.id)}
                       desactive={occupe}
                     />
                   ) : null}
