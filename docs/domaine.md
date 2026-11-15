@@ -96,6 +96,11 @@ Conversation ── Message        Signalement    Blocage    Consentement
   l'identité — qui existe, quel nom, quel statut. Toute table portant du **contenu** (mesures,
   abonnements, messages, séances, agenda) applique cette règle au sens strict, lecture comprise,
   et le choix inverse doit être justifié table par table.
+- **Termes interdits dans une offre** (15 novembre 2026, migration 0065) : une offre dont le
+  titre, la description ou un bénéfice porte l'un des termes de la règle ci-dessous n'est pas
+  publiée (`termes_interdits`). Refus à la publication, pas signalement pour modération ; un
+  brouillon s'enregistre librement. La liste est celle de `src/test/libelles-interdits.ts`, tenue
+  identique dans la base par `src/test/termes-interdits-synchronises.test.ts`.
 - **Magasins d'applications — ce qui autorise le paiement hors achat in-app** (écrit le
   28 septembre 2026, `docs/prompts/L4.md` point 11). Le client paie **un service rendu par une
   personne**, jamais l'accès à du contenu numérique. C'est `engagementHumain` (§3.3) qui le
@@ -236,7 +241,7 @@ sont hors périmètre, pas « pour plus tard » (`docs/perimetre.md` §3, règle
 | `prixMensuelCentimes` | 1 000 à 50 000 (10 € à 500 €). Borne basse : éviter les offres d'appel qui dévalorisent le travail des coachs et attirent des abonnements jetables. Borne haute : au-delà de 500 €/mois on sort du modèle d'abonnement mensuel grand public, et le risque de litige et d'opposition bancaire change de nature. Décision, pas une mesure du marché — à revoir si le marché la contredit |
 | `recurrence` | **fixe, mensuelle** — pas un champ éditable : une seule valeur possible tant qu'une seule nature d'offre existe. Un futur type d'offre ré-ouvrirait cette question, pas ce jalon |
 | `benefices` | 3 à 5 lignes |
-| `engagementHumain` | **obligatoire**, non nul : au moins un élément parmi {ajustement hebdomadaire, visio mensuelle, messagerie avec délai de réponse annoncé} |
+| `engagementHumain` | **obligatoire**, non nul : au moins un élément parmi {ajustement hebdomadaire, visio mensuelle, messagerie avec délai de réponse annoncé}. **Tant que la messagerie n'existe pas (L8), une offre qui porte « messagerie avec délai de réponse annoncé » n'est pas publiée** (`engagement_messagerie_indisponible`, migration 0065, 15 novembre 2026) : la promesse serait invérifiable. L8 lève cette règle |
 | `estMiseEnAvant` | une seule par coach — étiquette « LE PLUS CHOISI » |
 | `publieeLe`, `retireeLe` | dates, toutes deux nullables. `brouillon` = les deux `null` ; `publiee` = `publieeLe` posée, `retireeLe` `null` ; `retiree` = `retireeLe` posée. Pas de colonne `statut` séparée : ces trois libellés sont une lecture, pas une troisième source de vérité (même logique que `Compte` §4.1, dont la machine à états ne correspond à aucune colonne littérale) |
 

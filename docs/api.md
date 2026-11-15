@@ -183,7 +183,7 @@ faire passer le statut à `publiee`.
 | `GET` | `/coachs/{id}/parcours` | diplômes, chronologie, méthode |
 | `POST` | `/coach/offres` | 422 `engagement_humain_requis` si le champ est vide |
 | `PATCH` | `/coach/offres/{id}` | |
-| `POST` | `/coach/offres/{id}/publication` | 409 `coach_non_verifie` |
+| `POST` | `/coach/offres/{id}/publication` | Servi par `POST /functions/v1/offre-publication/{id}` (15 novembre 2026, P4.11a), qui appelle `publier_offre` sous le jeton du coach et rend ses refus avec `code`, `title`, `detail` (§1) : 404 `offre_introuvable` (inexistante, d'un autre, identifiant mal formé), 422 `engagement_humain_requis`, 409 `identite_non_verifiee` (la levée `coach_non_verifie` de la base, dont le texte existant s'adresse au client), 422 `termes_interdits` (titre, description ou bénéfice portant un terme de `docs/domaine.md` §2), 422 `engagement_messagerie_indisponible` (tant que la messagerie n'existe pas, L8). `200 { "publiee": true }` sinon |
 | `DELETE` | `/coach/offres/{id}` | passe en `retiree`, les abonnés en cours continuent |
 
 **Avis (L4, P4.9a, 1er novembre 2026).** Servi par deux fonctions de base pour la lecture et une

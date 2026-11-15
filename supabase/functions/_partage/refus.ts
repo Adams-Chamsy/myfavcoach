@@ -91,6 +91,30 @@ export const TEXTES_REFUS = {
     title: "Ton avis n'a pas pu être enregistré",
     detail: 'Choisis une note, 3 étiquettes au plus, et un texte de 600 caractères au plus.',
   },
+  // offre-publication (P4.11a, 15 novembre 2026 ; textes à relire, docs/decisions-en-attente.md).
+  // Les deux premiers reprennent les phrases que l'écran portait lui-même depuis L2.
+  offre_introuvable: {
+    title: 'Cette offre est introuvable',
+    detail: 'Reviens à ton espace coach pour la retrouver.',
+  },
+  engagement_humain_requis: {
+    title: 'Il manque un engagement humain',
+    detail: 'Choisis au moins un engagement humain.',
+  },
+  identite_non_verifiee: {
+    title: "Ton identité n'est pas encore vérifiée",
+    detail: 'Ton identité doit être vérifiée avant de publier une offre.',
+  },
+  termes_interdits: {
+    title: 'Cette offre ne peut pas être publiée telle quelle',
+    detail:
+      'Un mot laisse entendre que tu vends un accès à du contenu (« illimité », « premium », « débloquer », « exclusif », « bibliothèque »…). Ici, on vend un accompagnement par une personne : reformule, puis publie.',
+  },
+  engagement_messagerie_indisponible: {
+    title: "La messagerie n'est pas encore ouverte",
+    detail:
+      "Tu ne peux pas encore promettre un délai de réponse par messagerie. Retire cet engagement pour publier ; tu pourras l'ajouter quand la messagerie sera là.",
+  },
   // tous
   non_authentifie: {
     title: 'Ta session a expiré',
@@ -167,6 +191,18 @@ export const STATUTS_REFUS_INTENTION: Partial<Record<CodeRefus, number>> = {
   auto_abonnement_interdit: 409,
   deja_abonne: 409,
   profil_client_requis: 403,
+};
+
+// Les levées de publier_offre (0008, 0065) : le code rendu à l'application et son statut HTTP.
+// Deux levées ne portent pas le nom du refus affiché : le message historique de 0008 (« offre
+// introuvable ou non possedee par ce compte »), et coach_non_verifie, dont le texte existant
+// s'adresse au CLIENT qui s'abonne — le coach qui publie lit identite_non_verifiee.
+export const REFUS_PUBLICATION_OFFRE: Record<string, { code: CodeRefus; statut: number }> = {
+  'offre introuvable ou non possedee par ce compte': { code: 'offre_introuvable', statut: 404 },
+  engagement_humain_requis: { code: 'engagement_humain_requis', statut: 422 },
+  coach_non_verifie: { code: 'identite_non_verifiee', statut: 409 },
+  termes_interdits: { code: 'termes_interdits', statut: 422 },
+  engagement_messagerie_indisponible: { code: 'engagement_messagerie_indisponible', statut: 422 },
 };
 
 // Les refus MÉTIER des fonctions d'avis (0049) et leur statut HTTP, même principe.

@@ -290,6 +290,9 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0063_detail_abonnement_nouveau_moyen.sql',
       // 0064 : correction de 0063, même revoke.
       'supabase/migrations/0064_corriger_detail_abonnement.sql',
+      // 0065 : revoke EXECUTE de terme_interdit_dans et de publier_offre à service_role
+      // (convention de 0031).
+      'supabase/migrations/0065_controler_publication_offre.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

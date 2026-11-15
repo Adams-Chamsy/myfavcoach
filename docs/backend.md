@@ -654,7 +654,10 @@ atteignable).
 
 ### Une Edge Function qui ne fait que traduire un refus de la base
 
-Écrit le 1er novembre 2026 (P4.9a). **Deux endroits appliquent ce motif** : la création de
+Écrit le 1er novembre 2026 (P4.9a). **Un troisième endroit l'applique depuis le 15 novembre
+2026** : la publication d'une offre (`offre-publication`, `publier_offre`, 0008 et 0065 ; table
+`REFUS_PUBLICATION_OFFRE`, qui renomme deux levées — le message historique de 0008 et
+`coach_non_verifie`, dont le texte existant s'adresse au client). **Deux endroits appliquaient ce motif** : la création de
 l'intention de souscription (`abonnement-intention`, `creer_intention_souscription`) et le dépôt
 d'un avis (`avis`, `deposer_avis`/`modifier_avis`, 0049). La fonction SQL décide de tout, sous le
 jeton du client, et lève un code (`raise exception 'avis_fige'`) ; l'Edge Function le traduit en

@@ -1628,6 +1628,89 @@ describe('offres', () => {
     expect(corps).toEqual([]);
   });
 
+  // --- Contrôle à la publication (0065, P4.11a ; docs/domaine.md §2 et §3.3) ---
+  //
+  // Le texte d'une offre vient d'un coach : aucun test d'écran ne l'empêche d'écrire « coaching
+  // illimité ». Le seul endroit qui peut l'arrêter est publier_offre. Même chose pour la promesse
+  // d'une messagerie qui n'existe pas avant L8. Le brouillon est créé par la requête exacte de
+  // l'application (creerOffreBrouillon : insertion par la session du coach, mêmes colonnes).
+  describe('contrôle à la publication (0065)', () => {
+    async function brouillonDeB(champs: Record<string, unknown>): Promise<string> {
+      const { statut, corps } = await appelRest('/rest/v1/offres?select=id', {
+        methode: 'POST',
+        session: B,
+        prefer: 'return=representation',
+        corps: {
+          coach_id: profilCoachIdB,
+          titre: `Controle-${Date.now()}-${Math.round(Math.random() * 1e6)}`,
+          description: null,
+          prix_centimes: 4900,
+          benefices: [],
+          engagement_humain: ['ajustement hebdomadaire'],
+          est_mise_en_avant: false,
+          ...champs,
+        },
+      });
+      if (statut !== 201)
+        throw new Error(`brouillon refusé (${statut}) : ${JSON.stringify(corps)}`);
+      return (corps as { id: string }[])[0].id;
+    }
+    const publier = (offreId: string) =>
+      appelRest('/rest/v1/rpc/publier_offre', {
+        methode: 'POST',
+        session: B,
+        corps: { offre_id: offreId },
+      });
+    const publieeLe = async (offreId: string) =>
+      (
+        (
+          await appelRest(`/rest/v1/offres?id=eq.${offreId}&select=publiee_le`, {
+            session: 'admin',
+          })
+        ).corps as { publiee_le: string | null }[]
+      )[0].publiee_le;
+
+    it.each([
+      ['le titre', { titre: 'Coaching illimité' }],
+      ['la description', { description: 'Débloque ton potentiel en douze semaines.' }],
+      ['un bénéfice', { benefices: ['Un plan sur mesure', 'Accès à la bibliothèque de séances'] }],
+      ['une forme fléchie, en majuscules', { titre: 'Formule PREMIUM' }],
+    ])(
+      'un terme interdit dans %s : refusé (termes_interdits), l’offre reste un brouillon',
+      async (_ou, champs) => {
+        const id = await brouillonDeB(champs);
+        const { statut, corps } = await publier(id);
+        expect(statut).toBe(400);
+        expect(messageDe(corps)).toBe('termes_interdits');
+        expect(await publieeLe(id)).toBeNull();
+      },
+    );
+
+    it('la promesse d’une messagerie avant L8 : refusée (engagement_messagerie_indisponible), l’offre reste un brouillon', async () => {
+      const id = await brouillonDeB({
+        engagement_humain: ['ajustement hebdomadaire', 'messagerie avec délai de réponse annoncé'],
+      });
+      const { statut, corps } = await publier(id);
+      expect(statut).toBe(400);
+      expect(messageDe(corps)).toBe('engagement_messagerie_indisponible');
+      expect(await publieeLe(id)).toBeNull();
+    });
+
+    // Le sens légitime : une offre qui parle d'un accompagnement, sans terme interdit ni
+    // messagerie, se publie — y compris avec des mots proches (« accès » seul, « exclu » seul).
+    it('une offre sans terme interdit ni messagerie : publiée', async () => {
+      const id = await brouillonDeB({
+        titre: 'Suivi complet',
+        description: 'Un point chaque semaine, et un accès direct à ton coach en visio.',
+        benefices: ['Programme ajusté chaque semaine', 'Aucune séance exclue du suivi'],
+        engagement_humain: ['ajustement hebdomadaire', 'visio mensuelle'],
+      });
+      const { statut } = await publier(id);
+      expect(statut).toBe(204);
+      expect(await publieeLe(id)).not.toBeNull();
+    });
+  });
+
   // --- Sens légitimes restants ---
 
   // Cas légitime d'offres_select_proprietaire, maintenant isolé : la fixture est créée par
