@@ -1,5 +1,6 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Badge } from '@/composants/badge';
@@ -136,7 +137,7 @@ export function EcranChoixOffre({
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
       <View
         style={{
           paddingTop: insets.top + theme.espace[2],
@@ -179,7 +180,7 @@ export function EcranChoixOffre({
         </View>
       ) : (
         <>
-          <ScrollView
+          <DefilementEcran
             contentContainerStyle={{
               paddingHorizontal: theme.espace.gouttiere,
               paddingBottom: theme.espace[6],
@@ -222,7 +223,7 @@ export function EcranChoixOffre({
             </View>
 
             {erreur ? <BlocErreur erreur={erreur} /> : null}
-          </ScrollView>
+          </DefilementEcran>
 
           <View
             style={{
@@ -254,7 +255,7 @@ export function EcranChoixOffre({
           </View>
         </>
       )}
-    </View>
+    </CanevasEcran>
   );
 }
 

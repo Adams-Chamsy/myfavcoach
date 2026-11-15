@@ -173,7 +173,7 @@ export function Bouton({
     <Animated.View
       style={[
         estFocus && {
-          borderRadius: theme.rayon.pilule + theme.taille.focusHalo + theme.taille.focusContour,
+          borderRadius: theme.rayon.bouton + theme.taille.focusHalo + theme.taille.focusContour,
           padding: theme.taille.focusHalo,
           backgroundColor: theme.couleur.bordure.focusHalo,
         },
@@ -183,7 +183,7 @@ export function Bouton({
       <View
         style={
           estFocus && {
-            borderRadius: theme.rayon.pilule + theme.taille.focusContour,
+            borderRadius: theme.rayon.bouton + theme.taille.focusContour,
             borderWidth: theme.taille.focusContour,
             borderColor: theme.couleur.bordure.focus,
           }
@@ -206,14 +206,24 @@ export function Bouton({
             gap: theme.espace[2],
             minHeight: theme.taille.tapDefaut,
             paddingHorizontal: theme.espace[6],
-            borderRadius: theme.rayon.pilule,
+            paddingVertical: theme.espace[3],
+            borderRadius: theme.rayon.bouton,
             backgroundColor: fond,
             borderWidth: bordure ? EPAISSEUR_BORDURE_SECONDAIRE : 0,
             borderColor: bordure,
           }}
         >
           {icone ? <Icone nom={icone} taille={18} couleur={texte} /> : null}
-          <Text style={{ ...theme.texte.actionAccent, color: texte }}>{libelle}</Text>
+          <Text
+            style={{
+              ...theme.texte.actionAccent,
+              color: texte,
+              flexShrink: 1,
+              textAlign: 'center',
+            }}
+          >
+            {libelle}
+          </Text>
         </Pressable>
       </View>
     </Animated.View>

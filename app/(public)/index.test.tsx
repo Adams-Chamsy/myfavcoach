@@ -5,7 +5,7 @@ import type { ReactTestRendererJSON } from 'react-test-renderer';
 
 import { contraste } from '@/test/contraste';
 import { FournisseurTheme } from '@/theme/fournisseur';
-import { taille, themes } from '@/theme/tokens';
+import { taille, texte, themes } from '@/theme/tokens';
 import Bienvenue from './index';
 
 type Noeud = ReactTestRendererJSON | string | null;
@@ -126,7 +126,7 @@ describe('Bienvenue (docs/ecrans/L1-01-bienvenue.md)', () => {
     await rendreBienvenue();
 
     const titre = screen.getByText('Un meilleur toi, chaque jour.');
-    expect(titre.props.style.fontSize).toBe(44);
+    expect(titre.props.style.fontSize).toBe(texte.display.fontSize);
   });
 
   // Révision du 19 septembre 2026 (planche de marque, écran de lancement) : l'ancienne accroche

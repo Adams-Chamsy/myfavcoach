@@ -130,15 +130,12 @@ export const Champ = forwardRef<TextInputInstance, ProprietesChamp>(function Cha
           autoCorrect={type === 'email' ? false : true}
           secureTextEntry={estMotDePasse && !motDePasseVisible}
           style={{
-            height: theme.taille.controle,
+            minHeight: theme.taille.controle,
+            paddingVertical: theme.espace[3],
             borderRadius: theme.rayon.saisie,
             borderWidth: theme.taille.focusContour,
             borderColor: couleurBordure,
-            backgroundColor: desactive
-              ? theme.couleur.fond.creux
-              : estFocus || enErreur
-                ? theme.couleur.fond.surface
-                : theme.couleur.fond.canevas,
+            backgroundColor: desactive ? theme.couleur.fond.creux : theme.couleur.fond.surface,
             paddingHorizontal: theme.espace[4],
             paddingRight: estMotDePasse ? theme.taille.tapMin : theme.espace[4],
             ...theme.texte.corps,

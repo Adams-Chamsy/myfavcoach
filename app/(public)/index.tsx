@@ -1,3 +1,4 @@
+import { CanevasEcran } from '@/composants/canevas-ecran';
 import type { Href } from 'expo-router';
 import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
@@ -190,7 +191,7 @@ export default function Bienvenue() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: clair.fond.inverse }}>
+    <CanevasEcran style={{ flex: 1, backgroundColor: clair.marque.primaireProfond }}>
       <View style={{ flex: 1, position: 'relative', minHeight: 0 }}>
         {/* Repli EXPLICITE en tokens sombre : cet écran est une île fixe et son dégradé va vers
             l'encre. Sans ça, EmplacementImage prend marque.primaire par le contexte — vert
@@ -201,10 +202,10 @@ export default function Bienvenue() {
           nom="My Fav Coach"
           ratio="pleinCadre"
           remplir
-          fondRepli={sombre.fond.canevas}
+          fondRepli={clair.marque.primaireProfond}
           couleurTexteRepli={sombre.texte.surSombre}
         />
-        <DegradeVersEncre couleur={clair.fond.inverse} />
+        <DegradeVersEncre couleur={clair.marque.primaireProfond} />
 
         {/* Titre en haut, trait sable dessous : mise en page reprise de la planche de marque
             (splash clair et écran de lancement), pas d'une maquette HTML — aucune n'existe pour
@@ -282,7 +283,7 @@ export default function Bienvenue() {
         <Text
           style={{
             ...theme.texte.legende,
-            color: sombre.texte.attenue,
+            color: sombre.texte.secondaire,
             textAlign: 'center',
             paddingHorizontal: theme.espace[2],
           }}
@@ -312,7 +313,7 @@ export default function Bienvenue() {
               paddingHorizontal: theme.espace[3],
             }}
           >
-            <Text style={{ ...theme.texte.legende, color: sombre.texte.attenue }}>
+            <Text style={{ ...theme.texte.legende, color: sombre.texte.secondaire }}>
               J’ai déjà un compte ·{' '}
               <Text style={{ color: sombre.texte.surSombre, fontWeight: '700' }}>Se connecter</Text>
             </Text>
@@ -338,6 +339,6 @@ export default function Bienvenue() {
           </Pressable>
         </View>
       </View>
-    </View>
+    </CanevasEcran>
   );
 }

@@ -21,24 +21,24 @@ export const weight = {
 export const texte = {
   display: {
     fontFamily: 'InstrumentSerif_400Regular',
-    fontSize: 44,
-    lineHeight: 46,
+    fontSize: 48,
+    lineHeight: 50,
     letterSpacing: -0.44,
   },
   titre1: {
     fontFamily: 'InstrumentSerif_400Regular',
-    fontSize: 32,
-    lineHeight: 36,
+    fontSize: 40,
+    lineHeight: 44,
   },
   titre2: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 22,
-    lineHeight: 28,
+    fontFamily: 'InstrumentSerif_400Regular',
+    fontSize: 30,
+    lineHeight: 35,
   },
   titre3: {
-    fontFamily: 'Manrope_600SemiBold',
-    fontSize: 17,
-    lineHeight: 24,
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 18,
+    lineHeight: 25,
   },
   corps: {
     fontFamily: 'Manrope_400Regular',
@@ -48,24 +48,40 @@ export const texte = {
   petit: {
     fontFamily: 'Manrope_400Regular',
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   label: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 12,
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
     lineHeight: 16,
-    letterSpacing: 1.44,
+    letterSpacing: 1.1,
     textTransform: 'uppercase',
   },
   legende: {
     fontFamily: 'Manrope_400Regular',
     fontSize: 12,
-    lineHeight: 16,
+    lineHeight: 18,
   },
   actionAccent: {
     fontFamily: 'Manrope_700Bold',
     fontSize: 16,
     lineHeight: 24,
+  },
+  editorial: {
+    fontFamily: 'InstrumentSerif_400Regular',
+    fontSize: 58,
+    lineHeight: 62,
+  },
+  heroLarge: {
+    fontFamily: 'InstrumentSerif_400Regular',
+    fontSize: 72,
+    lineHeight: 74,
+  },
+  marque: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 22,
+    lineHeight: 30,
+    letterSpacing: -0.5,
   },
 } as const;
 
@@ -84,13 +100,14 @@ export const espace = {
 
 export const rayon = {
   champ: 6,
-  badge: 10,
-  saisie: 14,
-  carte: 16,
-  media: 20,
+  badge: 4,
+  saisie: 8,
+  carte: 12,
+  media: 10,
   feuille: 24,
-  panneau: 32,
+  panneau: 12,
   pilule: 999,
+  bouton: 7,
 } as const;
 
 export const ombre = {
@@ -141,13 +158,23 @@ export const taille = {
   safeBottomAndroid: 16,
   croixChip: 16,
   pleinCadre: 400,
+  contenu: 1240,
+  lecture: 880,
+  formulaire: 620,
+  photoResultat: 92,
+  portraitCoach: 160,
+  photoHero: 420,
+  barreMarque: 74,
+  bordureFine: 1,
+  logo: 36,
+  carteDecouverte: 267,
 } as const;
 
 export const mouvement = {
   courbe: 'cubic-bezier(0.32,0.72,0,1)',
   appui: 120,
-  entree: 320,
-  feuille: 380,
+  entree: 180,
+  feuille: 180,
   valeur: 600,
   decalage: 40,
   voile: 200,
@@ -189,6 +216,7 @@ export const themes = {
       accentEncre: '#FFF7F3',
       accentTeinte: '#FBE6DE',
       accentTeinteEncre: '#8F3418',
+      primaireProfond: '#12392F',
     },
     fond: {
       canevas: '#FBF8F4',
@@ -252,6 +280,7 @@ export const themes = {
       accentEncre: '#3A1A0E',
       accentTeinte: '#40271D',
       accentTeinteEncre: '#F7B79E',
+      primaireProfond: '#12392F',
     },
     fond: {
       canevas: '#14120F',
@@ -315,6 +344,7 @@ export const themes = {
       accentEncre: '#3A1A0E',
       accentTeinte: '#40271D',
       accentTeinteEncre: '#F7B79E',
+      primaireProfond: '#12392F',
     },
     fond: {
       canevas: '#000000',

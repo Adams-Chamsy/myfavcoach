@@ -207,6 +207,7 @@ describe('DevenirCoach (docs/ecrans/L1-08-activation-espace-coach.md)', () => {
     );
 
     const AUTORISES = new Set([
+      '@/composants/canevas-ecran',
       'expo-router',
       'react',
       'react-native',

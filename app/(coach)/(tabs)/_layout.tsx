@@ -1,3 +1,4 @@
+import { useDispositionEcran } from '@/composants/canevas-ecran';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router, type Href } from 'expo-router';
@@ -34,6 +35,7 @@ const OPTIONS_CREER: { type: 'programme' | 'seance' | 'offre'; libelle: string }
 // un push vers creer/offre depuis l'onglet Clients, puis un retour arrière, atterrissait sur
 // Pilotage, jamais sur Clients).
 export default function LayoutTabsCoach() {
+  const { large } = useDispositionEcran();
   const theme = useTheme();
   const [feuilleOuverte, setFeuilleOuverte] = useState(false);
 
@@ -66,7 +68,7 @@ export default function LayoutTabsCoach() {
       }
     >
       <Tabs
-        screenOptions={{ headerShown: false }}
+        screenOptions={{ headerShown: false, tabBarPosition: large ? 'top' : 'bottom' }}
         tabBar={(props) => (
           <BarreOngletsRoute
             variante="coach"

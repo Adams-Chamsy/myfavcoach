@@ -1,6 +1,7 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
@@ -59,10 +60,10 @@ export default function DevenirCoachProfil() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
       <EnteteOnboarding etape={2} desactive={chargement} />
 
-      <ScrollView
+      <DefilementEcran
         contentContainerStyle={{
           paddingHorizontal: theme.espace.gouttiere,
           paddingTop: theme.espace[2],
@@ -90,7 +91,7 @@ export default function DevenirCoachProfil() {
           onChangeTexte={(v) => setBio(v.slice(0, LONGUEUR_MAX_BIO))}
           desactive={chargement}
         />
-      </ScrollView>
+      </DefilementEcran>
 
       {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
           (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B). « Réessayer » relance
@@ -126,6 +127,6 @@ export default function DevenirCoachProfil() {
           desactive={!pretAValider || chargement}
         />
       </View>
-    </View>
+    </CanevasEcran>
   );
 }

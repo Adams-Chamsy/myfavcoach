@@ -1,3 +1,4 @@
+import { CanevasEcran } from '@/composants/canevas-ecran';
 import { useRouter } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -113,14 +114,14 @@ export default function Pilotage() {
 
   return (
     <FeuilleBascule ouverte={feuilleOuverte} onFermer={() => setFeuilleOuverte(false)}>
-      <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+      <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
         <EnTeteEspaceCoach
           titre={titre}
           nomAvatar={nom}
           onOuvrirBascule={() => setFeuilleOuverte(true)}
         />
         {contenu}
-      </View>
+      </CanevasEcran>
     </FeuilleBascule>
   );
 }

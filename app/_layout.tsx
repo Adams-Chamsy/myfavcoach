@@ -20,6 +20,7 @@ import { portAuthSupabase } from '@/services/auth/supabase';
 import { portDonneesSupabase } from '@/services/donnees/supabase';
 import { neutraliserConsoleEnProduction } from '@/services/journalisation';
 import { FournisseurTheme } from '@/theme/fournisseur';
+import { themes } from '@/theme/tokens';
 
 // Avant tout : en production, console.* devient inerte — une donnée de santé (le poids) ne doit
 // jamais atteindre le journal système de l'appareil (CLAUDE.md §10, docs/ecrans/L1-05
@@ -119,7 +120,12 @@ export default function LayoutRacine() {
         <FournisseurSession port={portAuthSupabase}>
           <FournisseurDonnees port={portDonneesSupabase}>
             <GardeAdressesPrivees />
-            <Stack screenOptions={{ headerShown: false }} />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: themes.clair.fond.canevas },
+              }}
+            />
           </FournisseurDonnees>
         </FournisseurSession>
       </FournisseurTheme>

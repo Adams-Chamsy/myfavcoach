@@ -1,5 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 
+import { Marque } from '@/composants/marque';
+import { useDispositionEcran } from '@/composants/canevas-ecran';
 import { Icone, type NomIcone } from '@/composants/icones';
 import { useTheme } from '@/theme/fournisseur';
 import { font, themes } from '@/theme/tokens';
@@ -46,94 +48,38 @@ function libelleOnglet(element: ElementNavigation, index: number, total: number)
 
 export function BarreNavigation({ variante, elements, paddingBas = 0 }: ProprietesBarreNavigation) {
   const theme = useTheme();
-  const estCoach = variante === 'coach';
-
-  // "La barre encre est une île sombre dans un thème clair, elle utilise les tokens sombre pour
-  // son contenu. C'est le seul endroit du jalon 1 où les tokens sombres servent."
-  // (docs/ecrans/L0-02-coquille-coach.md). Île : son fond ET son contenu viennent tous les deux,
-  // sans exception, de themes.sombre — jamais de useTheme(). Un fond "ambiant" (theme.couleur.
-  // fond.inverse) se serait retourné avec le thème actif (inverse de sombre = clair) alors que le
-  // contenu, lui, reste fixe : fond clair sur texte clair en thème sombre, illisible. La barre
-  // client, elle, suit le thème actif de bout en bout — c'est la seule qui doit le faire.
-  const couleurInactif = estCoach ? themes.sombre.texte.surSombre : theme.couleur.texte.secondaire;
-  const couleurActif = estCoach ? themes.sombre.marque.primaire : theme.couleur.marque.primaire;
-  // Meme principe pour le rond "Créer" (reserve a la barre coach en pratique, voir
-  // ProprietesBarreOngletsRoute) : fond et icone fixes, jamais ambiants.
-  const couleurFondMisEnAvant = estCoach
-    ? themes.sombre.marque.accent
-    : theme.couleur.marque.accent;
-  const couleurIconeMisEnAvant = estCoach
-    ? themes.sombre.marque.accentEncre
-    : theme.couleur.marque.accentEncre;
-  // Même principe pour la pastille de non-lus : fixe sur la barre coach, jamais ambiante.
-  // Trouvée non branchée (CLAUDE.md, section design, "île thématique fixe") : aucun écran
-  // n'utilise encore pastilleNonLus sur la barre coach, donc aucun test n'avait mis ce trou en
-  // évidence avant l'audit qui a suivi le même bug sur docs/ecrans/L1-01-bienvenue.md.
-  const couleurPastille = estCoach ? themes.sombre.marque.accent : theme.couleur.marque.accent;
-
+  const { large } = useDispositionEcran();
+  // La navigation coach V2 est une surface claire fixe, fond et contenu toujours pairés.
+  const couleurs = variante === 'coach' ? themes.clair : theme.couleur;
   return (
     <View
       style={{
         flexDirection: 'row',
-        alignItems: 'flex-end',
-        backgroundColor: estCoach ? themes.sombre.fond.canevas : theme.couleur.fond.canevas,
-        borderTopWidth: estCoach ? 0 : 1,
-        borderTopColor: theme.couleur.bordure.discrete,
-        paddingHorizontal: theme.espace[2],
+        alignItems: 'center',
+        width: '100%',
+        alignSelf: 'center',
+        maxWidth: large ? theme.taille.contenu : undefined,
+        backgroundColor: couleurs.fond.canevas,
+        borderTopWidth: large ? 0 : theme.taille.bordureFine,
+        borderBottomWidth: large ? theme.taille.bordureFine : 0,
+        borderColor: couleurs.bordure.discrete,
+        paddingHorizontal: large ? theme.espace[8] : theme.espace[2],
         paddingTop: theme.espace[3],
-        paddingBottom: theme.espace[4] + paddingBas,
+        paddingBottom: large ? theme.espace[3] : theme.espace[4] + paddingBas,
+        gap: large ? theme.espace[6] : 0,
       }}
     >
+      {large ? <Marque surFondClair={variante === 'coach'} /> : null}
       {elements.map((element, index) => {
-        const couleur = element.actif ? couleurActif : couleurInactif;
-        // Opacite 70 % de l'inactif coach (docs/ecrans/L0-02-coquille-coach.md), recalculee a
-        // la main plutot que reprise de la maquette (docs/design-system.md §1 : les ratios
-        // annoncés sont optimistes de 0,3 à 0,8 point) : texte.surSombre à 70 % sur fond.inverse
-        // mesure 7,74:1, l'actif plein 7,58:1 — largement au-dessus du seuil de 4,5:1 exigé.
-        const opacite = estCoach && !element.actif && !element.misEnAvant ? 0.7 : 1;
-
-        if (element.misEnAvant) {
-          return (
-            <Pressable
-              // element central sans identifiant propre, ordre stable
-              key={index}
-              onPress={element.onPress}
-              accessibilityRole="button"
-              accessibilityLabel={libelleOnglet(element, index, elements.length)}
-              style={{
-                flex: 1,
-                alignItems: 'center',
-                gap: theme.espace[1],
-                minHeight: theme.taille.tapMin,
-                // Remonte le rond au-dessus du reste de la barre.
-                marginTop: -theme.espace[6],
-              }}
-            >
-              <View
-                style={{
-                  width: theme.taille.avatarMd,
-                  height: theme.taille.avatarMd,
-                  borderRadius: theme.rayon.pilule,
-                  backgroundColor: couleurFondMisEnAvant,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Icone nom={element.icone} couleur={couleurIconeMisEnAvant} />
-              </View>
-              <Text style={{ ...theme.texte.legende, fontFamily: font.uiSemibold, color: couleur }}>
-                {element.libelle}
-              </Text>
-            </Pressable>
-          );
-        }
-
+        const couleur = element.actif ? couleurs.marque.primaire : couleurs.texte.secondaire;
         return (
           <Pressable
             key={index}
             onPress={element.onPress}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: Boolean(element.actif) }}
+            accessibilityRole={element.misEnAvant ? 'button' : 'tab'}
+            accessibilityState={
+              element.misEnAvant ? undefined : { selected: Boolean(element.actif) }
+            }
             accessibilityLabel={libelleOnglet(element, index, elements.length)}
             style={{
               flex: 1,
@@ -141,34 +87,67 @@ export function BarreNavigation({ variante, elements, paddingBas = 0 }: Propriet
               alignItems: 'center',
               justifyContent: 'center',
               gap: theme.espace[1],
-              opacity: opacite,
+              opacity: 1,
             }}
           >
-            <View>
-              <Icone nom={element.icone} couleur={couleur} actif={element.actif} />
-              {element.pastilleNonLus ? (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: -theme.espace[1],
-                    right: -theme.espace[1],
-                    width: theme.espace[2],
-                    height: theme.espace[2],
-                    borderRadius: theme.rayon.pilule,
-                    backgroundColor: couleurPastille,
-                  }}
+            {!large || element.misEnAvant ? (
+              <View
+                style={
+                  element.misEnAvant
+                    ? {
+                        width: theme.taille.tapMin,
+                        height: theme.taille.tapMin,
+                        borderRadius: theme.rayon.pilule,
+                        backgroundColor: couleurs.marque.primaire,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }
+                    : {
+                        paddingHorizontal: theme.espace[2],
+                        paddingVertical: theme.espace[1],
+                        borderRadius: theme.rayon.champ,
+                        backgroundColor: element.actif ? couleurs.marque.primaireTeinte : undefined,
+                      }
+                }
+              >
+                <Icone
+                  nom={element.icone}
+                  couleur={element.misEnAvant ? couleurs.texte.surMarque : couleur}
+                  actif={element.actif}
                 />
-              ) : null}
-            </View>
+                {element.pastilleNonLus ? (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: -theme.espace[1],
+                      right: -theme.espace[1],
+                      width: theme.espace[2],
+                      height: theme.espace[2],
+                      borderRadius: theme.rayon.pilule,
+                      backgroundColor: couleurs.marque.accent,
+                    }}
+                  />
+                ) : null}
+              </View>
+            ) : null}
             <Text
               style={{
                 ...theme.texte.legende,
                 fontFamily: element.actif ? font.uiBold : font.uiSemibold,
-                color: couleur,
+                color: element.misEnAvant ? couleurs.marque.primaire : couleur,
               }}
             >
               {element.libelle}
             </Text>
+            {large && element.actif ? (
+              <View
+                style={{
+                  height: theme.taille.bordureFine,
+                  alignSelf: 'stretch',
+                  backgroundColor: couleurs.marque.primaire,
+                }}
+              />
+            ) : null}
           </Pressable>
         );
       })}

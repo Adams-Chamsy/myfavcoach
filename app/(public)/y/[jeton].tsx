@@ -1,3 +1,4 @@
+import { CanevasEcran } from '@/composants/canevas-ecran';
 import type { Href } from 'expo-router';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -99,7 +100,7 @@ export function CorpsArriveeParInvitation({ jeton }: { jeton: string | undefined
 
   if (chargement) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+      <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
         <View style={{ height: 238 }}>
           <Squelette forme="detail" />
         </View>
@@ -107,13 +108,13 @@ export function CorpsArriveeParInvitation({ jeton }: { jeton: string | undefined
           <Squelette forme="ligne" />
           <Squelette forme="carte" />
         </View>
-      </View>
+      </CanevasEcran>
     );
   }
 
   if (erreur) {
     return (
-      <View
+      <CanevasEcran
         style={{
           flex: 1,
           backgroundColor: theme.couleur.fond.canevas,
@@ -127,7 +128,7 @@ export function CorpsArriveeParInvitation({ jeton }: { jeton: string | undefined
           nombreEchecs={0}
           onReessayer={() => {}}
         />
-      </View>
+      </CanevasEcran>
     );
   }
 
@@ -136,7 +137,7 @@ export function CorpsArriveeParInvitation({ jeton }: { jeton: string | undefined
     // inconnu (docs/ecrans/L3bis-I02, Règles) — un jeton presque correct se comporte comme un
     // jeton absent.
     return (
-      <View
+      <CanevasEcran
         style={{
           flex: 1,
           backgroundColor: theme.couleur.fond.canevas,
@@ -145,14 +146,14 @@ export function CorpsArriveeParInvitation({ jeton }: { jeton: string | undefined
         }}
       >
         <EtatVide titre="Ce lien n'est plus valide" explication="Il a peut-être expiré." />
-      </View>
+      </CanevasEcran>
     );
   }
 
   const nomCoach = `${coach.prenom} ${coach.nom}`;
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
       <View style={{ height: 238 }}>
         <EmplacementImage
           nom={nomCoach}
@@ -297,7 +298,7 @@ export function CorpsArriveeParInvitation({ jeton }: { jeton: string | undefined
         <Bouton libelle="Créer mon compte" variante="primaire" onPress={surCreerCompte} />
         <Bouton libelle="Voir son profil d'abord" variante="secondaire" onPress={surVoirProfil} />
       </View>
-    </View>
+    </CanevasEcran>
   );
 }
 

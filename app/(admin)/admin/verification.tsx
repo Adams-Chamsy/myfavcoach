@@ -1,5 +1,7 @@
+import { FournisseurTheme } from '@/theme/fournisseur';
+import { DefilementEcran } from '@/composants/canevas-ecran';
 import { useEffect, useState } from 'react';
-import { Linking, ScrollView, Text, TextInput, View } from 'react-native';
+import { Linking, Text, TextInput, View } from 'react-native';
 
 import { piecesEnVigueur } from '@/fonctionnalites/coach/pieces-en-vigueur';
 import { supabaseAdmin } from '@/services/supabase/client-admin';
@@ -164,87 +166,89 @@ export default function Verification() {
   if (!connecte) return <ConnexionAdmin onConnecte={() => setConnecte(true)} />;
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 24, gap: 16 }}>
-      <Text style={{ fontSize: 20, fontWeight: '600' }}>File d’attente — vérification</Text>
-      {erreur ? <Text style={{ color: 'red' }}>{erreur}</Text> : null}
-      {dossiers === null ? null : dossiers.length === 0 ? (
-        <Text>Aucun dossier en attente.</Text>
-      ) : (
-        dossiers.map((d) => (
-          <View key={d.coachId} style={{ borderWidth: 1, borderRadius: 8, padding: 12, gap: 8 }}>
-            <Text style={{ fontWeight: '600' }}>
-              {d.prenom} {d.nom} — {d.discipline}
-            </Text>
-            <Text>
-              Déposé le {d.deposeLe ? new Date(d.deposeLe).toLocaleDateString('fr-FR') : '—'}
-            </Text>
-            <Text
-              accessibilityRole="button"
-              onPress={() => void ouvrirDossier(d.coachId)}
-              style={{ padding: 8, textDecorationLine: 'underline' }}
-            >
-              Consulter les pièces
-            </Text>
+    <FournisseurTheme>
+      <DefilementEcran contentContainerStyle={{ padding: 24, gap: 16 }}>
+        <Text style={{ fontSize: 20, fontWeight: '600' }}>File d’attente — vérification</Text>
+        {erreur ? <Text style={{ color: 'red' }}>{erreur}</Text> : null}
+        {dossiers === null ? null : dossiers.length === 0 ? (
+          <Text>Aucun dossier en attente.</Text>
+        ) : (
+          dossiers.map((d) => (
+            <View key={d.coachId} style={{ borderWidth: 1, borderRadius: 8, padding: 12, gap: 8 }}>
+              <Text style={{ fontWeight: '600' }}>
+                {d.prenom} {d.nom} — {d.discipline}
+              </Text>
+              <Text>
+                Déposé le {d.deposeLe ? new Date(d.deposeLe).toLocaleDateString('fr-FR') : '—'}
+              </Text>
+              <Text
+                accessibilityRole="button"
+                onPress={() => void ouvrirDossier(d.coachId)}
+                style={{ padding: 8, textDecorationLine: 'underline' }}
+              >
+                Consulter les pièces
+              </Text>
 
-            {dossierOuvert === d.coachId ? (
-              <View style={{ gap: 6, paddingLeft: 8, borderLeftWidth: 2 }}>
-                {piecesDuDossier === null ? (
-                  <Text>Chargement…</Text>
-                ) : piecesDuDossier.length === 0 ? (
-                  <Text>Aucune pièce déposée.</Text>
-                ) : (
-                  piecesDuDossier.map((p) => (
-                    <View
-                      key={p.type}
-                      style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}
-                    >
-                      <Text>{LIBELLES_PIECE[p.type] ?? p.type}</Text>
-                      <Text
-                        accessibilityRole="button"
-                        onPress={() => void surOuvrirPiece(p.cheminStockage)}
-                        style={{ textDecorationLine: 'underline' }}
+              {dossierOuvert === d.coachId ? (
+                <View style={{ gap: 6, paddingLeft: 8, borderLeftWidth: 2 }}>
+                  {piecesDuDossier === null ? (
+                    <Text>Chargement…</Text>
+                  ) : piecesDuDossier.length === 0 ? (
+                    <Text>Aucune pièce déposée.</Text>
+                  ) : (
+                    piecesDuDossier.map((p) => (
+                      <View
+                        key={p.type}
+                        style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}
                       >
-                        Ouvrir (lien valable 10 min)
-                      </Text>
-                    </View>
-                  ))
-                )}
-              </View>
-            ) : null}
+                        <Text>{LIBELLES_PIECE[p.type] ?? p.type}</Text>
+                        <Text
+                          accessibilityRole="button"
+                          onPress={() => void surOuvrirPiece(p.cheminStockage)}
+                          style={{ textDecorationLine: 'underline' }}
+                        >
+                          Ouvrir (lien valable 10 min)
+                        </Text>
+                      </View>
+                    ))
+                  )}
+                </View>
+              ) : null}
 
-            <TextInput
-              placeholder="Motif (requis sauf pour « Vérifier »)"
-              value={motifs[d.coachId] ?? ''}
-              onChangeText={(v) => setMotifs({ ...motifs, [d.coachId]: v })}
-              accessibilityLabel={`Motif pour ${d.prenom} ${d.nom}`}
-              style={{ borderWidth: 1, padding: 8, borderRadius: 6 }}
-            />
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Text
-                accessibilityRole="button"
-                onPress={() => void decider(d.coachId, 'verifiee')}
-                style={{ padding: 8 }}
-              >
-                Vérifier
-              </Text>
-              <Text
-                accessibilityRole="button"
-                onPress={() => void decider(d.coachId, 'complement_demande')}
-                style={{ padding: 8 }}
-              >
-                Demander un complément
-              </Text>
-              <Text
-                accessibilityRole="button"
-                onPress={() => void decider(d.coachId, 'refusee')}
-                style={{ padding: 8 }}
-              >
-                Refuser
-              </Text>
+              <TextInput
+                placeholder="Motif (requis sauf pour « Vérifier »)"
+                value={motifs[d.coachId] ?? ''}
+                onChangeText={(v) => setMotifs({ ...motifs, [d.coachId]: v })}
+                accessibilityLabel={`Motif pour ${d.prenom} ${d.nom}`}
+                style={{ borderWidth: 1, padding: 8, borderRadius: 6 }}
+              />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Text
+                  accessibilityRole="button"
+                  onPress={() => void decider(d.coachId, 'verifiee')}
+                  style={{ padding: 8 }}
+                >
+                  Vérifier
+                </Text>
+                <Text
+                  accessibilityRole="button"
+                  onPress={() => void decider(d.coachId, 'complement_demande')}
+                  style={{ padding: 8 }}
+                >
+                  Demander un complément
+                </Text>
+                <Text
+                  accessibilityRole="button"
+                  onPress={() => void decider(d.coachId, 'refusee')}
+                  style={{ padding: 8 }}
+                >
+                  Refuser
+                </Text>
+              </View>
             </View>
-          </View>
-        ))
-      )}
-    </ScrollView>
+          ))
+        )}
+      </DefilementEcran>
+    </FournisseurTheme>
   );
 }

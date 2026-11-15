@@ -1,5 +1,6 @@
+import { DefilementEcran } from '@/composants/canevas-ecran';
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
@@ -207,7 +208,7 @@ export function EcranConfirmation({ abonnementId, onVoirProfil }: ProprietesEcra
   })();
 
   return (
-    <ScrollView
+    <DefilementEcran
       style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}
       contentContainerStyle={{
         paddingTop: insets.top + theme.espace[6],
@@ -216,7 +217,7 @@ export function EcranConfirmation({ abonnementId, onVoirProfil }: ProprietesEcra
       }}
     >
       {contenu}
-    </ScrollView>
+    </DefilementEcran>
   );
 }
 

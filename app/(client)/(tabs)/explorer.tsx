@@ -1,6 +1,7 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Badge } from '@/composants/badge';
@@ -62,24 +63,20 @@ function CarteResultat({ coach }: { coach: ResultatCoachRecherche }) {
       accessibilityLabel={`Voir le profil de ${nomCoach}`}
       style={{
         flexDirection: 'row',
-        gap: theme.espace[3],
-        padding: theme.espace[3],
-        borderRadius: theme.rayon.carte,
-        borderWidth: 1,
-        borderColor: theme.couleur.bordure.discrete,
+        gap: theme.espace[4],
+        paddingVertical: theme.espace[6],
+        borderBottomWidth: theme.taille.bordureFine,
+        borderColor: theme.couleur.bordure.marquee,
       }}
     >
-      <View style={{ width: 88 }}>
+      <View style={{ width: theme.taille.photoResultat }}>
         <EmplacementImage nom={nomCoach} ratio="portrait3x4" source={coach.photoUrl ?? undefined} />
       </View>
       <View style={{ flex: 1, gap: theme.espace[1] }}>
-        <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.principal }}>
+        <Text style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal }}>
           {nomCoach}
         </Text>
-        <Text
-          style={{ ...theme.texte.legende, color: theme.couleur.texte.secondaire }}
-          numberOfLines={1}
-        >
+        <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
           {[coach.discipline, coach.titreCourt].filter(Boolean).join(' · ')}
         </Text>
         <View style={{ flexDirection: 'row', gap: theme.espace[1], flexWrap: 'wrap' }}>
@@ -145,6 +142,7 @@ export function CorpsExplorer({
   const [decalage, setDecalage] = useState(0);
   const [chargement, setChargement] = useState(true);
   const [chargementPlus, setChargementPlus] = useState(false);
+  const [erreurBudget, setErreurBudget] = useState<string | undefined>();
 
   // L3-03 (état vide) : second appel réel, format relâché — voir plus bas, déclenché seulement
   // quand la recherche principale est vide ET que le format actif est 'presentiel' (le seul
@@ -251,6 +249,15 @@ export function CorpsExplorer({
   function appliquerFiltres() {
     const min = Number.parseFloat(prixMinTexte.replace(',', '.'));
     const max = Number.parseFloat(prixMaxTexte.replace(',', '.'));
+    if ((Number.isFinite(min) && min < 0) || (Number.isFinite(max) && max < 0)) {
+      setErreurBudget('Le budget doit être positif.');
+      return;
+    }
+    if (Number.isFinite(min) && Number.isFinite(max) && min > max) {
+      setErreurBudget('Le prix maximum doit être supérieur au prix minimum.');
+      return;
+    }
+    setErreurBudget(undefined);
     setChargement(true);
     setFiltres({
       ...brouillon,
@@ -343,6 +350,7 @@ export function CorpsExplorer({
             <View style={{ flex: 1 }}>
               <Champ
                 libelle="Prix max (€)"
+                messageErreur={erreurBudget}
                 valeur={prixMaxTexte}
                 onChangeTexte={setPrixMaxTexte}
                 type="decimal"
@@ -354,7 +362,7 @@ export function CorpsExplorer({
         </View>
       }
     >
-      <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+      <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
         <View
           style={{
             paddingTop: insets.top + theme.espace[2],
@@ -466,7 +474,11 @@ export function CorpsExplorer({
               {filtres.prixMinCentimes != null || filtres.prixMaxCentimes != null ? (
                 <Chip
                   variante="filtreRetirable"
-                  libelle={`Jusqu'à ${((filtres.prixMaxCentimes ?? 0) / 100).toFixed(0)} €`}
+                  libelle={
+                    filtres.prixMaxCentimes != null
+                      ? `Jusqu’à ${(filtres.prixMaxCentimes / 100).toFixed(0)} €`
+                      : `À partir de ${((filtres.prixMinCentimes ?? 0) / 100).toFixed(0)} €`
+                  }
                   selectionne
                   onPress={() => {}}
                   onRetirer={() => {
@@ -508,7 +520,8 @@ export function CorpsExplorer({
           ) : null}
         </View>
 
-        <ScrollView
+        <DefilementEcran
+          ample
           contentContainerStyle={{
             paddingHorizontal: theme.espace.gouttiere,
             paddingBottom: theme.espace[8],
@@ -561,8 +574,8 @@ export function CorpsExplorer({
               }
             />
           )}
-        </ScrollView>
-      </View>
+        </DefilementEcran>
+      </CanevasEcran>
     </FeuilleBasse>
   );
 }

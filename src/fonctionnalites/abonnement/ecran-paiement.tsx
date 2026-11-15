@@ -1,5 +1,6 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, ScrollView, Text, View } from 'react-native';
+import { AppState, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
@@ -235,7 +236,7 @@ export function EcranPaiement({
     etat.type === 'pret' || etat.type === 'expiree' || etat.type === 'demande_sans_reponse';
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
       <View
         style={{
           paddingTop: insets.top + theme.espace[2],
@@ -271,7 +272,7 @@ export function EcranPaiement({
         />
       </View>
 
-      <ScrollView
+      <DefilementEcran
         contentContainerStyle={{
           paddingHorizontal: theme.espace.gouttiere,
           paddingBottom: theme.espace[6],
@@ -335,7 +336,7 @@ export function EcranPaiement({
           onVoirAbonnements={onVoirAbonnements}
           onRevenirProfil={onRevenirProfil}
         />
-      </ScrollView>
+      </DefilementEcran>
 
       {payerVisible || etat.type === 'non_terminee' ? (
         <View
@@ -382,7 +383,7 @@ export function EcranPaiement({
           ) : null}
         </View>
       ) : null}
-    </View>
+    </CanevasEcran>
   );
 }
 

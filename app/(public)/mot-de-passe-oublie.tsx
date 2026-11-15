@@ -1,6 +1,7 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { AccessibilityInfo, ScrollView, Text, View } from 'react-native';
+import { AccessibilityInfo, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
@@ -54,8 +55,8 @@ export default function MotDePasseOublie() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <ScrollView
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+      <DefilementEcran
         contentContainerStyle={{
           paddingTop: insets.top + theme.espace[6],
           paddingHorizontal: theme.espace.gouttiere,
@@ -93,7 +94,7 @@ export default function MotDePasseOublie() {
             desactive={chargement}
           />
         )}
-      </ScrollView>
+      </DefilementEcran>
 
       {/* "Un champ, une action" (docs/ecrans/L1-04-connexion.md). Après l'envoi, une sortie :
           « Retour à la connexion » (B2, décidé par le développeur le 2 novembre 2026 — « un écran
@@ -124,6 +125,6 @@ export default function MotDePasseOublie() {
           />
         )}
       </View>
-    </View>
+    </CanevasEcran>
   );
 }

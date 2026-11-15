@@ -1,7 +1,8 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import type { Href } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
@@ -77,10 +78,10 @@ export default function OnboardingCestParti() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
       <EnteteOnboarding etape={4} desactive={chargement} />
 
-      <ScrollView
+      <DefilementEcran
         contentContainerStyle={{
           paddingHorizontal: theme.espace.gouttiere,
           paddingTop: theme.espace[2],
@@ -114,7 +115,7 @@ export default function OnboardingCestParti() {
             />
           </View>
         ) : null}
-      </ScrollView>
+      </DefilementEcran>
 
       {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
           (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B). Le repli serveur, titre et
@@ -150,7 +151,7 @@ export default function OnboardingCestParti() {
           desactive={chargement}
         />
       </View>
-    </View>
+    </CanevasEcran>
   );
 }
 

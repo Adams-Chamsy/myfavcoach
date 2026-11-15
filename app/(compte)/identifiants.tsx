@@ -1,6 +1,7 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
@@ -124,7 +125,7 @@ export default function Identifiants() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
       <View
         style={{
           flexDirection: 'row',
@@ -141,7 +142,7 @@ export default function Identifiants() {
         </Text>
       </View>
 
-      <ScrollView
+      <DefilementEcran
         contentContainerStyle={{
           paddingHorizontal: theme.espace.gouttiere,
           paddingTop: theme.espace[2],
@@ -269,7 +270,7 @@ export default function Identifiants() {
             desactive={motDePasseActuel === '' || !nouveauMotDePasseValide || changementEnCours}
           />
         </View>
-      </ScrollView>
-    </View>
+      </DefilementEcran>
+    </CanevasEcran>
   );
 }

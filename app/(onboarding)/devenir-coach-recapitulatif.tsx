@@ -1,6 +1,7 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
@@ -39,8 +40,8 @@ export default function DevenirCoachRecapitulatif() {
   ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <ScrollView
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+      <DefilementEcran
         contentContainerStyle={{
           flexGrow: 1,
           paddingHorizontal: theme.espace.gouttiere,
@@ -72,7 +73,7 @@ export default function DevenirCoachRecapitulatif() {
             </View>
           ))}
         </View>
-      </ScrollView>
+      </DefilementEcran>
 
       <View
         style={{
@@ -87,6 +88,6 @@ export default function DevenirCoachRecapitulatif() {
           onPress={() => router.replace('/(coach)/(tabs)/pilotage')}
         />
       </View>
-    </View>
+    </CanevasEcran>
   );
 }

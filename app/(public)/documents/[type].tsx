@@ -1,5 +1,6 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
@@ -53,18 +54,18 @@ export function CorpsDocumentLegal({ type }: { type: string | undefined }) {
 
   if (!estTypeConnu(type)) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+      <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
         <View style={{ flex: 1, padding: theme.espace.gouttiere, justifyContent: 'center' }}>
           <EtatVide titre="Document introuvable" explication="Ce lien ne mène à aucun document." />
         </View>
         {piedRetour}
-      </View>
+      </CanevasEcran>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <ScrollView
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+      <DefilementEcran
         contentContainerStyle={{
           paddingHorizontal: theme.espace.gouttiere,
           paddingTop: insets.top + theme.espace[4],
@@ -81,13 +82,13 @@ export function CorpsDocumentLegal({ type }: { type: string | undefined }) {
         <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}>
           {TEXTES_DOCUMENTS[type]}
         </Text>
-      </ScrollView>
+      </DefilementEcran>
 
       {/* Retour uniquement : aucune action d'acceptation ici, l'acceptation reste portée par le
           geste qui la déclenche ailleurs (inscription, activation coach) — fiche, "Contenu —
           surface publique". */}
       {piedRetour}
-    </View>
+    </CanevasEcran>
   );
 }
 

@@ -1,6 +1,7 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import { useRouter, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
@@ -66,7 +67,7 @@ export default function Suppression() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
       <View
         style={{
           flexDirection: 'row',
@@ -83,7 +84,7 @@ export default function Suppression() {
         </Text>
       </View>
 
-      <ScrollView
+      <DefilementEcran
         contentContainerStyle={{
           paddingHorizontal: theme.espace.gouttiere,
           paddingBottom: theme.espace[6],
@@ -157,7 +158,7 @@ export default function Suppression() {
           onChangeTexte={setMotif}
           desactive={chargement}
         />
-      </ScrollView>
+      </DefilementEcran>
 
       {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
           (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B). « Réessayer » relance
@@ -197,6 +198,6 @@ export default function Suppression() {
           desactive={!pretAConfirmer || chargement}
         />
       </View>
-    </View>
+    </CanevasEcran>
   );
 }

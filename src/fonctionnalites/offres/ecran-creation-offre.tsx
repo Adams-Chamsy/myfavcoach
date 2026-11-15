@@ -1,5 +1,6 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import { useEffect, useState } from 'react';
-import { ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Switch, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
@@ -213,7 +214,7 @@ export function EcranCreationOffre({
       libelleDestructeur="Quitter"
       onDestructeur={() => sortieEnAttente?.reprendre()}
     >
-      <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+      <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
         <View
           style={{
             paddingTop: insets.top + theme.espace[3],
@@ -270,7 +271,7 @@ export function EcranCreationOffre({
           </View>
         ) : null}
 
-        <ScrollView
+        <DefilementEcran
           contentContainerStyle={{
             paddingHorizontal: theme.espace.gouttiere,
             paddingBottom: theme.espace[6],
@@ -380,7 +381,7 @@ export function EcranCreationOffre({
               Mise en avant (« LE PLUS CHOISI »)
             </Text>
           </View>
-        </ScrollView>
+        </DefilementEcran>
 
         <View
           style={{
@@ -421,7 +422,7 @@ export function EcranCreationOffre({
             />
           )}
         </View>
-      </View>
+      </CanevasEcran>
     </Modale>
   );
 }

@@ -1,3 +1,4 @@
+import { CanevasEcran } from '@/composants/canevas-ecran';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -156,7 +157,7 @@ export default function Verification() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
       <View
         style={{
           flex: 1,
@@ -301,7 +302,7 @@ export default function Verification() {
           <Bouton variante="discret" libelle="Se connecter" onPress={surSeConnecter} />
         </View>
       </View>
-    </View>
+    </CanevasEcran>
   );
 }
 

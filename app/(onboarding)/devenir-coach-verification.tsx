@@ -1,7 +1,8 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
@@ -172,10 +173,10 @@ export default function DevenirCoachVerification() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
       <EnteteOnboarding etape={3} desactive={enCours !== null} />
 
-      <ScrollView
+      <DefilementEcran
         contentContainerStyle={{
           paddingHorizontal: theme.espace.gouttiere,
           paddingTop: theme.espace[2],
@@ -322,7 +323,7 @@ export default function DevenirCoachVerification() {
             {erreur}
           </Text>
         ) : null}
-      </ScrollView>
+      </DefilementEcran>
 
       <View
         style={{
@@ -366,6 +367,6 @@ export default function DevenirCoachVerification() {
           </Text>
         ) : null}
       </View>
-    </View>
+    </CanevasEcran>
   );
 }

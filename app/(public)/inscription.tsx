@@ -1,10 +1,11 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import DateTimePicker, {
   type DateTimePickerChangeEvent,
 } from '@react-native-community/datetimepicker';
 import type { Href } from 'expo-router';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
@@ -271,8 +272,8 @@ export default function Inscription() {
   )} sur ${LONGUEUR_MOT_DE_PASSE_MIN}`;
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <ScrollView
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+      <DefilementEcran
         contentContainerStyle={{
           paddingTop: insets.top + theme.espace[3],
           paddingHorizontal: theme.espace.gouttiere,
@@ -439,7 +440,7 @@ export default function Inscription() {
           </Text>
           .
         </Text>
-      </ScrollView>
+      </DefilementEcran>
 
       <View
         style={{
@@ -458,6 +459,6 @@ export default function Inscription() {
           desactive={!formulaireRempli || chargement}
         />
       </View>
-    </View>
+    </CanevasEcran>
   );
 }

@@ -1,14 +1,8 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import type { Href } from 'expo-router';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import {
-  AccessibilityInfo,
-  Pressable,
-  ScrollView,
-  Text,
-  type TextInputInstance,
-  View,
-} from 'react-native';
+import { AccessibilityInfo, Pressable, Text, type TextInputInstance, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
@@ -82,8 +76,8 @@ export default function Connexion() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <ScrollView
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+      <DefilementEcran
         contentContainerStyle={{
           paddingTop: insets.top + theme.espace[6],
           paddingHorizontal: theme.espace.gouttiere,
@@ -136,7 +130,7 @@ export default function Connexion() {
             ) : null}
           </View>
         ) : null}
-      </ScrollView>
+      </DefilementEcran>
 
       <View
         style={{
@@ -175,6 +169,6 @@ export default function Connexion() {
           </Pressable>
         </View>
       </View>
-    </View>
+    </CanevasEcran>
   );
 }

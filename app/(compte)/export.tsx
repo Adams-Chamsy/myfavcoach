@@ -1,6 +1,7 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
@@ -106,7 +107,7 @@ export default function Export() {
   const etat = etatDe(export_);
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
       <View
         style={{
           flexDirection: 'row',
@@ -123,7 +124,7 @@ export default function Export() {
         </Text>
       </View>
 
-      <ScrollView
+      <DefilementEcran
         contentContainerStyle={{
           paddingHorizontal: theme.espace.gouttiere,
           paddingBottom: theme.espace[4],
@@ -188,7 +189,7 @@ export default function Export() {
             ) : null}
           </>
         )}
-      </ScrollView>
+      </DefilementEcran>
 
       <View
         style={{
@@ -206,7 +207,7 @@ export default function Export() {
           desactive={chargement || demandeEnCours || etat === 'en_preparation'}
         />
       </View>
-    </View>
+    </CanevasEcran>
   );
 }
 

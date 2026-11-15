@@ -1,7 +1,8 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
@@ -105,8 +106,8 @@ export default function NouveauMotDePasse() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <ScrollView
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+      <DefilementEcran
         contentContainerStyle={{
           paddingTop: insets.top + theme.espace[6],
           paddingHorizontal: theme.espace.gouttiere,
@@ -181,7 +182,7 @@ export default function NouveauMotDePasse() {
             desactive={chargement}
           />
         ) : null}
-      </ScrollView>
+      </DefilementEcran>
 
       {etat.type === 'pret' ? (
         <View
@@ -202,6 +203,6 @@ export default function NouveauMotDePasse() {
           />
         </View>
       ) : null}
-    </View>
+    </CanevasEcran>
   );
 }

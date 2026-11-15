@@ -1,3 +1,4 @@
+import { CanevasEcran } from '@/composants/canevas-ecran';
 import { type Href, Redirect, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Image, Text, View } from 'react-native';
@@ -127,7 +128,7 @@ export default function Index() {
   // « émis dans le futur »). « Réessayer » relit par le fournisseur.
   if (!chargement && erreurLecture) {
     return (
-      <View
+      <CanevasEcran
         style={{
           flex: 1,
           justifyContent: 'center',
@@ -144,7 +145,7 @@ export default function Index() {
             void relire();
           }}
         />
-      </View>
+      </CanevasEcran>
     );
   }
 
@@ -163,7 +164,7 @@ export default function Index() {
 
   if (phase === 'erreur') {
     return (
-      <View
+      <CanevasEcran
         style={{
           flex: 1,
           justifyContent: 'center',
@@ -180,7 +181,7 @@ export default function Index() {
             setCleTentative((c) => c + 1);
           }}
         />
-      </View>
+      </CanevasEcran>
     );
   }
 
@@ -196,7 +197,7 @@ export default function Index() {
   const valeurProgression = Math.round((etapesTerminees / 3) * 100);
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
       {/* Logo centre plein ecran, position absolue : ne doit JAMAIS etre deplace par la vague ou
           la barre ci-dessous -- c'est la position exacte du splash natif iOS (voir
           LARGEUR_LOGO_DEMARRAGE). */}
@@ -254,6 +255,6 @@ export default function Index() {
           ) : null}
         </View>
       </View>
-    </View>
+    </CanevasEcran>
   );
 }

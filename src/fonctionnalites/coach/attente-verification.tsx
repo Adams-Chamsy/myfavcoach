@@ -1,5 +1,6 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import { useRouter } from 'expo-router';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Badge, type StatutBadge } from '@/composants/badge';
@@ -46,8 +47,8 @@ export function AttenteVerification({ dossier }: { dossier: DossierVerification 
   const echeance = dossier.deposeLe ? echeanceQuaranteHuitHeuresOuvrees(dossier.deposeLe) : null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <ScrollView
+    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+      <DefilementEcran
         contentContainerStyle={{
           paddingHorizontal: theme.espace.gouttiere,
           paddingTop: theme.espace[4],
@@ -128,7 +129,7 @@ export function AttenteVerification({ dossier }: { dossier: DossierVerification 
             Publier une offre — Seule la publication attend la vérification.
           </Text>
         </View>
-      </ScrollView>
+      </DefilementEcran>
 
       <View
         style={{
@@ -143,6 +144,6 @@ export function AttenteVerification({ dossier }: { dossier: DossierVerification 
           onPress={() => router.push('/(onboarding)/devenir-coach-profil')}
         />
       </View>
-    </View>
+    </CanevasEcran>
   );
 }

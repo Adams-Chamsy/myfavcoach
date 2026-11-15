@@ -2,20 +2,11 @@ import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/composants/avatar';
+import { Marque } from '@/composants/marque';
 import { useTheme } from '@/theme/fournisseur';
 import { themes } from '@/theme/tokens';
 
-// L'en-tête de l'espace coach (écran 08, pilotage) : île sombre fixe, avec l'avatar qui ouvre la
-// feuille de bascule (docs/ecrans/L1-06-bascule-espace.md, première entrée).
-//
-// UN SEUL en-tête, rendu par le pilotage AU-DESSUS de ses quatre états (chargement, attente de
-// vérification, premier lancement, pilotage). Trouvé sur iPhone le 2 novembre 2026 : depuis le
-// 12 septembre (L2), l'avatar n'existait que dans l'un des quatre ; un coach non vérifié ne
-// pouvait ni revenir à l'espace client, ni atteindre l'écran compte (déconnexion, suppression du
-// compte). Les sous-écrans (attente, premier lancement) ne dessinent plus leur propre en-tête :
-// une sortie qui vit dans une branche disparaît avec elle.
-//
-// Île fixe, toujours sombre (CLAUDE.md §5) : themes.sombre lu explicitement.
+/** L’avatar reste au-dessus de tous les états : le changement d’espace est toujours possible. */
 export function EnTeteEspaceCoach({
   titre,
   nomAvatar,
@@ -30,24 +21,39 @@ export function EnTeteEspaceCoach({
   return (
     <View
       style={{
-        backgroundColor: themes.sombre.fond.canevas,
+        backgroundColor: themes.clair.fond.canevas,
         paddingTop: insets.top + theme.espace[3],
         paddingHorizontal: theme.espace.gouttiere,
         paddingBottom: theme.espace[4],
-        flexDirection: 'row',
-        alignItems: 'center',
         gap: theme.espace[3],
+        borderBottomWidth: theme.taille.bordureFine,
+        borderBottomColor: themes.clair.bordure.discrete,
       }}
     >
-      <Pressable
-        onPress={onOuvrirBascule}
-        accessibilityRole="button"
-        accessibilityLabel="Ouvrir la bascule d'espace"
-        hitSlop={theme.espace[2]}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: theme.espace[4],
+        }}
       >
-        <Avatar nom={nomAvatar} taille="md" />
-      </Pressable>
-      <Text style={{ ...theme.texte.titre2, color: themes.sombre.texte.surSombre }}>{titre}</Text>
+        <Marque surFondClair />
+        <Pressable
+          onPress={onOuvrirBascule}
+          accessibilityRole="button"
+          accessibilityLabel="Ouvrir la bascule d'espace"
+          style={{
+            minWidth: theme.taille.tapMin,
+            minHeight: theme.taille.tapMin,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Avatar nom={nomAvatar} taille="md" />
+        </Pressable>
+      </View>
+      <Text style={{ ...theme.texte.petit, color: themes.clair.texte.secondaire }}>{titre}</Text>
     </View>
   );
 }

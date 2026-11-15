@@ -1,7 +1,8 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import Constants from 'expo-constants';
 import { useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/composants/avatar';
@@ -121,7 +122,7 @@ export function EcranCompte() {
         libelleDestructeur="Se déconnecter"
         onDestructeur={confirmerDeconnexion}
       >
-        <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+        <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
           <View
             style={{
               paddingTop: insets.top + theme.espace[2],
@@ -155,7 +156,7 @@ export function EcranCompte() {
             </View>
           </View>
 
-          <ScrollView
+          <DefilementEcran
             contentContainerStyle={{
               paddingHorizontal: theme.espace.gouttiere,
               paddingTop: theme.espace[2],
@@ -163,6 +164,17 @@ export function EcranCompte() {
               gap: theme.espace[4],
             }}
           >
+            <View style={{ gap: theme.espace[2], paddingVertical: theme.espace[4] }}>
+              <Text
+                accessibilityRole="header"
+                style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}
+              >
+                Mon compte.
+              </Text>
+              <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+                Tes accompagnements et tes réglages, au même endroit.
+              </Text>
+            </View>
             {chargement ? (
               <>
                 <Squelette forme="liste" />
@@ -268,8 +280,8 @@ export function EcranCompte() {
                 </Text>
               </>
             )}
-          </ScrollView>
-        </View>
+          </DefilementEcran>
+        </CanevasEcran>
       </Modale>
     </FeuilleBascule>
   );
@@ -305,7 +317,7 @@ function BlocEncre({
         gap: theme.espace[3],
         padding: theme.espace[4],
         borderRadius: theme.rayon.carte,
-        backgroundColor: themes.sombre.fond.canevas,
+        backgroundColor: themes.clair.marque.primaireProfond,
         minHeight: theme.taille.tapMin,
       }}
     >

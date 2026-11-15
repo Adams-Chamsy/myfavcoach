@@ -78,19 +78,17 @@ export function Onglets<Valeur extends string>({
     <View
       style={{
         flexDirection: 'row',
-        backgroundColor: theme.couleur.fond.creux,
-        borderRadius: theme.rayon.pilule,
-        padding: theme.espace[1],
+        borderBottomWidth: theme.taille.bordureFine,
+        borderBottomColor: theme.couleur.bordure.marquee,
       }}
     >
       <Animated.View
         style={[
           {
             position: 'absolute',
-            top: theme.espace[1],
-            bottom: theme.espace[1],
-            borderRadius: theme.rayon.pilule,
-            backgroundColor: theme.couleur.fond.surface,
+            bottom: 0,
+            height: theme.espace[1],
+            backgroundColor: theme.couleur.marque.primaire,
           },
           styleIndicateur,
         ]}
@@ -106,7 +104,9 @@ export function Onglets<Valeur extends string>({
             accessibilityState={{ selected: estActif }}
             style={{
               flex: 1,
-              minHeight: theme.taille.tapMin,
+              minHeight: theme.taille.controle,
+              paddingHorizontal: theme.espace[2],
+              paddingVertical: theme.espace[3],
               alignItems: 'center',
               justifyContent: 'center',
             }}

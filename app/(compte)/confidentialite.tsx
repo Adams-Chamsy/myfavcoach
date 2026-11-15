@@ -1,6 +1,7 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Pressable, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BoutonIcone } from '@/composants/bouton-icone';
@@ -159,7 +160,7 @@ export default function Confidentialite() {
           libelleDestructeur="Effacer"
           onDestructeur={effacerMesures}
         >
-          <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+          <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
             <View
               style={{
                 flexDirection: 'row',
@@ -190,7 +191,7 @@ export default function Confidentialite() {
                 />
               </View>
             ) : (
-              <ScrollView
+              <DefilementEcran
                 contentContainerStyle={{
                   paddingHorizontal: theme.espace.gouttiere,
                   paddingTop: theme.espace[2],
@@ -334,9 +335,9 @@ export default function Confidentialite() {
                     )}
                   </View>
                 ) : null}
-              </ScrollView>
+              </DefilementEcran>
             )}
-          </View>
+          </CanevasEcran>
         </Modale>
       </Modale>
     </Modale>

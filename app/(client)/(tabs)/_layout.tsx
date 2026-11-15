@@ -1,3 +1,4 @@
+import { useDispositionEcran } from '@/composants/canevas-ecran';
 import { Tabs } from 'expo-router/js-tabs';
 
 import { BarreOngletsRoute, type EntreeOnglet } from '@/fonctionnalites/navigation/barre-onglets';
@@ -24,9 +25,10 @@ const ONGLETS: EntreeOnglet[] = [
 // écran de détail comme coach/[id], poussé DEPUIS un onglet, en a besoin — d'où sa sortie de ce
 // groupe. Trouvé et vérifié par src/test/routage/cache-recherche-retour-profil.test.tsx.
 export default function LayoutTabsClient() {
+  const { large } = useDispositionEcran();
   return (
     <Tabs
-      screenOptions={{ headerShown: false }}
+      screenOptions={{ headerShown: false, tabBarPosition: large ? 'top' : 'bottom' }}
       tabBar={(props) => <BarreOngletsRoute variante="client" entrees={ONGLETS} {...props} />}
     >
       <Tabs.Screen name="accueil" />

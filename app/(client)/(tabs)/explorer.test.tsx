@@ -84,6 +84,19 @@ describe('Explorer (docs/ecrans/L3-02-recherche-filtres.md)', () => {
     expect(screen.queryByText('Me prévenir')).toBeNull();
   });
 
+  it('garde les filtres ouverts et ne recherche pas si le budget minimum dépasse le maximum', async () => {
+    const gestionnaire = jest.fn(() => ({ resultats: [coach()], totalResultats: 1 }));
+    await rendre(gestionnaire);
+    await fireEvent.press(screen.getByLabelText('Filtres'));
+    await fireEvent.changeText(screen.getByLabelText('Prix min (€)'), '60');
+    await fireEvent.changeText(screen.getByLabelText('Prix max (€)'), '20');
+    const appelsAvant = gestionnaire.mock.calls.length;
+    await fireEvent.press(screen.getByText('Appliquer'));
+    expect(screen.getByText('Le prix maximum doit être supérieur au prix minimum.')).toBeTruthy();
+    expect(screen.getByText('Appliquer')).toBeTruthy();
+    expect(gestionnaire).toHaveBeenCalledTimes(appelsAvant);
+  });
+
   // Le total vient du champ rendu par la fonction (totalResultats), jamais recompté côté
   // client : ici la fonction annonce 7 alors qu'un seul résultat est rendu (page 1 tronquée).
   it('affiche le total exact rendu par la fonction, jamais un calcul côté client', async () => {

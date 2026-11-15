@@ -160,16 +160,16 @@ describe('BarreNavigation', () => {
   // l'actif plein 7,58:1 (calcul WCAG manuel ; couvert aussi par npm run test:a11y, qui rend la
   // galerie sous les deux valeurs de themeForce).
   // "La barre encre est une île sombre... elle utilise les tokens sombre pour son contenu."
-  it('utilise les tokens du theme sombre pour le contenu de la barre coach, quel que soit le theme ambiant', async () => {
+  it('utilise les tokens du theme clair pour la navigation coach V2, quel que soit le theme ambiant', async () => {
     await rendreBarre({ variante: 'coach', elements: elementsCoach() });
 
     const pilotage = screen.getByLabelText('Pilotage, onglet, sélectionné, 1 sur 5');
     expect(pilotage.props.style.opacity).toBe(1);
-    expect(screen.getByText('Pilotage').props.style.color).toBe(themes.sombre.marque.primaire);
+    expect(screen.getByText('Pilotage').props.style.color).toBe(themes.clair.marque.primaire);
 
     const clients = screen.getByLabelText('Clients, onglet, 2 sur 5');
-    expect(clients.props.style.opacity).toBe(0.7);
-    expect(screen.getByText('Clients').props.style.color).toBe(themes.sombre.texte.surSombre);
+    expect(clients.props.style.opacity).toBe(1);
+    expect(screen.getByText('Clients').props.style.color).toBe(themes.clair.texte.secondaire);
   });
 
   // Bug releve en galerie (section 9, theme sombre) : le fond de la barre coach suivait le theme
@@ -197,10 +197,10 @@ describe('BarreNavigation', () => {
       .props.style.backgroundColor;
     const texteCoachSombre = screen.getByText('Clients').props.style.color;
 
-    expect(fondCoachClair).toBe(themes.sombre.fond.canevas);
-    expect(fondCoachSombre).toBe(themes.sombre.fond.canevas);
-    expect(texteCoachClair).toBe(themes.sombre.texte.surSombre);
-    expect(texteCoachSombre).toBe(themes.sombre.texte.surSombre);
+    expect(fondCoachClair).toBe(themes.clair.fond.canevas);
+    expect(fondCoachSombre).toBe(themes.clair.fond.canevas);
+    expect(texteCoachClair).toBe(themes.clair.texte.secondaire);
+    expect(texteCoachSombre).toBe(themes.clair.texte.secondaire);
 
     await rerender(
       <FournisseurTheme themeForce="clair">
@@ -263,8 +263,8 @@ describe('BarreNavigation', () => {
     );
     const pastilleSombre = couleurPastille(toJSON());
 
-    expect(pastilleClair).toBe(themes.sombre.marque.accent);
-    expect(pastilleSombre).toBe(themes.sombre.marque.accent);
+    expect(pastilleClair).toBe(themes.clair.marque.accent);
+    expect(pastilleSombre).toBe(themes.clair.marque.accent);
   });
 
   // Critere 6 (docs/ecrans/L0-02-coquille-coach.md) : "aucune valeur de couleur écrite en dur
@@ -291,7 +291,7 @@ describe('BarreNavigation', () => {
   // fond de la barre. Le "sans remontage complet de l'arbre" est une garantie de structure
   // (deux ecrans freres d'un meme Stack racine, docs/dette.md) : non mesurable par ce test, qui
   // verifie seulement la moitie visuelle.
-  it('change de fond selon la variante', async () => {
+  it('partage le fond clair V2 entre les deux espaces', async () => {
     const { rerender } = await rendreBarre({ variante: 'client', elements: elementsClient(0) });
     const fondClient = screen.getByLabelText('Accueil, onglet, sélectionné, 1 sur 5').parent!.props
       .style.backgroundColor;
@@ -304,6 +304,6 @@ describe('BarreNavigation', () => {
     const fondCoach = screen.getByLabelText('Pilotage, onglet, sélectionné, 1 sur 5').parent!.props
       .style.backgroundColor;
 
-    expect(fondClient).not.toBe(fondCoach);
+    expect(fondClient).toBe(fondCoach);
   });
 });

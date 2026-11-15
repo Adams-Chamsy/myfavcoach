@@ -1,7 +1,8 @@
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { AccessibilityInfo, Pressable, Share, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Path, Rect, Svg } from 'react-native-svg';
 
@@ -203,7 +204,7 @@ export default function Invitations() {
         onDestructeur={confirmerAjout}
         destructeurOccupe={ajoutEnCours}
       >
-        <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+        <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
           <View
             style={{
               flexDirection: 'row',
@@ -239,7 +240,7 @@ export default function Invitations() {
               />
             </View>
           ) : (
-            <ScrollView
+            <DefilementEcran
               contentContainerStyle={{
                 paddingHorizontal: theme.espace.gouttiere,
                 paddingBottom: insets.bottom + theme.espace[6],
@@ -482,9 +483,9 @@ export default function Invitations() {
               {/* Rappel de commission : absent tant qu'aucun abonnement réel n'existe (voir
                   Règles de la fiche) — l'absence de cette carte EST l'état honnête à ce lot,
                   pas une carte construite puis masquée. */}
-            </ScrollView>
+            </DefilementEcran>
           )}
-        </View>
+        </CanevasEcran>
       </Modale>
     </Modale>
   );

@@ -4,140 +4,248 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/composants/avatar';
+import { CanevasEcran, DefilementEcran, useDispositionEcran } from '@/composants/canevas-ecran';
 import { Chip } from '@/composants/chip';
 import { EmplacementImage } from '@/composants/emplacement-image';
+import { EtatErreur } from '@/composants/etats/etat-erreur';
+import { textesRepliErreur } from '@/composants/etats/textes';
 import { Icone } from '@/composants/icones';
+import { Marque } from '@/composants/marque';
+import { Squelette } from '@/composants/squelette';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FeuilleBascule } from '@/fonctionnalites/identite/feuille-bascule';
 import type { Discipline, ResultatCoachRecherche } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
+import { font, themes } from '@/theme/tokens';
 
-// Écran 01 (docs/ecrans/L3-01-accueil-decouverte.md). L'avatar et la bascule d'espace sont
-// livrés depuis P1.12 — cette fiche construit tout le reste : salutation, recherche, disciplines,
-// carrousel « Coachs pour toi ».
-//
-// Trois corrections à la maquette (fiche, Règles) : aucune note/avis nulle part (docs/domaine.md
-// §5.1/§5.6) ; aucun bloc « séance du jour »/« reprends là où tu t'es arrêtée » (dépend de
-// Programme, L6, absent) ; les puces de discipline viennent de la vraie table `disciplines`
-// (port.lireDisciplines()), jamais des trois valeurs choisies par la maquette.
 function dateDuJour(): string {
-  const texte = new Intl.DateTimeFormat('fr-FR', {
+  const date = new Intl.DateTimeFormat('fr-FR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   }).format(new Date());
-  return texte.charAt(0).toUpperCase() + texte.slice(1);
+  return date.charAt(0).toUpperCase() + date.slice(1);
 }
 
 export default function Accueil() {
   const theme = useTheme();
+  const { large, largeur } = useDispositionEcran();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { profils, port } = useDonnees();
   const [feuilleOuverte, setFeuilleOuverte] = useState(false);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
-  const [coachsPourToi, setCoachsPourToi] = useState<ResultatCoachRecherche[]>([]);
-
+  const [coachs, setCoachs] = useState<ResultatCoachRecherche[]>([]);
+  const [chargement, setChargement] = useState(true);
+  const [erreur, setErreur] = useState(false);
+  const [tentative, setTentative] = useState(0);
   const nom = profils
     ? [profils.identiteActive.prenom, profils.identiteActive.nom].filter(Boolean).join(' ')
     : '';
 
   useEffect(() => {
     let monte = true;
-    // Aucune commune imposée : le profil client ne l'expose pas encore par ce port (fiche,
-    // « Ce qui a été inventé ») — proximité neutre pour tout le monde, comme une recherche sans
-    // filtre de commune sur L3-02.
-    void Promise.all([port.lireDisciplines(), port.rechercherCoachs({ limite: 10 })]).then(
-      ([d, r]) => {
-        if (!monte) return;
-        setDisciplines(d);
-        setCoachsPourToi(r.resultats);
-      },
-    );
+    void Promise.all([port.lireDisciplines(), port.rechercherCoachs({ limite: 10 })])
+      .then(([d, r]) => {
+        if (monte) {
+          setDisciplines(d);
+          setCoachs(r.resultats);
+          setChargement(false);
+          setErreur(false);
+        }
+      })
+      .catch(() => {
+        if (monte) {
+          setErreur(true);
+          setChargement(false);
+        }
+      });
     return () => {
       monte = false;
     };
-  }, [port]);
+  }, [port, tentative]);
 
-  function ouvrirRecherche(disciplineCle?: string) {
+  function ouvrirRecherche(discipline?: string) {
     router.push(
-      disciplineCle
-        ? { pathname: '/(client)/(tabs)/explorer', params: { discipline: disciplineCle } }
+      discipline
+        ? { pathname: '/(client)/(tabs)/explorer', params: { discipline } }
         : '/(client)/(tabs)/explorer',
     );
   }
-
-  return (
-    <FeuilleBascule ouverte={feuilleOuverte} onFermer={() => setFeuilleOuverte(false)}>
-      <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-        {/* Zone sûre du haut portée par CE View, en style direct — jamais par
-            contentContainerStyle du ScrollView plus bas, que le balayage de zone sûre
-            (src/test/accessibilite.test.tsx, verifierOffsetHautZoneSure) ne voit pas : il
-            n'inspecte que la prop "style", pas les props propres à ScrollView. Même angle mort
-            déjà documenté pour moi.tsx/pilotage.tsx (CLAUDE.md §8). */}
+  const largeurCarte = large
+    ? (Math.min(largeur, theme.taille.contenu) - theme.espace.gouttiere * 2 - theme.espace[6] * 2) /
+      3
+    : theme.taille.carteDecouverte;
+  const cartes = coachs.map((coach) => {
+    const nomCoach = `${coach.prenom} ${coach.nom}`;
+    return (
+      <Pressable
+        key={coach.offreId}
+        onPress={() => router.push(`/(client)/coach/${coach.coachId}`)}
+        accessibilityRole="button"
+        accessibilityLabel={`Voir le profil de ${nomCoach}`}
+        style={{ width: largeurCarte, gap: theme.espace[2] }}
+      >
+        <EmplacementImage nom={nomCoach} ratio="paysage4x3" source={coach.photoUrl ?? undefined} />
+        <Text
+          style={{
+            ...theme.texte.label,
+            color: theme.couleur.marque.primaire,
+            marginTop: theme.espace[2],
+          }}
+        >
+          {coach.discipline}
+        </Text>
         <View
           style={{
             flexDirection: 'row',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'space-between',
-            paddingTop: insets.top + theme.espace[2],
-            paddingHorizontal: theme.espace.gouttiere,
-            paddingBottom: theme.espace[2],
+            gap: theme.espace[3],
           }}
         >
-          <View style={{ gap: theme.espace[1] }}>
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.attenue }}>
-              {dateDuJour()}
+          <Text style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal, flex: 1 }}>
+            {nomCoach}
+          </Text>
+          <Text style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal }}>
+            {(coach.prixCentimes / 100).toFixed(0)} €
+            <Text style={{ ...theme.texte.legende, color: theme.couleur.texte.secondaire }}>
+              /mois
             </Text>
-            <Text style={{ ...theme.texte.titre2, color: theme.couleur.texte.principal }}>
-              Salut {profils?.identiteActive.prenom ?? ''}
-            </Text>
-          </View>
+          </Text>
+        </View>
+        {coach.titreCourt ? (
+          <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+            {coach.titreCourt}
+          </Text>
+        ) : null}
+      </Pressable>
+    );
+  });
+  return (
+    <FeuilleBascule ouverte={feuilleOuverte} onFermer={() => setFeuilleOuverte(false)}>
+      <CanevasEcran ample style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+        <View
+          style={{
+            paddingTop: insets.top + theme.espace[2],
+            paddingHorizontal: theme.espace.gouttiere,
+            paddingBottom: theme.espace[4],
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: theme.espace[3],
+          }}
+        >
+          {large ? (
+            <View>
+              <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+                {dateDuJour()}
+              </Text>
+              <Text style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal }}>
+                Salut {profils?.identiteActive.prenom ?? ''}
+              </Text>
+            </View>
+          ) : (
+            <Marque />
+          )}
           <Pressable
             onPress={() => setFeuilleOuverte(true)}
             accessibilityRole="button"
             accessibilityLabel="Ouvrir la bascule d'espace"
+            style={{
+              minWidth: theme.taille.tapMin,
+              minHeight: theme.taille.tapMin,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
             <Avatar nom={nom} taille="md" />
           </Pressable>
         </View>
-
-        <ScrollView
+        <DefilementEcran
+          ample
           contentContainerStyle={{
+            paddingHorizontal: theme.espace.gouttiere,
             paddingBottom: theme.espace[8],
-            gap: theme.espace[4],
+            gap: theme.espace[6],
           }}
         >
-          <Pressable
-            onPress={() => ouvrirRecherche()}
-            accessibilityRole="button"
-            accessibilityLabel="Rechercher un coach"
+          {!large ? (
+            <View>
+              <Text style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal }}>
+                Salut {profils?.identiteActive.prenom ?? ''}
+              </Text>
+              <Text style={{ ...theme.texte.legende, color: theme.couleur.texte.secondaire }}>
+                {dateDuJour()}
+              </Text>
+            </View>
+          ) : null}
+          <View
             style={{
-              marginHorizontal: theme.espace.gouttiere,
-              minHeight: theme.taille.controle,
-              borderRadius: theme.rayon.saisie,
-              borderWidth: 1,
-              borderColor: theme.couleur.bordure.discrete,
-              backgroundColor: theme.couleur.fond.surface,
+              borderRadius: theme.rayon.panneau,
+              backgroundColor: themes.clair.marque.primaireProfond,
+              padding: large ? theme.espace[12] : theme.espace[6],
               flexDirection: 'row',
+              gap: theme.espace[8],
               alignItems: 'center',
-              gap: theme.espace[2],
-              paddingHorizontal: theme.espace[4],
             }}
           >
-            <Icone nom="recherche" couleur={theme.couleur.texte.attenue} />
-            <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.attenue }}>
-              Un coach, une discipline…
-            </Text>
-          </Pressable>
-
+            <View style={{ flex: 1, gap: theme.espace[6] }}>
+              <Text style={{ ...theme.texte.label, color: themes.clair.texte.surMarque }}>
+                Des personnes. Des possibles.
+              </Text>
+              <Text
+                style={{
+                  ...(large ? theme.texte.heroLarge : theme.texte.display),
+                  color: themes.clair.texte.surMarque,
+                }}
+              >
+                Le bon coach.{'\n'}
+                <Text style={{ color: themes.clair.marque.ruban }}>Ton prochain déclic.</Text>
+              </Text>
+              <Text style={{ ...theme.texte.petit, color: themes.clair.texte.surMarque }}>
+                Du sport à la cybersécurité, avance avec quelqu’un qui t’accompagne vraiment.
+              </Text>
+              <Pressable
+                onPress={() => ouvrirRecherche()}
+                accessibilityRole="button"
+                accessibilityLabel="Rechercher un coach"
+                style={{
+                  minHeight: theme.taille.controle,
+                  borderRadius: theme.rayon.saisie,
+                  backgroundColor: themes.clair.fond.surface,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: theme.espace[4],
+                  paddingVertical: theme.espace[3],
+                  gap: theme.espace[3],
+                }}
+              >
+                <Icone nom="recherche" couleur={themes.clair.texte.secondaire} />
+                <Text
+                  style={{ ...theme.texte.corps, color: themes.clair.texte.secondaire, flex: 1 }}
+                >
+                  Un coach, une discipline…
+                </Text>
+                <Icone nom="suivant" couleur={themes.clair.marque.primaire} />
+              </Pressable>
+            </View>
+            {large && coachs[0] ? (
+              <View style={{ width: largeurCarte }}>
+                <EmplacementImage
+                  nom={`${coachs[0].prenom} ${coachs[0].nom}`}
+                  ratio="portrait3x4"
+                  source={coachs[0].photoUrl ?? undefined}
+                  fondRepli={themes.clair.marque.primaire}
+                  couleurTexteRepli={themes.clair.texte.surMarque}
+                />
+              </View>
+            ) : null}
+          </View>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              gap: theme.espace[2],
-              paddingHorizontal: theme.espace.gouttiere,
-            }}
+            contentContainerStyle={{ gap: theme.espace[2] }}
           >
             <Chip
               variante="filtre"
@@ -145,79 +253,72 @@ export default function Accueil() {
               selectionne={false}
               onPress={() => ouvrirRecherche()}
             />
-            {disciplines.map((discipline) => (
+            {disciplines.map((d) => (
               <Chip
-                key={discipline.cle}
+                key={d.cle}
                 variante="filtre"
-                libelle={discipline.libelle}
+                libelle={d.libelle}
                 selectionne={false}
-                onPress={() => ouvrirRecherche(discipline.cle)}
+                onPress={() => ouvrirRecherche(d.cle)}
               />
             ))}
           </ScrollView>
-
-          {coachsPourToi.length > 0 ? (
-            <View style={{ gap: theme.espace[3] }}>
-              <Text
+          {erreur ? (
+            <EtatErreur
+              {...textesRepliErreur.serveur}
+              nombreEchecs={0}
+              onReessayer={() => setTentative((v) => v + 1)}
+            />
+          ) : chargement ? (
+            <Squelette forme="carte" />
+          ) : coachs.length > 0 ? (
+            <View style={{ gap: theme.espace[6] }}>
+              <View
                 style={{
-                  ...theme.texte.titre3,
-                  color: theme.couleur.texte.principal,
-                  paddingHorizontal: theme.espace.gouttiere,
-                }}
-              >
-                Coachs pour toi
-              </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   gap: theme.espace[3],
-                  paddingHorizontal: theme.espace.gouttiere,
                 }}
               >
-                {coachsPourToi.map((coach) => {
-                  const nomCoach = `${coach.prenom} ${coach.nom}`;
-                  return (
-                    <Pressable
-                      key={coach.offreId}
-                      onPress={() => router.push(`/(client)/coach/${coach.coachId}`)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Voir le profil de ${nomCoach}`}
-                      style={{ width: 200, gap: theme.espace[2] }}
-                    >
-                      <EmplacementImage
-                        nom={nomCoach}
-                        ratio="paysage4x3"
-                        source={coach.photoUrl ?? undefined}
-                      />
-                      <Text style={{ ...theme.texte.legende, color: theme.couleur.texte.attenue }}>
-                        {coach.discipline}
-                      </Text>
-                      <Text
-                        style={{ ...theme.texte.petit, color: theme.couleur.texte.principal }}
-                        numberOfLines={1}
-                      >
-                        {nomCoach}
-                      </Text>
-                      {coach.titreCourt ? (
-                        <Text
-                          style={{ ...theme.texte.legende, color: theme.couleur.texte.secondaire }}
-                          numberOfLines={1}
-                        >
-                          {coach.titreCourt}
-                        </Text>
-                      ) : null}
-                      <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.principal }}>
-                        {(coach.prixCentimes / 100).toFixed(0)} €/mois
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
+                <Text
+                  style={{ ...theme.texte.titre2, color: theme.couleur.texte.principal, flex: 1 }}
+                >
+                  Coachs pour toi
+                </Text>
+                <Pressable
+                  onPress={() => ouvrirRecherche()}
+                  accessibilityRole="button"
+                  style={{ minHeight: theme.taille.tapMin, justifyContent: 'center' }}
+                >
+                  <Text
+                    style={{
+                      ...theme.texte.petit,
+                      color: theme.couleur.marque.primaire,
+                      fontFamily: font.uiBold,
+                    }}
+                  >
+                    Tout explorer →
+                  </Text>
+                </Pressable>
+              </View>
+              {large ? (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.espace[6] }}>
+                  {cartes}
+                </View>
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: theme.espace[4] }}
+                >
+                  {cartes}
+                </ScrollView>
+              )}
             </View>
           ) : null}
-        </ScrollView>
-      </View>
+        </DefilementEcran>
+      </CanevasEcran>
     </FeuilleBascule>
   );
 }
