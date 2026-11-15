@@ -14,10 +14,19 @@ réseau. Comptes : `comptes-scenarios.local.md`.
 
 ## L4 — abonnement et paiement
 
+Critères des fiches de L4 qu'aucun test ni aucun navigateur piloté ne couvre (relevé de P4.10,
+15 novembre 2026) : 04b critère 6 (page de paiement fermée en plein paiement), 20 critère 7 (un
+échec par motif déclenchable), 24b critères 8 et 9, 27a critère 9 (zones tactiles, lecteur
+d'écran, 200 %). Le retour dans l'application par le lien `myfavcoach.fr` reste impossible à
+essayer tant que le domaine n'existe pas (`docs/dette.md`).
+
 - [ ] **04b → page de paiement → retour.** « Payer » ouvre la page du prestataire dans le
       navigateur intégré ; le fermer (ou finir le paiement) ramène à 04b, qui constate seul.
       Carte `4242 4242 4242 4242`, puis l'IBAN de test `AT61 1904 3002 3457 3201` (reste « en
       cours » quelques minutes : c'est lui qui montre 04c en variante SEPA).
+- [ ] **04b, page fermée en plein paiement** (critère 6). Ouvrir la page, la fermer sans payer :
+      « Paiement non terminé. Rien n'a été débité. » et « Reprendre le paiement ». Puis payer
+      et fermer la page avant qu'elle ne revienne seule : 04b constate et mène à 04c.
 - [ ] **04c.** Aucun geste de retour ne ramène à 04b ni à 04a ; « Voir le profil » mène au profil.
 - [ ] **24b.** Pause (feuille basse, jetons 2/4/6/8 semaines), reprise, résiliation (la modale
       dit la date d'effet), annulation ; rien de tronqué à 200 %.
@@ -27,6 +36,9 @@ réseau. Comptes : `comptes-scenarios.local.md`.
       lieu le … ». Il faut un abonnement impayé : la préparation est décrite dans
       `docs/decisions-en-attente.md` (ligne « Clôture de l'écran 20 ») ; Claude peut la refaire
       sur un compte au choix juste avant la séance.
+- [ ] **24b et 27a au lecteur d'écran** (VoiceOver). « Résilier » s'annonce comme une action
+      destructrice ; chaque étoile s'annonce « {n} sur 5, {mot} » ; « Donner mon avis » inactif
+      dit pourquoi.
 - [ ] **Écran 20, zones sûres.** L'en-tête sous l'encoche, le bouton « Changer de moyen de
       paiement » au-dessus de la barre gestuelle.
 - [ ] **27a, clavier.** Le champ « Raconte, si tu veux » sur plusieurs lignes : le clavier ne
