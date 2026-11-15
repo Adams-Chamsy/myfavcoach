@@ -168,6 +168,12 @@ export const taille = {
   bordureFine: 1,
   logo: 36,
   carteDecouverte: 267,
+  photoBienvenue: 292,
+  photoBienvenueLarge: 620,
+  symboleOuverture: 142,
+  filOuverture: 600,
+  pointEtape: 8,
+  repereEtape: 20,
 } as const;
 
 export const mouvement = {
@@ -181,6 +187,10 @@ export const mouvement = {
   voileOpacite: 0.42,
   echelleAppui: 0.96,
   pulsation: 1200,
+  ouverture: 1950,
+  ouvertureBreve: 350,
+  ouvertureSortie: 250,
+  ouvertureReduite: 150,
 } as const;
 
 export const mouvementReduit = {

@@ -1,4 +1,6 @@
-import { Redirect, Slot, useSegments } from 'expo-router';
+import type { ReactElement } from 'react';
+import { RepriseProfil } from '@/fonctionnalites/accueil/reprise-profil';
+import { Redirect, Stack, useSegments } from 'expo-router';
 import { View } from 'react-native';
 
 import { EtatErreur } from '@/composants/etats/etat-erreur';
@@ -7,6 +9,7 @@ import { textesRepliErreur } from '@/composants/etats/textes';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { determinerDestination } from '@/fonctionnalites/identite/garde';
+import { useParcoursVisiteur } from '@/fonctionnalites/accueil/fournisseur-parcours-visiteur';
 import { useTheme } from '@/theme/fournisseur';
 
 // Règle 7 (docs/prompts/L1.md, P1.10) : "une route de (public) atteinte avec une session
@@ -30,14 +33,26 @@ const DERNIER_SEGMENT_EXEMPTE = 'nouveau-mot-de-passe';
 
 export default function LayoutPublic() {
   const theme = useTheme();
-  const segments = useSegments();
+  const parcours = useParcoursVisiteur();
+  const segments: readonly string[] = useSegments();
   const { chargement: chargementSession, session } = useSession();
   const { chargement: chargementDonnees, profils, erreurLecture, relire } = useDonnees();
 
-  const routeExemptee = segments[segments.length - 1] === DERNIER_SEGMENT_EXEMPTE;
+  const routeExemptee =
+    segments[segments.length - 1] === DERNIER_SEGMENT_EXEMPTE ||
+    segments[segments.length - 1] === 'decouvrir' ||
+    segments[1] === 'profil';
   const sessionValide = Boolean(session && session.emailVerifie);
+  let redirection: ReactElement | null = null;
 
-  if (!routeExemptee && !chargementSession && !chargementDonnees && sessionValide) {
+  if (
+    segments[0] === '(public)' &&
+    !routeExemptee &&
+    !chargementSession &&
+    !chargementDonnees &&
+    !parcours.chargement &&
+    sessionValide
+  ) {
     // Lecture des profils en échec (13 novembre 2026) : l'erreur, aucune redirection — le repli
     // menait à l'onboarding client (docs/dette.md, jeton « émis dans le futur »).
     if (erreurLecture) {
@@ -59,8 +74,27 @@ export default function LayoutPublic() {
         </View>
       );
     }
-    return <Redirect href={determinerDestination(session, profils)} />;
+    const destination = determinerDestination(session, profils, parcours.retourCoach);
+    redirection =
+      parcours.retourCoach && destination === `/(public)/profil/${parcours.retourCoach.coachId}` ? (
+        <RepriseProfil coachId={parcours.retourCoach.coachId} />
+      ) : (
+        <Redirect href={destination} />
+      );
   }
 
-  return <Slot />;
+  // Garder le même navigateur au même emplacement : le démonter à la connexion perdrait
+  // les filtres et les résultats. La redirection reste un frère sans remplacer ce Stack.
+  return (
+    <>
+      <View
+        style={{ flex: 1 }}
+        accessibilityElementsHidden={redirection !== null}
+        importantForAccessibility={redirection !== null ? 'no-hide-descendants' : 'auto'}
+      >
+        <Stack screenOptions={{ headerShown: false }} />
+      </View>
+      {redirection}
+    </>
+  );
 }

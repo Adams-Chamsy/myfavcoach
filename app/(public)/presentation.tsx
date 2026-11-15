@@ -1,0 +1,6 @@
+import type { ReactElement } from 'react';
+import { EcranBienvenue } from '@/fonctionnalites/accueil/ecran-bienvenue';
+
+export default function Presentation(): ReactElement {
+  return <EcranBienvenue presentation />;
+}

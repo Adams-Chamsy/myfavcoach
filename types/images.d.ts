@@ -10,3 +10,10 @@ declare module '*.png' {
   const source: ImageSourcePropType;
   export default source;
 }
+
+// Photos d’ambiance de bienvenue embarquées avec l’application.
+declare module '*.jpg' {
+  import type { ImageSourcePropType } from 'react-native';
+  const source: ImageSourcePropType;
+  export default source;
+}

@@ -74,6 +74,15 @@ describe('Explorer (docs/ecrans/L3-02-recherche-filtres.md)', () => {
     jest.clearAllMocks();
   });
 
+  it('soumettre à nouveau le même texte relance une requête et termine le chargement', async () => {
+    const gestionnaire = jest.fn(() => ({ resultats: [coach()], totalResultats: 1 }));
+    await rendre(gestionnaire);
+    await fireEvent(screen.getByPlaceholderText('Un coach, une discipline…'), 'submitEditing');
+    await waitFor(() => expect(gestionnaire).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByText('Recherche des coachs…')).toBeNull());
+    expect(screen.queryByText('Nadia Belkacem')).toBeTruthy();
+  });
+
   // Critère : aucune note, aucun avis, aucun badge « Nouveau » dans les résultats.
   it('affiche les résultats sans aucune note, avis ni badge « Nouveau »', async () => {
     await rendre(() => ({ resultats: [coach()], totalResultats: 1 }));

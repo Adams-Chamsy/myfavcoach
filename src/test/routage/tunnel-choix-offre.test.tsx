@@ -6,7 +6,7 @@ import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
-import { creerFauxPortDonnees } from '@/services/donnees/faux';
+import { creerFauxPortDonnees, etatProfilsParDefaut } from '@/services/donnees/faux';
 import { FournisseurTheme } from '@/theme/fournisseur';
 
 // docs/ecrans/L4-04a-choix-offre.md (P4.6a) : 04a s'EMPILE sur le profil du coach, et son bouton
@@ -66,6 +66,10 @@ it('04a s’empile sur le profil du coach, et « Retour » y ramène', async () 
 
   // src/fixtures/demonstration.ts : Yannick Berthaud, « Suivi complet », 49 €/mois.
   const portDonnees = creerFauxPortDonnees();
+  // Le tunnel suppose maintenant un profil client terminé (GO accueil visiteur, L1-01a).
+  portDonnees.definirEtatProfilsPourTest(
+    etatProfilsParDefaut({ profilActif: 'client', clientExiste: true, clientOnboardingEtape: 5 }),
+  );
   portDonnees.definirProfilsCoachPublicsPourTest({
     'coach-yannick': {
       id: 'coach-yannick',

@@ -7,7 +7,7 @@ import { detailAbonnementDemonstration } from '@/fixtures/demonstration';
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
-import { creerFauxPortDonnees } from '@/services/donnees/faux';
+import { creerFauxPortDonnees, etatProfilsParDefaut } from '@/services/donnees/faux';
 import { FournisseurTheme } from '@/theme/fournisseur';
 
 // docs/ecrans/L4-04c-confirmation-abonnement.md, critère 5 : « Après 04c, aucun geste de retour ne
@@ -66,6 +66,10 @@ it('après le paiement, 04c s’empile sur le profil ; un retour ramène au prof
   await portAuth.connecter('camille@exemple.fr', 'bon-mot-de-passe');
 
   const portDonnees = creerFauxPortDonnees();
+  // Le tunnel suppose maintenant un profil client terminé (GO accueil visiteur, L1-01a).
+  portDonnees.definirEtatProfilsPourTest(
+    etatProfilsParDefaut({ profilActif: 'client', clientExiste: true, clientOnboardingEtape: 5 }),
+  );
   portDonnees.definirProfilsCoachPublicsPourTest({
     'coach-yannick': {
       id: 'coach-yannick',

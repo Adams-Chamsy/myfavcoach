@@ -47,6 +47,12 @@ Tout ce qui ne sert pas cette phrase est reporté.
 
 ## 2. Écrans dans le périmètre
 
+Révision du 15 novembre 2026, validée par l’utilisateur : la bienvenue propose une découverte
+sans compte et une présentation facultative en trois étapes. Routes `/decouvrir` et
+`/presentation` et `/profil/{id}` (alias du profil public existant), sans nouveaux droits sur les données privées. Fiches L1-01 et L1-01a.
+L’ouverture du logo accompagne le démarrage existant, sans nouvelle dépendance ni version tablette native.
+
+
 Numérotation du dossier de design. « Fiche » = fiche d'écran à rédiger dans `docs/ecrans/`.
 
 ### Socle — lot L0 (aucun écran produit, quatre écrans techniques)

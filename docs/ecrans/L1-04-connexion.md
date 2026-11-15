@@ -108,3 +108,10 @@ promettre à l'écran ou à l'utilisateur une coupure immédiate que le mécanis
 6. Le lecteur d'écran annonce le message d'échec à son apparition sans voler le focus.
 7. Surfaces nouvelles dans la galerie, **exercées en clair et en sombre**.
 8. `npm run verif` passe.
+
+## Reprise d’un profil consulté — 15 novembre 2026
+
+Depuis « S’abonner » sans session, une intention limitée à l’identifiant d’un coach public
+permet le retour au même profil après connexion et onboarding éventuel. « Retour au profil »
+ou le retour navigateur/matériel annulent ce contexte. Aucune souscription n’est déclenchée
+par la connexion. La pile publique reste montée pour préserver les résultats de recherche.

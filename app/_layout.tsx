@@ -1,3 +1,7 @@
+import { FournisseurParcoursVisiteur } from '@/fonctionnalites/accueil/fournisseur-parcours-visiteur';
+import { ConsommationRetourCoach } from '@/fonctionnalites/accueil/reprise-profil';
+import { OuvertureMarque } from '@/fonctionnalites/accueil/ouverture-marque';
+import { portAccueilLocal } from '@/services/accueil/local';
 import { useEffect } from 'react';
 import { router, Stack } from 'expo-router';
 import type { Href } from 'expo-router';
@@ -119,13 +123,18 @@ export default function LayoutRacine() {
       <FournisseurTheme>
         <FournisseurSession port={portAuthSupabase}>
           <FournisseurDonnees port={portDonneesSupabase}>
-            <GardeAdressesPrivees />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: themes.clair.fond.canevas },
-              }}
-            />
+            <FournisseurParcoursVisiteur port={portAccueilLocal}>
+              <OuvertureMarque>
+                <GardeAdressesPrivees />
+                <ConsommationRetourCoach />
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: themes.clair.fond.canevas },
+                  }}
+                />
+              </OuvertureMarque>
+            </FournisseurParcoursVisiteur>
           </FournisseurDonnees>
         </FournisseurSession>
       </FournisseurTheme>

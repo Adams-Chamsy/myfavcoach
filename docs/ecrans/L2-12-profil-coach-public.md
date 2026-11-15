@@ -92,3 +92,12 @@ Pied fixe : bouton message (ouvre une conversation, hors périmètre L2) + bouto
 5. Accessible sans session (`anon`).
 6. Galerie, deux thèmes.
 7. `npm run verif` passe.
+
+## Révision du 15 novembre 2026 — parcours visiteur
+
+`/profil/{id}` expose le même corps que la route historique `/coach/{id}`, dans la pile
+publique conservée derrière la connexion. Le profil et les offres sont relus lors d’un
+changement de session ; un rejet de lecture affiche l’erreur existante avec « Réessayer ».
+Un profil absent propose un retour à la découverte. L’abonnement demande un client ayant
+terminé son onboarding ; un espace coach actif propose de rejoindre son espace pour
+basculer volontairement, sans changement de profil silencieux.

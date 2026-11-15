@@ -54,5 +54,11 @@ it('sans session, une adresse de l’espace coach mène à l’espace public', a
 // layout ne la monte pas.
 it('le layout racine monte la garde sous les fournisseurs, à côté de la pile', () => {
   const racine = readFileSync(join(__dirname, '..', '..', '..', 'app', '_layout.tsx'), 'utf8');
-  expect(racine).toMatch(/<FournisseurDonnees[^>]*>\s*<GardeAdressesPrivees \/>\s*<Stack/);
+  const debut = racine.indexOf('<FournisseurDonnees');
+  const fin = racine.indexOf('</FournisseurDonnees>');
+  const sousLesDonnees = racine.slice(debut, fin);
+  expect(debut).toBeGreaterThanOrEqual(0);
+  expect(fin).toBeGreaterThan(debut);
+  expect(sousLesDonnees).toMatch(/<GardeAdressesPrivees\s*\/>/);
+  expect(sousLesDonnees).toMatch(/<Stack[\s>]/);
 });

@@ -1,3 +1,4 @@
+import { RepriseProfil } from '@/fonctionnalites/accueil/reprise-profil';
 import { CanevasEcran } from '@/composants/canevas-ecran';
 import { type Href, Redirect, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -12,6 +13,7 @@ import { Progression } from '@/composants/progression';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { determinerDestination } from '@/fonctionnalites/identite/garde';
+import { useParcoursVisiteur } from '@/fonctionnalites/accueil/fournisseur-parcours-visiteur';
 import { useTheme } from '@/theme/fournisseur';
 
 // Seuils de docs/ecrans/L0-04-demarrage.md, section "Contenu" : au-dela de 3 s, message
@@ -79,6 +81,7 @@ function VagueSable({
 // n'a qu'une seule source, jamais deux qui pourraient diverger.
 export default function Index() {
   const theme = useTheme();
+  const parcours = useParcoursVisiteur();
   const insets = useSafeAreaInsets();
   const { chargement: chargementSession, session } = useSession();
   const { chargement: chargementDonnees, profils, erreurLecture, relire } = useDonnees();
@@ -93,7 +96,7 @@ export default function Index() {
   // — determinerDestination attend les DEUX avant de trancher. FournisseurDonnees ne lit
   // jamais le port tant qu'aucune session vérifiée n'existe, donc chargementDonnees se résout
   // vite (false) dans tous les cas où il n'y a rien à attendre.
-  const chargement = chargementSession || chargementDonnees;
+  const chargement = chargementSession || chargementDonnees || parcours.chargement;
   const [phase, setPhase] = useState<Phase>('lecture');
   const [nombreEchecs, setNombreEchecs] = useState(0);
   const [cleTentative, setCleTentative] = useState(0);
@@ -168,7 +171,14 @@ export default function Index() {
         />
       );
     }
-    return <Redirect href={determinerDestination(session, profils)} />;
+    const destination = determinerDestination(session, profils, parcours.retourCoach);
+    if (
+      parcours.retourCoach &&
+      destination === `/(public)/profil/${parcours.retourCoach.coachId}`
+    ) {
+      return <RepriseProfil coachId={parcours.retourCoach.coachId} />;
+    }
+    return <Redirect href={destination} />;
   }
 
   if (phase === 'erreur') {

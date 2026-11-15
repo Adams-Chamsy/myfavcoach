@@ -1,3 +1,5 @@
+import Presentation from './(public)/presentation';
+import { SignatureMarque } from '@/fonctionnalites/accueil/ouverture-marque';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { ScrollView, Switch, Text, View } from 'react-native';
@@ -1163,6 +1165,9 @@ function AvecEnTeteCoach({ titre, children }: { titre: string; children: ReactNo
 
 const ECRANS_L1: { titre: string; rendu: () => ReactNode }[] = [
   { titre: 'L1-01 · Bienvenue', rendu: () => <Bienvenue /> },
+  { titre: 'L1-01 · Présentation', rendu: () => <Presentation /> },
+  { titre: 'L1-01a · Découverte visiteur', rendu: () => <CorpsExplorer visiteur /> },
+  { titre: 'L0-04 · Signature animée', rendu: () => <DemonstrationOuverture /> },
   { titre: 'L1-02 · Création de compte', rendu: () => <Inscription /> },
   { titre: 'L1-03 · Vérification de l’adresse', rendu: () => <Verification /> },
   { titre: 'L1-04 · Connexion', rendu: () => <Connexion /> },
@@ -2175,5 +2180,31 @@ function SectionEcransL4() {
         </View>
       ))}
     </Section>
+  );
+}
+
+function DemonstrationOuverture() {
+  const theme = useTheme();
+  const [lecture, setLecture] = useState(false);
+  return (
+    <View style={{ gap: theme.espace[4] }}>
+      <Bouton libelle="Rejouer la signature" onPress={() => setLecture(true)} />
+      <View
+        style={{
+          height: theme.taille.pleinCadre,
+          position: 'relative',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        {lecture ? (
+          <SignatureMarque longue onTerminee={() => setLecture(false)} />
+        ) : (
+          <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+            Ruban sable, symbole puis nom.
+          </Text>
+        )}
+      </View>
+    </View>
   );
 }

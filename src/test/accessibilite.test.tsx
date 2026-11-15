@@ -1,3 +1,4 @@
+import Presentation from '../../app/(public)/presentation';
 import { fireEvent, render, type RenderResult } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
@@ -688,6 +689,16 @@ const CORPUS: EntreeCorpus[] = [
     ),
   },
   {
+    nom: 'app/(public)/profil/[id].tsx',
+    creerElement: () => (
+      <FournisseurSession key="profil-coach" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesChoixOffre()}>
+          <CorpsProfilCoachPublic id="coach-yannick" />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
     nom: 'app/(coach)/creer/[type].tsx',
     creerElement: () => (
       <FournisseurSession key="creer-offre" port={portAuthOnboarding}>
@@ -830,17 +841,22 @@ const CORPUS: EntreeCorpus[] = [
     ),
   })),
   {
-    // docs/ecrans/L1-01-bienvenue.md, critère 5 : « couples texte/fond mesurés sur le dégradé
-    // AU POINT LE PLUS CLAIR, pas sur l'encre pleine ». Le dégradé va de son extrémité
-    // transparente (au-dessus du repli de l'EmplacementImage de fond) vers clair.fond.inverse.
-    // Depuis la correction de l'île, le repli est EXPLICITEMENT sombre (sombre.fond.canevas,
-    // #14120F) : il n'existe donc plus AUCUN point du dégradé plus clair que clair.fond.inverse
-    // (#17211E). On épingle cette valeur comme fond de référence : react-test-renderer ne
-    // compose pas le SVG, et si un jour le fond racine de l'écran cessait de la poser, la
-    // mesure retomberait sinon sur le canevas clair de l'app — un faux vert.
     nom: 'app/(public)/index.tsx',
     creerElement: () => <Bienvenue key="bienvenue" />,
-    fondReference: () => themes.clair.fond.inverse,
+  },
+  {
+    nom: 'app/(public)/presentation.tsx',
+    creerElement: () => <Presentation key="presentation" />,
+  },
+  {
+    nom: 'app/(public)/decouvrir.tsx',
+    creerElement: () => (
+      <FournisseurSession key="decouvrir" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <CorpsExplorer visiteur />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
   },
   {
     nom: 'app/(public)/inscription.tsx',

@@ -23,7 +23,7 @@ jest.mock('expo-router', () => ({
     mockRemplacer(href);
     return null;
   },
-  Slot: () => {
+  Stack: () => {
     // require() ici, jamais un import en tête de fichier : une référence hors-portée dans une
     // factory jest.mock() lève à la transformation (voir src/composants/bouton.test.tsx et
     // consorts pour ce même motif établi).

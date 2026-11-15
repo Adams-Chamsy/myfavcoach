@@ -4,7 +4,7 @@ import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
-import { creerFauxPortDonnees } from '@/services/donnees/faux';
+import { creerFauxPortDonnees, etatProfilsParDefaut } from '@/services/donnees/faux';
 import { FournisseurTheme } from '@/theme/fournisseur';
 import ProfilCoachPublicEcran from './[id]';
 
@@ -138,8 +138,16 @@ describe('L2-12 · Profil coach public', () => {
   // enfin le tunnel — seul point d'entrée. Sans session : la connexion d'abord (décidé le
   // 31 octobre 2026), jamais le tunnel directement.
   describe('« S’abonner »', () => {
-    function profilAvecOffre() {
+    function profilAvecOffre(clientPret = true) {
       const portDonnees = creerFauxPortDonnees();
+      // La reprise visiteur requiert désormais un profil client terminé avant le tunnel.
+      portDonnees.definirEtatProfilsPourTest(
+        etatProfilsParDefaut({
+          profilActif: 'client',
+          clientExiste: clientPret,
+          clientOnboardingEtape: clientPret ? 5 : null,
+        }),
+      );
       portDonnees.definirProfilsCoachPublicsPourTest({
         'coach-1': {
           id: 'coach-1',
@@ -173,12 +181,12 @@ describe('L2-12 · Profil coach public', () => {
       return portDonnees;
     }
 
-    async function rendre(portAuth: ReturnType<typeof creerFauxPortAuth>) {
+    async function rendre(portAuth: ReturnType<typeof creerFauxPortAuth>, clientPret = true) {
       await render(
         <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
           <FournisseurTheme>
             <FournisseurSession port={portAuth}>
-              <FournisseurDonnees port={profilAvecOffre()}>
+              <FournisseurDonnees port={profilAvecOffre(clientPret)}>
                 <ProfilCoachPublicEcran />
               </FournisseurDonnees>
             </FournisseurSession>
@@ -190,7 +198,7 @@ describe('L2-12 · Profil coach public', () => {
 
     afterEach(() => mockPush.mockClear());
 
-    it('avec une session : ouvre le choix de l’offre de ce coach', async () => {
+    it('avec une session et un profil client terminé : ouvre le choix de l’offre de ce coach', async () => {
       const portAuth = creerFauxPortAuth();
       await portAuth.inscrire('camille@exemple.fr', 'bon-mot-de-passe', '2000-01-01');
       portAuth.verifierEmailPourTest('camille@exemple.fr');
@@ -198,6 +206,21 @@ describe('L2-12 · Profil coach public', () => {
       await rendre(portAuth);
       await fireEvent.press(screen.getByRole('button', { name: 'S’abonner · 49 €/mois' }));
       expect(mockPush).toHaveBeenCalledWith('/(client)/souscription/coach-1');
+    });
+
+    it('avec une session mais sans profil client : repasse par le routage vers l’onboarding', async () => {
+      const portAuth = creerFauxPortAuth();
+      await portAuth.inscrire('camille@exemple.fr', 'bon-mot-de-passe', '2000-01-01');
+      portAuth.verifierEmailPourTest('camille@exemple.fr');
+      await portAuth.connecter('camille@exemple.fr', 'bon-mot-de-passe');
+      await rendre(portAuth, false);
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: 'S’abonner · 49 €/mois' }).props.accessibilityState,
+        ).toMatchObject({ disabled: false }),
+      );
+      await fireEvent.press(screen.getByRole('button', { name: 'S’abonner · 49 €/mois' }));
+      expect(mockPush).toHaveBeenCalledWith('/');
     });
 
     it('sans session : ouvre la connexion, jamais le tunnel', async () => {

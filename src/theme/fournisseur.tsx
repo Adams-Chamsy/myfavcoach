@@ -81,7 +81,7 @@ export function useTheme(): ThemeResolu {
 type ElargirValeur<Valeur> = Valeur extends string ? string : number;
 export type DureesMouvement = {
   [Cle in keyof typeof mouvement]: ElargirValeur<(typeof mouvement)[Cle]>;
-} & { actif: boolean };
+} & { actif: boolean; pret: boolean };
 
 // Reserve a la galerie de developpement (app/_galerie.tsx) : force la valeur "actif" sans
 // attendre le reglage systeme, pour que son interrupteur "mouvement reduit" ait un effet reel
@@ -113,18 +113,38 @@ export function FournisseurMouvementReduit({
 export function useMouvementReduit(): DureesMouvement {
   const force = useContext(ContexteMouvementReduitForce);
   const [actifSysteme, setActifSysteme] = useState(false);
+  const [lectureTerminee, setLectureTerminee] = useState(false);
 
   useEffect(() => {
     let monte = true;
 
-    AccessibilityInfo.isReduceMotionEnabled().then((valeurInitiale) => {
-      if (monte) setActifSysteme(valeurInitiale);
-    });
+    const securite = setTimeout(() => {
+      if (monte) {
+        setActifSysteme(true);
+        setLectureTerminee(true);
+      }
+    }, 500); // Limite technique de lecture : repli sans mouvement, jamais un écran figé.
+
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((valeurInitiale) => {
+        if (monte) {
+          setActifSysteme(valeurInitiale);
+          setLectureTerminee(true);
+        }
+      })
+      .catch(() => {
+        if (monte) {
+          setActifSysteme(true);
+          setLectureTerminee(true);
+        }
+      })
+      .finally(() => clearTimeout(securite));
 
     const abonnement = AccessibilityInfo.addEventListener('reduceMotionChanged', setActifSysteme);
 
     return () => {
       monte = false;
+      clearTimeout(securite);
       abonnement.remove();
     };
   }, []);
@@ -132,7 +152,10 @@ export function useMouvementReduit(): DureesMouvement {
   const actif = force ?? actifSysteme;
 
   return useMemo(
-    () => (actif ? { ...mouvement, ...mouvementReduit, actif } : { ...mouvement, actif }),
-    [actif],
+    () =>
+      actif
+        ? { ...mouvement, ...mouvementReduit, actif, pret: force !== null || lectureTerminee }
+        : { ...mouvement, actif, pret: force !== null || lectureTerminee },
+    [actif, force, lectureTerminee],
   );
 }

@@ -11,6 +11,8 @@ import { objectifsOnboarding, rythmesOnboarding } from '@/fixtures/demonstration
 import { EnteteOnboarding } from '@/fonctionnalites/identite/entete-onboarding';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import type { ProfilOnboarding } from '@/services/donnees/port';
+import { useParcoursVisiteur } from '@/fonctionnalites/accueil/fournisseur-parcours-visiteur';
+import { lireRetourCoach } from '@/services/accueil/port';
 import { useTheme, type ThemeResolu } from '@/theme/fournisseur';
 
 const NON_RENSEIGNE = 'Non renseigné';
@@ -44,6 +46,7 @@ function libellePointDeDepart(profil: ProfilOnboarding): string {
 // l'étape 1, mais pour une raison différente (documentée là où ça compte, pas ici en double).
 export default function OnboardingCestParti() {
   const theme = useTheme();
+  const { retourCoach } = useParcoursVisiteur();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { port } = useDonnees();
@@ -74,7 +77,9 @@ export default function OnboardingCestParti() {
     }
     // Fixe, pas determinerDestination() : L1-05 ne connaît qu'une seule sortie possible
     // (garde.ts est pour le ROUTAGE au démarrage, pas pour la navigation intra-onboarding).
-    router.replace('/(client)/(tabs)/accueil' as Href);
+    const retour = lireRetourCoach(JSON.stringify(retourCoach));
+    if (retour) router.dismissTo(`/(public)/profil/${retour.coachId}` as Href);
+    else router.replace('/(client)/(tabs)/accueil' as Href);
   }
 
   return (

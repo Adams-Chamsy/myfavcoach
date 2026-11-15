@@ -1,0 +1,32 @@
+[
+  {
+    "prompt": "Use case: photorealistic-natural. Asset type: portrait 4:5 editorial photograph for a premium French sports-coaching mobile app onboarding carousel, MyFavCoach. Photorealistic, authentic adult people, natural skin texture, credible sporting movement, not glossy stock posing. Forest green sportswear accents, warm sand and ivory neutrals, cinematic natural sunlight, realistic French setting. Compose main faces and activity in central 65 percent so image crops gracefully for phone and desktop, leave clear natural negative space near top edges, no words, no captions, no UI, no logos or brand marks, no watermark, no before/after imagery. Aspirational self-improvement through a human coach's support; attainable everyday sport, no body shaming, no bodybuilder aesthetic, no extreme or dangerous feat. Scene: beautiful daylight-filled unbranded neighborhood training studio with warm oak, neutral equipment and tall windows, not a luxury bodybuilding gym. An adult woman of realistic athletic-average build, textured hair tied back, green technical shirt and dark leggings, performs a comfortable controlled bodyweight squat on a mat; adult male coach in neutral sand sportswear stands at respectful distance at her side, looking at her movement and offering a calm open-hand cue without touching her. Both complete anatomically correct figures visible, no weights needed, credible supportive coaching. Three-quarter candid composition, warm light, determined focused face. This scene conveys a personalized coached practice and gradual progress.",
+    "generation": "Outil imagegen intégré, mode built-in",
+    "role": "Photo d’ambiance illustrative ; aucun lien avec un coach du catalogue",
+    "largeur": 1122,
+    "hauteur": 1402,
+    "octetsOptimises": 431890,
+    "sha256Optimise": "aeb6a1311a328c782b865a3dd1c527b49ee311ded58528f66fd3cd4c5141d5f7",
+    "fichier": "effort-accompagne.jpg"
+  },
+  {
+    "prompt": "Use case: photorealistic-natural. Asset type: portrait 4:5 editorial photograph for a premium French sports-coaching mobile app onboarding carousel, MyFavCoach. Photorealistic, authentic adult people, natural skin texture, credible sporting movement, not glossy stock posing. Forest green sportswear accents, warm sand and ivory neutrals, cinematic natural sunlight, realistic French setting. Compose main faces and activity in central 65 percent so image crops gracefully for phone and desktop, leave clear natural negative space near top edges, no words, no captions, no UI, no logos or brand marks, no watermark, no before/after imagery. Aspirational self-improvement through a human coach's support; attainable everyday sport, no body shaming, no bodybuilder aesthetic, no extreme or dangerous feat. Scene: outdoor broad gentle stone park steps overlooking a green urban landscape at sunrise. Adult woman runner with realistic athletic build in a forest-green top has just reached the top of a modest uphill training section; she stands upright taking a breath with an honest relieved proud smile, sweat subtly visible, her male sports coach in sand sportswear arrives one step behind and shares an encouraging raised open palm, no physical contact required. View at human eye level, waist-up to three-quarter length, warm sun rim light, natural city-park greenery. Quiet powerful personal accomplishment, everyday achievable sporting self-overcoming, no summit climbing, no podium, no medals, no unreachable fitness ideal.",
+    "generation": "Outil imagegen intégré, mode built-in",
+    "role": "Photo d’ambiance illustrative ; aucun lien avec un coach du catalogue",
+    "largeur": 1122,
+    "hauteur": 1402,
+    "octetsOptimises": 400332,
+    "sha256Optimise": "cc570f73b4f5788341f1be5c3b5667cda39db1e4e3bec1db6343813f7b8adb49",
+    "fichier": "progression-personnelle.jpg"
+  },
+  {
+    "prompt": "Use case: photorealistic-natural. Asset type: portrait 4:5 premium editorial sports coaching onboarding photo for MyFavCoach. Create an authentic, photorealistic encounter between a Black man around 55 years old with ordinary realistic build and subtly greying short hair, returning to recreational sport, and a female adult sports coach around 35 with tied dark hair. They are in unbranded technical sportswear, he in warm sand and she in forest green. She calmly explains a warm-up with a natural open-hand gesture, he attentively looks at her with a relaxed optimistic smile, no touching. On a leafy riverside jogging path in a French city park at early morning, warm natural backlight, quiet bokeh and credible everyday environment. Human connection, motivation to take a first step, attainable effort rather than elite performance. Realistic skin texture, subtle lines of age, anatomically correct hands, candid three-quarter upper body composition. Main faces and gestures in central 65 percent, enough room for wide phone image crops. Palette forest green, sand, warm ivory, coherent with a premium understated sports app. No words, logos, watermark, UI, before/after, weight-loss claims, gym body ideal, exaggerated muscles or medical narrative. Show the older participant as capable and autonomous.",
+    "generation": "Outil imagegen intégré, mode built-in",
+    "role": "Photo d’ambiance sportive inclusive ; aucun lien avec un coach du catalogue",
+    "largeur": 1122,
+    "hauteur": 1402,
+    "octetsOptimises": 504228,
+    "sha256Optimise": "53aa6fd3a1ad9b2482b6070d2e9fcc4a86ebb59c72ed41502172e2585fe11a60",
+    "fichier": "rencontre-sportive.jpg"
+  }
+]

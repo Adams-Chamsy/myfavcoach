@@ -2,6 +2,7 @@ import type { Href } from 'expo-router';
 
 import type { SessionAuth } from '@/services/auth/port';
 import type { EtatProfils } from '@/services/donnees/port';
+import { lireRetourCoach, type RetourCoach } from '@/services/accueil/port';
 
 // Seul endroit du dépôt qui décide où une session mène (docs/prompts/L1.md, P1.10 : "la
 // redirection est décidée à un seul endroit"). Deux appelants, une seule fonction : app/index.tsx
@@ -26,6 +27,7 @@ const ROUTE_PAR_ETAPE: Record<number, Href> = {
 export function determinerDestination(
   session: SessionAuth | null,
   profils: EtatProfils | null,
+  retourCoach: RetourCoach | null = null,
 ): Href {
   if (!session) return '/(public)' as Href;
   if (!session.emailVerifie) return '/(public)/verification' as Href;
@@ -40,7 +42,12 @@ export function determinerDestination(
   if (profils?.profilActif === 'client') {
     if (!profils.clientExiste) return ROUTE_PAR_ETAPE[1]; // règle 3 : aucun profil du tout
     const etape = profils.clientOnboardingEtape ?? 1;
-    if (etape > 4) return '/(client)/(tabs)/accueil' as Href; // onboarding terminé → règle 5
+    if (etape > 4) {
+      const retour = lireRetourCoach(JSON.stringify(retourCoach));
+      return retour
+        ? (`/(public)/profil/${retour.coachId}` as Href)
+        : ('/(client)/(tabs)/accueil' as Href);
+    } // onboarding terminé → règle 5
     return ROUTE_PAR_ETAPE[etape] ?? ROUTE_PAR_ETAPE[1]; // règle 4 : étape non terminée
   }
 

@@ -101,3 +101,15 @@ Le splash sombre (`assets/marque/splash-*-sombre.png`) n'est pas branché : mode
 8. La barre de progression reflète des étapes réelles (polices, session, profil), jamais une
    minuterie : sa valeur change avec l'état de chargement, pas avec le temps écoulé.
 9. `npm run verif` passe.
+
+## Révision de marque du 15 novembre 2026
+
+Le GO utilisateur ajoute une signature animée au-dessus du routage existant : ruban sable,
+symbole officiel, nom puis disparition. Environ 2,2 s à la première découverte, version brève
+aux suivantes, version statique courte avec les mouvements réduits. Un booléen local mémorise
+la présentation ; sa lecture ne bloque jamais le démarrage au-delà de 800 ms.
+La session et les profils se préparent en parallèle ; la marque ne choisit pas la destination.
+Elle ne se rejoue pas à chaque route ou reprise d’arrière-plan, et libère les interactions.
+Le splash natif prend le même vert profond et un symbole clair. Cette direction remplace
+l’ancienne image claire ; progression fonctionnelle et erreurs de démarrage restent en place.
+La jonction réelle splash → signature reste à éprouver dans des constructions iOS/Android.

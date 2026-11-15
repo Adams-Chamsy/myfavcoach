@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import { AccessibilityInfo, Pressable, Text, type TextInputInstance, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useParcoursVisiteur } from '@/fonctionnalites/accueil/fournisseur-parcours-visiteur';
 import { Bouton } from '@/composants/bouton';
 import { Champ } from '@/composants/champ';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
@@ -24,6 +25,7 @@ export default function Connexion() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { retourCoach, oublierRetour } = useParcoursVisiteur();
   const params = useLocalSearchParams<{ email?: string }>();
   const { port } = useSession();
 
@@ -51,7 +53,7 @@ export default function Connexion() {
       // la session — les lire prendrait un aller-retour réseau que cet écran n'a pas à gérer
       // lui-même. "/" (app/index.tsx) attend déjà les deux fournisseurs avant de trancher :
       // un seul endroit qui calcule la vraie destination, jamais dupliqué ici.
-      router.replace('/');
+      if (!retourCoach) router.replace('/');
       return;
     }
 
@@ -85,9 +87,30 @@ export default function Connexion() {
           gap: theme.espace[4],
         }}
       >
+        {retourCoach ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              const id = retourCoach.coachId;
+              oublierRetour();
+              if (router.canGoBack?.()) router.back();
+              else router.replace(`/(public)/profil/${id}` as Href);
+            }}
+            style={{ minHeight: theme.taille.tapMin, justifyContent: 'center' }}
+          >
+            <Text style={{ ...theme.texte.petit, color: theme.couleur.marque.primaire }}>
+              Retour au profil
+            </Text>
+          </Pressable>
+        ) : null}
         <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
           Content de te revoir.
         </Text>
+        {retourCoach ? (
+          <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+            Connecte-toi pour poursuivre. Tu retrouveras ensuite le profil du coach.
+          </Text>
+        ) : null}
 
         <Champ
           libelle="Adresse e-mail"

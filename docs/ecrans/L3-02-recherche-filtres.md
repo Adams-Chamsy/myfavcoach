@@ -205,3 +205,12 @@ défaut, plus que les graphies elles-mêmes.
 9. Accessible sans session (`anon`).
 10. Galerie, deux thèmes.
 11. `npm run verif` passe.
+
+## Réutilisation publique — 15 novembre 2026
+
+Le corps de recherche vit dans `src/fonctionnalites/decouverte/ecran-recherche.tsx` et
+sert aussi `/decouvrir`, sans barre d’onglets privée. Les résultats publics ouvrent
+`/profil/{id}` ; l’onglet client conserve `/coach/{id}`. Les filtres et requêtes sont partagés.
+Un rejet de lecture des références, résultats ou pagination est intercepté et propose
+« Réessayer » en conservant les filtres. Soumettre à nouveau le même texte relance
+explicitement la recherche et ne doit pas laisser un chargement sans requête.
