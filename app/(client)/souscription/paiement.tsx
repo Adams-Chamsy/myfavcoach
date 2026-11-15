@@ -52,8 +52,23 @@ export default function PaiementEcran() {
         }
         await WebBrowser.openBrowserAsync(url);
       }}
-      // Tant que 04c n'existe pas (P4.7) : retour au profil du coach, sans texte inventé.
-      onAbonne={versProfil}
+      // 04c (P4.7) : la pile revient d'abord au profil du coach (dismissTo retire 04b et 04a ;
+      // si le profil n'est pas derrière — retour sur web —, il est poussé), puis 04c s'empile
+      // dessus : aucun geste de retour ne ramène au paiement (fiche 04c, critère 5 ;
+      // src/test/routage/tunnel-confirmation-pile.test.tsx).
+      onAbonne={(abonnementId) => {
+        oublierIntentionEnCours();
+        const confirmation =
+          `/(client)/souscription/confirmation?abonnement=${encodeURIComponent(abonnementId)}` as Href;
+        if (coachId) {
+          router.dismissTo(`/(client)/coach/${coachId}` as Href);
+          router.push(confirmation);
+        } else {
+          // Retour sur web : 04b a été atteint par un remplacement, rien n'est derrière ; 04c le
+          // remplace à son tour (un dismissAll ici n'était « pas géré », vu à la clôture).
+          router.replace(confirmation);
+        }
+      }}
       onRevenirProfil={versProfil}
       onVoirAbonnements={() => {
         oublierIntentionEnCours();

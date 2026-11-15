@@ -140,6 +140,8 @@ describe('L4-04b · Récapitulatif et paiement', () => {
     await fireEvent.press(payer);
 
     await waitFor(() => expect(onAbonne).toHaveBeenCalledTimes(1));
+    // P4.7 : 04c lit l'abonnement créé par son identifiant, rendu par le constat.
+    expect(onAbonne).toHaveBeenCalledWith('abonnement-1');
     expect(ouvrirPage).toHaveBeenCalledTimes(1);
     expect(ouvrirPage).toHaveBeenCalledWith(URL_PAGE);
     expect(portDonnees.lireNombreConstatsPourTest()).toBe(1);

@@ -96,6 +96,8 @@ type LigneDetailAbonnement = {
   prochain_prelevement_le: string | null;
   pause_jusqu_le: string | null;
   fin_acces_le: string | null;
+  coach_id: string;
+  offre_id: string;
   offre_titre: string;
   offre_engagement_humain: string[] | null;
   coach_prenom: string;
@@ -1180,6 +1182,8 @@ export const portDonneesSupabase: PortDonnees = {
       prochainPrelevementLe: l.prochain_prelevement_le,
       pauseJusquLe: l.pause_jusqu_le,
       finAccesLe: l.fin_acces_le,
+      coachId: l.coach_id,
+      offreId: l.offre_id,
       offreTitre: l.offre_titre,
       offreEngagementHumain: l.offre_engagement_humain ?? [],
       coachPrenom: l.coach_prenom,

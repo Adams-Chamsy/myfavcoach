@@ -29,6 +29,7 @@ import {
   seancesDemonstration,
   recapitulatifPaiementDemonstration,
   avisDemonstration,
+  detailAbonnementDemonstration,
 } from '@/fixtures/demonstration';
 import { EcranCompte } from '@/fonctionnalites/compte/ecran-compte';
 import { FeuilleBascule } from '@/fonctionnalites/identite/feuille-bascule';
@@ -67,6 +68,7 @@ import { CorpsDocumentLegal } from './(public)/documents/[type]';
 import { CorpsProfilCoachPublic } from './(client)/coach/[id]';
 import { EcranChoixOffre } from '@/fonctionnalites/abonnement/ecran-choix-offre';
 import { BlocMesAbonnements } from '@/fonctionnalites/abonnement/bloc-mes-abonnements';
+import { EcranConfirmation } from '@/fonctionnalites/abonnement/ecran-confirmation';
 import { EcranPaiement } from '@/fonctionnalites/abonnement/ecran-paiement';
 import { OngletAvis } from '@/fonctionnalites/avis/onglet-avis';
 import Accueil from './(client)/(tabs)/accueil';
@@ -1926,6 +1928,32 @@ function PaiementAvecFixture() {
   );
 }
 
+// L4-04c (P4.7) : la confirmation, carte payée ou prélèvement SEPA en attente (jeu de
+// démonstration : detailAbonnementDemonstration).
+function ConfirmationAvecFixture({ sepa }: { sepa: boolean }) {
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    p.definirDetailAbonnementPourTest({
+      [detailAbonnementDemonstration.id]: sepa
+        ? {
+            ...detailAbonnementDemonstration,
+            statut: 'en_attente_confirmation',
+            moyen: 'sepa',
+            moyenDerniersChiffres: '2606',
+            derniereFactureMontantCentimes: null,
+            derniereFacturePayeeLe: null,
+          }
+        : { ...detailAbonnementDemonstration },
+    });
+    return p;
+  });
+  return (
+    <FournisseurDonnees port={port}>
+      <EcranConfirmation abonnementId={detailAbonnementDemonstration.id} onVoirProfil={() => {}} />
+    </FournisseurDonnees>
+  );
+}
+
 // L4-24b : un abonnement par état affiché (jeu de démonstration : Yannick Berthaud, « Suivi
 // complet », 49 €/mois ; dates : celle de recapitulatifPaiementDemonstration).
 function MesAbonnementsAvecFixture() {
@@ -2006,6 +2034,11 @@ const ECRANS_L4: { titre: string; rendu: () => ReactNode }[] = [
     rendu: () => <ChoixOffreAvecFixture avecOffre={false} />,
   },
   { titre: 'L4-04b · Récapitulatif et paiement', rendu: () => <PaiementAvecFixture /> },
+  { titre: 'L4-04c · Confirmation, carte', rendu: () => <ConfirmationAvecFixture sepa={false} /> },
+  {
+    titre: 'L4-04c · Confirmation, SEPA en attente',
+    rendu: () => <ConfirmationAvecFixture sepa />,
+  },
   { titre: 'L4-24b · Mes abonnements, chaque état', rendu: () => <MesAbonnementsAvecFixture /> },
   { titre: 'L2-13 · Onglet Avis, 1 avis', rendu: () => <OngletAvisAvecFixture nombre={1} /> },
   { titre: 'L2-13 · Onglet Avis, 5 avis', rendu: () => <OngletAvisAvecFixture nombre={5} /> },

@@ -35,9 +35,8 @@ export type ProprietesEcranPaiement = {
   // Ouvre la page de paiement : expo-web-browser sur iOS/Android (la promesse se résout quand le
   // navigateur se ferme), redirection dans le même onglet sur web. Fournie par la route.
   ouvrirPage: (url: string) => Promise<void>;
-  // Tant que 04c n'existe pas (P4.7), un constat `abonne` ramène au profil du coach, sans texte
-  // inventé (docs/prompts/L4.md, P4.6b).
-  onAbonne: () => void;
+  // Constat `abonne` : la route mène à 04c avec l'identifiant de l'abonnement créé (P4.7).
+  onAbonne: (abonnementId: string) => void;
   onVoirAbonnements: () => void;
   onRevenirProfil: () => void;
   // 404 au constat (intention d'un autre, inexistante, mal formée) : rien à constater, retour à
@@ -126,7 +125,7 @@ export function EcranPaiement({
       }
       switch (resultat.etat) {
         case 'abonne':
-          onAbonne();
+          onAbonne(resultat.abonnementId);
           return;
         case 'non_terminee':
           setEtat({ type: 'non_terminee', urlPaiement: resultat.urlPaiement });

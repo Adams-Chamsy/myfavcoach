@@ -345,6 +345,8 @@ export type DetailAbonnement = {
   prochainPrelevementLe: string | null;
   pauseJusquLe: string | null;
   finAccesLe: string | null;
+  coachId: string;
+  offreId: string;
   offreTitre: string;
   offreEngagementHumain: string[];
   coachPrenom: string;

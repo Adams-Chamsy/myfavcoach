@@ -1,7 +1,7 @@
 # L4-04c · Tunnel — confirmation d'abonnement (04c)
 
-**Lot** L4 · **Rôle** client · **Route** `app/(client)/souscription/confirmation.tsx` (nom
-inventé)
+**Lot** L4 · **Rôle** client · **Route** `app/(client)/souscription/confirmation.tsx`
+(`?abonnement={id}`, construit le 14 novembre 2026)
 **Référence visuelle** `maquettes/MyFavCoach-L2_dc.html` (malgré le nom du fichier), bloc
 « 04c · Confirmation d'abonnement », `data-screen-label="04c Confirmation abonnement"`.
 `docs/perimetre.md` la disait absente du dossier, à tort (corrigé le 28 septembre 2026).
@@ -122,6 +122,12 @@ navigation normale de l'espace client reste disponible.
 - Titres « C'est parti avec {prénom} » et « Ta demande est enregistrée ».
 - Action unique « Voir le profil de {prénom} » (la maquette n'en a pas d'autre que 05a, retirée).
 - Nom de route.
+- **Construit le 14 novembre 2026, tranché seul** (`docs/decisions-en-attente.md`) : la phrase de
+  l'engagement humain est la liste des engagements déclarés par le coach, telle quelle, première
+  lettre en capitale, point final (« Ajustement hebdomadaire, visio mensuelle. ») ; la ligne du
+  moyen suit le moyen (un SEPA déjà confirmé lit la variante payée avec « Prélèvement SEPA ») ;
+  « Prochain prélèvement » en jour et mois (« 18 décembre ») ; la pile revient au profil par
+  `dismissTo` avant d'empiler 04c, et « Voir le profil » est un retour (le profil est derrière).
 
 ---
 

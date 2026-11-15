@@ -15,6 +15,8 @@
 // "Programme seul" de Yannick (24 €/mois, maquettes/MyFavCoach-System_dc.html, ecran "03 Profil
 // coach") a ete vue et deliberement ecartee, pas manquee.
 
+import type { DetailAbonnement } from '@/services/donnees/port';
+
 export type FormatCoaching = 'presentiel' | 'visio';
 
 export type CoachDemonstration = {
@@ -389,3 +391,33 @@ export const recapitulatifPaiementDemonstration = {
   jourPrelevement: 18,
   prochainPrelevementLe: '2026-12-18',
 } as const;
+
+// L4-04c (P4.7) — le détail d'abonnement que la galerie et le corpus d'accessibilité rendent :
+// l'abonnement de démonstration à « Suivi complet » de Yannick Berthaud (Lyon), payé 49 € par la
+// carte de test •••• 4242 (maquette 04c, MyFavCoach-L2_dc.html), prochain prélèvement à la date
+// de recapitulatifPaiementDemonstration. Les engagements sont ceux de l'offre de démonstration.
+// Identifiants fictifs, jamais lus nulle part.
+export const detailAbonnementDemonstration: DetailAbonnement = {
+  id: 'abonnement-demonstration',
+  statut: 'actif',
+  moyen: 'carte',
+  moyenDerniersChiffres: '4242',
+  prixFigeCentimes: 4900,
+  prochainPrelevementLe: '2026-12-18',
+  pauseJusquLe: null,
+  finAccesLe: null,
+  coachId: 'coach-yannick',
+  offreId: 'offre-suivi',
+  offreTitre: 'Suivi complet',
+  offreEngagementHumain: ['ajustement hebdomadaire', 'visio mensuelle'],
+  coachPrenom: 'Yannick',
+  coachNom: 'Berthaud',
+  coachCommuneBase: 'Lyon',
+  derniereFactureMontantCentimes: 4900,
+  derniereFacturePayeeLe: '2026-11-18T10:00:00.000Z',
+  dernierEchecMotif: null,
+  dernierEchecEcheanceLe: null,
+  graceJusquAu: null,
+  regularisationAvantLe: null,
+  prochaineTentativeLe: null,
+};

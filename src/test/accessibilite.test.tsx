@@ -42,8 +42,12 @@ import { EcranCreationOffre } from '@/fonctionnalites/offres/ecran-creation-offr
 import { creerSessionDemonstration } from '@/fixtures/session-demonstration';
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { EcranChoixOffre } from '@/fonctionnalites/abonnement/ecran-choix-offre';
+import { EcranConfirmation } from '@/fonctionnalites/abonnement/ecran-confirmation';
 import { EcranPaiement } from '@/fonctionnalites/abonnement/ecran-paiement';
-import { recapitulatifPaiementDemonstration } from '@/fixtures/demonstration';
+import {
+  recapitulatifPaiementDemonstration,
+  detailAbonnementDemonstration,
+} from '@/fixtures/demonstration';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
 import { creerFauxPortDonnees } from '@/services/donnees/faux';
@@ -517,6 +521,27 @@ const CORPUS: EntreeCorpus[] = [
         </FournisseurDonnees>
       </FournisseurSession>
     ),
+  },
+  {
+    // P4.7 : rendu par son composant (la route lit useLocalSearchParams). Données :
+    // src/fixtures/demonstration.ts (detailAbonnementDemonstration).
+    nom: 'app/(client)/souscription/confirmation.tsx',
+    creerElement: () => {
+      const p = portDonneesChoixOffre();
+      p.definirDetailAbonnementPourTest({
+        [detailAbonnementDemonstration.id]: { ...detailAbonnementDemonstration },
+      });
+      return (
+        <FournisseurSession key="confirmation" port={portAuthOnboarding}>
+          <FournisseurDonnees port={p}>
+            <EcranConfirmation
+              abonnementId={detailAbonnementDemonstration.id}
+              onVoirProfil={() => {}}
+            />
+          </FournisseurDonnees>
+        </FournisseurSession>
+      );
+    },
   },
   {
     // P4.6b : rendu par son composant (la route lit useLocalSearchParams et la mémoire du tunnel).

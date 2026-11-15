@@ -5334,6 +5334,8 @@ describe('abonnements — L4 (0033)', () => {
         moyen: 'carte',
         moyen_derniers_chiffres: null,
         coach_prenom: expect.any(String),
+        coach_id: profilCoachId,
+        offre_id: offreId,
         offre_titre: 'Suivi complet',
         derniere_facture_montant_centimes: 4900,
         grace_jusqu_au: null,

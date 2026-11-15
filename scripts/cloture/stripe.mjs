@@ -141,9 +141,22 @@ async function taper(nav, selecteur, valeur) {
   await pause(300);
 }
 
+// IBAN de test Stripe : le français (FR14…) aboutit presque aussitôt ; l'autrichien (AT61…)
+// reste « en cours » au moins trois minutes avant de réussir — le seul qui laisse voir un
+// abonnement en_attente_confirmation (04c, variante SEPA).
+export const IBAN_TEST_IMMEDIAT = 'FR1420041010050500013M02606';
+export const IBAN_TEST_DIFFERE = 'AT611904300234573201';
+
 export async function payer(
   nav,
-  { email, moyen = 'carte', carte = 'reussie', dossier, prefixe = 'stripe' },
+  {
+    email,
+    moyen = 'carte',
+    carte = 'reussie',
+    iban = IBAN_TEST_IMMEDIAT,
+    dossier,
+    prefixe = 'stripe',
+  },
 ) {
   exigerRelaisStripe();
   const shot = async (nom) => dossier && nav.capture(`${dossier}/${prefixe}-${nom}.png`);
@@ -165,7 +178,7 @@ export async function payer(
     await taper(nav, '#cardExpiry, input[name=expiry], input[autocomplete=cc-exp]', '12 / 34');
     await taper(nav, '#cardCvc, input[name=cvc], input[autocomplete=cc-csc]', '123');
   } else {
-    await taper(nav, '#iban, input[name=iban]', 'FR1420041010050500013M02606');
+    await taper(nav, '#iban, input[name=iban]', iban);
   }
   for (const [sel, val] of [
     [
