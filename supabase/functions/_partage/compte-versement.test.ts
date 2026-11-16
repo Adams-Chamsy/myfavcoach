@@ -155,6 +155,40 @@ Deno.test(
   },
 );
 
+Deno.test(
+  'le prestataire ne répond pas : le coach lit le dernier état connu, rien n’est posé',
+  async () => {
+    const journal: Appel[] = [];
+    const enPanne: PrestataireComptes = {
+      ...prestataire({ transferts: ACTIVE, virements: ACTIVE }),
+      lireCapacites: () => Promise.reject(new Error('prestataire injoignable')),
+    };
+    const reponse = await lireIdentification(
+      client(identification('operationnel', true)),
+      client(
+        {
+          compte_versement_serveur: {
+            data: [{ reference_compte_prestataire: 'acct_reel', etat: 'operationnel' }],
+            error: null,
+          },
+        },
+        journal,
+      ),
+      enPanne,
+    );
+    strictEqual(reponse.status, 200);
+    deepStrictEqual(await reponse.json(), {
+      compteVersement: 'operationnel',
+      identiteFiscaleComplete: true,
+      peutPublier: true,
+    });
+    strictEqual(
+      journal.some((a) => a.fonction === 'poser_etat_compte_versement'),
+      false,
+    );
+  },
+);
+
 Deno.test('la référence du compte ne sort jamais vers l’application', async () => {
   const reponse = await lireIdentification(
     client(identification('a_completer', false)),

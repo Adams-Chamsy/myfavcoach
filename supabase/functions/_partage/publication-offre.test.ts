@@ -34,6 +34,8 @@ for (const [message, code, statut] of [
   ['offre introuvable ou non possedee par ce compte', 'offre_introuvable', 404],
   ['engagement_humain_requis', 'engagement_humain_requis', 422],
   ['coach_non_verifie', 'identite_non_verifiee', 409],
+  ['identite_fiscale_incomplete', 'identite_fiscale_incomplete', 409],
+  ['compte_versement_non_operationnel', 'compte_versement_non_operationnel', 409],
   ['termes_interdits', 'termes_interdits', 422],
   ['engagement_messagerie_indisponible', 'engagement_messagerie_indisponible', 422],
 ] as const) {

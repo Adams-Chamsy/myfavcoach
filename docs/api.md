@@ -431,9 +431,9 @@ unique). L'adresse n'est jamais gardée par l'application.
 `POST /coach/versements` : refus 409 `solde_insuffisant` (moins de 20 €),
 `compte_versement_non_operationnel`, `versement_deja_en_cours`.
 
-Deux refus s'ajoutent à la publication d'une offre (§5) et à l'intention de souscription (§7) :
-409 `compte_versement_non_operationnel` et 409 `identite_fiscale_incomplete`
-(`docs/domaine.md` §3.3).
+Deux refus s'ajoutent à la publication d'une offre (§5) : 409 `identite_fiscale_incomplete` et
+409 `compte_versement_non_operationnel` (`docs/domaine.md` §3.3). À l'intention de souscription
+(§7), un seul, neutre pour le client : 409 `coach_indisponible` (migration 0072).
 
 ---
 

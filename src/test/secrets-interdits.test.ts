@@ -303,6 +303,10 @@ describe('secrets interdits côté application', () => {
       // versement du coach (convention de 0031).
       'supabase/migrations/0069_preparer_identite_fiscale_et_compte_versement.sql',
       'supabase/migrations/0070_identite_fiscale_regle.sql',
+      // 0071/0072 : grants et revokes de service_role sur l'outil du banc et sur les fonctions
+      // reprises pour les règles du vendeur (convention de 0031).
+      'supabase/migrations/0071_preparer_regles_vendeur.sql',
+      'supabase/migrations/0072_regles_vendeur.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

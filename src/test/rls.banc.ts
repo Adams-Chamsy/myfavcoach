@@ -237,6 +237,24 @@ async function creerCompteReel(
 // du serveur creer_profil_client(), qui crée le profil ET pose l'espace client, jamais une
 // écriture directe dans profils_client (fermée par 0051). CLAUDE.md §8 : le banc emprunte le
 // chemin de l'application. Rend l'identifiant du profil créé.
+// L5 (0071, 0072 ; docs/domaine.md §3.3) : une offre ne se publie pas, et une souscription est
+// refusée, si le coach n'a pas un compte de versement opérationnel et une identité fiscale
+// complète. Les coachs du banc qui publient ou reçoivent des souscriptions sont donc préparés
+// en « vendeurs » par l'outil réservé au banc (preparer_vendeur_banc) : c'est un décor, comme le
+// passage en 'verifiee' par le rôle serveur, pas un chemin couvert.
+async function preparerVendeur(profilCoachId: string): Promise<void> {
+  const { statut, corps } = await appelRest('/rest/v1/rpc/preparer_vendeur_banc', {
+    methode: 'POST',
+    session: 'admin',
+    corps: { p_profil_coach_id: profilCoachId },
+  });
+  if (statut >= 400) {
+    throw new Error(
+      `Préparation du banc : preparer_vendeur_banc refusée (${statut}) : ${JSON.stringify(corps)}`,
+    );
+  }
+}
+
 async function creerProfilClientParLeServeur(
   session: Session,
   prenom: string,
@@ -1609,6 +1627,8 @@ describe('offres', () => {
           `${JSON.stringify(verification.corps)}`,
       );
     }
+
+    await preparerVendeur(profilCoachIdB);
 
     // B bascule en espace coach pour le reste du describe.
     const bascule = await appelRest('/rest/v1/rpc/basculer_profil', {
@@ -4242,6 +4262,7 @@ describe('abonnements — L4 (0033)', () => {
     });
     const hier = new Date(Date.now() - 86_400_000).toISOString();
     offreId = await insererOffre(profilCoachId, { publiee_le: hier });
+    await preparerVendeur(profilCoachId);
 
     // Second coach, créé par l'API d'administration seule (aucune connexion : le plafond du
     // projet de dev compte les connexions, docs/dette.md).
@@ -4278,6 +4299,7 @@ describe('abonnements — L4 (0033)', () => {
       retiree_le: new Date().toISOString(),
     });
     offreSepaRejetId = await insererOffre(profilCoach2Id, { publiee_le: hier });
+    await preparerVendeur(profilCoach2Id);
     const profilDuCoach = await appelRest('/rest/v1/profils_client', {
       methode: 'POST',
       session: 'admin',
@@ -5862,43 +5884,89 @@ describe('identité fiscale et compte de versement — L5 (0069, 0070)', () => {
     p_taux_tva_pour_mille: null,
     ...autres,
   });
-  let espaceInitialDeB: string;
-  let profilCoachDeB: string;
+  // Un coach À LUI : B est préparé en vendeur dès describe('offres') (0071), et ce describe a
+  // besoin d'un coach qui part de rien. Vérifié par le rôle serveur (décor), en espace coach.
+  let coachL5: Session;
+  let profilCoachL5: string;
 
   beforeAll(async () => {
-    espaceInitialDeB = (await rpc('profil_actif_courant', {}, B)).corps as string;
-    const bascule = await rpc('basculer_profil', { profil: 'coach' }, B);
+    coachL5 = await creerCompteReel(`${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-l5-coach@${DOMAINE_EMAIL}`, {
+      date_naissance: '1988-01-01',
+      cgu_version_acceptee: '2026-08-01',
+    });
+    const profil = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { compte_id: coachL5.compteId, prenom: 'Fisc', nom: 'Coach', discipline: 'yoga' },
+    });
+    profilCoachL5 = (profil.corps as { id: string }[])[0].id;
+    await appelRest(`/rest/v1/profils_coach?id=eq.${profilCoachL5}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { statut_verification: 'verifiee' },
+    });
+    const bascule = await rpc('basculer_profil', { profil: 'coach' }, coachL5);
     if (bascule.statut >= 400) {
-      throw new Error(`Préparation du banc : bascule de B en coach refusée (${bascule.statut})`);
+      throw new Error(`Préparation du banc : bascule en coach refusée (${bascule.statut})`);
     }
-    const { corps } = await appelRest(
-      `/rest/v1/profils_coach?compte_id=eq.${B.compteId}&select=id`,
-      { session: 'admin' },
-    );
-    profilCoachDeB = (corps as { id: string }[])[0].id;
   }, 30_000);
 
   afterAll(async () => {
-    if (espaceInitialDeB === 'client') await rpc('basculer_profil', { profil: 'client' }, B);
+    if (coachL5) await supprimerCompteReel(coachL5.compteId);
   }, 30_000);
 
+  // Un brouillon du coach, posé par le rôle serveur (décor) ; la publication, elle, passe par
+  // publier_offre sous la session du coach, comme l'application (fonction offre-publication).
+  async function brouillon(): Promise<string> {
+    const { statut, corps } = await appelRest('/rest/v1/offres', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        coach_id: profilCoachL5,
+        titre: 'Suivi complet',
+        prix_centimes: 4900,
+        benefices: ['Programme', 'Visio', 'Points réguliers'],
+        engagement_humain: ['ajustement hebdomadaire'],
+      },
+    });
+    if (statut >= 400) throw new Error(`Préparation du banc : brouillon refusé (${statut})`);
+    return (corps as { id: string }[])[0].id;
+  }
+  const publier = (offreId: string) => rpc('publier_offre', { offre_id: offreId }, coachL5);
+  const publieeLe = async (offreId: string) =>
+    (
+      (await appelRest(`/rest/v1/offres?id=eq.${offreId}&select=publiee_le`, { session: 'admin' }))
+        .corps as { publiee_le: string | null }[]
+    )[0].publiee_le;
+  let offrePubliee: string;
+
   it('avant toute saisie : compte de versement absent, identité fiscale incomplète, publication impossible', async () => {
-    const { statut, corps } = await rpc('mon_identification', {}, B);
+    const { statut, corps } = await rpc('mon_identification', {}, coachL5);
     expect(statut).toBe(200);
     expect(corps).toEqual([
       {
-        profil_coach_id: profilCoachDeB,
+        profil_coach_id: profilCoachL5,
         compte_versement: 'absent',
         identite_fiscale_complete: false,
         peut_publier: false,
       },
     ]);
-    expect((await rpc('mon_identite_fiscale', {}, B)).corps).toEqual([]);
+    expect((await rpc('mon_identite_fiscale', {}, coachL5)).corps).toEqual([]);
+  });
+
+  // docs/domaine.md §3.3, règle 1 (0072) : coach vérifié, offre complète, mais rien pour émettre
+  // une facture à son nom.
+  it('publier sans identité fiscale : refusé (identite_fiscale_incomplete), l’offre reste un brouillon', async () => {
+    const id = await brouillon();
+    const { statut, corps } = await publier(id);
+    expect(statut).toBe(400);
+    expect(messageDe(corps)).toBe('identite_fiscale_incomplete');
+    expect(await publieeLe(id)).toBeNull();
   });
 
   it('le coach enregistre son identité fiscale (franchise en base) et la relit ; elle est complète', async () => {
-    expect((await rpc('enregistrer_identite_fiscale', identite(), B)).statut).toBe(204);
-    expect((await rpc('mon_identite_fiscale', {}, B)).corps).toEqual([
+    expect((await rpc('enregistrer_identite_fiscale', identite(), coachL5)).statut).toBe(204);
+    expect((await rpc('mon_identite_fiscale', {}, coachL5)).corps).toEqual([
       {
         siren: SIREN,
         adresse_ligne: '12 rue des Lilas',
@@ -5908,13 +5976,22 @@ describe('identité fiscale et compte de versement — L5 (0069, 0070)', () => {
         taux_tva_pour_mille: null,
       },
     ]);
-    const [identification] = (await rpc('mon_identification', {}, B)).corps as {
+    const [identification] = (await rpc('mon_identification', {}, coachL5)).corps as {
       identite_fiscale_complete: boolean;
       peut_publier: boolean;
     }[];
     expect(identification.identite_fiscale_complete).toBe(true);
     // Complète, mais sans compte de versement opérationnel : toujours pas de publication.
     expect(identification.peut_publier).toBe(false);
+  });
+
+  // Règle 1, seconde moitié : identité complète, mais aucun compte où virer l'argent.
+  it('publier sans compte de versement : refusé (compte_versement_non_operationnel), l’offre reste un brouillon', async () => {
+    const id = await brouillon();
+    const { statut, corps } = await publier(id);
+    expect(statut).toBe(400);
+    expect(messageDe(corps)).toBe('compte_versement_non_operationnel');
+    expect(await publieeLe(id)).toBeNull();
   });
 
   it.each([
@@ -5930,10 +6007,14 @@ describe('identité fiscale et compte de versement — L5 (0069, 0070)', () => {
   ])(
     '%s : identite_fiscale_invalide, et ce qui était enregistré ne bouge pas',
     async (_quoi, autres) => {
-      const { statut, corps } = await rpc('enregistrer_identite_fiscale', identite(autres), B);
+      const { statut, corps } = await rpc(
+        'enregistrer_identite_fiscale',
+        identite(autres),
+        coachL5,
+      );
       expect(statut).toBe(400);
       expect(messageDe(corps)).toBe('identite_fiscale_invalide');
-      expect((await rpc('mon_identite_fiscale', {}, B)).corps).toMatchObject([
+      expect((await rpc('mon_identite_fiscale', {}, coachL5)).corps).toMatchObject([
         { siren: SIREN, code_postal: '69003', commune: 'Lyon', regime_tva: 'franchise_en_base' },
       ]);
     },
@@ -5941,12 +6022,12 @@ describe('identité fiscale et compte de versement — L5 (0069, 0070)', () => {
 
   it('un coach assujetti, avec son taux : accepté, et l’enregistrement remplace le précédent', async () => {
     const assujetti = identite({ p_regime_tva: 'assujetti', p_taux_tva_pour_mille: 200 });
-    expect((await rpc('enregistrer_identite_fiscale', assujetti, B)).statut).toBe(204);
-    expect((await rpc('mon_identite_fiscale', {}, B)).corps).toMatchObject([
+    expect((await rpc('enregistrer_identite_fiscale', assujetti, coachL5)).statut).toBe(204);
+    expect((await rpc('mon_identite_fiscale', {}, coachL5)).corps).toMatchObject([
       { regime_tva: 'assujetti', taux_tva_pour_mille: 200 },
     ]);
     // Remis en franchise en base pour la suite du banc.
-    expect((await rpc('enregistrer_identite_fiscale', identite(), B)).statut).toBe(204);
+    expect((await rpc('enregistrer_identite_fiscale', identite(), coachL5)).statut).toBe(204);
   });
 
   it('un client (A) ne peut ni enregistrer ni lire une identité fiscale : profil_coach_requis ; anon n’exécute rien', async () => {
@@ -5965,15 +6046,15 @@ describe('identité fiscale et compte de versement — L5 (0069, 0070)', () => {
 
   it('les deux tables ne se lisent ni ne s’écrivent directement : ni le coach, ni un client, ni anon', async () => {
     for (const table of ['identites_fiscales_coach', 'comptes_versement_coach']) {
-      for (const session of [B, A, 'anon'] as const) {
+      for (const session of [coachL5, A, 'anon'] as const) {
         expect(
           (await appelRest(`/rest/v1/${table}?select=*`, { session })).statut,
         ).toBeGreaterThanOrEqual(400);
       }
       const ecriture = await appelRest(`/rest/v1/${table}`, {
         methode: 'POST',
-        session: B,
-        corps: { profil_coach_id: profilCoachDeB },
+        session: coachL5,
+        corps: { profil_coach_id: profilCoachL5 },
       });
       expect(ecriture.statut).toBeGreaterThanOrEqual(400);
     }
@@ -5983,51 +6064,113 @@ describe('identité fiscale et compte de versement — L5 (0069, 0070)', () => {
     const reference = `acct_banc_${SUFFIXE_COMPTE}`;
     const premier = await rpc(
       'poser_compte_versement',
-      { p_profil_coach_id: profilCoachDeB, p_reference: reference },
+      { p_profil_coach_id: profilCoachL5, p_reference: reference },
       'admin',
     );
     expect(premier.corps).toBe(reference);
     const second = await rpc(
       'poser_compte_versement',
-      { p_profil_coach_id: profilCoachDeB, p_reference: `${reference}_autre` },
+      { p_profil_coach_id: profilCoachL5, p_reference: `${reference}_autre` },
       'admin',
     );
     expect(second.corps).toBe(reference);
     expect(
-      (await rpc('compte_versement_serveur', { p_profil_coach_id: profilCoachDeB }, 'admin')).corps,
+      (await rpc('compte_versement_serveur', { p_profil_coach_id: profilCoachL5 }, 'admin')).corps,
     ).toEqual([{ reference_compte_prestataire: reference, etat: 'a_completer' }]);
   });
 
   it('le coach lit l’état posé par le serveur, jamais la référence du compte ; opérationnel + identité complète : il peut publier', async () => {
-    const avant = (await rpc('mon_identification', {}, B)).corps;
+    const avant = (await rpc('mon_identification', {}, coachL5)).corps;
     expect(avant).toMatchObject([{ compte_versement: 'a_completer', peut_publier: false }]);
     expect(JSON.stringify(avant)).not.toContain('acct_banc_');
 
     for (const etat of ['en_verification', 'restreint', 'operationnel']) {
       const pose = await rpc(
         'poser_etat_compte_versement',
-        { p_profil_coach_id: profilCoachDeB, p_etat: etat },
+        { p_profil_coach_id: profilCoachL5, p_etat: etat },
         'admin',
       );
       expect(pose.statut).toBe(204);
-      expect((await rpc('mon_identification', {}, B)).corps).toMatchObject([
+      expect((await rpc('mon_identification', {}, coachL5)).corps).toMatchObject([
         { compte_versement: etat, peut_publier: etat === 'operationnel' },
       ]);
     }
   });
 
+  // Le sens légitime de la règle 1 : identité complète ET compte opérationnel (état laissé par
+  // le test précédent).
+  it('identité fiscale complète et compte opérationnel : l’offre est publiée', async () => {
+    offrePubliee = await brouillon();
+    expect((await publier(offrePubliee)).statut).toBe(204);
+    expect(await publieeLe(offrePubliee)).not.toBeNull();
+  });
+
+  // Règle 2 : « même pour une offre déjà publiée » — un compte peut perdre son statut après la
+  // publication. Le client reçoit un refus neutre (coach_indisponible) : la raison, qui regarde
+  // le coach, part en DETAIL de la levée, jamais vers l'application.
+  it('souscrire quand le compte du coach n’est plus opérationnel : refusé (coach_indisponible), aucune intention ; de nouveau opérationnel : acceptée', async () => {
+    const intentions = async () =>
+      (
+        (
+          await appelRest(
+            `/rest/v1/intentions_souscription?offre_id=eq.${offrePubliee}&select=id`,
+            {
+              session: 'admin',
+            },
+          )
+        ).corps as unknown[]
+      ).length;
+    const poser = (etat: string) =>
+      rpc(
+        'poser_etat_compte_versement',
+        { p_profil_coach_id: profilCoachL5, p_etat: etat },
+        'admin',
+      );
+
+    await poser('restreint');
+    const refus = await rpc('creer_intention_souscription', { p_offre_id: offrePubliee }, A);
+    expect(refus.statut).toBe(400);
+    expect(messageDe(refus.corps)).toBe('coach_indisponible');
+    expect(detailDe(refus.corps)).toBe('compte_versement_non_operationnel');
+    expect(await intentions()).toBe(0);
+
+    await poser('operationnel');
+    const acceptee = await rpc('creer_intention_souscription', { p_offre_id: offrePubliee }, A);
+    expect(acceptee.statut).toBe(200);
+    expect(await intentions()).toBe(1);
+  });
+
+  // L'outil du banc ne prépare QUE des comptes du banc... et c'en est un : la garde se prouve
+  // sur un profil qui n'existe pas (aucun compte du banc derrière).
+  it('preparer_vendeur_banc : le serveur seul, et jamais pour un profil hors du banc', async () => {
+    const inconnu = await rpc(
+      'preparer_vendeur_banc',
+      { p_profil_coach_id: randomUUID() },
+      'admin',
+    );
+    expect(messageDe(inconnu.corps)).toBe('compte_hors_banc');
+    for (const session of [coachL5, A, 'anon'] as const) {
+      const { corps } = await rpc(
+        'preparer_vendeur_banc',
+        { p_profil_coach_id: profilCoachL5 },
+        session,
+      );
+      expect(JSON.stringify(corps)).toMatch(/permission denied/i);
+    }
+  });
+
   it('seul le serveur pose un compte ou son état : le coach, un client et anon sont refusés', async () => {
-    for (const session of [B, A, 'anon'] as const) {
+    for (const session of [coachL5, A, 'anon'] as const) {
       for (const [fonction, corps] of [
         [
           'poser_compte_versement',
-          { p_profil_coach_id: profilCoachDeB, p_reference: 'acct_pirate' },
+          { p_profil_coach_id: profilCoachL5, p_reference: 'acct_pirate' },
         ],
         [
           'poser_etat_compte_versement',
-          { p_profil_coach_id: profilCoachDeB, p_etat: 'operationnel' },
+          { p_profil_coach_id: profilCoachL5, p_etat: 'operationnel' },
         ],
-        ['compte_versement_serveur', { p_profil_coach_id: profilCoachDeB }],
+        ['compte_versement_serveur', { p_profil_coach_id: profilCoachL5 }],
       ] as const) {
         const { statut, corps: reponse } = await rpc(fonction, corps, session);
         expect(statut).toBeGreaterThanOrEqual(400);
@@ -6039,7 +6182,7 @@ describe('identité fiscale et compte de versement — L5 (0069, 0070)', () => {
   it('l’état « absent » ne se pose pas, et un coach sans compte n’a pas d’état à poser', async () => {
     const absent = await rpc(
       'poser_etat_compte_versement',
-      { p_profil_coach_id: profilCoachDeB, p_etat: 'absent' },
+      { p_profil_coach_id: profilCoachL5, p_etat: 'absent' },
       'admin',
     );
     expect(messageDe(absent.corps)).toBe('etat_invalide');
@@ -6233,6 +6376,7 @@ describe('intentions et synchronisation — L4 (0037, 0038)', () => {
     if (profil.statut >= 400) throw new Error(`Préparation du banc : profil coach refusé`);
     const profilId = (profil.corps as { id: string }[])[0].id;
     await poserStatutCoach(profilId, 'verifiee');
+    await preparerVendeur(profilId);
     return { compte, profil: profilId };
   }
 

@@ -105,10 +105,25 @@ export async function lireIdentification(
   const identification = await identifier(duCoach);
   if (identification instanceof Response) return identification;
   const reference = await referenceDuCompte(serveur, identification.profil_coach_id);
-  const compteVersement: EtatCompteVersement =
-    reference === null
-      ? 'absent'
-      : await relireCompte(serveur, prestataire, identification.profil_coach_id, reference);
+  let compteVersement: EtatCompteVersement = 'absent';
+  if (reference !== null) {
+    try {
+      compteVersement = await relireCompte(
+        serveur,
+        prestataire,
+        identification.profil_coach_id,
+        reference,
+      );
+    } catch (erreur) {
+      // Le prestataire ne répond pas (panne, droit manquant sur la clé) : le coach lit le dernier
+      // état connu, gardé en base, plutôt qu'une erreur. Rien n'est posé ; la prochaine lecture
+      // réessaiera. Dit au journal, pour que la panne ne passe pas inaperçue.
+      console.error(
+        `coach-identification : état non relu chez le prestataire (${erreur instanceof Error ? erreur.message : 'erreur'})`,
+      );
+      compteVersement = identification.compte_versement;
+    }
+  }
   return reponseJson(200, {
     compteVersement,
     identiteFiscaleComplete: identification.identite_fiscale_complete,

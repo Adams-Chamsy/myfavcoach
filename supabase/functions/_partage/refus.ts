@@ -126,6 +126,22 @@ export const TEXTES_REFUS = {
     detail:
       'Vérifie ton SIREN (9 chiffres), ton adresse, ton code postal (5 chiffres) et ton régime de TVA.',
   },
+  // L5, P5.3 (docs/domaine.md §3.3 ; textes à relire). Le client lit un refus neutre : pourquoi
+  // ce coach ne peut pas vendre ne le regarde pas. Le coach, lui, lit quoi faire.
+  coach_indisponible: {
+    title: "Ce coach n'accepte pas de nouvel abonnement pour l'instant",
+    detail: "Rien n'a été débité. Tu pourras t'abonner quand ce sera de nouveau possible.",
+  },
+  identite_fiscale_incomplete: {
+    title: 'Il manque tes informations de facturation',
+    detail:
+      "Renseigne ton SIREN, ton adresse et ton régime de TVA depuis l'écran Revenus, puis publie.",
+  },
+  compte_versement_non_operationnel: {
+    title: "Ton compte de versement n'est pas prêt",
+    detail:
+      "Termine ton inscription auprès de notre prestataire de paiement depuis l'écran Revenus, puis publie.",
+  },
   // tous
   non_authentifie: {
     title: 'Ta session a expiré',
@@ -199,6 +215,8 @@ export function reponseRefus(
 export const STATUTS_REFUS_INTENTION: Partial<Record<CodeRefus, number>> = {
   offre_indisponible: 409,
   coach_non_verifie: 409,
+  // 0072 : compte de versement ou identité fiscale du coach pas en règle.
+  coach_indisponible: 409,
   auto_abonnement_interdit: 409,
   deja_abonne: 409,
   profil_client_requis: 403,
@@ -212,6 +230,9 @@ export const REFUS_PUBLICATION_OFFRE: Record<string, { code: CodeRefus; statut: 
   'offre introuvable ou non possedee par ce compte': { code: 'offre_introuvable', statut: 404 },
   engagement_humain_requis: { code: 'engagement_humain_requis', statut: 422 },
   coach_non_verifie: { code: 'identite_non_verifiee', statut: 409 },
+  // 0072 (docs/domaine.md §3.3, règle 1).
+  identite_fiscale_incomplete: { code: 'identite_fiscale_incomplete', statut: 409 },
+  compte_versement_non_operationnel: { code: 'compte_versement_non_operationnel', statut: 409 },
   termes_interdits: { code: 'termes_interdits', statut: 422 },
   engagement_messagerie_indisponible: { code: 'engagement_messagerie_indisponible', statut: 422 },
 };
