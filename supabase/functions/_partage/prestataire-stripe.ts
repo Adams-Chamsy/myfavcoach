@@ -3,6 +3,7 @@
 // qui traduit un paiement Stripe vers le vocabulaire de _partage/prelevement.ts.
 import { type PaiementPrestataire, type Prestataire } from './prelevement.ts';
 import { type Capacite, type PrestataireComptes } from './compte-versement.ts';
+import { type PrestataireVersements } from './versements.ts';
 import { type Encaissement, type PrestataireRapprochement } from './rapprochement.ts';
 import { Stripe } from './stripe.ts';
 
@@ -171,6 +172,48 @@ export function comptesStripe(stripe: Stripe): PrestataireComptes {
         },
       });
       return lien.url;
+    },
+  };
+}
+
+// Les virements au coach (L5, P5.4b ; docs/backend.md §13) : un Transfer de la plateforme vers
+// le compte du coach, regroupé sous « versement-<id> ». Avant d'en créer un, on cherche s'il
+// existe déjà pour ce versement : une clé d'idempotence ne vit que vingt-quatre heures, la tâche
+// repasse le lendemain.
+//
+// Les fonds de la plateforme pas encore disponibles (balance_insufficient) ne sont pas un refus :
+// le paiement du client est arrivé mais pas encore réglé par Stripe ; on réessaie le lendemain.
+// Tout autre refus définitif de Stripe fait échouer le versement ; une clé refusée ou un droit
+// manquant (401, 403) est une panne de notre côté, réessayée.
+export function versementsStripe(stripe: Stripe): PrestataireVersements {
+  return {
+    async virer({ versementId, montantCentimes, compte }) {
+      const groupe = `versement-${versementId}`;
+      const existants = await stripe.transfers.list({ transfer_group: groupe, limit: 1 });
+      if (existants.data[0]) return { issue: 'accepte', reference: existants.data[0].id };
+      try {
+        const virement = await stripe.transfers.create(
+          {
+            amount: montantCentimes,
+            currency: 'eur',
+            destination: compte,
+            transfer_group: groupe,
+            metadata: { versement_id: versementId },
+          },
+          { idempotencyKey: groupe },
+        );
+        return { issue: 'accepte', reference: virement.id };
+      } catch (erreur) {
+        if (erreur instanceof Stripe.errors.StripeInvalidRequestError) {
+          if (erreur.code === 'balance_insufficient') {
+            return { issue: 'reporte', motif: 'balance_insufficient' };
+          }
+          if (erreur.statusCode !== 401 && erreur.statusCode !== 403) {
+            return { issue: 'refuse', motif: erreur.code ?? 'refuse' };
+          }
+        }
+        throw erreur;
+      }
     },
   };
 }

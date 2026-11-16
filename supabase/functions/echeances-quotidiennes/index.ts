@@ -14,7 +14,12 @@ import { ConfigurationIncomplete, lireSecret } from '../_partage/environnement.t
 import { reponseCode, reponseJson } from '../_partage/http.ts';
 import { executerJournee } from '../_partage/prelevement.ts';
 import { clientServeur } from '../_partage/postgres.ts';
-import { prestataireStripe, rapprochementStripe } from '../_partage/prestataire-stripe.ts';
+import {
+  prestataireStripe,
+  rapprochementStripe,
+  versementsStripe,
+} from '../_partage/prestataire-stripe.ts';
+import { executerVersements } from '../_partage/versements.ts';
 import {
   type BilanRapprochement,
   type Ecart,
@@ -80,6 +85,19 @@ async function traiter(requete: Request): Promise<Response> {
     ? { jour }
     : await executerJournee(serveur, prestataireStripe(stripe), jour);
 
+  // Puis les versements aux coachs (L5, P5.4b) : ceux du mois le 5, et tout versement prévu. Leur
+  // échec ne défait rien des prélèvements ; il est dit au bilan.
+  let versements: unknown = null;
+  if (!rapprochementSeul) {
+    try {
+      versements = await executerVersements(serveur, versementsStripe(stripe), jour);
+    } catch (erreur) {
+      const code = erreur instanceof ErreurPassagere ? erreur.message : 'versements_impossibles';
+      console.error(`echeances-quotidiennes : versements en échec, ${code}`);
+      versements = { erreur: code };
+    }
+  }
+
   // Puis le rapprochement (P4.11a) : les trois jours pleins qui précèdent — la nuit laisse au
   // webhook le temps d'arriver —, et le jour lui-même quand on ne fait que rapprocher. Son échec
   // ne défait rien de ce qui vient d'être prélevé : il est dit au bilan et au journal.
@@ -115,7 +133,7 @@ async function traiter(requete: Request): Promise<Response> {
           parClasse: compterParClasse(rapprochement.ecarts),
           ecarts: rapprochement.ecarts.slice(0, 50),
         };
-  return reponseJson(200, { ...bilan, rapprochement: resume });
+  return reponseJson(200, { ...bilan, versements, rapprochement: resume });
 }
 
 Deno.serve(async (requete) => {

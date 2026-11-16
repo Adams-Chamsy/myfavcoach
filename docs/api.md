@@ -428,8 +428,12 @@ unique). L'adresse n'est jamais gardée par l'application.
 `PUT /coach/identite-fiscale` — `{ "siren", "adresseLigne", "codePostal", "commune",
 "regimeTva", "tauxTvaPourMille" }`. Refus 422 `identite_fiscale_invalide`.
 
-`POST /coach/versements` : refus 409 `solde_insuffisant` (moins de 20 €),
-`compte_versement_non_operationnel`, `versement_deja_en_cours`.
+`POST /coach/versements` (mode immédiat, servi par `POST /functions/v1/coach-versements`) :
+`201 { "versementId", "statut" }`, `statut` valant `verse`, `echoue`, ou `prevu` (le virement
+repartira le lendemain : fonds de la plateforme pas encore disponibles). Refus 409
+`solde_insuffisant` (moins de 20 €), `compte_versement_non_operationnel`,
+`versement_deja_en_cours` ; 403 `profil_coach_requis`. Le solde (`mon_solde`) et la liste
+(`mes_versements`) sont des fonctions de base, lues directement.
 
 Deux refus s'ajoutent à la publication d'une offre (§5) : 409 `identite_fiscale_incomplete` et
 409 `compte_versement_non_operationnel` (`docs/domaine.md` §3.3). À l'intention de souscription

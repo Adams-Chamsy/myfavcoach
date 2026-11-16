@@ -140,7 +140,16 @@ export const TEXTES_REFUS = {
   compte_versement_non_operationnel: {
     title: "Ton compte de versement n'est pas prêt",
     detail:
-      "Termine ton inscription auprès de notre prestataire de paiement depuis l'écran Revenus, puis publie.",
+      "Termine ton inscription auprès de notre prestataire de paiement, depuis l'écran Revenus.",
+  },
+  // coach-versements (L5, P5.4b ; textes à relire).
+  solde_insuffisant: {
+    title: 'Pas encore assez pour un versement',
+    detail: 'Un versement part à partir de 20 € de solde.',
+  },
+  versement_deja_en_cours: {
+    title: 'Un versement est déjà en route',
+    detail: 'Attends qu’il arrive pour en demander un autre.',
   },
   // tous
   non_authentifie: {
