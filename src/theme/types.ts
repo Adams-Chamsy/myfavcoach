@@ -11,6 +11,8 @@ import {
   mouvement,
   mouvementReduit,
   seuil,
+  accueil,
+  presentationV2,
   themes,
 } from './tokens';
 
@@ -24,6 +26,8 @@ export type NomTaille = keyof typeof taille;
 export type NomMouvement = keyof typeof mouvement;
 export type NomMouvementReduit = keyof typeof mouvementReduit;
 export type NomSeuil = keyof typeof seuil;
+export type NomAccueil = keyof typeof accueil;
+export type NomPresentationV2 = keyof typeof presentationV2;
 
 export type StyleTexte = (typeof texte)[NomTexte];
 export type StyleOmbre = (typeof ombre)[NomOmbre];

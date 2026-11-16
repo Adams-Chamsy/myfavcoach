@@ -1,9 +1,8 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreFormulaireV2 } from '@/composants/presentation-v2';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Pressable, Share, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Path, Rect, Svg } from 'react-native-svg';
 
 import { Bouton } from '@/composants/bouton';
@@ -64,7 +63,6 @@ function formaterDateCourte(iso: string): string {
 
 export default function Invitations() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { port } = useDonnees();
 
@@ -204,23 +202,14 @@ export default function Invitations() {
         onDestructeur={confirmerAjout}
         destructeurOccupe={ajoutEnCours}
       >
-        <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: theme.espace[3],
-              paddingTop: insets.top + theme.espace[2],
-              paddingHorizontal: theme.espace.gouttiere,
-              paddingBottom: theme.espace[3],
-            }}
-          >
+        <CadreFormulaireV2
+          reference="invitations"
+          surtitre="TES CLIENTS TE REJOIGNENT"
+          titre={'Un lien.\nLa relation continue.'}
+          entete={
             <BoutonIcone nom="retour" accessibilityLabel="Retour" onPress={() => router.back()} />
-            <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-              Mes invitations
-            </Text>
-          </View>
-
+          }
+        >
           {chargement ? (
             <View style={{ paddingHorizontal: theme.espace.gouttiere, gap: theme.espace[4] }}>
               <Squelette forme="carte" />
@@ -240,18 +229,14 @@ export default function Invitations() {
               />
             </View>
           ) : (
-            <DefilementEcran
-              contentContainerStyle={{
-                paddingHorizontal: theme.espace.gouttiere,
-                paddingBottom: insets.bottom + theme.espace[6],
-                gap: theme.espace[6],
-              }}
-            >
+            <View style={{ gap: theme.espace[6] }}>
               <View style={{ gap: theme.espace[2] }}>
-                <Text style={{ ...theme.texte.titre2, color: theme.couleur.texte.principal }}>
+                <Text
+                  style={{ ...theme.texte.v2TitreSection, color: theme.couleur.texte.principal }}
+                >
                   Tes clients actuels
                 </Text>
-                <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
+                <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.secondaire }}>
                   Ceux que tu suis déjà ailleurs. Ils retrouvent leur programme ici, et tu arrêtes
                   de jongler entre trois outils.
                 </Text>
@@ -359,14 +344,19 @@ export default function Invitations() {
                       alignItems: 'center',
                     }}
                   >
-                    <Text style={{ ...theme.texte.titre2, color: theme.couleur.texte.principal }}>
+                    <Text
+                      style={{
+                        ...theme.texte.v2TitreSection,
+                        color: theme.couleur.texte.principal,
+                      }}
+                    >
                       Qui a répondu
                     </Text>
                     <Text
                       onPress={() => setModaleAjoutOuverte(true)}
                       accessibilityRole="button"
                       style={{
-                        ...theme.texte.corps,
+                        ...theme.texte.v2Corps,
                         fontWeight: '700',
                         color: theme.couleur.marque.primaire,
                         minHeight: theme.taille.tapMin,
@@ -402,7 +392,7 @@ export default function Invitations() {
                       <View style={{ flex: 1, gap: 1 }}>
                         <Text
                           style={{
-                            ...theme.texte.corps,
+                            ...theme.texte.v2Corps,
                             fontWeight: '700',
                             color: theme.couleur.texte.principal,
                           }}
@@ -461,7 +451,7 @@ export default function Invitations() {
                       <View style={{ flex: 1, gap: 1 }}>
                         <Text
                           style={{
-                            ...theme.texte.corps,
+                            ...theme.texte.v2Corps,
                             fontWeight: '700',
                             color: theme.couleur.texte.principal,
                           }}
@@ -483,9 +473,9 @@ export default function Invitations() {
               {/* Rappel de commission : absent tant qu'aucun abonnement réel n'existe (voir
                   Règles de la fiche) — l'absence de cette carte EST l'état honnête à ce lot,
                   pas une carte construite puis masquée. */}
-            </DefilementEcran>
+            </View>
           )}
-        </CanevasEcran>
+        </CadreFormulaireV2>
       </Modale>
     </Modale>
   );

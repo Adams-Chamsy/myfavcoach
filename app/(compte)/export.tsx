@@ -1,17 +1,14 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
-import { useRouter } from 'expo-router';
+import { CadreCompteV2 } from '@/fonctionnalites/compte/cadre-compte-v2';
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
-import { BoutonIcone } from '@/composants/bouton-icone';
 import { EtatErreur } from '@/composants/etats/etat-erreur';
 import { textesRepliErreur } from '@/composants/etats/textes';
 import { Squelette } from '@/composants/squelette';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { useTheme } from '@/theme/fournisseur';
-import { themes } from '@/theme/tokens';
+import { themes, presentationV2 as mesure } from '@/theme/tokens';
 
 type DernierExport = {
   demandeLe: string;
@@ -47,8 +44,6 @@ function formaterTaille(octets: number | null): string {
 // ici, pas un oubli.
 export default function Export() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { port, profils } = useDonnees();
 
   const [chargement, setChargement] = useState(true);
@@ -107,30 +102,12 @@ export default function Export() {
   const etat = etatDe(export_);
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.espace[3],
-          paddingTop: insets.top + theme.espace[2],
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[3],
-        }}
-      >
-        <BoutonIcone nom="retour" accessibilityLabel="Retour" onPress={() => router.back()} />
-        <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-          Tout ce qu’on a sur toi.
-        </Text>
-      </View>
-
-      <DefilementEcran
-        contentContainerStyle={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[4],
-          gap: theme.espace[4],
-        }}
-      >
+    <CadreCompteV2
+      surtitre="TES DONNÉES T’APPARTIENNENT"
+      titre={'Tout ce qu’on a sur toi.'}
+      description="Demande une copie des données associées à ton compte."
+    >
+      <View style={{ gap: mesure.champEspace }}>
         {chargement ? (
           <Squelette forme="carte" />
         ) : (
@@ -142,7 +119,7 @@ export default function Export() {
               {etiquettes.map((etiquette) => (
                 <Text
                   key={etiquette}
-                  style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}
+                  style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.principal }}
                 >
                   · {etiquette}
                 </Text>
@@ -150,14 +127,14 @@ export default function Export() {
             </View>
 
             {profils?.clientExiste ? (
-              <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+              <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}>
                 Ce fichier contient ton poids et tes mesures. Le lien est personnel et expire au
                 bout de 7 jours — ne le transfère à personne.
               </Text>
             ) : null}
 
             {etat === 'aucun' ? (
-              <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
+              <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.secondaire }}>
                 Demande un export complet de tes données. Il te parviendra sous forme de lien à
                 télécharger, valable 7 jours.
               </Text>
@@ -182,20 +159,20 @@ export default function Export() {
                 <Text style={{ ...theme.texte.label, color: theme.couleur.texte.principal }}>
                   Tu as déjà demandé un export ce mois-ci
                 </Text>
-                <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+                <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}>
                   Tu pourras en redemander un le mois prochain.
                 </Text>
               </View>
             ) : null}
           </>
         )}
-      </DefilementEcran>
+      </View>
 
       <View
         style={{
-          paddingHorizontal: theme.espace.gouttiere,
+          paddingHorizontal: 0,
           paddingTop: theme.espace[3],
-          paddingBottom: insets.bottom + theme.espace[3],
+          paddingBottom: 0,
           borderTopWidth: 1,
           borderTopColor: theme.couleur.bordure.discrete,
         }}
@@ -207,7 +184,7 @@ export default function Export() {
           desactive={chargement || demandeEnCours || etat === 'en_preparation'}
         />
       </View>
-    </CanevasEcran>
+    </CadreCompteV2>
   );
 }
 

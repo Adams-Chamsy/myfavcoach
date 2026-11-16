@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
 import { BoutonIcone } from '@/composants/bouton-icone';
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreFormulaireV2 } from '@/composants/presentation-v2';
 import { EtatErreur } from '@/composants/etats/etat-erreur';
 import { textesRepliErreur } from '@/composants/etats/textes';
 import { Icone } from '@/composants/icones';
@@ -93,7 +92,6 @@ export function EcranPaiementRefuse({
   onRienARegler,
 }: ProprietesEcranPaiementRefuse) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const { port } = useDonnees();
   const [lecture, setLecture] = useState<Lecture>({ type: 'lecture' });
   const [action, setAction] = useState<Action>(
@@ -220,182 +218,148 @@ export function EcranPaiementRefuse({
     action.type === 'demande' || action.type === 'page_ouverte' || action.type === 'constat';
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <View
-        style={{
-          paddingTop: insets.top + theme.espace[2],
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[3],
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.espace[3],
-        }}
-      >
-        <BoutonIcone nom="retour" accessibilityLabel="Retour" onPress={onRetour} />
-        <Text
-          accessibilityRole="header"
-          style={{ ...theme.texte.label, flex: 1, color: theme.couleur.texte.principal }}
-        >
-          Paiement refusé
-        </Text>
-      </View>
-
-      <DefilementEcran
-        contentContainerStyle={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[4],
-        }}
-      >
-        {lecture.type === 'lecture' ? <Squelette forme="detail" /> : null}
-        {lecture.type === 'erreur' ? (
-          <EtatErreur
-            titre={textesRepliErreur.serveur.titre}
-            explication={textesRepliErreur.serveur.explication}
-            nombreEchecs={lecture.echecs}
-            onReessayer={() => {
-              const echecs = lecture.echecs;
-              setLecture({ type: 'lecture' });
-              void lire(echecs);
-            }}
-          />
-        ) : null}
-
-        {detail && aRegler ? (
-          <>
-            <View
-              style={{
-                flexDirection: 'row',
-                gap: theme.espace[3],
-                padding: theme.espace[4],
-                borderRadius: theme.rayon.carte,
-                backgroundColor: theme.couleur.etat.erreurTeinte,
-              }}
-            >
-              <Icone nom="alerte" couleur={theme.couleur.etat.erreurEncre} />
-              <View style={{ flex: 1, gap: theme.espace[1] }}>
-                <Text
-                  accessibilityRole="header"
-                  style={{ ...theme.texte.titre3, color: theme.couleur.etat.erreurEncre }}
-                >
-                  Ta banque a refusé le paiement
-                </Text>
-                <Text style={{ ...theme.texte.corps, color: theme.couleur.etat.erreurEncre }}>
-                  {`Motif transmis : ${LIBELLES_MOTIF[detail.dernierEchecMotif ?? 'inconnu'] ?? LIBELLES_MOTIF.inconnu}.`}
-                </Text>
-                {/* Toujours affichée, quel que soit le motif (fiche, Contenu ; critère 2). */}
-                <Text style={{ ...theme.texte.corps, color: theme.couleur.etat.erreurEncre }}>
-                  Rien n’a été débité.
-                </Text>
-              </View>
-            </View>
-
-            {/* Période de grâce (impaye) ou suivi interrompu (suspendu) : dates du serveur. */}
-            {detail.statut === 'impaye' && detail.graceJusquAu ? (
-              <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}>
-                {`Ton suivi continue jusqu’au ${dateLongue(detail.graceJusquAu)}.`}
-              </Text>
-            ) : null}
-            {detail.statut === 'suspendu' ? (
-              <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}>
-                {detail.regularisationAvantLe
-                  ? `Suivi interrompu. Règle le paiement avant le ${dateLongue(detail.regularisationAvantLe)} pour le reprendre.`
-                  : 'Suivi interrompu.'}
-              </Text>
-            ) : null}
-
-            <View
-              style={{
-                borderRadius: theme.rayon.media,
-                backgroundColor: theme.couleur.fond.surface,
-                borderWidth: 1,
-                borderColor: theme.couleur.bordure.discrete,
-                padding: theme.espace[4],
-                gap: theme.espace[3],
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  gap: theme.espace[2],
-                }}
-              >
-                <Text
-                  style={{ ...theme.texte.titre3, flex: 1, color: theme.couleur.texte.principal }}
-                >
-                  {detail.offreTitre}
-                </Text>
-                <Text style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal }}>
-                  {`${euros(detail.prixFigeCentimes)} €`}
-                </Text>
-              </View>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: theme.espace[2],
-                }}
-              >
-                <Text
-                  style={{ ...theme.texte.corps, flex: 1, color: theme.couleur.texte.principal }}
-                >
-                  {[
-                    detail.moyen === 'sepa' ? 'Prélèvement SEPA · IBAN' : 'Carte',
-                    detail.moyenDerniersChiffres ? `•••• ${detail.moyenDerniersChiffres}` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                </Text>
-                {/* Le statut est un texte, jamais la seule couleur (critère 3). Un nouveau moyen
-                    enregistré depuis le refus n'est pas le moyen refusé (0063) : pas d'étiquette. */}
-                {detail.nouveauMoyenEnregistre ? null : (
-                  <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
-                    REFUSÉ
-                  </Text>
-                )}
-              </View>
-            </View>
-
-            {detail.moyen === 'carte' && !detail.nouveauMoyenEnregistre ? (
-              <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-                Tu peux aussi payer par prélèvement SEPA.
-              </Text>
-            ) : null}
-
-            {/* Dit à chaque ouverture, pas seulement au retour de la page (fiche, États : « Moyen
-                de paiement changé ») : l'état vient du serveur. */}
-            {detail.nouveauMoyenEnregistre && action.type !== 'enregistre' ? (
-              <Text style={{ ...theme.texte.corps, color: theme.couleur.etat.succesEncre }}>
-                {phraseNouveauMoyen(detail.prochaineTentativeLe)}
-              </Text>
-            ) : null}
-
-            <RetourAction action={action} />
-          </>
-        ) : null}
-      </DefilementEcran>
-
-      {detail && aRegler ? (
-        <View
-          style={{
-            paddingHorizontal: theme.espace.gouttiere,
-            paddingTop: theme.espace[3],
-            paddingBottom: insets.bottom + theme.espace[3],
-            borderTopWidth: 1,
-            borderTopColor: theme.couleur.bordure.discrete,
-          }}
-        >
+    <CadreFormulaireV2
+      surtitre="Paiement refusé"
+      titre={detail && aRegler ? 'Ta banque a refusé le paiement' : undefined}
+      entete={<BoutonIcone nom="retour" accessibilityLabel="Retour" onPress={onRetour} />}
+      actions={
+        detail && aRegler ? (
           <Bouton
             libelle="Changer de moyen de paiement"
             variante="primaire"
             onPress={() => void changerDeMoyen()}
             desactive={occupe}
           />
-        </View>
+        ) : null
+      }
+    >
+      {lecture.type === 'lecture' ? <Squelette forme="detail" /> : null}
+      {lecture.type === 'erreur' ? (
+        <EtatErreur
+          titre={textesRepliErreur.serveur.titre}
+          explication={textesRepliErreur.serveur.explication}
+          nombreEchecs={lecture.echecs}
+          onReessayer={() => {
+            const echecs = lecture.echecs;
+            setLecture({ type: 'lecture' });
+            void lire(echecs);
+          }}
+        />
       ) : null}
-    </CanevasEcran>
+
+      {detail && aRegler ? (
+        <>
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: theme.espace[3],
+              padding: theme.espace[4],
+              borderRadius: theme.rayon.carte,
+              backgroundColor: theme.couleur.etat.erreurTeinte,
+            }}
+          >
+            <Icone nom="alerte" couleur={theme.couleur.etat.erreurEncre} />
+            <View style={{ flex: 1, gap: theme.espace[1] }}>
+              <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.etat.erreurEncre }}>
+                {`Motif transmis : ${LIBELLES_MOTIF[detail.dernierEchecMotif ?? 'inconnu'] ?? LIBELLES_MOTIF.inconnu}.`}
+              </Text>
+              {/* Toujours affichée, quel que soit le motif (fiche, Contenu ; critère 2). */}
+              <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.etat.erreurEncre }}>
+                Rien n’a été débité.
+              </Text>
+            </View>
+          </View>
+
+          {/* Période de grâce (impaye) ou suivi interrompu (suspendu) : dates du serveur. */}
+          {detail.statut === 'impaye' && detail.graceJusquAu ? (
+            <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.principal }}>
+              {`Ton suivi continue jusqu’au ${dateLongue(detail.graceJusquAu)}.`}
+            </Text>
+          ) : null}
+          {detail.statut === 'suspendu' ? (
+            <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.principal }}>
+              {detail.regularisationAvantLe
+                ? `Suivi interrompu. Règle le paiement avant le ${dateLongue(detail.regularisationAvantLe)} pour le reprendre.`
+                : 'Suivi interrompu.'}
+            </Text>
+          ) : null}
+
+          <View
+            style={{
+              borderRadius: theme.rayon.media,
+              backgroundColor: theme.couleur.fond.surface,
+              borderWidth: 1,
+              borderColor: theme.couleur.bordure.discrete,
+              padding: theme.espace[4],
+              gap: theme.espace[3],
+            }}
+          >
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                gap: theme.espace[2],
+              }}
+            >
+              <Text
+                style={{
+                  ...theme.texte.v2TitreOffre,
+                  flex: 1,
+                  color: theme.couleur.texte.principal,
+                }}
+              >
+                {detail.offreTitre}
+              </Text>
+              <Text style={{ ...theme.texte.v2TitreOffre, color: theme.couleur.texte.principal }}>
+                {`${euros(detail.prixFigeCentimes)} €`}
+              </Text>
+            </View>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: theme.espace[2],
+              }}
+            >
+              <Text
+                style={{ ...theme.texte.v2Corps, flex: 1, color: theme.couleur.texte.principal }}
+              >
+                {[
+                  detail.moyen === 'sepa' ? 'Prélèvement SEPA · IBAN' : 'Carte',
+                  detail.moyenDerniersChiffres ? `•••• ${detail.moyenDerniersChiffres}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              </Text>
+              {/* Le statut est un texte, jamais la seule couleur (critère 3). Un nouveau moyen
+                    enregistré depuis le refus n'est pas le moyen refusé (0063) : pas d'étiquette. */}
+              {detail.nouveauMoyenEnregistre ? null : (
+                <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
+                  REFUSÉ
+                </Text>
+              )}
+            </View>
+          </View>
+
+          {detail.moyen === 'carte' && !detail.nouveauMoyenEnregistre ? (
+            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+              Tu peux aussi payer par prélèvement SEPA.
+            </Text>
+          ) : null}
+
+          {/* Dit à chaque ouverture, pas seulement au retour de la page (fiche, États : « Moyen
+                de paiement changé ») : l'état vient du serveur. */}
+          {detail.nouveauMoyenEnregistre && action.type !== 'enregistre' ? (
+            <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.etat.succesEncre }}>
+              {phraseNouveauMoyen(detail.prochaineTentativeLe)}
+            </Text>
+          ) : null}
+
+          <RetourAction action={action} />
+        </>
+      ) : null}
+    </CadreFormulaireV2>
   );
 }
 
@@ -405,7 +369,7 @@ export function EcranPaiementRefuse({
 function RetourAction({ action }: { action: Action }) {
   const theme = useTheme();
   const phrase = (texte: string, couleur: string) => (
-    <Text accessibilityLiveRegion="polite" style={{ ...theme.texte.corps, color: couleur }}>
+    <Text accessibilityLiveRegion="polite" style={{ ...theme.texte.v2Corps, color: couleur }}>
       {texte}
     </Text>
   );
@@ -427,7 +391,7 @@ function RetourAction({ action }: { action: Action }) {
     case 'refus':
       return (
         <View accessibilityLiveRegion="polite" style={{ gap: theme.espace[1] }}>
-          <Text style={{ ...theme.texte.titre3, color: theme.couleur.etat.erreurEncre }}>
+          <Text style={{ ...theme.texte.v2TitreOffre, color: theme.couleur.etat.erreurEncre }}>
             {action.refus.title}
           </Text>
           <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>

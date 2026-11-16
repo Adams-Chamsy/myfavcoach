@@ -115,7 +115,7 @@ describe('BarreOngletsRoute', () => {
     await rendre(0);
 
     const conteneur = screen.getByLabelText('Pilotage, onglet, sélectionné, 1 sur 4').parent!;
-    expect(conteneur.props.style.paddingBottom).toBe(espace[4] + 34);
+    expect(conteneur.props.style.paddingBottom).toBe(Math.max(espace[4], 34));
   });
 
   // Une route presente dans le groupe mais absente de ONGLETS (ex. app/(coach)/creer/, une

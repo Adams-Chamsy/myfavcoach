@@ -1,11 +1,10 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreCompteV2 } from '@/fonctionnalites/compte/cadre-compte-v2';
+import { presentationV2 as mesure } from '@/theme/tokens';
 import { useRouter, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
-import { BoutonIcone } from '@/composants/bouton-icone';
 import { EtatErreur } from '@/composants/etats/etat-erreur';
 import { textesRepliErreur } from '@/composants/etats/textes';
 import { Icone } from '@/composants/icones';
@@ -43,7 +42,6 @@ function formaterDate(iso: string): string {
 // une") — jamais un second lecteur dupliqué ici.
 export default function Documents() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { port, profils } = useDonnees();
 
@@ -88,31 +86,13 @@ export default function Documents() {
   }
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.espace[3],
-          paddingTop: insets.top + theme.espace[2],
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[3],
-        }}
-      >
-        <BoutonIcone nom="retour" accessibilityLabel="Retour" onPress={() => router.back()} />
-        <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-          Documents.
-        </Text>
-      </View>
-
-      <DefilementEcran
-        contentContainerStyle={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: insets.bottom + theme.espace[6],
-          gap: theme.espace[4],
-        }}
-      >
-        <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
+    <CadreCompteV2
+      surtitre="DOCUMENTS CONTRACTUELS"
+      titre={'Tout est ici.'}
+      description="Tout ce que tu as accepté, avec la version exacte en vigueur au moment où tu l’as fait."
+    >
+      <View style={{ gap: mesure.champEspace }}>
+        <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.secondaire }}>
           Tout ce que tu as accepté, avec la version exacte en vigueur au moment où tu l’as fait.
         </Text>
 
@@ -178,10 +158,14 @@ export default function Documents() {
                   >
                     <Icone nom="document" couleur={theme.couleur.texte.secondaire} />
                     <View style={{ flex: 1, gap: theme.espace[1] }}>
-                      <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}>
+                      <Text
+                        style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.principal }}
+                      >
                         {TITRES_DOCUMENTS[ligne.type]}
                       </Text>
-                      <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+                      <Text
+                        style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}
+                      >
                         {ligne.acceptee && dates
                           ? `Version ${formaterVersionDocument(dates.cguVersionAcceptee)} · acceptée le ${formaterDate(dates.creeLe)}`
                           : `Mise à jour le ${formaterVersionDocument(VERSIONS_DOCUMENTS[ligne.type])}`}
@@ -194,7 +178,7 @@ export default function Documents() {
             </View>
           </>
         )}
-      </DefilementEcran>
-    </CanevasEcran>
+      </View>
+    </CadreCompteV2>
   );
 }

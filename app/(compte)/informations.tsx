@@ -1,12 +1,11 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
-import { useRouter } from 'expo-router';
+import { CadreCompteV2 } from '@/fonctionnalites/compte/cadre-compte-v2';
+import { presentationV2 as mesure } from '@/theme/tokens';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
-import { BoutonIcone } from '@/composants/bouton-icone';
 import { Champ } from '@/composants/champ';
+import { Choix } from '@/composants/choix';
 import { Chip } from '@/composants/chip';
 import { EtatErreur } from '@/composants/etats/etat-erreur';
 import { textesRepliErreur } from '@/composants/etats/textes';
@@ -92,8 +91,6 @@ function empreinte(
 
 export default function Informations() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { port, enregistrerInformations } = useDonnees();
 
   const [lecture, setLecture] = useState<InformationsCompte | null>(null);
@@ -251,31 +248,19 @@ export default function Informations() {
       libelleDestructeur="Quitter"
       onDestructeur={() => sortieEnAttente?.reprendre()}
     >
-      <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: theme.espace[3],
-            paddingTop: insets.top + theme.espace[2],
-            paddingHorizontal: theme.espace.gouttiere,
-            paddingBottom: theme.espace[3],
-          }}
-        >
-          <BoutonIcone nom="retour" accessibilityLabel="Retour" onPress={() => router.back()} />
-          <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-            Mes informations
-          </Text>
-        </View>
-
+      <CadreCompteV2
+        surtitre="TON PROFIL"
+        titre={'Mes informations.'}
+        description="Tu décides de ce que tu renseignes."
+      >
         {chargement ? (
-          <View style={{ paddingHorizontal: theme.espace.gouttiere, gap: theme.espace[4] }}>
+          <View style={{ paddingHorizontal: 0, gap: theme.espace[4] }}>
             <Squelette forme="ligne" />
             <Squelette forme="ligne" />
             <Squelette forme="ligne" />
           </View>
         ) : erreurLecture ? (
-          <View style={{ paddingHorizontal: theme.espace.gouttiere }}>
+          <View style={{ paddingHorizontal: 0 }}>
             <EtatErreur
               titre={textesRepliErreur.serveur.titre}
               explication={textesRepliErreur.serveur.explication}
@@ -285,58 +270,48 @@ export default function Informations() {
           </View>
         ) : (
           <>
-            <DefilementEcran
-              contentContainerStyle={{
-                paddingHorizontal: theme.espace.gouttiere,
-                paddingTop: theme.espace[2],
-                paddingBottom: theme.espace[6],
-                gap: theme.espace[4],
-              }}
-            >
+            <View style={{ gap: mesure.champEspace }}>
               {erreurEcriture ? (
                 <View accessibilityLiveRegion="polite">
-                  <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
+                  <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.etat.erreurEncre }}>
                     {erreurEcriture}
                   </Text>
                 </View>
               ) : null}
 
-              <Champ
-                libelle="Prénom"
-                valeur={prenom}
-                onChangeTexte={setPrenom}
-                desactive={enregistrement}
-              />
-              <Champ
-                libelle="Nom"
-                valeur={nom}
-                onChangeTexte={setNom}
-                desactive={enregistrement}
-                placeholder={profil === 'client' ? 'Facultatif' : undefined}
-              />
-
-              <View style={{ gap: theme.espace[2] }}>
-                <Text style={{ ...theme.texte.label, color: theme.couleur.texte.attenue }}>
-                  {profil === 'coach' ? 'Commune de base' : 'Commune'}
-                </Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.espace[2] }}>
-                  {communes.map((commune) => {
-                    const valeurActuelle = profil === 'coach' ? communeBaseInsee : communeInsee;
-                    const definir = profil === 'coach' ? setCommuneBaseInsee : setCommuneInsee;
-                    return (
-                      <Chip
-                        key={commune.codeInsee}
-                        variante="filtre"
-                        libelle={commune.nom}
-                        selectionne={valeurActuelle === commune.codeInsee}
-                        onPress={() =>
-                          definir(valeurActuelle === commune.codeInsee ? null : commune.codeInsee)
-                        }
-                      />
-                    );
-                  })}
+              <View style={{ flexDirection: 'row', gap: theme.espace[3] }}>
+                <View style={{ flex: 1 }}>
+                  <Champ
+                    libelle="Prénom"
+                    valeur={prenom}
+                    onChangeTexte={setPrenom}
+                    desactive={enregistrement}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Champ
+                    libelle="Nom"
+                    valeur={nom}
+                    onChangeTexte={setNom}
+                    desactive={enregistrement}
+                    placeholder={profil === 'client' ? 'Facultatif' : undefined}
+                  />
                 </View>
               </View>
+
+              <Choix
+                libelle={profil === 'coach' ? 'Commune de base' : 'Commune'}
+                valeur={(profil === 'coach' ? communeBaseInsee : communeInsee) ?? ''}
+                options={[
+                  { valeur: '', libelle: 'Non renseignée' },
+                  ...communes.map((c) => ({ valeur: c.codeInsee, libelle: c.nom })),
+                ]}
+                onChanger={(v) => {
+                  if (profil === 'coach') setCommuneBaseInsee(v || null);
+                  else setCommuneInsee(v || null);
+                }}
+                desactive={enregistrement}
+              />
 
               {profil === 'coach' ? (
                 <>
@@ -408,13 +383,13 @@ export default function Informations() {
                 valeur={lecture ? formaterDate(lecture.dateNaissance) : ''}
                 mention="Pour la modifier, écris-nous."
               />
-            </DefilementEcran>
+            </View>
 
             <View
               style={{
-                paddingHorizontal: theme.espace.gouttiere,
+                paddingHorizontal: 0,
                 paddingTop: theme.espace[3],
-                paddingBottom: insets.bottom + theme.espace[3],
+                paddingBottom: 0,
                 borderTopWidth: 1,
                 borderTopColor: theme.couleur.bordure.discrete,
                 backgroundColor: theme.couleur.fond.canevas,
@@ -429,7 +404,7 @@ export default function Informations() {
             </View>
           </>
         )}
-      </CanevasEcran>
+      </CadreCompteV2>
     </Modale>
   );
 }

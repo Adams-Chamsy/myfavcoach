@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 
 import { BarreNavigation, type ElementNavigation } from '@/composants/barre-navigation';
@@ -20,6 +21,7 @@ export type ActionCentrale = {
 
 export type ProprietesBarreOngletsRoute = BottomTabBarProps & {
   variante: 'client' | 'coach';
+  accessoire?: ReactNode;
   entrees: EntreeOnglet[];
   // Action non routee, jamais un onglet (docs/ecrans/L0-02-coquille-coach.md, critere 2) :
   // ouvre par exemple une feuille basse plutot que de naviguer.
@@ -40,6 +42,7 @@ export function BarreOngletsRoute({
   variante,
   entrees,
   actionCentrale,
+  accessoire,
   state,
   emitter,
   navigateToTab,
@@ -82,5 +85,12 @@ export function BarreOngletsRoute({
     });
   }
 
-  return <BarreNavigation variante={variante} elements={elements} paddingBas={insets.bottom} />;
+  return (
+    <BarreNavigation
+      variante={variante}
+      elements={elements}
+      paddingBas={insets.bottom}
+      accessoire={accessoire}
+    />
+  );
 }

@@ -1,8 +1,7 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreFormulaireV2 } from '@/composants/presentation-v2';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
 import { Champ } from '@/composants/champ';
@@ -21,7 +20,6 @@ const LONGUEUR_MAX_BIO = 600;
 
 export default function DevenirCoachProfil() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { enregistrerInformations, profils } = useDonnees();
 
@@ -60,45 +58,16 @@ export default function DevenirCoachProfil() {
   }
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <EnteteOnboarding etape={2} desactive={chargement} />
-
-      <DefilementEcran
-        contentContainerStyle={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[2],
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[4],
-        }}
-      >
-        <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-          Présente-toi.
-        </Text>
-        <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
-          C’est ce que les clients verront en premier sur ton profil.
-        </Text>
-
-        <Champ
-          libelle="Titre court"
-          placeholder="Préparateur physique certifié"
-          valeur={titreCourt}
-          onChangeTexte={(v) => setTitreCourt(v.slice(0, LONGUEUR_MAX_TITRE_COURT))}
-          desactive={chargement}
-        />
-        <Champ
-          libelle="Bio"
-          valeur={bio}
-          onChangeTexte={(v) => setBio(v.slice(0, LONGUEUR_MAX_BIO))}
-          desactive={chargement}
-        />
-      </DefilementEcran>
-
-      {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
-          (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B). « Réessayer » relance
-          vraiment l'envoi ; le détail est le repli serveur, jamais le texte du port, qui
-          répétait le titre. */}
-      <View style={{ paddingHorizontal: theme.espace.gouttiere }}>
-        {erreur ? (
+    <CadreFormulaireV2
+      reference="presentation-coach"
+      surtitre="TON APPROCHE"
+      entete={
+        <>
+          <EnteteOnboarding variante="coach" etape={2} desactive={chargement} />
+        </>
+      }
+      alerte={
+        erreur ? (
           <View accessibilityLiveRegion="polite">
             <EtatErreur
               titre={textesRepliErreur.serveur.titre}
@@ -107,26 +76,46 @@ export default function DevenirCoachProfil() {
               onReessayer={() => void surValider()}
             />
           </View>
-        ) : null}
-      </View>
+        ) : null
+      }
+      actions={
+        <>
+          {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
+          (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B). « Réessayer » relance
+          vraiment l'envoi ; le détail est le repli serveur, jamais le texte du port, qui
+          répétait le titre. */}
+          <View style={{ paddingHorizontal: theme.espace.gouttiere }}></View>
 
-      <View
-        style={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[3],
-          paddingBottom: insets.bottom + theme.espace[3],
-          borderTopWidth: 1,
-          borderTopColor: theme.couleur.bordure.discrete,
-          backgroundColor: theme.couleur.fond.canevas,
-        }}
-      >
-        <Bouton
-          libelle="Continuer"
-          variante="primaire"
-          onPress={surValider}
-          desactive={!pretAValider || chargement}
-        />
-      </View>
-    </CanevasEcran>
+          <>
+            <Bouton
+              libelle="Continuer"
+              variante="primaire"
+              onPress={surValider}
+              desactive={!pretAValider || chargement}
+            />
+          </>
+        </>
+      }
+    >
+      <Text style={{ ...theme.texte.v2TitreAuth, color: theme.couleur.texte.principal }}>
+        Présente-toi.
+      </Text>
+      <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.secondaire }}>
+        C’est ce que les clients verront en premier sur ton profil.
+      </Text>
+      <Champ
+        libelle="Titre court"
+        placeholder="Préparateur physique certifié"
+        valeur={titreCourt}
+        onChangeTexte={(v) => setTitreCourt(v.slice(0, LONGUEUR_MAX_TITRE_COURT))}
+        desactive={chargement}
+      />
+      <Champ
+        libelle="Bio"
+        valeur={bio}
+        onChangeTexte={(v) => setBio(v.slice(0, LONGUEUR_MAX_BIO))}
+        desactive={chargement}
+      />
+    </CadreFormulaireV2>
   );
 }

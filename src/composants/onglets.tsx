@@ -8,7 +8,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useMouvementReduit, useTheme } from '@/theme/fournisseur';
-import { font } from '@/theme/tokens';
+import { usePresentationV2 } from './presentation-v2';
+import { font, presentationV2 as mesure } from '@/theme/tokens';
 
 export type OptionOnglet<Valeur extends string> = {
   valeur: Valeur;
@@ -33,6 +34,7 @@ export function Onglets<Valeur extends string>({
   onChangement,
 }: ProprietesOnglets<Valeur>) {
   const theme = useTheme();
+  const v2 = usePresentationV2();
   const { actif: mouvementReduitActif, entree: dureeEntree, courbe } = useMouvementReduit();
   const mesures = useRef<Partial<Record<Valeur, { x: number; largeur: number }>>>({}).current;
   const indicateurX = useSharedValue(0);
@@ -87,7 +89,7 @@ export function Onglets<Valeur extends string>({
           {
             position: 'absolute',
             bottom: 0,
-            height: theme.espace[1],
+            height: v2 ? mesure.bordure : theme.espace[1],
             backgroundColor: theme.couleur.marque.primaire,
           },
           styleIndicateur,
@@ -103,9 +105,9 @@ export function Onglets<Valeur extends string>({
             accessibilityRole="tab"
             accessibilityState={{ selected: estActif }}
             style={{
-              flex: 1,
+              flex: v2 ? undefined : 1,
               minHeight: theme.taille.controle,
-              paddingHorizontal: theme.espace[2],
+              paddingHorizontal: v2 ? theme.espace[4] : theme.espace[2],
               paddingVertical: theme.espace[3],
               alignItems: 'center',
               justifyContent: 'center',
@@ -113,8 +115,8 @@ export function Onglets<Valeur extends string>({
           >
             <Text
               style={{
-                ...theme.texte.petit,
-                fontFamily: estActif ? font.uiBold : font.uiSemibold,
+                ...(v2 ? theme.texte.v2Corps : theme.texte.petit),
+                fontFamily: estActif ? font.uiBold : v2 ? font.uiRegular : font.uiSemibold,
                 color: estActif ? theme.couleur.texte.principal : theme.couleur.texte.secondaire,
               }}
             >

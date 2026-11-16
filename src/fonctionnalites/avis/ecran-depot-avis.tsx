@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/composants/avatar';
 import { Bouton } from '@/composants/bouton';
 import { BoutonIcone } from '@/composants/bouton-icone';
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreFormulaireV2 } from '@/composants/presentation-v2';
 import { Champ } from '@/composants/champ';
 import { Chip } from '@/composants/chip';
 import { EtatErreur } from '@/composants/etats/etat-erreur';
@@ -66,7 +65,6 @@ export function EcranDepotAvis({
   onRienADeposer,
 }: ProprietesEcranDepotAvis) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const { port } = useDonnees();
   const [lecture, setLecture] = useState<Lecture>({ type: 'lecture' });
   const [cleTentative, setCleTentative] = useState(0);
@@ -169,223 +167,191 @@ export function EcranDepotAvis({
   const modification = pret?.monAvis.etat === 'modifiable';
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <View
-        style={{
-          paddingTop: insets.top + theme.espace[2],
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[3],
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.espace[3],
-        }}
-      >
-        <BoutonIcone nom="retour" accessibilityLabel="Retour" onPress={onRetour} />
-        <Text
-          accessibilityRole="header"
-          style={{ ...theme.texte.titre3, flex: 1, color: theme.couleur.texte.principal }}
-        >
-          Ton avis
-        </Text>
-      </View>
+    <CadreFormulaireV2
+      surtitre="TON EXPÉRIENCE"
+      titre="Comment ça se passe ?"
+      entete={<BoutonIcone nom="retour" accessibilityLabel="Retour" onPress={onRetour} />}
+      actions={
+        pret ? (
+          <View>
+            <Bouton
+              libelle={
+                envoi.type === 'envoi'
+                  ? 'Envoi en cours…'
+                  : modification
+                    ? 'Enregistrer les modifications'
+                    : 'Publier mon avis'
+              }
+              variante="primaire"
+              onPress={() => void envoyer(modification)}
+              desactive={note === null || envoi.type === 'envoi'}
+            />
+          </View>
+        ) : null
+      }
+    >
+      {lecture.type === 'lecture' ? <Squelette forme="detail" /> : null}
+      {lecture.type === 'erreur' ? (
+        <EtatErreur
+          titre={textesRepliErreur.serveur.titre}
+          explication={textesRepliErreur.serveur.explication}
+          nombreEchecs={lecture.echecs}
+          onReessayer={() => setCleTentative((c) => c + 1)}
+        />
+      ) : null}
 
-      <DefilementEcran
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[6],
-        }}
-      >
-        {lecture.type === 'lecture' ? <Squelette forme="detail" /> : null}
-        {lecture.type === 'erreur' ? (
-          <EtatErreur
-            titre={textesRepliErreur.serveur.titre}
-            explication={textesRepliErreur.serveur.explication}
-            nombreEchecs={lecture.echecs}
-            onReessayer={() => setCleTentative((c) => c + 1)}
-          />
-        ) : null}
-
-        {pret ? (
-          <>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.espace[3] }}>
-              <Avatar nom={`${pret.profil.prenom} ${pret.profil.nom}`} taille="lg" />
-              <View style={{ flex: 1, gap: theme.espace[1] }}>
-                <Text style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal }}>
-                  {`${pret.profil.prenom} ${pret.profil.nom}`}
-                </Text>
-                <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-                  {`Suivi depuis ${pret.monAvis.dureeSuiviMois} mois`}
-                </Text>
-              </View>
-            </View>
-
-            <View style={{ gap: theme.espace[3] }}>
-              <Text style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal }}>
-                Comment ça se passe ?
+      {pret ? (
+        <>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.espace[3] }}>
+            <Avatar nom={`${pret.profil.prenom} ${pret.profil.nom}`} taille="lg" />
+            <View style={{ flex: 1, gap: theme.espace[1] }}>
+              <Text style={{ ...theme.texte.v2NomResultat, color: theme.couleur.texte.principal }}>
+                {`${pret.profil.prenom} ${pret.profil.nom}`}
               </Text>
-              <View accessibilityRole="radiogroup" style={{ flexDirection: 'row' }}>
-                {MOTS_NOTE.map((mot, i) => {
-                  const n = i + 1;
-                  return (
-                    <Pressable
-                      key={n}
-                      accessibilityRole="radio"
-                      accessibilityLabel={`${n} sur 5, ${mot}`}
-                      accessibilityState={{ checked: note === n }}
-                      onPress={() => setNote(n)}
-                      style={{
-                        minWidth: theme.taille.tapMin,
-                        minHeight: theme.taille.tapMin,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Icone
-                        nom="note"
-                        couleur={
-                          note !== null && n <= note
-                            ? theme.couleur.marque.accent
-                            : theme.couleur.bordure.marquee
-                        }
-                      />
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {/* Le mot de la note choisie : la note n'est jamais portée par la seule couleur. */}
-              {note !== null ? (
-                <Text
-                  accessibilityLiveRegion="polite"
-                  style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}
-                >
-                  {MOTS_NOTE[note - 1]}
-                </Text>
-              ) : null}
+              <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+                {`Suivi depuis ${pret.monAvis.dureeSuiviMois} mois`}
+              </Text>
             </View>
+          </View>
 
-            <View style={{ gap: theme.espace[3] }}>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'baseline',
-                  justifyContent: 'space-between',
-                  gap: theme.espace[2],
-                }}
+          <View style={{ gap: theme.espace[3] }}>
+            <View accessibilityRole="radiogroup" style={{ flexDirection: 'row' }}>
+              {MOTS_NOTE.map((mot, i) => {
+                const n = i + 1;
+                return (
+                  <Pressable
+                    key={n}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`${n} sur 5, ${mot}`}
+                    accessibilityState={{ checked: note === n }}
+                    onPress={() => setNote(n)}
+                    style={{
+                      minWidth: theme.taille.tapMin,
+                      minHeight: theme.taille.tapMin,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Icone
+                      nom="note"
+                      couleur={
+                        note !== null && n <= note
+                          ? theme.couleur.marque.accent
+                          : theme.couleur.bordure.marquee
+                      }
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+            {/* Le mot de la note choisie : la note n'est jamais portée par la seule couleur. */}
+            {note !== null ? (
+              <Text
+                accessibilityLiveRegion="polite"
+                style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.principal }}
               >
-                <Text
-                  style={{ ...theme.texte.titre3, flex: 1, color: theme.couleur.texte.principal }}
-                >
-                  {`Ce qui caractérise ${pret.profil.prenom}`}
-                </Text>
-                <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-                  {`${choisies.length} sur ${ETIQUETTES_MAX}`}
-                </Text>
-              </View>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.espace[2] }}>
-                {pret.etiquettes.map((e) => (
-                  <Chip
-                    key={e.cle}
-                    variante="selection"
-                    libelle={e.libelle}
-                    selectionne={choisies.includes(e.cle)}
-                    onPress={() => basculerEtiquette(e.cle)}
-                  />
-                ))}
-              </View>
-              {quatriemeRefusee ? (
-                <Text
-                  accessibilityLiveRegion="polite"
-                  style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}
-                >
-                  Trois étiquettes au plus. Retires-en une pour en choisir une autre.
-                </Text>
-              ) : null}
-            </View>
+                {MOTS_NOTE[note - 1]}
+              </Text>
+            ) : null}
+          </View>
 
-            <View style={{ gap: theme.espace[2] }}>
-              <Champ
-                libelle="Raconte, si tu veux"
-                valeur={texte}
-                onChangeTexte={setTexte}
-                multiligne
-                longueurMax={TEXTE_MAX}
-              />
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ ...theme.texte.legende, color: theme.couleur.texte.attenue }}>
-                  Facultatif
-                </Text>
-                <Text style={{ ...theme.texte.legende, color: theme.couleur.texte.attenue }}>
-                  {`${texte.length} / ${TEXTE_MAX}`}
-                </Text>
-              </View>
-            </View>
-
-            {/* L'encart annonce TOUT ce qui sera public, avant le geste (fiche, correction 2). */}
+          <View style={{ gap: theme.espace[3] }}>
             <View
               style={{
                 flexDirection: 'row',
-                gap: theme.espace[3],
-                padding: theme.espace[4],
-                borderRadius: theme.rayon.carte,
-                backgroundColor: theme.couleur.fond.creux,
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                gap: theme.espace[2],
               }}
             >
-              <Icone nom="information" couleur={theme.couleur.texte.secondaire} />
               <Text
-                style={{ ...theme.texte.petit, flex: 1, color: theme.couleur.texte.secondaire }}
+                style={{
+                  ...theme.texte.v2NomResultat,
+                  flex: 1,
+                  color: theme.couleur.texte.principal,
+                }}
               >
-                {`Ton avis sera public sur le profil de ${pret.profil.prenom}, signé de ton prénom, de l’initiale de ton nom et de la durée de ton suivi. Tu peux le modifier pendant 14 jours, puis il se fige.`}
+                {`Ce qui caractérise ${pret.profil.prenom}`}
+              </Text>
+              <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+                {`${choisies.length} sur ${ETIQUETTES_MAX}`}
               </Text>
             </View>
-
-            {envoi.type === 'refus' ? (
-              <View accessibilityLiveRegion="polite" style={{ gap: theme.espace[1] }}>
-                <Text style={{ ...theme.texte.titre3, color: theme.couleur.etat.erreurEncre }}>
-                  {envoi.refus.title}
-                </Text>
-                <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
-                  {envoi.refus.detail}
-                </Text>
-              </View>
-            ) : null}
-            {envoi.type === 'sans_reponse' ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.espace[2] }}>
+              {pret.etiquettes.map((e) => (
+                <Chip
+                  key={e.cle}
+                  variante="selection"
+                  libelle={e.libelle}
+                  selectionne={choisies.includes(e.cle)}
+                  onPress={() => basculerEtiquette(e.cle)}
+                />
+              ))}
+            </View>
+            {quatriemeRefusee ? (
               <Text
                 accessibilityLiveRegion="polite"
-                style={{ ...theme.texte.corps, color: theme.couleur.etat.erreurEncre }}
+                style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}
               >
-                Pas de connexion. Réessaie.
+                Trois étiquettes au plus. Retires-en une pour en choisir une autre.
               </Text>
             ) : null}
-          </>
-        ) : null}
-      </DefilementEcran>
+          </View>
 
-      {pret ? (
-        <View
-          style={{
-            paddingHorizontal: theme.espace.gouttiere,
-            paddingTop: theme.espace[3],
-            paddingBottom: insets.bottom + theme.espace[3],
-            borderTopWidth: 1,
-            borderTopColor: theme.couleur.bordure.discrete,
-          }}
-        >
-          <Bouton
-            libelle={
-              envoi.type === 'envoi'
-                ? 'Envoi en cours…'
-                : modification
-                  ? 'Enregistrer les modifications'
-                  : 'Publier mon avis'
-            }
-            variante="primaire"
-            onPress={() => void envoyer(modification)}
-            desactive={note === null || envoi.type === 'envoi'}
-          />
-        </View>
+          <View style={{ gap: theme.espace[2] }}>
+            <Champ
+              libelle="Raconte, si tu veux"
+              valeur={texte}
+              onChangeTexte={setTexte}
+              multiligne
+              longueurMax={TEXTE_MAX}
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ ...theme.texte.legende, color: theme.couleur.texte.attenue }}>
+                Facultatif
+              </Text>
+              <Text style={{ ...theme.texte.legende, color: theme.couleur.texte.attenue }}>
+                {`${texte.length} / ${TEXTE_MAX}`}
+              </Text>
+            </View>
+          </View>
+
+          {/* L'encart annonce TOUT ce qui sera public, avant le geste (fiche, correction 2). */}
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: theme.espace[3],
+              padding: theme.espace[4],
+              borderRadius: theme.rayon.carte,
+              backgroundColor: theme.couleur.fond.creux,
+            }}
+          >
+            <Icone nom="information" couleur={theme.couleur.texte.secondaire} />
+            <Text style={{ ...theme.texte.petit, flex: 1, color: theme.couleur.texte.secondaire }}>
+              {`Ton avis sera public sur le profil de ${pret.profil.prenom}, signé de ton prénom, de l’initiale de ton nom et de la durée de ton suivi. Tu peux le modifier pendant 14 jours, puis il se fige.`}
+            </Text>
+          </View>
+
+          {envoi.type === 'refus' ? (
+            <View accessibilityLiveRegion="polite" style={{ gap: theme.espace[1] }}>
+              <Text style={{ ...theme.texte.v2NomResultat, color: theme.couleur.etat.erreurEncre }}>
+                {envoi.refus.title}
+              </Text>
+              <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
+                {envoi.refus.detail}
+              </Text>
+            </View>
+          ) : null}
+          {envoi.type === 'sans_reponse' ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              style={{ ...theme.texte.v2Corps, color: theme.couleur.etat.erreurEncre }}
+            >
+              Pas de connexion. Réessaie.
+            </Text>
+          ) : null}
+        </>
       ) : null}
-    </CanevasEcran>
+    </CadreFormulaireV2>
   );
 }

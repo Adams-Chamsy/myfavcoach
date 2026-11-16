@@ -106,7 +106,7 @@ it('un visiteur retrouve le profil après connexion puis sa recherche avec un se
     { initialUrl: '/(public)' },
   );
   await act(() => jest.runAllTimersAsync());
-  await fireEvent.press(screen.getByText('Découvrir les coachs'));
+  await fireEvent.press(screen.getByRole('button', { name: 'Découvrir les coachs' }));
   await act(() => jest.runAllTimersAsync());
   await waitFor(() =>
     expect(screen.queryByLabelText('Voir le profil de Nadia Belkacem')).toBeTruthy(),

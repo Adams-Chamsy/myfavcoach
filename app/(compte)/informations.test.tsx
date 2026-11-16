@@ -148,6 +148,7 @@ describe('Informations (docs/ecrans/L1-09-mes-informations.md, « Mes informatio
 
     expect(boutonEnregistrerDesactive()).toBe(true);
 
+    await fireEvent.press(screen.getByRole('button', { name: /^Commune de base,/ }));
     await fireEvent.press(screen.getByText('Lyon')); // commune de base
     await fireEvent.changeText(screen.getByLabelText('Parcours'), 'Dix ans de terrain.');
     await fireEvent.press(screen.getByText('En visio'));
@@ -181,6 +182,7 @@ describe('Informations (docs/ecrans/L1-09-mes-informations.md, « Mes informatio
   it('côté client : la commune est éditable et active Enregistrer', async () => {
     const { portDonnees } = await rendre(INFO_CLIENT);
 
+    await fireEvent.press(screen.getByRole('button', { name: /^Commune,/ }));
     await fireEvent.press(screen.getByText('Bordeaux'));
     await waitFor(() => expect(boutonEnregistrerDesactive()).toBe(false));
 

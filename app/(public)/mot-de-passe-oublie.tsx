@@ -1,8 +1,7 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreAuthentificationV2 } from '@/composants/presentation-v2';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { AccessibilityInfo, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AccessibilityInfo, Text } from 'react-native';
 
 import { Bouton } from '@/composants/bouton';
 import { Champ } from '@/composants/champ';
@@ -24,7 +23,6 @@ function messageErreur(erreur: ErreurAuth): string {
 
 export default function MotDePasseOublie() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ email?: string }>();
   const router = useRouter();
   const { port } = useSession();
@@ -55,76 +53,64 @@ export default function MotDePasseOublie() {
   }
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <DefilementEcran
-        contentContainerStyle={{
-          paddingTop: insets.top + theme.espace[6],
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[4],
-        }}
-      >
-        {erreur ? (
-          <EtatErreur
-            titre="On a un souci de notre côté"
-            explication={messageErreur(erreur)}
-            nombreEchecs={nombreEchecs}
-            onReessayer={surEnvoyer}
-            code={erreur.code}
-          />
-        ) : null}
-
-        <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-          On te renvoie une clé.
-        </Text>
-
-        {envoye ? (
-          <Text
-            accessibilityLiveRegion="polite"
-            style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}
-          >
-            {MESSAGE_CONFIRMATION}
-          </Text>
-        ) : (
-          <Champ
-            libelle="Adresse e-mail"
-            type="email"
-            valeur={email}
-            onChangeTexte={setEmail}
-            desactive={chargement}
-          />
-        )}
-      </DefilementEcran>
-
-      {/* "Un champ, une action" (docs/ecrans/L1-04-connexion.md). Après l'envoi, une sortie :
+    <CadreAuthentificationV2
+      titre={'On te renvoie\nune clé.'}
+      description="Indique ton adresse e-mail pour recevoir un lien."
+      onRetour={() => {
+        if (router.canGoBack?.()) router.back();
+        else router.replace('/(public)/connexion');
+      }}
+      actions={
+        <>
+          {/* "Un champ, une action" (docs/ecrans/L1-04-connexion.md). Après l'envoi, une sortie :
           « Retour à la connexion » (B2, décidé par le développeur le 2 novembre 2026 — « un écran
           sans sortie est un défaut quelle que soit la façon dont on y arrive »). Arrivé par « Ce
           lien a expiré » (un remplacement), aucun geste système ne ramenait nulle part. */}
-      <View
-        style={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[3],
-          paddingBottom: insets.bottom + theme.espace[3],
-          borderTopWidth: 1,
-          borderTopColor: theme.couleur.bordure.discrete,
-          backgroundColor: theme.couleur.fond.canevas,
-        }}
-      >
-        {!envoye ? (
-          <Bouton
-            libelle="Envoyer le lien"
-            variante="primaire"
-            onPress={surEnvoyer}
-            desactive={email.trim() === '' || chargement}
-          />
-        ) : (
-          <Bouton
-            libelle="Retour à la connexion"
-            variante="primaire"
-            onPress={() => router.replace('/(public)/connexion')}
-          />
-        )}
-      </View>
-    </CanevasEcran>
+          <>
+            {!envoye ? (
+              <Bouton
+                libelle="Envoyer le lien"
+                variante="primaire"
+                onPress={surEnvoyer}
+                desactive={email.trim() === '' || chargement}
+              />
+            ) : (
+              <Bouton
+                libelle="Retour à la connexion"
+                variante="primaire"
+                onPress={() => router.replace('/(public)/connexion')}
+              />
+            )}
+          </>
+        </>
+      }
+    >
+      {erreur ? (
+        <EtatErreur
+          titre="On a un souci de notre côté"
+          explication={messageErreur(erreur)}
+          nombreEchecs={nombreEchecs}
+          onReessayer={surEnvoyer}
+          code={erreur.code}
+        />
+      ) : null}
+
+      {envoye ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}
+        >
+          {MESSAGE_CONFIRMATION}
+        </Text>
+      ) : (
+        <Champ
+          libelle="Adresse e-mail"
+          type="email"
+          valeur={email}
+          onChangeTexte={setEmail}
+          desactive={chargement}
+        />
+      )}
+    </CadreAuthentificationV2>
   );
 }

@@ -1,8 +1,10 @@
 import { forwardRef, useState } from 'react';
-import { Text, TextInput, type TextInputInstance, View } from 'react-native';
+import { Pressable, Text, TextInput, type TextInputInstance, View } from 'react-native';
 
 import { BoutonIcone } from '@/composants/bouton-icone';
 import { useTheme } from '@/theme/fournisseur';
+import { usePresentationV2 } from './presentation-v2';
+import { presentationV2 as mesure } from '@/theme/tokens';
 
 // "texte" : par defaut, aucun comportement particulier. "email" : clavier e-mail, sans
 // majuscule automatique ni correction (docs/ecrans/L1-02-creation-compte.md, "Adresse e-mail").
@@ -60,6 +62,7 @@ export const Champ = forwardRef<TextInputInstance, ProprietesChamp>(function Cha
   ref,
 ) {
   const theme = useTheme();
+  const presentationV2 = usePresentationV2();
   const [estFocus, setEstFocus] = useState(false);
   const [motDePasseVisible, setMotDePasseVisible] = useState(false);
   const enErreur = Boolean(messageErreur);
@@ -98,7 +101,17 @@ export const Champ = forwardRef<TextInputInstance, ProprietesChamp>(function Cha
   // vecteur disponible pour porter l'information d'erreur au lecteur d'ecran.
   return (
     <View style={{ gap: theme.espace[2] }}>
-      <Text style={{ ...theme.texte.label, color: couleurLabel }}>{libelle}</Text>
+      <Text
+        style={{
+          ...(presentationV2 ? theme.texte.v2LabelChamp : theme.texte.label),
+          color:
+            presentationV2 && !enErreur && !desactive
+              ? theme.couleur.texte.principal
+              : couleurLabel,
+        }}
+      >
+        {libelle}
+      </Text>
 
       <View
         style={
@@ -140,16 +153,23 @@ export const Champ = forwardRef<TextInputInstance, ProprietesChamp>(function Cha
           multiline={multiligne}
           maxLength={longueurMax}
           style={{
-            minHeight: multiligne ? theme.taille.controle * 2 : theme.taille.controle,
+            minHeight: multiligne
+              ? theme.taille.controle * 2
+              : presentationV2
+                ? mesure.champHauteur
+                : theme.taille.controle,
             textAlignVertical: multiligne ? 'top' : 'center',
-            paddingVertical: theme.espace[3],
-            borderRadius: theme.rayon.saisie,
-            borderWidth: theme.taille.focusContour,
-            borderColor: couleurBordure,
+            paddingVertical: presentationV2 ? mesure.champVertical : theme.espace[3],
+            borderRadius: presentationV2 ? mesure.rayonChamp : theme.rayon.saisie,
+            borderWidth: presentationV2 ? mesure.bordure : theme.taille.focusContour,
+            borderColor:
+              presentationV2 && !enErreur && !estFocus && !desactive
+                ? theme.couleur.bordure.v2Champ
+                : couleurBordure,
             backgroundColor: desactive ? theme.couleur.fond.creux : theme.couleur.fond.surface,
-            paddingHorizontal: theme.espace[4],
+            paddingHorizontal: presentationV2 ? mesure.champHorizontal : theme.espace[4],
             paddingRight: estMotDePasse ? theme.taille.tapMin : theme.espace[4],
-            ...theme.texte.corps,
+            ...(presentationV2 ? theme.texte.v2Champ : theme.texte.corps),
             color: desactive ? theme.couleur.texte.desactive : theme.couleur.texte.principal,
           }}
         />
@@ -163,14 +183,36 @@ export const Champ = forwardRef<TextInputInstance, ProprietesChamp>(function Cha
               justifyContent: 'center',
             }}
           >
-            <BoutonIcone
-              nom={motDePasseVisible ? 'oeil-barre' : 'oeil'}
-              accessibilityLabel={
-                motDePasseVisible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'
-              }
-              onPress={() => setMotDePasseVisible((v) => !v)}
-              desactive={desactive}
-            />
+            {presentationV2 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  motDePasseVisible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'
+                }
+                disabled={desactive}
+                onPress={() => setMotDePasseVisible((v) => !v)}
+                style={{
+                  minHeight: theme.taille.tapMin,
+                  minWidth: theme.taille.tapMin,
+                  paddingHorizontal: mesure.champHorizontal,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ ...theme.texte.v2LabelChamp, color: theme.couleur.marque.primaire }}>
+                  {motDePasseVisible ? 'Masquer' : 'Voir'}
+                </Text>
+              </Pressable>
+            ) : (
+              <BoutonIcone
+                nom={motDePasseVisible ? 'oeil-barre' : 'oeil'}
+                accessibilityLabel={
+                  motDePasseVisible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'
+                }
+                onPress={() => setMotDePasseVisible((v) => !v)}
+                desactive={desactive}
+              />
+            )}
           </View>
         ) : null}
       </View>

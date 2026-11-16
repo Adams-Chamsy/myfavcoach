@@ -97,9 +97,9 @@ describe('L4-04a · Choix de l’offre', () => {
   it('affiche le titre, l’étape, les offres publiées avec leur engagement humain, sans jour de prélèvement', async () => {
     await rendre();
     expect(screen.queryByText('Étape 1 sur 2')).toBeTruthy();
-    expect(screen.queryByText('Quelle formule te ressemble ?')).toBeTruthy();
+    expect(screen.queryByText('Un accompagnement. À ton rythme.')).toBeTruthy();
     expect(screen.queryByText('Suivi complet')).toBeTruthy();
-    expect(screen.queryByText('49 €/mois')).toBeTruthy();
+    expect(screen.queryByLabelText('49 €/mois')).toBeTruthy();
     expect(screen.queryByText('ajustement hebdomadaire · visio mensuelle')).toBeTruthy();
     expect(screen.queryByText('LE PLUS CHOISI')).toBeTruthy();
     expect(
@@ -114,6 +114,13 @@ describe('L4-04a · Choix de l’offre', () => {
     expect(screen.queryByText(/Programme seul/)).toBeNull();
     expect(screen.queryByText(/abonnés sur 10/)).toBeNull();
     expect(screen.queryByText(/de chaque mois/)).toBeNull();
+  });
+
+  it('affiche les centimes du prix réel sans arrondir à l’euro supérieur', async () => {
+    await rendre([{ ...SUIVI_COMPLET, prixCentimes: 4950 }]);
+    expect(screen.getByLabelText('49,50 €/mois')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Continuer · 49,50 €/mois' })).toBeTruthy();
+    expect(screen.queryByText('50 €/mois')).toBeNull();
   });
 
   it('présélectionne l’offre mise en avant ; la sélection s’annonce par son état, et change le bouton', async () => {

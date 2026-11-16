@@ -154,7 +154,7 @@ it('après le paiement, 04c s’empile sur le profil ; un retour ramène au prof
   await fireEvent.press(screen.getByRole('button', { name: 'Payer 49,00 €' }));
   await act(() => jest.runAllTimersAsync());
   await waitFor(() => expect(rendu.getPathname()).toBe('/souscription/confirmation'));
-  await waitFor(() => expect(screen.queryByText('C’est parti avec Yannick')).toBeTruthy());
+  await waitFor(() => expect(screen.queryByText('C’est parti avec Yannick.')).toBeTruthy());
 
   // Le geste de retour (matériel Android, glissement iOS) : GO_BACK sur la vraie pile.
   await act(async () => {

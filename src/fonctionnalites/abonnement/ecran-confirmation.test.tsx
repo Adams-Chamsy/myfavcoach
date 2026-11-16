@@ -57,7 +57,7 @@ describe('L4-04c · Confirmation d’abonnement', () => {
   // derniers chiffres. Titre et sous-titre de la variante carte (Contenu).
   it('carte : « C’est parti avec Yannick », l’engagement de l’offre, payé aujourd’hui, prochain prélèvement, carte •••• 4242', async () => {
     const { onVoirProfil } = await rendre(CARTE);
-    await waitFor(() => expect(screen.queryByText('C’est parti avec Yannick')).toBeTruthy());
+    await waitFor(() => expect(screen.queryByText('C’est parti avec Yannick.')).toBeTruthy());
     expect(screen.getByText('Ajustement hebdomadaire, visio mensuelle.')).toBeTruthy();
     expect(screen.getByText('Suivi complet')).toBeTruthy();
     expect(screen.getByText('Yannick Berthaud · Lyon')).toBeTruthy();
@@ -83,7 +83,7 @@ describe('L4-04c · Confirmation d’abonnement', () => {
       derniereFactureMontantCentimes: null,
       derniereFacturePayeeLe: null,
     });
-    await waitFor(() => expect(screen.queryByText('Ta demande est enregistrée')).toBeTruthy());
+    await waitFor(() => expect(screen.queryByText('Ta demande est enregistrée.')).toBeTruthy());
     expect(
       screen.getByText(
         'Ton prélèvement de 49,00 € est en cours auprès de ta banque. Ton suivi avec Yannick commence dès qu’elle l’a confirmé.',
@@ -99,7 +99,7 @@ describe('L4-04c · Confirmation d’abonnement', () => {
   // confirmé lit « Payé aujourd'hui » avec sa ligne « Prélèvement SEPA ».
   it('SEPA confirmé (actif) : variante payée, ligne « Prélèvement SEPA »', async () => {
     await rendre({ ...CARTE, moyen: 'sepa', moyenDerniersChiffres: '2606' });
-    await waitFor(() => expect(screen.queryByText('C’est parti avec Yannick')).toBeTruthy());
+    await waitFor(() => expect(screen.queryByText('C’est parti avec Yannick.')).toBeTruthy());
     expect(screen.getByText('Payé aujourd’hui')).toBeTruthy();
     expect(screen.getByText('Prélèvement SEPA')).toBeTruthy();
   });
@@ -121,7 +121,7 @@ describe('L4-04c · Confirmation d’abonnement', () => {
   // questionnaire santé à L4 ; critère 6 : libellés interdits.
   it('aucun pronom genré, aucune promesse, aucune mention de facture ni de santé, aucun libellé interdit', async () => {
     await rendre(CARTE);
-    await waitFor(() => expect(screen.queryByText('C’est parti avec Yannick')).toBeTruthy());
+    await waitFor(() => expect(screen.queryByText('C’est parti avec Yannick.')).toBeTruthy());
     const racine = screen.container as unknown as NoeudHote;
     const tout = textesLisibles(racine).join(' ');
     expect(tout).not.toMatch(/suivie? par|Il a été|Elle a été|48 h|facture|santé/i);
@@ -137,7 +137,7 @@ describe('L4-04c · Confirmation d’abonnement', () => {
     await waitFor(() => expect(screen.queryByText('On a un souci de notre côté')).toBeTruthy());
     expect(screen.queryByText(/C’est parti/)).toBeNull();
     await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
-    await waitFor(() => expect(screen.queryByText('C’est parti avec Yannick')).toBeTruthy());
+    await waitFor(() => expect(screen.queryByText('C’est parti avec Yannick.')).toBeTruthy());
     expect(portDonnees.lireDetailAbonnement).toHaveBeenCalledTimes(2);
   });
 

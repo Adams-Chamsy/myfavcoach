@@ -1,9 +1,8 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreFormulaireV2 } from '@/composants/presentation-v2';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
 import { EtatErreur } from '@/composants/etats/etat-erreur';
@@ -65,7 +64,6 @@ function libelleManquant(deposees: Set<TypePiece>): string {
 
 export default function DevenirCoachVerification() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { lirePiecesDeposees, deposerPieceVerification, lireDossierVerification } =
     useDonnees().port;
@@ -173,200 +171,188 @@ export default function DevenirCoachVerification() {
   }
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <EnteteOnboarding etape={3} desactive={enCours !== null} />
-
-      <DefilementEcran
-        contentContainerStyle={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[2],
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[4],
-        }}
-      >
-        <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-          Trois documents.
-        </Text>
-        <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
-          Une personne les examine sous 48 h ouvrées. Ils servent à ça et à rien d’autre.
-        </Text>
-
-        {statutDossier === 'refusee' || statutDossier === 'revoquee' ? (
-          <View
-            accessibilityLiveRegion="polite"
-            style={{
-              backgroundColor: theme.couleur.etat.alerteTeinte,
-              borderRadius: theme.rayon.carte,
-              padding: theme.espace[3],
-            }}
-          >
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.alerteEncre }}>
-              Remplace les trois documents : ton dossier repartira en examen.
-            </Text>
-          </View>
-        ) : null}
-
-        {erreurLecture ? (
-          <EtatErreur
-            titre={textesRepliErreur.serveur.titre}
-            explication={textesRepliErreur.serveur.explication}
-            nombreEchecs={0}
-            onReessayer={() => {
-              setChargement(true);
-              setCleTentative((c) => c + 1);
-            }}
-          />
-        ) : null}
-        {!chargement && !erreurLecture
-          ? ORDRE_PIECES.map((type) => {
-              const piece = piecesEnVigueur(pieces).find((p) => p.type === type);
-              return (
-                <View
-                  key={type}
-                  style={{
-                    borderWidth: piece ? 1 : 1,
-                    borderStyle: piece ? 'solid' : 'dashed',
-                    borderColor: theme.couleur.bordure.discrete,
-                    borderRadius: theme.rayon.carte,
-                    padding: theme.espace[4],
-                    gap: theme.espace[2],
-                  }}
-                >
-                  <Text style={{ ...theme.texte.label, color: theme.couleur.texte.principal }}>
-                    {LIBELLES_PIECE[type]}
-                  </Text>
-                  {piece?.nomFichier ? (
-                    <Text
-                      numberOfLines={1}
-                      style={{ ...theme.texte.petit, color: theme.couleur.texte.principal }}
-                    >
-                      {piece.nomFichier}
-                    </Text>
-                  ) : null}
-                  {piece ? (
-                    <View
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: theme.espace[2] }}
-                    >
-                      <Icone nom="valide" couleur={theme.couleur.etat.succesEncre} />
-                      <Text
-                        style={{
-                          ...theme.texte.petit,
-                          color: theme.couleur.texte.secondaire,
-                          flex: 1,
-                        }}
-                      >
-                        {enCours === type
-                          ? 'Envoi en cours…'
-                          : `Déposée le ${new Date(piece.deposeLe).toLocaleDateString('fr-FR')}${
-                              piece.tailleOctets != null
-                                ? ` · ${poidsLisible(piece.tailleOctets)}`
-                                : ''
-                            }`}
-                      </Text>
-                      {/* A2 — L2-06, règle 6 : action destructive (l'ancienne version cesse de compter
-                          dès l'envoi de la nouvelle), en encre d'alerte, jamais en couleur d'action ;
-                          sans autre confirmation (critère 4). */}
-                      <Pressable
-                        onPress={() => void surChoisirFichier(type)}
-                        disabled={enCours !== null}
-                        accessibilityRole="button"
-                        accessibilityLabel={LIBELLES_REMPLACER[type]}
-                        accessibilityState={{ disabled: enCours !== null }}
-                        style={{
-                          minHeight: theme.taille.tapMin,
-                          minWidth: theme.taille.tapMin,
-                          justifyContent: 'center',
-                          alignItems: 'flex-end',
-                        }}
-                      >
-                        <Text
-                          style={{
-                            ...theme.texte.actionAccent,
-                            color:
-                              enCours !== null
-                                ? theme.couleur.texte.desactive
-                                : theme.couleur.etat.erreurEncre,
-                          }}
-                        >
-                          Remplacer
-                        </Text>
-                      </Pressable>
-                    </View>
-                  ) : (
-                    <Bouton
-                      libelle={enCours === type ? 'Envoi en cours…' : 'Choisir un fichier'}
-                      variante="secondaire"
-                      onPress={() => void surChoisirFichier(type)}
-                      desactive={enCours !== null}
-                    />
-                  )}
-                </View>
-              );
-            })
-          : null}
-
+    <CadreFormulaireV2
+      reference="justificatifs"
+      surtitre="LA CONFIANCE SE CONSTRUIT"
+      entete={
+        <>
+          <EnteteOnboarding variante="coach" etape={3} desactive={enCours !== null} />
+        </>
+      }
+      alerte={
+        erreur ? (
+          <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.etat.erreurEncre }}>
+            {erreur}
+          </Text>
+        ) : null
+      }
+      actions={
+        <>
+          <>
+            {/* Hors de la zone de défilement, au-dessus de « Continuer » : dans le champ de vision au
+            moment où le troisième document arrive. */}
+            {echeanceSoumission ? (
+              <View accessibilityLiveRegion="polite" style={{ gap: theme.espace[1] }}>
+                {/* En phrase, comme la fiche (13 novembre 2026) : `label` l'affichait en capitales. */}
+                <Text style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal }}>
+                  Ton dossier est complet, il part en examen.
+                </Text>
+                <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+                  {`On te répond sous 48 h ouvrées, d’ici le ${echeanceSoumission.toLocaleDateString('fr-FR')}.`}
+                </Text>
+              </View>
+            ) : null}
+            <Bouton
+              libelle="Continuer"
+              variante="primaire"
+              onPress={() => router.push('/(onboarding)/devenir-coach-recapitulatif')}
+              desactive={!toutesDeposees}
+            />
+            {!toutesDeposees ? (
+              <Text
+                style={{
+                  ...theme.texte.petit,
+                  color: theme.couleur.texte.attenue,
+                  textAlign: 'center',
+                }}
+              >
+                {libelleManquant(deposees)}
+              </Text>
+            ) : null}
+          </>
+        </>
+      }
+    >
+      <Text style={{ ...theme.texte.v2TitreAuth, color: theme.couleur.texte.principal }}>
+        Trois documents.
+      </Text>
+      <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.secondaire }}>
+        Une personne les examine sous 48 h ouvrées. Ils servent à ça et à rien d’autre.
+      </Text>
+      {statutDossier === 'refusee' || statutDossier === 'revoquee' ? (
         <View
+          accessibilityLiveRegion="polite"
           style={{
-            backgroundColor: theme.couleur.fond.creux,
+            backgroundColor: theme.couleur.etat.alerteTeinte,
             borderRadius: theme.rayon.carte,
             padding: theme.espace[3],
           }}
         >
-          <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-            Une fois envoyé, un document n’est plus consultable ici — ni par toi, ni par personne
-            d’autre que l’examinateur. Tu peux le remplacer, pas le rouvrir.
+          <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.etat.alerteEncre }}>
+            Remplace les trois documents : ton dossier repartira en examen.
           </Text>
         </View>
-
-        {erreur ? (
-          <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
-            {erreur}
-          </Text>
-        ) : null}
-      </DefilementEcran>
-
+      ) : null}
+      {erreurLecture ? (
+        <EtatErreur
+          titre={textesRepliErreur.serveur.titre}
+          explication={textesRepliErreur.serveur.explication}
+          nombreEchecs={0}
+          onReessayer={() => {
+            setChargement(true);
+            setCleTentative((c) => c + 1);
+          }}
+        />
+      ) : null}
+      {!chargement && !erreurLecture
+        ? ORDRE_PIECES.map((type) => {
+            const piece = piecesEnVigueur(pieces).find((p) => p.type === type);
+            return (
+              <View
+                key={type}
+                style={{
+                  borderWidth: piece ? 1 : 1,
+                  borderStyle: piece ? 'solid' : 'dashed',
+                  borderColor: theme.couleur.bordure.discrete,
+                  borderRadius: theme.rayon.carte,
+                  padding: theme.espace[4],
+                  gap: theme.espace[2],
+                }}
+              >
+                <Text style={{ ...theme.texte.label, color: theme.couleur.texte.principal }}>
+                  {LIBELLES_PIECE[type]}
+                </Text>
+                {piece?.nomFichier ? (
+                  <Text
+                    numberOfLines={1}
+                    style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.principal }}
+                  >
+                    {piece.nomFichier}
+                  </Text>
+                ) : null}
+                {piece ? (
+                  <View
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: theme.espace[2] }}
+                  >
+                    <Icone nom="valide" couleur={theme.couleur.etat.succesEncre} />
+                    <Text
+                      style={{
+                        ...theme.texte.v2Petit,
+                        color: theme.couleur.texte.secondaire,
+                        flex: 1,
+                      }}
+                    >
+                      {enCours === type
+                        ? 'Envoi en cours…'
+                        : `Déposée le ${new Date(piece.deposeLe).toLocaleDateString('fr-FR')}${
+                            piece.tailleOctets != null
+                              ? ` · ${poidsLisible(piece.tailleOctets)}`
+                              : ''
+                          }`}
+                    </Text>
+                    {/* A2 — L2-06, règle 6 : action destructive (l'ancienne version cesse de compter
+                          dès l'envoi de la nouvelle), en encre d'alerte, jamais en couleur d'action ;
+                          sans autre confirmation (critère 4). */}
+                    <Pressable
+                      onPress={() => void surChoisirFichier(type)}
+                      disabled={enCours !== null}
+                      accessibilityRole="button"
+                      accessibilityLabel={LIBELLES_REMPLACER[type]}
+                      accessibilityState={{ disabled: enCours !== null }}
+                      style={{
+                        minHeight: theme.taille.tapMin,
+                        minWidth: theme.taille.tapMin,
+                        justifyContent: 'center',
+                        alignItems: 'flex-end',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          ...theme.texte.actionAccent,
+                          color:
+                            enCours !== null
+                              ? theme.couleur.texte.desactive
+                              : theme.couleur.etat.erreurEncre,
+                        }}
+                      >
+                        Remplacer
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <Bouton
+                    libelle={enCours === type ? 'Envoi en cours…' : 'Choisir un fichier'}
+                    variante="secondaire"
+                    onPress={() => void surChoisirFichier(type)}
+                    desactive={enCours !== null}
+                  />
+                )}
+              </View>
+            );
+          })
+        : null}
       <View
         style={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[3],
-          paddingBottom: insets.bottom + theme.espace[3],
-          borderTopWidth: 1,
-          borderTopColor: theme.couleur.bordure.discrete,
-          backgroundColor: theme.couleur.fond.canevas,
-          gap: theme.espace[2],
+          backgroundColor: theme.couleur.fond.creux,
+          borderRadius: theme.rayon.carte,
+          padding: theme.espace[3],
         }}
       >
-        {/* Hors de la zone de défilement, au-dessus de « Continuer » : dans le champ de vision au
-            moment où le troisième document arrive. */}
-        {echeanceSoumission ? (
-          <View accessibilityLiveRegion="polite" style={{ gap: theme.espace[1] }}>
-            {/* En phrase, comme la fiche (13 novembre 2026) : `label` l'affichait en capitales. */}
-            <Text style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal }}>
-              Ton dossier est complet, il part en examen.
-            </Text>
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-              {`On te répond sous 48 h ouvrées, d’ici le ${echeanceSoumission.toLocaleDateString('fr-FR')}.`}
-            </Text>
-          </View>
-        ) : null}
-        <Bouton
-          libelle="Continuer"
-          variante="primaire"
-          onPress={() => router.push('/(onboarding)/devenir-coach-recapitulatif')}
-          desactive={!toutesDeposees}
-        />
-        {!toutesDeposees ? (
-          <Text
-            style={{
-              ...theme.texte.petit,
-              color: theme.couleur.texte.attenue,
-              textAlign: 'center',
-            }}
-          >
-            {libelleManquant(deposees)}
-          </Text>
-        ) : null}
+        <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}>
+          Une fois envoyé, un document n’est plus consultable ici — ni par toi, ni par personne
+          d’autre que l’examinateur. Tu peux le remplacer, pas le rouvrir.
+        </Text>
       </View>
-    </CanevasEcran>
+    </CadreFormulaireV2>
   );
 }

@@ -1,14 +1,12 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreTunnelV2 } from '@/composants/cadre-tunnel-v2';
+import { initiales } from '@/composants/initiales';
+import { presentationV2 as mesure } from '@/theme/tokens';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image, Pressable, Text, View } from 'react-native';
 
-import { Badge } from '@/composants/badge';
 import { Bouton } from '@/composants/bouton';
-import { BoutonIcone } from '@/composants/bouton-icone';
 import { EtatVide } from '@/composants/etats/etat-vide';
 import { Icone } from '@/composants/icones';
-import { Progression } from '@/composants/progression';
 import { Squelette } from '@/composants/squelette';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import type { Offre, RefusServeur, ResultatIntention } from '@/services/donnees/port';
@@ -45,8 +43,14 @@ type Erreur = { type: 'refus'; refus: RefusServeur } | { type: 'reseau' };
 
 const TEXTE_RESEAU = 'Pas de connexion. Réessaie.';
 
+function prixEuros(centimes: number): string {
+  const euros = Math.floor(centimes / 100);
+  const reste = centimes % 100;
+  return reste ? `${euros},${String(reste).padStart(2, '0')}` : String(euros);
+}
+
 function prixMensuel(centimes: number): string {
-  return `${(centimes / 100).toFixed(0)} €/mois`;
+  return `${prixEuros(centimes)} €/mois`;
 }
 
 // Présélection (fiche, Contenu) : l'offre mise en avant, sinon la première.
@@ -60,11 +64,11 @@ export function EcranChoixOffre({
   onIntentionCreee,
 }: ProprietesEcranChoixOffre) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const { port } = useDonnees();
 
   const [coach, setCoach] = useState<ChoixOffre['coach'] | null>(null);
   const prenom = coach?.prenom ?? null;
+  const [photo, setPhoto] = useState<string | null>(null);
   const [offres, setOffres] = useState<Offre[] | null>(null);
   const [choisie, setChoisie] = useState<string | null>(null);
   const [enCours, setEnCours] = useState(false);
@@ -90,6 +94,7 @@ export function EcranChoixOffre({
       port.lireOffresPublieesDeCoach(coachId),
     ]).then(([p, lues]) => {
       if (!monte) return;
+      setPhoto(p?.photoUrl ?? null);
       setCoach({
         id: coachId,
         prenom: p?.prenom ?? '',
@@ -137,125 +142,138 @@ export function EcranChoixOffre({
   }
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <View
-        style={{
-          paddingTop: insets.top + theme.espace[2],
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[3],
-          gap: theme.espace[3],
-        }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.espace[3] }}>
-          <BoutonIcone nom="retour" accessibilityLabel="Retour" onPress={onRetour} />
-          <View style={{ flex: 1 }}>
-            <Text
-              accessibilityRole="header"
-              style={{ ...theme.texte.label, color: theme.couleur.texte.principal }}
-            >
-              {prenom ? `S’abonner à ${prenom}` : 'S’abonner'}
-            </Text>
-            <Text style={{ ...theme.texte.legende, color: theme.couleur.texte.attenue }}>
-              Étape 1 sur 2
-            </Text>
-          </View>
-        </View>
-        <Progression
-          variante="segments"
-          segments={['actuel', 'reste']}
-          accessibilityLabel="Étape 1 sur 2"
-        />
-      </View>
-
-      {offres === null || prenom === null ? (
-        <View style={{ paddingHorizontal: theme.espace.gouttiere }}>
-          <Squelette forme="carte" />
-        </View>
-      ) : offres.length === 0 ? (
-        <View style={{ flex: 1, padding: theme.espace.gouttiere }}>
-          <EtatVide
-            titre="Aucune formule ouverte"
-            explication={`${prenom} n’a pas d’offre ouverte pour le moment.`}
-          />
-        </View>
-      ) : (
-        <>
-          <DefilementEcran
-            contentContainerStyle={{
-              paddingHorizontal: theme.espace.gouttiere,
-              paddingBottom: theme.espace[6],
-              gap: theme.espace[4],
-            }}
-          >
-            <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-              Quelle formule te ressemble ?
-            </Text>
-
-            {offres.map((o) => (
-              <CarteOffre
-                key={o.id}
-                offre={o}
-                selectionnee={o.id === choisie}
-                onPress={() => setChoisie(o.id)}
-              />
-            ))}
-
-            <View
-              style={{
-                flexDirection: 'row',
-                gap: theme.espace[2],
-                padding: theme.espace[4],
-                borderRadius: theme.rayon.media,
-                backgroundColor: theme.couleur.marque.secondaire,
-              }}
-            >
-              <Icone nom="information" couleur={theme.couleur.marque.secondaireEncre2} />
-              <Text
-                style={{
-                  ...theme.texte.petit,
-                  flex: 1,
-                  color: theme.couleur.marque.secondaireEncre,
-                }}
-              >
-                Sans engagement de durée : tu peux arrêter quand tu veux, l’arrêt prend effet à la
-                fin du mois payé.
-              </Text>
-            </View>
-
-            {erreur ? <BlocErreur erreur={erreur} /> : null}
-          </DefilementEcran>
-
-          <View
-            style={{
-              paddingHorizontal: theme.espace.gouttiere,
-              paddingTop: theme.espace[3],
-              paddingBottom: insets.bottom + theme.espace[3],
-              gap: theme.espace[2],
-              borderTopWidth: 1,
-              borderTopColor: theme.couleur.bordure.discrete,
-            }}
-          >
-            {offre ? (
-              <Bouton
-                libelle={`Continuer · ${prixMensuel(offre.prixCentimes)}`}
-                variante="primaire"
-                onPress={() => void continuer()}
-                desactive={enCours}
-              />
-            ) : null}
+    <CadreTunnelV2
+      etape={1}
+      surtitre={prenom ? `S’abonner à ${prenom}` : 'S’abonner'}
+      titre={'Un accompagnement.\nÀ ton rythme.'}
+      description="Prends le temps de regarder ce qui est inclus avant de continuer."
+      onRetour={onRetour}
+      pied={
+        offre ? (
+          <>
+            <Bouton
+              libelle={`Continuer · ${prixMensuel(offre.prixCentimes)}`}
+              onPress={() => void continuer()}
+              desactive={enCours}
+            />
             <Text
               style={{
-                ...theme.texte.legende,
-                color: theme.couleur.texte.attenue,
+                ...theme.texte.v2Petit,
+                color: theme.couleur.texte.secondaire,
                 textAlign: 'center',
               }}
             >
               Premier prélèvement aujourd’hui, puis une fois par mois.
             </Text>
+          </>
+        ) : null
+      }
+      complement={
+        offre ? (
+          <>
+            <Text style={{ ...theme.texte.v2Surtitre, color: theme.couleur.marque.primaire }}>
+              CE QUE TU CHOISIS
+            </Text>
+            <Text style={{ ...theme.texte.v2TitreOffre, color: theme.couleur.texte.principal }}>
+              {offre.titre}
+            </Text>
+            <Text style={{ ...theme.texte.v2TitreTunnel, color: theme.couleur.texte.principal }}>
+              {prixMensuel(offre.prixCentimes)}
+            </Text>
+            <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.secondaire }}>
+              Sans engagement de durée : tu peux arrêter quand tu veux, l’arrêt prend effet à la fin
+              du mois payé.
+            </Text>
+          </>
+        ) : null
+      }
+    >
+      {offres === null || prenom === null ? (
+        <Squelette forme="carte" />
+      ) : offres.length === 0 ? (
+        <EtatVide
+          titre="Aucune formule ouverte"
+          explication={`${prenom} n’a pas d’offre ouverte pour le moment.`}
+        />
+      ) : (
+        <>
+          {coach ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: theme.espace[3],
+                marginBottom: mesure.tunnelCoachApres,
+              }}
+            >
+              <View
+                style={{
+                  width: mesure.tunnelPortraitLargeur,
+                  height: mesure.tunnelPortraitHauteur,
+                  borderRadius: theme.rayon.badge,
+                  backgroundColor: theme.couleur.marque.primaireTeinte,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                }}
+              >
+                {photo ? (
+                  <Image
+                    source={{ uri: photo }}
+                    accessibilityLabel={`${coach.prenom} ${coach.nom}`}
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                ) : (
+                  <Text
+                    style={{ ...theme.texte.v2LabelChamp, color: theme.couleur.marque.primaire }}
+                  >
+                    {initiales(`${coach.prenom} ${coach.nom}`)}
+                  </Text>
+                )}
+              </View>
+              <View>
+                <Text style={{ ...theme.texte.v2LabelChamp, color: theme.couleur.texte.principal }}>
+                  {`${coach.prenom} ${coach.nom}`.trim()}
+                </Text>
+                <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}>
+                  {coach.discipline}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+          {offres.map((o) => (
+            <CarteOffre
+              key={o.id}
+              offre={o}
+              selectionnee={o.id === choisie}
+              onPress={() => setChoisie(o.id)}
+            />
+          ))}
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: theme.espace[3],
+              paddingVertical: theme.espace[4],
+              borderTopWidth: mesure.bordure,
+              borderTopColor: theme.couleur.bordure.marquee,
+            }}
+          >
+            <Icone
+              nom="information"
+              couleur={theme.couleur.marque.primaire}
+              taille={mesure.icone}
+            />
+            <Text
+              style={{ ...theme.texte.v2Corps, flex: 1, color: theme.couleur.texte.secondaire }}
+            >
+              Sans engagement de durée : tu peux arrêter quand tu veux, l’arrêt prend effet à la fin
+              du mois payé.
+            </Text>
           </View>
+          {erreur ? <BlocErreur erreur={erreur} /> : null}
         </>
       )}
-    </CanevasEcran>
+    </CadreTunnelV2>
   );
 }
 
@@ -271,64 +289,142 @@ function CarteOffre({
   const theme = useTheme();
   const engagement = offre.engagementHumain.join(' · ');
   return (
-    // Sélection annoncée par son état d'accessibilité, jamais par la seule couleur (fiche,
-    // critère 7). Le libellé lu porte titre, prix et engagement : ce que le client achète.
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ selected: selectionnee, checked: selectionnee }}
       accessibilityLabel={`${offre.titre}, ${prixMensuel(offre.prixCentimes)}, ${engagement}`}
       onPress={onPress}
       style={{
-        borderRadius: theme.rayon.media,
+        position: 'relative',
+        borderRadius: mesure.tunnelOffreRayon,
         backgroundColor: theme.couleur.fond.surface,
-        borderWidth: selectionnee ? 2 : 1,
-        borderColor: selectionnee ? theme.couleur.marque.primaire : theme.couleur.bordure.discrete,
-        padding: theme.espace[4],
-        gap: theme.espace[2],
+        borderWidth: theme.taille.focusContour,
+        borderColor: selectionnee ? theme.couleur.marque.primaire : theme.couleur.bordure.v2Etape,
+        paddingVertical: mesure.tunnelOffreVertical,
+        paddingHorizontal: mesure.tunnelOffreHorizontal,
       }}
     >
-      <View style={{ flexDirection: 'row', gap: theme.espace[3], alignItems: 'flex-start' }}>
+      <View
+        style={{
+          position: 'absolute',
+          right: mesure.tunnelOffreHorizontal,
+          top: mesure.tunnelOffreVertical,
+          width: mesure.tunnelRadio,
+          height: mesure.tunnelRadio,
+          borderWidth: theme.taille.focusContour,
+          borderColor: theme.couleur.marque.primaire,
+          borderRadius: theme.rayon.pilule,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {selectionnee ? (
+          <View
+            style={{
+              width: mesure.tunnelRadioCentre,
+              height: mesure.tunnelRadioCentre,
+              borderRadius: theme.rayon.pilule,
+              backgroundColor: theme.couleur.marque.primaire,
+            }}
+          />
+        ) : null}
+      </View>
+      {offre.estMiseEnAvant ? (
         <View
           style={{
-            width: theme.espace[6],
-            height: theme.espace[6],
-            borderRadius: theme.rayon.pilule,
-            borderWidth: 2,
-            borderColor: selectionnee
-              ? theme.couleur.marque.primaire
-              : theme.couleur.bordure.marquee,
-            alignItems: 'center',
-            justifyContent: 'center',
+            alignSelf: 'flex-start',
+            paddingHorizontal: mesure.tunnelBadgeHorizontal,
+            paddingVertical: mesure.tunnelBadgeVertical,
+            borderRadius: mesure.tunnelBadgeRayon,
+            backgroundColor: theme.couleur.marque.primaireTeinte,
+            marginBottom: mesure.tunnelBadgeApres,
           }}
         >
-          {selectionnee ? (
-            <View
-              style={{
-                width: theme.espace[3],
-                height: theme.espace[3],
-                borderRadius: theme.rayon.pilule,
-                backgroundColor: theme.couleur.marque.primaire,
-              }}
-            />
-          ) : null}
-        </View>
-        <View style={{ flex: 1, gap: theme.espace[1] }}>
-          <View
-            style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.espace[2] }}
+          <Text
+            style={{
+              ...theme.texte.v2Surtitre,
+              fontSize: mesure.tunnelBadgeTexte,
+              letterSpacing: mesure.tunnelBadgeInterlettrage,
+              color: theme.couleur.marque.primaire,
+            }}
           >
-            <Text style={{ ...theme.texte.titre3, flex: 1, color: theme.couleur.texte.principal }}>
-              {offre.titre}
-            </Text>
-            <Text style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal }}>
-              {prixMensuel(offre.prixCentimes)}
-            </Text>
-          </View>
-          <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-            {engagement}
+            LE PLUS CHOISI
           </Text>
         </View>
-      </View>
-      {offre.estMiseEnAvant ? <Badge statut="accent" libelle="LE PLUS CHOISI" /> : null}
+      ) : null}
+      <Text
+        style={{
+          ...theme.texte.v2TitreOffre,
+          color: theme.couleur.texte.principal,
+          paddingRight: theme.taille.tapMin,
+        }}
+      >
+        {offre.titre}
+      </Text>
+      <Text
+        accessibilityLabel={prixMensuel(offre.prixCentimes)}
+        style={{
+          fontFamily: theme.texte.titre1.fontFamily,
+          fontSize: mesure.tunnelPrix,
+          lineHeight: mesure.tunnelPrixInterligne,
+          color: theme.couleur.texte.principal,
+          marginTop: mesure.tunnelPrixAvant,
+        }}
+      >
+        {prixEuros(offre.prixCentimes)} €{' '}
+        <Text style={{ ...theme.texte.v2Engagement, color: theme.couleur.texte.secondaire }}>
+          / mois
+        </Text>
+      </Text>
+      <Text
+        style={{
+          ...theme.texte.v2Engagement,
+          color: theme.couleur.texte.secondaire,
+          marginTop: theme.espace[3],
+        }}
+      >
+        {engagement}
+      </Text>
+      {offre.benefices.length > 0 ? (
+        <View
+          style={{
+            borderTopWidth: mesure.bordure,
+            borderTopColor: theme.couleur.bordure.marquee,
+            paddingTop: theme.espace[4],
+            marginTop: theme.espace[6],
+            gap: theme.espace[4],
+          }}
+        >
+          {offre.benefices.map((benefice, i) => (
+            <View
+              key={i}
+              style={{ flexDirection: 'row', gap: theme.espace[3], alignItems: 'flex-start' }}
+            >
+              <View
+                style={{
+                  width: theme.espace[6],
+                  height: theme.espace[6],
+                  borderRadius: theme.rayon.pilule,
+                  backgroundColor: theme.couleur.marque.primaireTeinte,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icone
+                  nom="valide"
+                  taille={theme.espace[4]}
+                  couleur={theme.couleur.marque.primaire}
+                />
+              </View>
+              <Text
+                style={{ ...theme.texte.v2Corps, flex: 1, color: theme.couleur.texte.principal }}
+              >
+                {benefice}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
     </Pressable>
   );
 }

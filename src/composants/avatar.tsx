@@ -2,7 +2,8 @@ import { Text, View } from 'react-native';
 
 import { initiales } from '@/composants/initiales';
 import { useTheme } from '@/theme/fournisseur';
-import { font } from '@/theme/tokens';
+import { usePresentationV2 } from './presentation-v2';
+import { font, presentationV2 as mesure } from '@/theme/tokens';
 
 export type TailleAvatar = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
@@ -27,10 +28,21 @@ const TAILLES: Record<
 
 export function Avatar({ nom, taille = 'md', pastille }: ProprietesAvatar) {
   const theme = useTheme();
-  const dimension = theme.taille[TAILLES[taille]];
+  const presentationV2 = usePresentationV2();
+  const dimension =
+    presentationV2 && taille === 'sm'
+      ? mesure.avatarEntete
+      : presentationV2 && taille === 'lg'
+        ? mesure.avatarProfil
+        : theme.taille[TAILLES[taille]];
   // Pas de token pour une echelle de police par taille d'avatar : approximation
   // proportionnelle a la dimension, documentee ici plutot que codee en dur ailleurs.
-  const tailleTexte = Math.round(dimension * 0.36);
+  const tailleTexte =
+    presentationV2 && taille === 'sm'
+      ? theme.texte.v2Petit.fontSize
+      : presentationV2 && taille === 'lg'
+        ? mesure.avatarProfilTexte
+        : Math.round(dimension * 0.36);
 
   // Un seul element accessible pour tout l'avatar : la pastille imbriquee n'est pas
   // annoncee separement par un lecteur d'ecran, son libelle est donc fusionne ici.
@@ -47,7 +59,11 @@ export function Avatar({ nom, taille = 'md', pastille }: ProprietesAvatar) {
           width: dimension,
           height: dimension,
           borderRadius: theme.rayon.pilule,
-          backgroundColor: theme.couleur.marque.primaire,
+          backgroundColor: presentationV2
+            ? theme.couleur.marque.secondaire
+            : theme.couleur.marque.primaire,
+          borderWidth: presentationV2 ? mesure.bordure : 0,
+          borderColor: theme.couleur.bordure.v2Avatar,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -60,7 +76,9 @@ export function Avatar({ nom, taille = 'md', pastille }: ProprietesAvatar) {
           style={{
             fontFamily: font.uiBold,
             fontSize: tailleTexte,
-            color: theme.couleur.texte.surMarque,
+            color: presentationV2
+              ? theme.couleur.marque.secondaireEncre
+              : theme.couleur.texte.surMarque,
           }}
           accessibilityElementsHidden
           importantForAccessibility="no"

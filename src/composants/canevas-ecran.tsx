@@ -13,12 +13,17 @@ export function useDispositionEcran() {
   const theme = useTheme();
   const { width } = useWindowDimensions();
   // Le responsive concerne le rendu web ; il ne construit pas une version tablette native.
-  const large = Platform.OS === 'web' && width >= theme.seuil.tablette;
+  const large = Platform.OS === 'web' && width > theme.seuil.tablette;
   return { large, largeur: width };
 }
 
 /** Largeur de lecture commune, sans modifier les parcours ou les zones sûres des écrans. */
-export function CanevasEcran({ style, ample = false, ...props }: ViewProps & { ample?: boolean }) {
+export function CanevasEcran({
+  style,
+  ample = false,
+  largeurMax,
+  ...props
+}: ViewProps & { ample?: boolean; largeurMax?: number }) {
   const theme = useTheme();
   const { large } = useDispositionEcran();
   return (
@@ -29,7 +34,9 @@ export function CanevasEcran({ style, ample = false, ...props }: ViewProps & { a
         {
           width: '100%',
           alignSelf: 'center',
-          maxWidth: large ? (ample ? theme.taille.contenu : theme.taille.lecture) : undefined,
+          maxWidth: large
+            ? (largeurMax ?? (ample ? theme.taille.contenu : theme.taille.lecture))
+            : undefined,
         },
       ]}
     />
@@ -40,8 +47,9 @@ export function CanevasEcran({ style, ample = false, ...props }: ViewProps & { a
 export function DefilementEcran({
   contentContainerStyle,
   ample = false,
+  largeurMax,
   ...props
-}: ScrollViewProps & { ample?: boolean }) {
+}: ScrollViewProps & { ample?: boolean; largeurMax?: number }) {
   const theme = useTheme();
   const { large } = useDispositionEcran();
   return (
@@ -53,7 +61,9 @@ export function DefilementEcran({
         {
           width: '100%',
           alignSelf: 'center',
-          maxWidth: large ? (ample ? theme.taille.contenu : theme.taille.lecture) : undefined,
+          maxWidth: large
+            ? (largeurMax ?? (ample ? theme.taille.contenu : theme.taille.lecture))
+            : undefined,
         },
       ]}
     />

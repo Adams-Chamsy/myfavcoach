@@ -1,8 +1,7 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreFormulaireV2 } from '@/composants/presentation-v2';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
 import { Chip } from '@/composants/chip';
@@ -11,6 +10,7 @@ import { textesRepliErreur } from '@/composants/etats/textes';
 import { EnteteOnboarding } from '@/fonctionnalites/identite/entete-onboarding';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { objectifsOnboarding, rythmesOnboarding } from '@/fixtures/demonstration';
+import { presentationV2 as mesure } from '@/theme/tokens';
 import { useTheme, type ThemeResolu } from '@/theme/fournisseur';
 
 // docs/ecrans/L1-05-onboarding-client.md, étape 2/4 — reprend l'écran 22 de la maquette au
@@ -19,7 +19,6 @@ import { useTheme, type ThemeResolu } from '@/theme/fournisseur';
 // et les 8 objectifs / 3 rythmes de src/fixtures/demonstration.ts, jamais une chaîne écrite ici.
 export default function OnboardingObjectifs() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { port } = useDonnees();
 
@@ -63,118 +62,99 @@ export default function OnboardingObjectifs() {
   }
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <EnteteOnboarding
-        etape={2}
-        desactive={chargement}
-        onPasser={() => enregistrerEtAvancer([], null)}
-      />
+    <CadreFormulaireV2
+      reference="objectifs"
+      surtitre="TES ENVIES"
+      titre="Qu’est-ce que tu veux faire bouger ?"
+      description="Choisis-en autant que tu veux."
+      entete={
+        <>
+          <EnteteOnboarding
+            etape={2}
+            desactive={chargement}
+            onPasser={() => enregistrerEtAvancer([], null)}
+          />
+        </>
+      }
+      alerte={
+        erreur ? (
+          <View
+            accessibilityLiveRegion="polite"
+            style={{ paddingHorizontal: theme.espace.gouttiere, paddingTop: theme.espace[2] }}
+          >
+            <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
+              {textesRepliErreur.serveur.titre}
+            </Text>
+            <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
+              {textesRepliErreur.serveur.explication}
+            </Text>
+          </View>
+        ) : null
+      }
+      actions={
+        <>
+          {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
+          (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B). Le repli serveur, titre et
+          détail, jamais le texte du port. */}
 
-      <DefilementEcran
-        contentContainerStyle={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[2],
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[4],
-        }}
-      >
-        <View style={{ gap: theme.espace[2] }}>
-          <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-            Qu’est-ce que tu veux faire bouger ?
-          </Text>
-          <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
-            Choisis-en autant que tu veux.
-          </Text>
-        </View>
-
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.espace[3] }}>
-          {objectifsOnboarding.map((objectif) => (
-            <Chip
-              key={objectif.cle}
-              libelle={objectif.libelle}
-              variante="selection"
-              selectionne={objectifs.includes(objectif.cle)}
-              onPress={() => basculerObjectif(objectif.cle)}
+          <>
+            <Bouton
+              libelle={`Continuer · ${objectifs.length} objectif${objectifs.length > 1 ? 's' : ''}`}
+              variante="primaire"
+              onPress={() => enregistrerEtAvancer(objectifs, rythme)}
+              desactive={objectifs.length === 0 || chargement}
+            />
+          </>
+        </>
+      }
+    >
+      <Text
+        style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.secondaire }}
+      >{`${objectifs.length} objectif${objectifs.length > 1 ? 's' : ''}`}</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.espace[3] }}>
+        {objectifsOnboarding.map((objectif) => (
+          <Chip
+            key={objectif.cle}
+            libelle={objectif.libelle}
+            variante="selection"
+            selectionne={objectifs.includes(objectif.cle)}
+            onPress={() => basculerObjectif(objectif.cle)}
+          />
+        ))}
+      </View>
+      <View style={{ gap: theme.espace[3] }}>
+        <Text style={{ ...theme.texte.actionAccent, color: theme.couleur.texte.principal }}>
+          Ton rythme, sans pression.
+        </Text>
+        <View style={{ gap: mesure.radioEspace }}>
+          {rythmesOnboarding.map((option) => (
+            <TuileRythme
+              key={option.cle}
+              libelle={option.libelle}
+              selectionne={rythme === option.cle}
+              onPress={() => setRythme((actuel) => (actuel === option.cle ? null : option.cle))}
+              theme={theme}
             />
           ))}
         </View>
-
-        <View style={{ height: 1, backgroundColor: theme.couleur.bordure.discrete }} />
-
-        <View style={{ gap: theme.espace[3] }}>
-          <Text style={{ ...theme.texte.label, color: theme.couleur.texte.attenue }}>
-            Ton rythme réaliste
-          </Text>
-          <View style={{ flexDirection: 'row', gap: theme.espace[3] }}>
-            {rythmesOnboarding.map((option) => (
-              <TuileRythme
-                key={option.cle}
-                libelle={option.libelle}
-                selectionne={rythme === option.cle}
-                onPress={() => setRythme((actuel) => (actuel === option.cle ? null : option.cle))}
-                theme={theme}
-              />
-            ))}
-          </View>
-        </View>
-
-        <View
-          style={{
-            flexDirection: 'row',
-            gap: theme.espace[3],
-            padding: theme.espace[4],
-            borderRadius: theme.rayon.carte,
-            backgroundColor: theme.couleur.marque.secondaire,
-            alignItems: 'flex-start',
-          }}
-        >
-          <Icone
-            nom="securite"
-            taille={theme.taille.icone}
-            couleur={theme.couleur.texte.principal}
-          />
-          <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.principal, flex: 1 }}>
-            Tes réponses restent privées jusqu’à ce que tu t’abonnes à un coach. Aucune donnée de
-            santé n’est partagée sans ton accord.
-          </Text>
-        </View>
-      </DefilementEcran>
-
-      {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
-          (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B). Le repli serveur, titre et
-          détail, jamais le texte du port. */}
-      {erreur ? (
-        <View
-          accessibilityLiveRegion="polite"
-          style={{ paddingHorizontal: theme.espace.gouttiere, paddingTop: theme.espace[2] }}
-        >
-          <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
-            {textesRepliErreur.serveur.titre}
-          </Text>
-          <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
-            {textesRepliErreur.serveur.explication}
-          </Text>
-        </View>
-      ) : null}
-
+      </View>
       <View
         style={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[3],
-          paddingBottom: insets.bottom + theme.espace[3],
-          borderTopWidth: 1,
-          borderTopColor: theme.couleur.bordure.discrete,
-          backgroundColor: theme.couleur.fond.canevas,
+          flexDirection: 'row',
+          gap: theme.espace[3],
+          padding: theme.espace[4],
+          borderRadius: theme.rayon.carte,
+          backgroundColor: theme.couleur.marque.secondaire,
+          alignItems: 'flex-start',
         }}
       >
-        <Bouton
-          libelle={`Continuer · ${objectifs.length} objectif${objectifs.length > 1 ? 's' : ''}`}
-          variante="primaire"
-          onPress={() => enregistrerEtAvancer(objectifs, rythme)}
-          desactive={objectifs.length === 0 || chargement}
-        />
+        <Icone nom="securite" taille={theme.taille.icone} couleur={theme.couleur.texte.principal} />
+        <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.principal, flex: 1 }}>
+          Tes réponses restent privées jusqu’à ce que tu t’abonnes à un coach. Aucune donnée de
+          santé n’est partagée sans ton accord.
+        </Text>
       </View>
-    </CanevasEcran>
+    </CadreFormulaireV2>
   );
 }
 
@@ -195,24 +175,45 @@ function TuileRythme({
       accessibilityRole="button"
       accessibilityState={{ selected: selectionne }}
       style={{
-        flex: 1,
-        minHeight: theme.taille.tapMin,
-        paddingVertical: theme.espace[3],
-        paddingHorizontal: theme.espace[2],
-        borderRadius: theme.rayon.carte,
+        flexDirection: 'row',
+        gap: mesure.radioEspace,
+        minHeight: mesure.radioHauteur,
+        paddingVertical: mesure.radioVertical,
+        paddingHorizontal: mesure.radioHorizontal,
+        borderRadius: mesure.radioRayon,
         backgroundColor: selectionne
           ? theme.couleur.marque.primaireTeinte
-          : theme.couleur.fond.surface,
-        borderWidth: selectionne ? 2 : 1,
+          : theme.couleur.fond.canevas,
+        borderWidth: mesure.bordure,
         borderColor: selectionne ? theme.couleur.marque.primaire : theme.couleur.bordure.marquee,
         alignItems: 'center',
-        justifyContent: 'center',
       }}
     >
+      <View
+        style={{
+          width: mesure.radioDiametre,
+          height: mesure.radioDiametre,
+          borderRadius: theme.rayon.pilule,
+          borderWidth: mesure.bordure,
+          borderColor: selectionne ? theme.couleur.marque.primaire : theme.couleur.texte.secondaire,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {selectionne ? (
+          <View
+            style={{
+              width: mesure.radioCentre,
+              height: mesure.radioCentre,
+              borderRadius: theme.rayon.pilule,
+              backgroundColor: theme.couleur.marque.primaire,
+            }}
+          />
+        ) : null}
+      </View>
       <Text
         style={{
-          ...theme.texte.actionAccent,
-          textAlign: 'center',
+          ...theme.texte.v2Corps,
           color: selectionne ? theme.couleur.marque.primaireSurvol : theme.couleur.texte.principal,
         }}
       >

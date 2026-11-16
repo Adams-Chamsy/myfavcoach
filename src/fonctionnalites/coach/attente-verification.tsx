@@ -1,7 +1,7 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreFormulaireV2 } from '@/composants/presentation-v2';
+import { themes, presentationV2 as mesure } from '@/theme/tokens';
 import { useRouter } from 'expo-router';
 import { Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Badge, type StatutBadge } from '@/composants/badge';
 import { Bouton } from '@/composants/bouton';
@@ -39,7 +39,6 @@ const CONTENU_PAR_STATUT: Record<
 
 export function AttenteVerification({ dossier }: { dossier: DossierVerification }) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   if (dossier.statut === 'verifiee') return null;
@@ -47,103 +46,98 @@ export function AttenteVerification({ dossier }: { dossier: DossierVerification 
   const echeance = dossier.deposeLe ? echeanceQuaranteHuitHeuresOuvrees(dossier.deposeLe) : null;
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <DefilementEcran
-        contentContainerStyle={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[4],
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[4],
-        }}
-      >
-        <Badge statut={contenu.statutBadge} libelle={contenu.badge} />
-        <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-          {contenu.titre}
-        </Text>
-        {dossier.statut === 'en_examen' && echeance ? (
-          <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
-            Déposé le {new Date(dossier.deposeLe as string).toLocaleDateString('fr-FR')}. Réponse
-            sous 48 h ouvrées, soit d’ici le {echeance.toLocaleDateString('fr-FR')}.
-          </Text>
-        ) : null}
-
-        {dossier.statut === 'complement_demande' && dossier.motif ? (
-          <View
-            style={{
-              backgroundColor: theme.couleur.etat.erreurTeinte,
-              borderRadius: theme.rayon.carte,
-              padding: theme.espace[4],
-              gap: theme.espace[2],
-            }}
-          >
-            <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
-              Il manque quelque chose
-            </Text>
-            <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}>
-              {dossier.motif}
-            </Text>
-            <Bouton
-              libelle="Renvoyer le document"
-              variante="secondaire"
-              onPress={() => router.push('/(onboarding)/devenir-coach-verification')}
-            />
-          </View>
-        ) : null}
-
-        {(dossier.statut === 'refusee' || dossier.statut === 'revoquee') && (
-          <View
-            style={{
-              backgroundColor: theme.couleur.etat.erreurTeinte,
-              borderRadius: theme.rayon.carte,
-              padding: theme.espace[4],
-              gap: theme.espace[2],
-            }}
-          >
-            {dossier.motif ? (
-              <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}>
-                {dossier.motif}
-              </Text>
-            ) : null}
-            <Bouton
-              libelle="Déposer un nouveau dossier"
-              variante="secondaire"
-              onPress={() => router.push('/(onboarding)/devenir-coach-verification')}
-            />
-          </View>
-        )}
-
-        <View style={{ gap: theme.espace[2] }}>
-          <Text style={{ ...theme.texte.label, color: theme.couleur.texte.attenue }}>
-            Ton dossier
-          </Text>
-          <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
-            Pièce d’identité · Diplôme · Assurance RC pro
-          </Text>
-        </View>
-
-        <View style={{ gap: theme.espace[2] }}>
-          <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}>
-            Rédige ton profil — Ton profil est déjà consultable par lien direct, sans badge.
-          </Text>
-          <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.attenue }}>
-            Publier une offre — Seule la publication attend la vérification.
-          </Text>
-        </View>
-      </DefilementEcran>
-
-      <View
-        style={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[3],
-          paddingBottom: insets.bottom + theme.espace[3],
-        }}
-      >
+    <CadreFormulaireV2
+      enteteGlobal={null}
+      reference="attente-coach"
+      surtitre="ESPACE COACH"
+      titre={'Ton dossier,\nen toute clarté.'}
+      actions={
         <Bouton
           libelle="Rédiger mon profil"
           variante="primaire"
           onPress={() => router.push('/(onboarding)/devenir-coach-profil')}
         />
+      }
+    >
+      <View
+        style={{
+          backgroundColor: themes.clair.marque.primaireProfond,
+          paddingHorizontal: mesure.coachPanneauHorizontal,
+          paddingVertical: mesure.coachPanneauVertical,
+          borderRadius: mesure.histoirePhotoRayon,
+          gap: theme.espace[3],
+        }}
+      >
+        <Badge statut={contenu.statutBadge} libelle={contenu.badge} />
+        <Text style={{ ...theme.texte.v2TitreSection, color: themes.clair.texte.surMarque }}>
+          {contenu.titre}
+        </Text>
+        {dossier.statut === 'en_examen' && echeance ? (
+          <Text style={{ ...theme.texte.v2Corps, color: themes.clair.texte.surMarque }}>
+            Déposé le {new Date(dossier.deposeLe as string).toLocaleDateString('fr-FR')}. Réponse
+            sous 48 h ouvrées, soit d’ici le {echeance.toLocaleDateString('fr-FR')}.
+          </Text>
+        ) : null}
       </View>
-    </CanevasEcran>
+      {dossier.statut === 'complement_demande' && dossier.motif ? (
+        <View
+          style={{
+            backgroundColor: theme.couleur.etat.erreurTeinte,
+            borderRadius: theme.rayon.carte,
+            padding: theme.espace[4],
+            gap: theme.espace[2],
+          }}
+        >
+          <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
+            Il manque quelque chose
+          </Text>
+          <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.principal }}>
+            {dossier.motif}
+          </Text>
+          <Bouton
+            libelle="Renvoyer le document"
+            variante="secondaire"
+            onPress={() => router.push('/(onboarding)/devenir-coach-verification')}
+          />
+        </View>
+      ) : null}
+      {(dossier.statut === 'refusee' || dossier.statut === 'revoquee') && (
+        <View
+          style={{
+            backgroundColor: theme.couleur.etat.erreurTeinte,
+            borderRadius: theme.rayon.carte,
+            padding: theme.espace[4],
+            gap: theme.espace[2],
+          }}
+        >
+          {dossier.motif ? (
+            <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.principal }}>
+              {dossier.motif}
+            </Text>
+          ) : null}
+          <Bouton
+            libelle="Déposer un nouveau dossier"
+            variante="secondaire"
+            onPress={() => router.push('/(onboarding)/devenir-coach-verification')}
+          />
+        </View>
+      )}
+      <View style={{ gap: theme.espace[2] }}>
+        <Text style={{ ...theme.texte.label, color: theme.couleur.texte.attenue }}>
+          Ton dossier
+        </Text>
+        <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.secondaire }}>
+          Pièce d’identité · Diplôme · Assurance RC pro
+        </Text>
+      </View>
+      <View style={{ gap: theme.espace[2] }}>
+        <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.principal }}>
+          Rédige ton profil — Ton profil est déjà consultable par lien direct, sans badge.
+        </Text>
+        <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.attenue }}>
+          Publier une offre — Seule la publication attend la vérification.
+        </Text>
+      </View>
+    </CadreFormulaireV2>
   );
 }

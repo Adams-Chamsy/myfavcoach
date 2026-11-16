@@ -1,0 +1,1 @@
+Portraits fictifs générés pour la V2 du 14 novembre 2026. Image d’ambiance réservée au panneau éditorial de l’authentification sur ordinateur. Aucun portrait du catalogue ou profil réel n’est remplacé par cette image. Source originale conservée sans retouche.

@@ -6,6 +6,8 @@ import progression from '../../../assets/accueil/progression-personnelle.jpg';
 
 export type EtapePresentation = {
   titre: string;
+  surtitre: string;
+  pastille: string;
   texte: string;
   image: ImageSourcePropType;
   alternative: string;
@@ -17,6 +19,8 @@ export type EtapePresentation = {
 export const etapesPresentation: readonly EtapePresentation[] = [
   {
     titre: 'Trouve ton coach.',
+    surtitre: '01 / TROUVER SON COACH',
+    pastille: 'Le premier pas, ensemble',
     texte: 'Explore les profils selon ton objectif, ton rythme et ton budget.',
     image: rencontre,
     alternative:
@@ -25,6 +29,8 @@ export const etapesPresentation: readonly EtapePresentation[] = [
   },
   {
     titre: 'Compare les offres.',
+    surtitre: '02 / COMPARER LES OFFRES',
+    pastille: 'L’effort, bien accompagné',
     texte: 'Regarde le prix, ce qui est inclus et l’engagement humain du coach.',
     image: effort,
     alternative:
@@ -33,6 +39,8 @@ export const etapesPresentation: readonly EtapePresentation[] = [
   },
   {
     titre: 'Choisis ton accompagnement.',
+    surtitre: '03 / PASSER À L’ACTION',
+    pastille: 'Ta progression, ta fierté',
     texte: 'Crée ton compte quand tu es prêt, puis choisis l’offre qui te correspond.',
     image: progression,
     alternative:

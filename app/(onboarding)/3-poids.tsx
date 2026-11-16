@@ -1,8 +1,8 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { InterrupteurV2 } from '@/composants/interrupteur-v2';
+import { CadreFormulaireV2 } from '@/composants/presentation-v2';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Switch, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text, View } from 'react-native';
 
 import { Bouton } from '@/composants/bouton';
 import { Champ } from '@/composants/champ';
@@ -40,7 +40,6 @@ function versSaisie(grammes: number): string {
 // delà de la session (aucun stockage local ici, seulement du useState perdu à la navigation).
 export default function OnboardingPoids() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { port } = useDonnees();
 
@@ -105,56 +104,81 @@ export default function OnboardingPoids() {
   }
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <EnteteOnboarding etape={3} desactive={chargement} onPasser={surPasser} />
+    <CadreFormulaireV2
+      reference="point-depart"
+      surtitre="UNE ÉTAPE FACULTATIVE"
+      titre="Ton point de départ."
+      description="Tu peux passer cette étape."
+      entete={
+        <>
+          <EnteteOnboarding etape={3} desactive={chargement} onPasser={surPasser} />
+        </>
+      }
+      alerte={
+        erreur ? (
+          <View
+            accessibilityLiveRegion="polite"
+            style={{ paddingHorizontal: theme.espace.gouttiere, paddingTop: theme.espace[2] }}
+          >
+            <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
+              {textesRepliErreur.serveur.titre}
+            </Text>
+            <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
+              {textesRepliErreur.serveur.explication}
+            </Text>
+          </View>
+        ) : null
+      }
+      actions={
+        <>
+          {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
+          (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B). Le repli serveur, titre et
+          détail, jamais le texte du port. */}
 
-      <DefilementEcran
-        contentContainerStyle={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[2],
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[4],
+          <>
+            <Bouton
+              libelle="Continuer"
+              variante="primaire"
+              onPress={surContinuer}
+              desactive={chargement}
+            />
+          </>
+        </>
+      }
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: theme.espace[3],
+          paddingVertical: theme.espace[6],
+          borderBottomWidth: theme.taille.bordureFine,
+          borderBottomColor: theme.couleur.bordure.discrete,
         }}
       >
-        <View style={{ gap: theme.espace[2] }}>
-          <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-            Un point de départ, si tu veux.
+        <View style={{ flex: 1, gap: theme.espace[3] }}>
+          <Text style={{ ...theme.texte.actionAccent, color: theme.couleur.texte.principal }}>
+            Données de santé
           </Text>
-          <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
-            Facultatif. Tu peux l’ajouter plus tard, ou jamais.
-          </Text>
-        </View>
-
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: theme.espace[3],
-            padding: theme.espace[4],
-            borderRadius: theme.rayon.carte,
-            backgroundColor: theme.couleur.fond.surface,
-            borderWidth: 1,
-            borderColor: theme.couleur.bordure.discrete,
-          }}
-        >
           <Text
-            style={{ ...theme.texte.corps, color: theme.couleur.texte.principal, flex: 1 }}
+            style={{ ...theme.texte.v2Engagement, color: theme.couleur.texte.secondaire }}
             accessibilityLabel={TEXTE_CONSENTEMENT}
           >
             {TEXTE_CONSENTEMENT}
           </Text>
-          <Switch
-            value={consentementAccorde}
-            onValueChange={setConsentementAccorde}
-            disabled={chargement}
-            accessibilityRole="switch"
-            accessibilityLabel="J'accepte l'enregistrement de mes données de santé"
-            trackColor={{ false: theme.couleur.gris[300], true: theme.couleur.marque.primaire }}
-            thumbColor={theme.couleur.fond.surface}
-          />
         </View>
-
-        <View style={{ gap: theme.espace[4] }}>
+        <InterrupteurV2
+          value={consentementAccorde}
+          onValueChange={setConsentementAccorde}
+          disabled={chargement}
+          accessibilityRole="switch"
+          accessibilityLabel="J'accepte l'enregistrement de mes données de santé"
+          trackColor={{ false: theme.couleur.gris[300], true: theme.couleur.marque.primaire }}
+          thumbColor={theme.couleur.fond.surface}
+        />
+      </View>
+      <View style={{ flexDirection: 'row', gap: theme.espace[3] }}>
+        <View style={{ flex: 1 }}>
           <Champ
             libelle="Poids actuel (kg)"
             type="decimal"
@@ -162,54 +186,20 @@ export default function OnboardingPoids() {
             onChangeTexte={setPoidsActuel}
             desactive={!consentementAccorde || chargement}
           />
+        </View>
+        <View style={{ flex: 1 }}>
           <Champ
-            libelle="Poids visé (kg)"
+            libelle="Objectif de poids (kg)"
             type="decimal"
             valeur={poidsVise}
             onChangeTexte={setPoidsVise}
             desactive={!consentementAccorde || chargement}
           />
         </View>
-
-        <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-          Tu peux retirer cet accord à tout moment dans ton compte.
-        </Text>
-      </DefilementEcran>
-
-      {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
-          (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B). Le repli serveur, titre et
-          détail, jamais le texte du port. */}
-      {erreur ? (
-        <View
-          accessibilityLiveRegion="polite"
-          style={{ paddingHorizontal: theme.espace.gouttiere, paddingTop: theme.espace[2] }}
-        >
-          <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
-            {textesRepliErreur.serveur.titre}
-          </Text>
-          <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
-            {textesRepliErreur.serveur.explication}
-          </Text>
-        </View>
-      ) : null}
-
-      <View
-        style={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[3],
-          paddingBottom: insets.bottom + theme.espace[3],
-          borderTopWidth: 1,
-          borderTopColor: theme.couleur.bordure.discrete,
-          backgroundColor: theme.couleur.fond.canevas,
-        }}
-      >
-        <Bouton
-          libelle="Continuer"
-          variante="primaire"
-          onPress={surContinuer}
-          desactive={chargement}
-        />
       </View>
-    </CanevasEcran>
+      <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}>
+        Tu peux retirer cet accord à tout moment dans ton compte.
+      </Text>
+    </CadreFormulaireV2>
   );
 }

@@ -185,3 +185,26 @@ token existant** de `design/tokens.json`, jamais recopiée en valeur brute dans 
   s'invente jamais en ligne, même une seule fois, même pour un seul écran.
 
 ---
+
+## 9. Référence V2 validée — 16 novembre 2026
+
+La demande explicite de reproduire la V2 remplace la référence visuelle des maquettes
+historiques pour cette intégration. Les sources restaurées, les mesures et leurs limites
+sont décrites dans `docs/integration-design-v2.md`. Les règles métier, la sécurité des
+paiements et les autorisations ne sont pas remplacées par les simulations du HTML.
+
+Les groupes `presentationV2` et `accueil` de `design/tokens.json`, ainsi que les styles
+`texte.v2*`, portent les dimensions de cette référence. Les composants de présentation
+activent ces styles par contexte : un composant isolé conserve son contrat existant.
+Le point de rupture des pages est strictement au-dessus de 700 pixels sur web ; celui
+de la bienvenue est strictement au-dessus de 740 pixels.
+
+Les effets décoratifs de la signature validée (lumière, halo, ruban et apparition du nom)
+utilisent des tokens dédiés. Ils ne servent pas à atténuer les textes fonctionnels.
+La réduction des animations conserve une signature brève et statique. Les contrôles
+conservent une cible d’au moins 44 points ; un contrôle plus petit dans le HTML ne réduit
+pas cette cible dans l’application.
+
+Les formulaires ne recopient pas les valeurs fictives de la référence. Une action
+indisponible garde son état réel même lorsque le prototype l’affiche actif. Les photos
+d’ambiance sont distinctes des portraits de coachs issus du catalogue.

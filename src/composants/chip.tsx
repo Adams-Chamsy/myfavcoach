@@ -2,7 +2,8 @@ import { Pressable, Text, View } from 'react-native';
 
 import { Icone } from '@/composants/icones';
 import { useTheme, type ThemeResolu } from '@/theme/fournisseur';
-import { font } from '@/theme/tokens';
+import { usePresentationV2 } from './presentation-v2';
+import { font, presentationV2 as mesure } from '@/theme/tokens';
 
 type ProprietesChipCategorie = {
   libelle: string;
@@ -60,8 +61,17 @@ function couleursChip(theme: ThemeResolu, proprietes: ProprietesChip) {
 
 export function Chip(proprietes: ProprietesChip) {
   const theme = useTheme();
+  const v2 = usePresentationV2();
   const { libelle } = proprietes;
-  const { fond, texte } = couleursChip(theme, proprietes);
+  const couleurs = couleursChip(theme, proprietes);
+  const selectionV2 = v2 && proprietes.variante === 'selection';
+  const fond = selectionV2
+    ? proprietes.selectionne
+      ? theme.couleur.marque.primaire
+      : theme.couleur.fond.canevas
+    : couleurs.fond;
+  const texte =
+    selectionV2 && proprietes.selectionne ? theme.couleur.texte.surMarque : couleurs.texte;
   const estSelection = proprietes.variante === 'selection';
 
   const etiquette = (
@@ -72,18 +82,24 @@ export function Chip(proprietes: ProprietesChip) {
         gap: theme.espace[1],
         paddingVertical: theme.espace[2],
         paddingHorizontal: theme.espace[3],
-        borderRadius: theme.rayon.badge,
+        borderRadius: v2 ? theme.rayon.pilule : theme.rayon.badge,
         backgroundColor: fond,
-        borderWidth: estSelection && !proprietes.selectionne ? 1 : 0,
+        borderWidth: v2 || (estSelection && !proprietes.selectionne) ? mesure.bordure : 0,
         borderColor: theme.couleur.bordure.marquee,
-        minHeight: estSelection ? theme.taille.tapMin : undefined,
+        minHeight: v2 || estSelection ? theme.taille.tapMin : undefined,
         justifyContent: 'center',
       }}
     >
       {estSelection && proprietes.selectionne ? (
         <Icone nom="valide" taille={theme.taille.croixChip} couleur={texte} />
       ) : null}
-      <Text style={{ ...theme.texte.legende, fontFamily: font.uiBold, color: texte }}>
+      <Text
+        style={{
+          ...(v2 ? theme.texte.v2Petit : theme.texte.legende),
+          fontFamily: v2 ? font.uiRegular : font.uiBold,
+          color: texte,
+        }}
+      >
         {libelle}
       </Text>
     </View>

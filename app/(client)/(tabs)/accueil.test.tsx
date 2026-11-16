@@ -26,7 +26,7 @@ const METRIQUES_ZONES_SURES: Metrics = {
 
 // FournisseurDonnees ne lit le port qu'avec une session vérifiée ET connectée (voir
 // ecran-compte.test.tsx) : un simple creerFauxPortAuth() sans session laisse `profils` à
-// `null` pour toujours, et « Salut Camille » ne s'affiche jamais.
+// `null` pour toujours, et « Bonjour Camille, » ne s'affiche jamais.
 async function rendre() {
   const portAuth = creerFauxPortAuth();
   await portAuth.inscrire('camille@exemple.fr', 'bon-mot-de-passe', '2000-01-01');
@@ -72,7 +72,7 @@ async function rendre() {
     </SafeAreaProvider>,
   );
 
-  await waitFor(() => expect(screen.queryByText('Salut Camille')).toBeTruthy());
+  await waitFor(() => expect(screen.queryByText('Bonjour Camille,')).toBeTruthy());
   return { portDonnees };
 }
 

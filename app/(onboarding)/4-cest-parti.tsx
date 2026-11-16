@@ -1,9 +1,8 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreFormulaireV2 } from '@/composants/presentation-v2';
 import type { Href } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
 import { textesRepliErreur } from '@/composants/etats/textes';
@@ -47,7 +46,6 @@ function libellePointDeDepart(profil: ProfilOnboarding): string {
 export default function OnboardingCestParti() {
   const theme = useTheme();
   const { retourCoach } = useParcoursVisiteur();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { port } = useDonnees();
 
@@ -83,80 +81,72 @@ export default function OnboardingCestParti() {
   }
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <EnteteOnboarding etape={4} desactive={chargement} />
-
-      <DefilementEcran
-        contentContainerStyle={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[2],
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[6],
-        }}
-      >
-        <Text style={{ ...theme.texte.display, color: theme.couleur.texte.principal }}>
-          Bienvenue{profil?.prenom ? `, ${profil.prenom}` : ''}.
-        </Text>
-
-        {profil ? (
-          <View style={{ gap: theme.espace[4] }}>
-            <LigneRecap
-              theme={theme}
-              titre="Objectifs"
-              valeur={libellesObjectifs(profil.objectifs)}
-              onModifier={() => router.push('/(onboarding)/2-objectifs')}
-            />
-            <LigneRecap
-              theme={theme}
-              titre="Rythme"
-              valeur={libelleRythme(profil.rythme)}
-              onModifier={() => router.push('/(onboarding)/2-objectifs')}
-            />
-            <LigneRecap
-              theme={theme}
-              titre="Point de départ"
-              valeur={libellePointDeDepart(profil)}
-              onModifier={() => router.push('/(onboarding)/3-poids')}
-            />
+    <CadreFormulaireV2
+      reference="cest-parti"
+      surtitre="TOUT EST PRÊT"
+      entete={
+        <>
+          <EnteteOnboarding etape={4} desactive={chargement} />
+        </>
+      }
+      alerte={
+        erreur ? (
+          <View
+            accessibilityLiveRegion="polite"
+            style={{ paddingHorizontal: theme.espace.gouttiere, paddingTop: theme.espace[2] }}
+          >
+            <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
+              {textesRepliErreur.serveur.titre}
+            </Text>
+            <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
+              {textesRepliErreur.serveur.explication}
+            </Text>
           </View>
-        ) : null}
-      </DefilementEcran>
-
-      {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
+        ) : null
+      }
+      actions={
+        <>
+          {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
           (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B). Le repli serveur, titre et
           détail, jamais le texte du port. */}
-      {erreur ? (
-        <View
-          accessibilityLiveRegion="polite"
-          style={{ paddingHorizontal: theme.espace.gouttiere, paddingTop: theme.espace[2] }}
-        >
-          <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
-            {textesRepliErreur.serveur.titre}
-          </Text>
-          <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
-            {textesRepliErreur.serveur.explication}
-          </Text>
+
+          <>
+            <Bouton
+              libelle="Découvrir des coachs"
+              variante="primaire"
+              onPress={surDecouvrirDesCoachs}
+              desactive={chargement}
+            />
+          </>
+        </>
+      }
+    >
+      <Text style={{ ...theme.texte.v2TitreAuth, color: theme.couleur.texte.principal }}>
+        Bienvenue{profil?.prenom ? `, ${profil.prenom}` : ''}.
+      </Text>
+      {profil ? (
+        <View style={{ gap: theme.espace[4] }}>
+          <LigneRecap
+            theme={theme}
+            titre="Objectifs"
+            valeur={libellesObjectifs(profil.objectifs)}
+            onModifier={() => router.push('/(onboarding)/2-objectifs')}
+          />
+          <LigneRecap
+            theme={theme}
+            titre="Rythme"
+            valeur={libelleRythme(profil.rythme)}
+            onModifier={() => router.push('/(onboarding)/2-objectifs')}
+          />
+          <LigneRecap
+            theme={theme}
+            titre="Point de départ"
+            valeur={libellePointDeDepart(profil)}
+            onModifier={() => router.push('/(onboarding)/3-poids')}
+          />
         </View>
       ) : null}
-
-      <View
-        style={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[3],
-          paddingBottom: insets.bottom + theme.espace[3],
-          borderTopWidth: 1,
-          borderTopColor: theme.couleur.bordure.discrete,
-          backgroundColor: theme.couleur.fond.canevas,
-        }}
-      >
-        <Bouton
-          libelle="Découvrir des coachs"
-          variante="primaire"
-          onPress={surDecouvrirDesCoachs}
-          desactive={chargement}
-        />
-      </View>
-    </CanevasEcran>
+    </CadreFormulaireV2>
   );
 }
 
