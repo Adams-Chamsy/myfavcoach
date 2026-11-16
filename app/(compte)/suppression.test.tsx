@@ -5,7 +5,7 @@ import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donne
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
 import { creerFauxPortDonnees, etatProfilsParDefaut } from '@/services/donnees/faux';
-import type { EtatProfils, Offre } from '@/services/donnees/port';
+import type { AbonnementClient, EtatProfils, Offre } from '@/services/donnees/port';
 import { FournisseurTheme } from '@/theme/fournisseur';
 import Suppression from './suppression';
 
@@ -39,7 +39,29 @@ const OFFRE_PUBLIEE: Offre = {
   retireeLe: null,
 };
 
-async function rendre(surcharges: Partial<EtatProfils> = {}, offres: Offre[] = []) {
+// Données : src/fixtures/demonstration.ts (Yannick Berthaud, « Suivi complet », 49 €/mois).
+function abonnement(
+  statut: AbonnementClient['statut'],
+  coachPrenom: string | null = 'Yannick',
+): AbonnementClient {
+  return {
+    id: `abonnement-${statut}-${coachPrenom}`,
+    coachPrenom,
+    coachNom: 'Berthaud',
+    offreTitre: 'Suivi complet',
+    prixFigeCentimes: 4900,
+    statut,
+    prochainPrelevementLe: '2026-12-18',
+    pauseJusquLe: null,
+    finAccesLe: null,
+  };
+}
+
+async function rendre(
+  surcharges: Partial<EtatProfils> = {},
+  offres: Offre[] = [],
+  abonnements: AbonnementClient[] = [],
+) {
   const portAuth = creerFauxPortAuth();
   await portAuth.inscrire('camille@exemple.fr', 'bon-mot-de-passe', '2000-01-01');
   portAuth.verifierEmailPourTest('camille@exemple.fr');
@@ -50,6 +72,7 @@ async function rendre(surcharges: Partial<EtatProfils> = {}, offres: Offre[] = [
     etatProfilsParDefaut({ profilActif: 'client', clientExiste: true, ...surcharges }),
   );
   portDonnees.definirOffresPourTest(offres);
+  portDonnees.definirAbonnementsPourTest(abonnements);
 
   render(
     <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
@@ -176,13 +199,60 @@ describe('Suppression de compte (docs/ecrans/L2-01-suppression-compte.md)', () =
     expect(screen.queryByText(/Tes offres sont retirées/)).toBeNull();
   });
 
-  // Fiche, « Si un abonnement est actif » : ce bandeau ne peut jamais se déclencher à ce lot
-  // (ABONNEMENT_ACTIF est une constante figée à `false`, aucune table Abonnement n'existe avant
-  // L4/L7 — docs/dette.md). Ce test fige le comportement actuel, pas le comportement voulu.
-  it('aucun bandeau abonnement côté client (aucune table Abonnement à ce lot)', async () => {
-    await rendre({ profilActif: 'client' });
+  // Fiche, « Si un abonnement est actif (côté client), bandeau conditionnel ». INVERSÉ le
+  // 16 novembre 2026 : ce test figeait l'absence du bandeau (« aucune table Abonnement à ce
+  // lot »), une constante à `false`. Les abonnements existent depuis L4, et la suppression les
+  // résilie réellement (0068) : le bandeau dit vrai.
+  it('abonnement actif : « Ton abonnement est actif. Supprimer ton compte résilie ton suivi avec {prénom}. Le mois déjà payé n’est pas remboursé. »', async () => {
+    await rendre({ profilActif: 'client' }, [], [abonnement('actif')]);
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          'Ton abonnement est actif. Supprimer ton compte résilie ton suivi avec Yannick. Le mois déjà payé n’est pas remboursé.',
+        ),
+      ).toBeTruthy(),
+    );
+  });
 
-    expect(screen.queryByText(/Ton abonnement est actif/)).toBeNull();
+  it('aucun abonnement actif (aucun, ou seulement résilié) : pas de bandeau', async () => {
+    await rendre({ profilActif: 'client' }, [], [abonnement('resilie')]);
+    expect(screen.queryByText(/abonnement est actif|abonnements sont actifs/)).toBeNull();
+  });
+
+  it('plusieurs abonnements actifs : le bandeau les nomme tous', async () => {
+    await rendre(
+      { profilActif: 'client' },
+      [],
+      [abonnement('actif'), abonnement('actif', 'Nadia')],
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          'Tes abonnements sont actifs. Supprimer ton compte résilie tes suivis avec Yannick et Nadia. Le mois déjà payé n’est pas remboursé.',
+        ),
+      ).toBeTruthy(),
+    );
+  });
+
+  // Le coach est devenu illisible (profil écarté) : le bandeau reste, sans nom inventé.
+  it('abonnement actif dont le coach n’est plus lisible : le bandeau sans prénom', async () => {
+    await rendre({ profilActif: 'client' }, [], [abonnement('actif', null)]);
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          'Ton abonnement est actif. Supprimer ton compte résilie ton suivi. Le mois déjà payé n’est pas remboursé.',
+        ),
+      ).toBeTruthy(),
+    );
+  });
+
+  // Règle de cloisonnement (CLAUDE.md §10) : en espace coach, les abonnements du profil client
+  // ne se lisent pas, donc pas de bandeau client.
+  it('en espace coach : aucun bandeau d’abonnement, et les abonnements ne sont pas lus', async () => {
+    const { portDonnees } = await rendre({ profilActif: 'coach', coachExiste: true });
+    const lectures = jest.spyOn(portDonnees, 'lireMesAbonnements');
+    expect(screen.queryByText(/abonnement est actif/)).toBeNull();
+    expect(lectures).not.toHaveBeenCalled();
   });
 
   // Fiche, § « Côté coach » : bandeau si des offres sont publiées.

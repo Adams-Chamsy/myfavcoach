@@ -18,8 +18,18 @@ import { useTheme } from '@/theme/fournisseur';
 // Contenu) — pas de seconde modale par-dessus, la saisie est déjà le geste qui coûte.
 const MOT_CONFIRMATION = 'SUPPRIMER';
 
-// Voir le commentaire sur son unique lecture, plus bas : jamais vrai avant qu'Abonnement existe.
-const ABONNEMENT_ACTIF = false;
+// Bandeau client (fiche, « Si un abonnement est actif »). Le texte au singulier est celui de la
+// fiche ; le pluriel et la variante sans prénom (coach devenu illisible) en sont dérivés.
+function texteAbonnementsActifs(prenoms: (string | null)[]): string {
+  const connus = prenoms.filter((p): p is string => p !== null && p.trim() !== '');
+  const avec =
+    connus.length === 0
+      ? ''
+      : ` avec ${connus.length === 1 ? connus[0] : `${connus.slice(0, -1).join(', ')} et ${connus[connus.length - 1]}`}`;
+  return prenoms.length === 1
+    ? `Ton abonnement est actif. Supprimer ton compte résilie ton suivi${avec}. Le mois déjà payé n’est pas remboursé.`
+    : `Tes abonnements sont actifs. Supprimer ton compte résilie tes suivis${avec}. Le mois déjà payé n’est pas remboursé.`;
+}
 
 export default function Suppression() {
   const theme = useTheme();
@@ -33,12 +43,15 @@ export default function Suppression() {
   const [chargement, setChargement] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [offresPubliees, setOffresPubliees] = useState(false);
+  // Les prénoms des coachs des abonnements ACTIFS du client ; vide : pas de bandeau.
+  const [coachsActifs, setCoachsActifs] = useState<(string | null)[]>([]);
 
   const pretAConfirmer = saisie === MOT_CONFIRMATION;
 
-  // Bandeau coach (fiche, § « Côté coach ») : réel, offres existe depuis P2.2. Le bandeau
-  // client équivalent (abonnement actif) ne peut jamais se déclencher à ce lot : aucune table
-  // Abonnement n'existe (docs/dette.md, L4/L7) — omission honnête, pas un oubli.
+  // Bandeau coach (fiche, § « Côté coach ») : réel, offres existe depuis P2.2. Bandeau client :
+  // réel depuis le 16 novembre 2026 — les abonnements existent (L4) et la suppression les résilie
+  // côté serveur (0068). Chacun ne lit que l'espace actif (CLAUDE.md §10). Une lecture en échec
+  // ne montre pas de bandeau et ne bloque rien : le serveur résilie de toute façon.
   useEffect(() => {
     let monte = true;
     if (profils?.profilActif === 'coach' && profils.coachExiste) {
@@ -46,10 +59,22 @@ export default function Suppression() {
         if (monte) setOffresPubliees(offres.some((offre) => offre.publieeLe !== null));
       });
     }
+    if (profils?.profilActif === 'client' && profils.clientExiste) {
+      void port
+        .lireMesAbonnements()
+        .then((abonnements) => {
+          if (monte) {
+            setCoachsActifs(
+              abonnements.filter((a) => a.statut === 'actif').map((a) => a.coachPrenom),
+            );
+          }
+        })
+        .catch(() => {});
+    }
     return () => {
       monte = false;
     };
-  }, [port, profils?.profilActif, profils?.coachExiste]);
+  }, [port, profils?.profilActif, profils?.coachExiste, profils?.clientExiste]);
 
   async function surSupprimer() {
     setErreur(null);
@@ -132,16 +157,9 @@ export default function Suppression() {
           </Text>
         ) : null}
 
-        {/* Bandeau client (fiche, « Si un abonnement est actif ») : ABONNEMENT_ACTIF est
-            littéralement `false`, jamais lu depuis un état réel — aucune table Abonnement
-            n'existe avant L4 (paiement, docs/perimetre.md) / L7 (pilotage réel), donc rien ne
-            peut l'alimenter à ce lot. Gardé ici, visible et mort plutôt que retiré, pour que le
-            jour où `useDonnees()` expose un abonnement réel, il suffise de remplacer cette seule
-            constante par la lecture — docs/dette.md. */}
-        {profils?.profilActif === 'client' && ABONNEMENT_ACTIF ? (
+        {profils?.profilActif === 'client' && coachsActifs.length > 0 ? (
           <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
-            Ton abonnement est actif. Supprimer ton compte résilie ton suivi. Le mois déjà payé
-            n’est pas remboursé.
+            {texteAbonnementsActifs(coachsActifs)}
           </Text>
         ) : null}
 
