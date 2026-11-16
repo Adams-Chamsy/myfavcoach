@@ -6195,6 +6195,345 @@ describe('identité fiscale et compte de versement — L5 (0069, 0070)', () => {
   });
 });
 
+// ---------------------------------------------------------------------------------------------
+// L5 — solde et versements du coach (0073, 0074 ; docs/prompts/L5.md, P5.4 ; docs/domaine.md
+// §3.10, §4.8). Un coach à lui, deux factures réelles (souscriptions par le rôle serveur, comme
+// le webhook), puis la machine du versement transition par transition. Séquentiel par nature.
+// ---------------------------------------------------------------------------------------------
+describe('solde et versements — L5 (0073, 0074)', () => {
+  const rpc = (fonction: string, corps: Record<string, unknown>, session: Appelant) =>
+    appelRest(`/rest/v1/rpc/${fonction}`, { methode: 'POST', session, corps });
+  let coachV: Session;
+  let profilCoachV: string;
+  let offreV: string;
+  let clientSansConnexion: string;
+  let mensuel: string;
+  let immediat: string;
+
+  const solde = async () =>
+    ((await rpc('mon_solde', {}, coachV)).corps as { solde_centimes: number }[])[0].solde_centimes;
+  const versement = async (id: string) =>
+    (
+      (await appelRest(`/rest/v1/versements?id=eq.${id}&select=*`, { session: 'admin' })).corps as {
+        montant_centimes: number;
+        frais_centimes: number;
+        mode: string;
+        statut: string;
+        verse_le: string | null;
+        motif_echec: string | null;
+      }[]
+    )[0];
+  async function souscrire(profilClient: string, nom: string): Promise<void> {
+    const { statut, corps } = await rpc(
+      'souscrire_abonnement',
+      {
+        p_profil_client_id: profilClient,
+        p_offre_id: offreV,
+        p_moyen: 'carte',
+        p_reference_paiement: `banc-${SUFFIXE_COMPTE}-versement-${nom}`,
+        p_prix_fige_centimes: 4900,
+        p_intention_creee_le: new Date().toISOString(),
+      },
+      'admin',
+    );
+    if (statut !== 200) {
+      throw new Error(
+        `Préparation du banc : souscription refusée (${statut}) ${JSON.stringify(corps)}`,
+      );
+    }
+  }
+
+  beforeAll(async () => {
+    coachV = await creerCompteReel(
+      `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-versement-coach@${DOMAINE_EMAIL}`,
+      {
+        date_naissance: '1988-01-01',
+        cgu_version_acceptee: '2026-08-01',
+      },
+    );
+    const profil = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { compte_id: coachV.compteId, prenom: 'Verse', nom: 'Coach', discipline: 'yoga' },
+    });
+    profilCoachV = (profil.corps as { id: string }[])[0].id;
+    await appelRest(`/rest/v1/profils_coach?id=eq.${profilCoachV}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { statut_verification: 'verifiee' },
+    });
+    const offre = await appelRest('/rest/v1/offres', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        coach_id: profilCoachV,
+        titre: 'Suivi complet',
+        prix_centimes: 4900,
+        benefices: ['Programme', 'Visio', 'Points réguliers'],
+        engagement_humain: ['ajustement hebdomadaire'],
+        publiee_le: new Date(Date.now() - 86_400_000).toISOString(),
+      },
+    });
+    offreV = (offre.corps as { id: string }[])[0].id;
+    const bascule = await rpc('basculer_profil', { profil: 'coach' }, coachV);
+    if (bascule.statut >= 400) throw new Error('Préparation du banc : bascule en coach refusée');
+
+    // Un second client, sans connexion (plafond de connexions du projet de dev).
+    const creation = await fetch(`${API_URL}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: {
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-versement-client@${DOMAINE_EMAIL}`,
+        password: MOT_DE_PASSE,
+        email_confirm: true,
+        user_metadata: { date_naissance: '1990-01-01', cgu_version_acceptee: '2026-08-01' },
+      }),
+    });
+    if (!creation.ok) throw new Error(`Préparation du banc : client refusé (${creation.status})`);
+    clientSansConnexion = ((await creation.json()) as { id: string }).id;
+  }, 60_000);
+
+  afterAll(async () => {
+    if (coachV) await supprimerCompteReel(coachV.compteId);
+    if (clientSansConnexion) await supprimerCompteReel(clientSansConnexion);
+  }, 30_000);
+
+  it('au départ : solde nul, aucun versement, compte non opérationnel, prochain versement le 5', async () => {
+    const { statut, corps } = await rpc('mon_solde', {}, coachV);
+    expect(statut).toBe(200);
+    const aujourdhui = aujourdhuiParis();
+    const [annee, mois, jour] = aujourdhui.split('-').map(Number) as [number, number, number];
+    const prochain =
+      jour <= 5
+        ? `${annee}-${String(mois).padStart(2, '0')}-05`
+        : mois === 12
+          ? `${annee + 1}-01-05`
+          : `${annee}-${String(mois + 1).padStart(2, '0')}-05`;
+    expect(corps).toEqual([
+      {
+        solde_centimes: 0,
+        versement_en_cours: false,
+        prochain_versement_le: prochain,
+        compte_operationnel: false,
+      },
+    ]);
+    expect((await rpc('mes_versements', {}, coachV)).corps).toEqual([]);
+  });
+
+  it('demander un versement sans compte de versement opérationnel : compte_versement_non_operationnel', async () => {
+    const { statut, corps } = await rpc('demander_versement_immediat', {}, coachV);
+    expect(statut).toBe(400);
+    expect(messageDe(corps)).toBe('compte_versement_non_operationnel');
+    expect((await rpc('mes_versements', {}, coachV)).corps).toEqual([]);
+  });
+
+  it('compte opérationnel mais solde nul : solde_insuffisant', async () => {
+    await preparerVendeur(profilCoachV);
+    const { corps } = await rpc('demander_versement_immediat', {}, coachV);
+    expect(messageDe(corps)).toBe('solde_insuffisant');
+    expect((await rpc('mes_versements', {}, coachV)).corps).toEqual([]);
+  });
+
+  it('le solde suit les factures payées, commission déduite : 49 € offerts, puis 49 € moins 10 %', async () => {
+    const { corps: profilA } = await appelRest(
+      `/rest/v1/profils_client?compte_id=eq.${A.compteId}&select=id`,
+      { session: 'admin' },
+    );
+    const profilClientA =
+      (profilA as { id: string }[])[0]?.id ?? (await creerProfilClientParLeServeur(A, 'Verse'));
+    await souscrire(profilClientA, 'a');
+    // Premier abonnement actif : 90 jours sans commission (§5.5).
+    expect(await solde()).toBe(4900);
+
+    // La période offerte est passée (décor) : la facture suivante porte 10 %.
+    const hier = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    await appelRest(`/rest/v1/profils_coach?id=eq.${profilCoachV}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { commission_offerte_jusqu_le: hier },
+    });
+    const profilT = await appelRest('/rest/v1/profils_client', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { compte_id: clientSansConnexion, prenom: 'Verse', nom: 'Client' },
+    });
+    await souscrire((profilT.corps as { id: string }[])[0].id, 't');
+    expect(await solde()).toBe(4900 + 4410);
+  });
+
+  it('versements du mois : rien un autre jour que le 5 ; le 5, tout le solde, sans frais ; une seule fois', async () => {
+    const autreJour = await rpc(
+      'creer_versements_mensuels',
+      { p_jour: '2026-12-04', p_profil_coach_id: profilCoachV },
+      'admin',
+    );
+    expect(autreJour.corps).toBe(0);
+
+    const le5 = await rpc(
+      'creer_versements_mensuels',
+      { p_jour: '2026-12-05', p_profil_coach_id: profilCoachV },
+      'admin',
+    );
+    expect(le5.corps).toBe(1);
+    const liste = (await rpc('mes_versements', {}, coachV)).corps as { id: string }[];
+    expect(liste).toHaveLength(1);
+    mensuel = liste[0].id;
+    expect(await versement(mensuel)).toMatchObject({
+      montant_centimes: 9310,
+      frais_centimes: 0,
+      mode: 'mensuel',
+      statut: 'prevu',
+    });
+    expect(await solde()).toBe(0);
+    expect((await rpc('mon_solde', {}, coachV)).corps).toMatchObject([
+      { versement_en_cours: true },
+    ]);
+
+    const encore = await rpc(
+      'creer_versements_mensuels',
+      { p_jour: '2026-12-05', p_profil_coach_id: profilCoachV },
+      'admin',
+    );
+    expect(encore.corps).toBe(0);
+  });
+
+  it('un versement déjà prévu : la demande immédiate est refusée (versement_deja_en_cours)', async () => {
+    const { corps } = await rpc('demander_versement_immediat', {}, coachV);
+    expect(messageDe(corps)).toBe('versement_deja_en_cours');
+  });
+
+  it('prévu → en cours → échoué : le montant revient au solde ; un versement conclu ne se rouvre pas', async () => {
+    const reference = `tr_banc_${SUFFIXE_COMPTE}_mensuel`;
+    expect(
+      (
+        await rpc(
+          'poser_versement_en_cours',
+          { p_versement_id: mensuel, p_reference: reference },
+          'admin',
+        )
+      ).statut,
+    ).toBe(204);
+    // Le même appel, relivré : sans effet.
+    expect(
+      (
+        await rpc(
+          'poser_versement_en_cours',
+          { p_versement_id: mensuel, p_reference: reference },
+          'admin',
+        )
+      ).statut,
+    ).toBe(204);
+    expect((await versement(mensuel)).statut).toBe('en_cours');
+    expect(await solde()).toBe(0);
+
+    expect(
+      (
+        await rpc(
+          'conclure_versement',
+          { p_versement_id: mensuel, p_reussi: false, p_motif: 'account_closed' },
+          'admin',
+        )
+      ).statut,
+    ).toBe(204);
+    expect(await versement(mensuel)).toMatchObject({
+      statut: 'echoue',
+      motif_echec: 'account_closed',
+      verse_le: null,
+    });
+    expect(await solde()).toBe(9310);
+
+    const rouvrir = await rpc(
+      'conclure_versement',
+      { p_versement_id: mensuel, p_reussi: true },
+      'admin',
+    );
+    expect(messageDe(rouvrir.corps)).toBe('transition_interdite');
+    const relancer = await rpc(
+      'poser_versement_en_cours',
+      { p_versement_id: mensuel, p_reference: `${reference}_bis` },
+      'admin',
+    );
+    expect(messageDe(relancer.corps)).toBe('transition_interdite');
+  });
+
+  it('versement immédiat : tout le solde moins 1 € de frais ; versé, il apparaît en tête de la liste', async () => {
+    const demande = await rpc('demander_versement_immediat', {}, coachV);
+    expect(demande.statut).toBe(200);
+    immediat = demande.corps as string;
+    expect(await versement(immediat)).toMatchObject({
+      montant_centimes: 9210,
+      frais_centimes: 100,
+      mode: 'immediat',
+      statut: 'prevu',
+    });
+    expect(await solde()).toBe(0);
+
+    const reussi = await rpc(
+      'conclure_versement',
+      { p_versement_id: immediat, p_reussi: true },
+      'admin',
+    );
+    expect(messageDe(reussi.corps)).toBe('transition_interdite');
+    await rpc(
+      'poser_versement_en_cours',
+      { p_versement_id: immediat, p_reference: `tr_banc_${SUFFIXE_COMPTE}_immediat` },
+      'admin',
+    );
+    expect(
+      (await rpc('conclure_versement', { p_versement_id: immediat, p_reussi: true }, 'admin'))
+        .statut,
+    ).toBe(204);
+    expect((await versement(immediat)).verse_le).not.toBeNull();
+
+    const liste = (await rpc('mes_versements', {}, coachV)).corps as {
+      id: string;
+      statut: string;
+    }[];
+    expect(liste.map((v) => [v.id, v.statut])).toEqual([
+      [immediat, 'verse'],
+      [mensuel, 'echoue'],
+    ]);
+    expect(await solde()).toBe(0);
+    expect((await rpc('mon_solde', {}, coachV)).corps).toMatchObject([
+      { versement_en_cours: false },
+    ]);
+  });
+
+  it('versements_a_executer rend les prévus avec leur compte, au serveur seul', async () => {
+    const { corps } = await rpc('versements_a_executer', {}, 'admin');
+    expect((corps as { versement_id: string }[]).some((v) => v.versement_id === immediat)).toBe(
+      false,
+    );
+  });
+
+  it('un client, anon : ni solde ni versements ; aucune table ni fonction du serveur pour personne d’autre que lui', async () => {
+    for (const fonction of ['mon_solde', 'mes_versements', 'demander_versement_immediat']) {
+      expect(messageDe((await rpc(fonction, {}, A)).corps)).toBe('profil_coach_requis');
+      expect(JSON.stringify((await rpc(fonction, {}, 'anon')).corps)).toMatch(/permission denied/i);
+    }
+    for (const session of [coachV, A, 'anon'] as const) {
+      expect(
+        (await appelRest('/rest/v1/versements?select=id', { session })).statut,
+      ).toBeGreaterThanOrEqual(400);
+      for (const [fonction, corps] of [
+        ['creer_versements_mensuels', { p_jour: '2026-12-05', p_profil_coach_id: profilCoachV }],
+        ['versements_a_executer', {}],
+        // Un identifiant quelconque : c'est le droit d'exécuter qui est refusé, avant toute ligne.
+        ['poser_versement_en_cours', { p_versement_id: randomUUID(), p_reference: 'tr_pirate' }],
+        ['conclure_versement', { p_versement_id: randomUUID(), p_reussi: true }],
+      ] as const) {
+        expect(JSON.stringify((await rpc(fonction, corps, session)).corps)).toMatch(
+          /permission denied/i,
+        );
+      }
+    }
+  });
+});
+
 // Rapprochement quotidien (0066, P4.11a ; docs/prompts/L4.md, point 12). La comparaison avec le
 // prestataire est dans la fonction serveur (supabase/functions/_partage/rapprochement.ts, tests
 // Deno) ; ici, ce que la base lui offre : le serveur seul lit les factures à rapprocher et écrit
@@ -6221,10 +6560,12 @@ describe('rapprochement — L4 (0066)', () => {
   });
 
   it('le serveur lit les factures payées un jour donné, puis les retrouve par leur référence', async () => {
-    const duJour = await rpc(
-      'factures_payees_entre',
-      { p_du: aujourdhui, p_au: aujourdhui },
-      'admin',
+    // Filtrée sur les références de CE passage du banc : l'API de la base rend au plus mille
+    // lignes, et le dev en porte souvent plus pour un même jour (trouvé le 16 novembre 2026, les
+    // factures de ce passage tombaient au-delà de la première page).
+    const duJour = await appelRest(
+      `/rest/v1/rpc/factures_payees_entre?reference_prestataire=like.*${SUFFIXE_COMPTE}*`,
+      { methode: 'POST', session: 'admin', corps: { p_du: aujourdhui, p_au: aujourdhui } },
     );
     expect(duJour.statut).toBe(200);
     const lignes = duJour.corps as {

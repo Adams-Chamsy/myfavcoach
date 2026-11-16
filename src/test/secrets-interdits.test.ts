@@ -307,6 +307,10 @@ describe('secrets interdits côté application', () => {
       // reprises pour les règles du vendeur (convention de 0031).
       'supabase/migrations/0071_preparer_regles_vendeur.sql',
       'supabase/migrations/0072_regles_vendeur.sql',
+      // 0073/0074 : grants et revokes de service_role sur le solde et les versements
+      // (convention de 0031).
+      'supabase/migrations/0073_preparer_solde_et_versements.sql',
+      'supabase/migrations/0074_solde_et_versements_regles.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',
