@@ -271,9 +271,13 @@ applicable en L5 au même moment. Raison : une vente réelle produit une facture
 (§3.5) ; sans ces mentions, elle ne serait pas conforme. C'est cette règle, et elle seule, qui
 interdit d'émettre une facture réelle incomplète : à L4, toutes les factures sont de mode test.
 
-« Opérationnel » est lu depuis Stripe par le serveur, jamais déclaré par l'application. Son
-critère exact (capacité `transfers` active, aucune exigence d'identification en retard) s'écrit
-avec l'identification du coach en L5 (`docs/api.md` §8).
+« Opérationnel » est lu depuis Stripe par le serveur, jamais déclaré par l'application.
+**Critère, écrit le 16 novembre 2026 (L5, `docs/prompts/L5.md`)** : chez Stripe, le compte du
+coach a ses deux capacités `stripe_transfers` (recevoir un virement de la plateforme) ET
+`payouts` (le virer à sa banque) à l'état `active`. L'une sans l'autre ne suffit pas : de
+l'argent reçu mais bloqué chez Stripe n'est pas de l'argent que le coach peut recevoir. Le
+serveur relit cet état quand le coach ouvre l'écran, quand il revient de son inscription chez
+Stripe, et chaque matin ; il le garde en base entre deux lectures.
 **D'ici L5, personne ne paie réellement** : L4 fonctionne en mode test Stripe
 (`CLAUDE.md` §2), et le premier paiement réel n'est possible qu'une fois ces deux règles
 appliquées. Aucune offre publiée avant L5 ne peut donc encaisser un euro réel sans être passée
@@ -478,6 +482,23 @@ est un abonnement mensuel, pas une vente à l'unité.
   commissions moins versements déjà émis.
 - `Versement` : `montantCentimes`, `mode` (`mensuel` | `immediat`), `fraisCentimes`
   (0 ou 100), `statut` (`prevu` | `en_cours` | `verse` | `echoue`), `emisLe`, `verseLe?`.
+
+**Précisé le 16 novembre 2026 (L5, `docs/prompts/L5.md`) — règles avant le schéma :**
+
+- **Le solde ne compte que l'argent encaissé** : une facture payée y entre à son paiement
+  (carte) ou à la confirmation de la banque (SEPA), c'est-à-dire quand elle naît (§3.5). Solde =
+  somme des factures payées du coach, moins leurs commissions, moins les versements `en_cours`
+  et `verse`. Un versement `echoue` rend son montant au solde.
+- **Montant d'un versement** : tout le solde au moment où il part. Mensuel : aucun frais.
+  Immédiat : 100 centimes de frais, retenus sur le montant viré (le coach reçoit le solde moins
+  1 €). Jamais en dessous de 2 000 centimes de solde.
+- **`verse`** : Stripe a accepté le transfert vers le compte du coach. Le virement de ce compte
+  vers sa banque est fait par Stripe, selon son calendrier ; l'application ne le suit pas au
+  jalon 1 (`docs/dette.md`).
+- **Un seul versement `en_cours` par coach** à la fois.
+- **Facture de commission** (§3.5) : une par coach et par mois civil (Europe/Paris) où au moins
+  une commission non nulle a été prélevée, émise le 1er du mois suivant, numérotée dans une
+  série annuelle propre à la plateforme, sans trou (même mécanisme que les factures des coachs).
 
 ### 3.11 Avis
 

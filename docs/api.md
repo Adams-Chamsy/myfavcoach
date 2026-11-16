@@ -404,6 +404,37 @@ de lecture (`GET /coach/revenus`, `GET /coach/solde`) peuvent être de simples v
 
 Les montants négatifs sont livrés négatifs : l'application n'invente pas de signe.
 
+**Précisé le 16 novembre 2026 (L5, `docs/prompts/L5.md`).**
+
+`GET /coach/identification` — l'état du compte de versement et de l'identité fiscale :
+
+```json
+{
+  "compteVersement": "operationnel",
+  "identiteFiscaleComplete": true,
+  "peutPublier": true
+}
+```
+
+`compteVersement` : `absent` (jamais commencé), `a_completer` (Stripe attend des informations
+du coach), `en_verification` (Stripe vérifie, rien à faire), `operationnel`
+(`docs/domaine.md` §3.3), `restreint` (Stripe a bloqué le compte). Jamais le détail de ce que
+Stripe réclame : il est sur la page d'inscription de Stripe.
+
+`POST /coach/identification/lien` — crée le compte chez Stripe s'il n'existe pas, et rend
+`{ "url": "…" }`, la page d'inscription hébergée par Stripe (valable quelques minutes, à usage
+unique). L'adresse n'est jamais gardée par l'application.
+
+`PUT /coach/identite-fiscale` — `{ "siren", "adresseLigne", "codePostal", "commune",
+"regimeTva", "tauxTvaPourMille" }`. Refus 422 `identite_fiscale_invalide`.
+
+`POST /coach/versements` : refus 409 `solde_insuffisant` (moins de 20 €),
+`compte_versement_non_operationnel`, `versement_deja_en_cours`.
+
+Deux refus s'ajoutent à la publication d'une offre (§5) et à l'intention de souscription (§7) :
+409 `compte_versement_non_operationnel` et 409 `identite_fiscale_incomplete`
+(`docs/domaine.md` §3.3).
+
 ---
 
 ## 9. Contenu et séances (L6)

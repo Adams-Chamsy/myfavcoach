@@ -820,6 +820,22 @@ lue par `tentative_due` (0061) ; aucun paiement n'est engagé par la page. Le re
 `?intention=<id>`, ou `?moyen=<abonnementId>` pour l'enregistrement d'un nouveau moyen). `SUPABASE_URL`, `SUPABASE_ANON_KEY` et `SUPABASE_SERVICE_ROLE_KEY` sont
 injectés par Supabase. Une fonction à qui il manque un secret répond 500 sans rien faire.
 
+### Connect : comptes des coachs (L5, 16 novembre 2026)
+
+Le plan et les décisions sont dans `docs/prompts/L5.md`. Ce qui tient à Stripe :
+
+- **Accounts v2, pas `POST /v1/accounts`** (refusé pour une nouvelle intégration, vérifié le
+  16 novembre 2026). Le « modèle Express » de `CLAUDE.md` §2 s'écrit `dashboard: "express"`,
+  `defaults.responsibilities` à `application` pour les frais et les pertes (imposé par Stripe
+  avec ce tableau de bord), et la configuration `recipient` avec la capacité
+  `stripe_balance.stripe_transfers`. Stripe vérifie l'identité du coach.
+- **Inscription hébergée par Stripe** : `POST /v2/core/account_links`, `use_case.type:
+  "account_onboarding"`. Aucune pièce d'identité du coach ne passe par nos serveurs pour Stripe.
+- **Pas de webhook Connect** : l'état du compte est relu à la demande et chaque matin
+  (`docs/prompts/L5.md`, décision 2).
+- **Le virement au coach** : `POST /v1/transfers`, `destination` = son compte ; une clé
+  d'idempotence par versement.
+
 ### Rapprochement quotidien (15 novembre 2026, P4.11a)
 
 Le mécanisme proposé au point 12 de `docs/prompts/L4.md` est retenu et construit. **Il vit dans
