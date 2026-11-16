@@ -5587,6 +5587,206 @@ describe('abonnements — L4 (0033)', () => {
   // Conservation (0036 ; docs/domaine.md §2, §3.5) -- DERNIER bloc de ce describe : il supprime
   // les comptes de client1 et du coach, dont plus aucun test n'a besoin après lui.
   // -------------------------------------------------------------------------------------------
+  // Supprimer son compte résilie ses abonnements (0068 ; docs/ecrans/L2-01-suppression-compte.md :
+  // « Supprimer ton compte résilie ton suivi », et côté coach « tes offres sont retirées ; tes
+  // abonnés en cours gardent l'accès jusqu'à la fin de leur période payée »). Trouvé le
+  // 15 novembre 2026 : rien ne reliait la suppression aux abonnements, le moteur d'échéances
+  // aurait continué de prélever. Comptes dédiés : aucun autre test ne dépend d'eux. Séquentiel
+  // par nature, chaque test part de l'état laissé par le précédent.
+  describe('suppression de compte (0068)', () => {
+    let coachS: Session;
+    let offreS: string;
+    let clientS: Session;
+    let clientTCompteId: string;
+    let aboActif: string;
+    let aboPause: string;
+    let aboSepa: string;
+    let aboAbonneDuCoach: string;
+
+    const identifiant = async (reponse: { statut: number; corps: unknown }, quoi: string) => {
+      if (reponse.statut !== 200) {
+        throw new Error(`Préparation du banc : ${quoi} refusé (${reponse.statut})`);
+      }
+      return reponse.corps as string;
+    };
+
+    beforeAll(async () => {
+      const metadonnees = { date_naissance: '1990-01-01', cgu_version_acceptee: '2026-08-01' };
+      coachS = await creerCompteReel(
+        `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-supp-coach@${DOMAINE_EMAIL}`,
+        metadonnees,
+      );
+      const profilCoach = await appelRest('/rest/v1/profils_coach', {
+        methode: 'POST',
+        session: 'admin',
+        corps: { compte_id: coachS.compteId, prenom: 'Supp', nom: 'Coach', discipline: 'yoga' },
+      });
+      const profilCoachS = (profilCoach.corps as { id: string }[])[0].id;
+      await appelRest(`/rest/v1/profils_coach?id=eq.${profilCoachS}`, {
+        methode: 'PATCH',
+        session: 'admin',
+        corps: { statut_verification: 'verifiee' },
+      });
+      offreS = await insererOffre(profilCoachS, {
+        publiee_le: new Date(Date.now() - 86_400_000).toISOString(),
+      });
+
+      clientS = await creerCompteReel(
+        `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-supp-client@${DOMAINE_EMAIL}`,
+        metadonnees,
+      );
+      const profilClientS = await creerProfilClient(clientS, 'Supp');
+
+      // Un abonné du coach, sans connexion (plafond de connexions du projet de dev).
+      const creation = await fetch(`${API_URL}/auth/v1/admin/users`, {
+        method: 'POST',
+        headers: {
+          apikey: SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-supp-abonne@${DOMAINE_EMAIL}`,
+          password: MOT_DE_PASSE,
+          email_confirm: true,
+          user_metadata: metadonnees,
+        }),
+      });
+      if (!creation.ok) throw new Error(`Préparation du banc : abonné refusé (${creation.status})`);
+      clientTCompteId = ((await creation.json()) as { id: string }).id;
+      const profilT = await appelRest('/rest/v1/profils_client', {
+        methode: 'POST',
+        session: 'admin',
+        corps: { compte_id: clientTCompteId, prenom: 'Abonne', nom: 'Banc' },
+      });
+      const profilClientT = (profilT.corps as { id: string }[])[0].id;
+
+      // Le client : un abonnement actif (coach principal), un en pause (coachS), un SEPA pas
+      // encore confirmé (second coach). L'abonné : actif chez coachS.
+      aboActif = await identifiant(
+        await souscrire(profilClientS, offreId, 'carte', reference('supp-actif')),
+        'abonnement actif',
+      );
+      aboPause = await identifiant(
+        await souscrire(profilClientS, offreS, 'carte', reference('supp-pause')),
+        'abonnement à mettre en pause',
+      );
+      const pause = await transition('demander_pause_jours', clientS, {
+        p_abonnement_id: aboPause,
+        p_jours: 14,
+      });
+      if (pause.statut >= 400)
+        throw new Error(`Préparation du banc : pause refusée (${pause.statut})`);
+      aboSepa = await identifiant(
+        await souscrire(profilClientS, offreSepaRejetId, 'sepa', reference('supp-sepa')),
+        'abonnement SEPA',
+      );
+      aboAbonneDuCoach = await identifiant(
+        await souscrire(profilClientT, offreS, 'carte', reference('supp-abonne')),
+        'abonnement de l’abonné',
+      );
+    }, 90_000);
+
+    afterAll(async () => {
+      if (clientS) await supprimerCompteReel(clientS.compteId);
+      if (clientTCompteId) await supprimerCompteReel(clientTCompteId);
+      if (coachS) await supprimerCompteReel(coachS.compteId);
+    }, 30_000);
+
+    const filet = () => transition('appliquer_echeances', 'admin', { p_jour: aujourdhuiParis() });
+
+    // Le sens légitime du filet : tant qu'aucun des deux comptes n'est supprimé, il ne touche à
+    // rien.
+    it('aucun compte supprimé : le filet du matin laisse ces abonnements comme ils sont', async () => {
+      expect((await filet()).statut).toBe(200);
+      expect((await lire(aboActif)).statut).toBe('actif');
+      expect((await lire(aboPause)).statut).toBe('en_pause');
+      expect((await lire(aboSepa)).statut).toBe('en_attente_confirmation');
+      expect((await lire(aboAbonneDuCoach)).statut).toBe('actif');
+    });
+
+    it('le client supprime son compte : l’actif est résilié à la fin de la période payée, celui en pause le jour même, le SEPA en attente ne bouge pas', async () => {
+      const echeance = (await lire(aboActif)).prochain_prelevement_le;
+      const suppression = await transition('supprimer_mon_compte', clientS, {});
+      expect(suppression.statut).toBe(204);
+
+      const actif = await lire(aboActif);
+      expect(actif.statut).toBe('resiliation_programmee');
+      expect(actif.fin_acces_le).toBe(echeance);
+      expect(actif.resilie_le).not.toBeNull();
+
+      const enPause = await lire(aboPause);
+      expect(enPause.statut).toBe('resilie');
+      expect(enPause.fin_acces_le).toBe(aujourdhuiParis());
+      expect(enPause.pause_jusqu_le).toBeNull();
+
+      expect((await lire(aboSepa)).statut).toBe('en_attente_confirmation');
+      // L'abonné d'un coach qui, lui, n'a rien supprimé : rien ne change pour lui.
+      expect((await lire(aboAbonneDuCoach)).statut).toBe('actif');
+    });
+
+    it('l’échéance d’un compte supprimé n’est plus jamais due', async () => {
+      const { prochain_prelevement_le: echeance } = await lire(aboActif);
+      const dues = await transition('echeances_a_prelever', 'admin', { p_jour: echeance });
+      expect(dues.statut).toBe(200);
+      expect((dues.corps as { abonnement_id: string }[]).map((d) => d.abonnement_id)).not.toContain(
+        aboActif,
+      );
+    });
+
+    it('une résiliation programmée par la suppression ne s’annule pas : transition_interdite', async () => {
+      const annulation = await transition('annuler_resiliation', clientS, {
+        p_abonnement_id: aboActif,
+      });
+      expect(messageDe(annulation.corps)).toBe('transition_interdite');
+      expect((await lire(aboActif)).statut).toBe('resiliation_programmee');
+    });
+
+    it('le filet du matin : un SEPA confirmé APRÈS la suppression est programmé en résiliation avant toute échéance suivante', async () => {
+      const confirmation = await transition('confirmer_premier_prelevement', 'admin', {
+        p_abonnement_id: aboSepa,
+      });
+      expect(confirmation.statut).toBe(204);
+      expect((await lire(aboSepa)).statut).toBe('actif');
+
+      const bilan = await filet();
+      expect(bilan.statut).toBe(200);
+      expect(
+        (bilan.corps as { comptes_supprimes: number }).comptes_supprimes,
+      ).toBeGreaterThanOrEqual(1);
+      const sepa = await lire(aboSepa);
+      expect(sepa.statut).toBe('resiliation_programmee');
+      expect(sepa.fin_acces_le).toBe(sepa.prochain_prelevement_le);
+    });
+
+    it('le coach supprime son compte : ses offres sont retirées, son abonné garde son suivi jusqu’à la fin de la période payée, les autres coachs ne sont pas touchés', async () => {
+      const autreCoachAvant = (await lire(abonnement1)).statut;
+      const echeance = (await lire(aboAbonneDuCoach)).prochain_prelevement_le;
+
+      const suppression = await transition('supprimer_mon_compte', coachS, {});
+      expect(suppression.statut).toBe(204);
+
+      const abonne = await lire(aboAbonneDuCoach);
+      expect(abonne.statut).toBe('resiliation_programmee');
+      expect(abonne.fin_acces_le).toBe(echeance);
+
+      const { corps: offre } = await appelRest(
+        `/rest/v1/offres?id=eq.${offreS}&select=retiree_le`,
+        {
+          session: 'admin',
+        },
+      );
+      expect((offre as { retiree_le: string | null }[])[0].retiree_le).not.toBeNull();
+
+      expect((await lire(abonnement1)).statut).toBe(autreCoachAvant);
+      const { corps: autreOffre } = await appelRest(
+        `/rest/v1/offres?id=eq.${offreId}&select=retiree_le`,
+        { session: 'admin' },
+      );
+      expect((autreOffre as { retiree_le: string | null }[])[0].retiree_le).toBeNull();
+    });
+  });
+
   describe('conservation des pièces comptables (0036)', () => {
     it('supprimer le compte du client, puis celui du coach, ne supprime aucune facture ni ligne de commission', async () => {
       const compter = async (table: string, filtre: string): Promise<number> => {

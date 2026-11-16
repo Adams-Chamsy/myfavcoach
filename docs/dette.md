@@ -127,25 +127,21 @@ la jonction du splash vert vers la signature, le cadrage Android, la fluidité s
 modeste, les zones sûres, VoiceOver/TalkBack et le texte à 200 %. Les tests React et le
 navigateur ne prouvent pas ces points natifs. Les photos locales n’ajoutent pas un mode hors connexion au catalogue.
 
-### Suppression de compte et abonnements — trouvé le 15 novembre 2026, NON corrigé
+### Suppression de compte et abonnements — trouvé le 15 novembre 2026
 
-**Supprimer son compte ne résilie aucun abonnement.** `supprimer_mon_compte` (0018, antérieure à
-L4) pose seulement `comptes.supprime_le`. Rien ne relie cette date aux abonnements : le moteur
-d'échéances (`echeances_a_prelever`, 0061) continuerait de prélever chaque mois un client qui a
-supprimé son compte, et les abonnés d'un coach qui a supprimé le sien. La fiche L2-01 promet
-pourtant « Supprimer ton compte résilie ton suivi », et côté coach « tes abonnés en cours gardent
-l'accès jusqu'à la fin de leur période payée ». Sans conséquence réelle tant que tout est en mode
-test ; **bloque tout paiement réel**.
+**Soldée côté serveur le 16 novembre 2026 (migration 0068).** Supprimer son compte ne résiliait
+aucun abonnement : `supprimer_mon_compte` (0018, antérieure à L4) posait seulement
+`comptes.supprime_le`, et le moteur d'échéances aurait continué de prélever un client supprimé,
+comme les abonnés d'un coach supprimé. Désormais : `actif` → `resiliation_programmee` à la fin de
+la période payée, `en_pause`/`impaye`/`suspendu` → `resilie` le jour même, offres du coach
+retirées, `annuler_resiliation` refusée ; et la tâche du matin refait ce contrôle avant les
+prélèvements (un SEPA confirmé après la suppression). Six tests nommés au banc, cinq vus rouges
+avant la migration. La règle est écrite dans `docs/domaine.md` §4.3, **à relire** (le « prorata
+remboursé » du départ d'un coach a été écarté).
 
-Correctif préparé, pas écrit (une étape serveur à elle seule, avec ses tests au banc sur des
-comptes dédiés) : à la suppression, et chaque matin par `appliquer_echeances` comme filet,
-`actif` → `resiliation_programmee` à la fin de la période payée, `en_pause`/`impaye`/`suspendu` →
-`resilie` le jour même ; les offres d'un coach supprimé sont retirées ; `annuler_resiliation`
-refusée si l'un des deux comptes est supprimé. **Contradiction à trancher par le développeur** :
-`docs/domaine.md` §4.3 écrit « coach part → resilie [prorata remboursé] », la fiche L2-01 écrit
-« aucun remboursement au prorata, tranché ». Le correctif préparé suit la fiche (aucun
-remboursement n'existe dans l'application). Échéance : **avant la porte de sortie de L4**.
+**Reste, côté écran** (`app/(compte)/suppression.tsx`, dette inscrite plus haut) : le bandeau
+« Ton abonnement est actif » est toujours une constante à `false`. Échéance : avant la porte de
+sortie de L4.
 
-Même fiche, dette déjà inscrite plus haut : le bandeau « Ton abonnement est actif » de l'écran
-de suppression est toujours une constante à `false` ; `lireMesAbonnements` permet désormais de le
-brancher (à faire avec le correctif ci-dessus).
+**Reste, hors de portée du jalon 1** : rien ne prévient l'abonné que son coach est parti (L10,
+notifications), et la purge réelle des comptes à J+30 n'existe toujours pas (ligne plus haut).

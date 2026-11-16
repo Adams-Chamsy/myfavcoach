@@ -720,8 +720,26 @@ actif --(résiliation client)--> resiliation_programmee
 resiliation_programmee --(fin de période payée)--> resilie
 resiliation_programmee --(annulation de la résiliation)--> actif
 en_pause|impaye|suspendu --(résiliation client)--> resilie   [effet le jour même, rien de plus facturé]
-actif --(coach part / offre supprimée par la plateforme)--> resilie [prorata remboursé]
+actif --(offre supprimée par la plateforme)--> resilie [prorata remboursé]
+actif --(compte du client ou du coach supprimé)--> resiliation_programmee   [fin de la période payée, aucun remboursement]
+en_pause|impaye|suspendu --(compte du client ou du coach supprimé)--> resilie   [effet le jour même]
 ```
+
+**Suppression d'un compte (écrit le 16 novembre 2026, migration 0068).** Jusque-là, cette machine
+écrivait « coach part → resilie [prorata remboursé] », et rien n'était construit : supprimer un
+compte ne touchait aucun abonnement, le moteur d'échéances aurait continué de prélever. La règle
+retenue est celle de la fiche `docs/ecrans/L2-01-suppression-compte.md` (« aucun remboursement au
+prorata », « tes abonnés en cours gardent l'accès jusqu'à la fin de leur période payée ») : les
+mêmes effets que la résiliation demandée par le client, que le compte supprimé soit celui du
+client ou celui du coach ; les offres d'un coach supprimé sont retirées ; une résiliation
+programmée ainsi ne s'annule pas. Un prélèvement SEPA encore en attente de confirmation n'est pas
+touché ; s'il est confirmé ensuite, la tâche du matin le programme en résiliation avant toute
+échéance suivante. **À relire par le développeur et le juriste** : le remboursement au prorata
+quand c'est le coach qui part a été écarté parce qu'aucun remboursement n'existe dans
+l'application (`docs/perimetre.md` §3), pas parce qu'il serait injuste. La ligne « offre supprimée
+par la plateforme → prorata remboursé » reste, sans déclencheur : aucun écran ni outil ne supprime
+une offre au nom de la plateforme au jalon 1.
+
 
 Règles associées :
 - **`en_attente_confirmation`** (ajouté le 28 septembre 2026, `docs/ecrans/L4-04c-confirmation-abonnement.md`) :

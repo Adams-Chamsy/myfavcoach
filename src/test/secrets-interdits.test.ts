@@ -296,6 +296,9 @@ describe('secrets interdits côté application', () => {
       // 0066 : grants et revokes de service_role sur la table et les fonctions du rapprochement
       // (convention de 0031).
       'supabase/migrations/0066_creer_rapprochement.sql',
+      // 0068 : revokes de service_role sur les fonctions de la résiliation à la suppression du
+      // compte (convention de 0031).
+      'supabase/migrations/0068_resilier_a_la_suppression_du_compte.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

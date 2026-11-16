@@ -87,6 +87,8 @@ prudence de plus.
 - Cet écran ne touche à rien du prestataire de paiement : la résiliation d'un abonnement suit
   sa propre machine à états (`docs/domaine.md` §4.3), déclenchée par la suppression, pas
   recodée ici.
+  **Construit le 16 novembre 2026 seulement** (migration 0068) : jusque-là, la suppression ne
+  déclenchait rien, et un compte supprimé aurait continué d'être prélevé.
 - Le lien vers l'export (`L2-04`) est **une aide, pas un blocage** : rien n'empêche de supprimer
   sans être passé par lui.
 
