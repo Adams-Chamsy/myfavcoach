@@ -4883,7 +4883,11 @@ describe('abonnements — L4 (0033)', () => {
       expect(await factureDe(reference('sepa-rejet'))).toBeUndefined();
     });
 
-    it('la facture porte sa propre copie : parties, libellé, période, montant ; HT, TVA et identité fiscale vides (mode test)', async () => {
+    // INVERSÉ le 16 novembre 2026 (L5, 0076) : ce test exigeait HT, TVA et identité fiscale VIDES
+    // (« mode test », aucune identité fiscale n'existait à L4). Depuis L5, un coach ne vend
+    // qu'avec une identité fiscale complète (0072) : celle de ce coach (franchise en base, posée
+    // par preparer_vendeur_banc) est copiée dans la facture, HT = TTC, TVA nulle.
+    it('la facture porte sa propre copie : parties, libellé, période, montant, et l’identité fiscale du vendeur avec HT et TVA', async () => {
       const facture = (await factureDe(reference('carte-2'))) as Facture;
       const abonnement = await lire(facture.abonnement_id);
       expect(facture.vendeur_prenom).toBe('Abo');
@@ -4892,10 +4896,10 @@ describe('abonnements — L4 (0033)', () => {
       expect(facture.libelle).toBe('Suivi complet');
       expect(facture.montant_ttc_centimes).toBe(4900);
       expect(facture.periode_au).toBe(plusJours(abonnement.prochain_prelevement_le, -1));
-      expect(facture.montant_ht_centimes).toBeNull();
-      expect(facture.tva_centimes).toBeNull();
-      expect(facture.vendeur_siren).toBeNull();
-      expect(facture.vendeur_regime_tva).toBeNull();
+      expect(facture.montant_ht_centimes).toBe(4900);
+      expect(facture.tva_centimes).toBe(0);
+      expect(facture.vendeur_siren).toBe('732829320');
+      expect(facture.vendeur_regime_tva).toBe('franchise_en_base');
     });
 
     it('une ligne de commission par facture, à 0 % pendant les 90 jours offerts', async () => {
@@ -6508,6 +6512,199 @@ describe('solde et versements — L5 (0073, 0074)', () => {
     expect((corps as { versement_id: string }[]).some((v) => v.versement_id === immediat)).toBe(
       false,
     );
+  });
+
+  // ---- P5.5 : factures complètes, facture de commission, revenus (0075, 0076) ----
+
+  it('les factures du coach portent son identité fiscale : franchise en base, HT = TTC, TVA nulle', async () => {
+    const liste = (await rpc('mes_factures', {}, coachV)).corps as {
+      id: string;
+      commission_centimes: number;
+    }[];
+    expect(liste).toHaveLength(2);
+    const [detail] = (await rpc('ma_facture', { p_facture_id: liste[0].id }, coachV)).corps as {
+      vendeur_siren: string;
+      vendeur_adresse: string;
+      vendeur_regime_tva: string;
+      montant_ttc_centimes: number;
+      montant_ht_centimes: number;
+      tva_centimes: number;
+    }[];
+    expect(detail).toMatchObject({
+      vendeur_siren: '732829320',
+      vendeur_adresse: '1 rue du Banc, 69003 Lyon',
+      vendeur_regime_tva: 'franchise_en_base',
+      montant_ttc_centimes: 4900,
+      montant_ht_centimes: 4900,
+      tva_centimes: 0,
+    });
+  });
+
+  it('un coach assujetti : HT = TTC / 1,2 au centime le plus proche, TVA = le reste', async () => {
+    expect(
+      (
+        await rpc(
+          'enregistrer_identite_fiscale',
+          {
+            p_siren: '732829320',
+            p_adresse_ligne: '1 rue du Banc',
+            p_code_postal: '69003',
+            p_commune: 'Lyon',
+            p_regime_tva: 'assujetti',
+            p_taux_tva_pour_mille: 200,
+          },
+          coachV,
+        )
+      ).statut,
+    ).toBe(204);
+    const { corps: profilA } = await appelRest(
+      `/rest/v1/profils_client?compte_id=eq.${A.compteId}&select=id`,
+      { session: 'admin' },
+    );
+    const profilClientA = (profilA as { id: string }[])[0].id;
+    await rpc('clore_abonnements_banc', { p_profil_client_id: profilClientA }, 'admin');
+    await souscrire(profilClientA, 'a-assujetti');
+    const liste = (await rpc('mes_factures', {}, coachV)).corps as { id: string }[];
+    expect(liste).toHaveLength(3);
+    const [detail] = (await rpc('ma_facture', { p_facture_id: liste[0].id }, coachV)).corps as {
+      vendeur_regime_tva: string;
+      vendeur_taux_tva_pour_mille: number;
+      montant_ht_centimes: number;
+      tva_centimes: number;
+      commission_centimes: number;
+    }[];
+    expect(detail).toMatchObject({
+      vendeur_regime_tva: 'assujetti',
+      vendeur_taux_tva_pour_mille: 200,
+      montant_ht_centimes: 4083,
+      tva_centimes: 817,
+      commission_centimes: 490,
+    });
+  });
+
+  it('le client lit ses factures, nommant le coach, sans la commission ; jamais celles d’un autre', async () => {
+    const liste = (await rpc('mes_factures', {}, A)).corps as {
+      id: string;
+      autre_partie: string;
+      commission_centimes: number | null;
+    }[];
+    const chezV = liste.filter((f) => f.autre_partie === 'Verse Coach');
+    expect(chezV.length).toBeGreaterThanOrEqual(2);
+    expect(chezV.every((f) => f.commission_centimes === null)).toBe(true);
+    const [detail] = (await rpc('ma_facture', { p_facture_id: chezV[0].id }, A)).corps as {
+      commission_centimes: number | null;
+      montant_ttc_centimes: number;
+    }[];
+    expect(detail.montant_ttc_centimes).toBe(4900);
+    expect(detail.commission_centimes).toBeNull();
+
+    // La facture du second client, lue par A : zéro ligne.
+    const factureDeT = (
+      (await rpc('mes_factures', {}, coachV)).corps as {
+        id: string;
+        autre_partie: string;
+      }[]
+    ).find((f) => f.autre_partie === 'Verse Client');
+    expect((await rpc('ma_facture', { p_facture_id: factureDeT?.id }, A)).corps).toEqual([]);
+    expect(JSON.stringify((await rpc('mes_factures', {}, 'anon')).corps)).toMatch(
+      /permission denied/i,
+    );
+  });
+
+  it('facture de commission : rien un autre jour que le 1er ; le 1er, une pour le mois écoulé, numérotée, une seule fois', async () => {
+    const [annee, mois] = aujourdhuiParis().split('-').map(Number) as [number, number];
+    const premierSuivant =
+      mois === 12 ? `${annee + 1}-01-01` : `${annee}-${String(mois + 1).padStart(2, '0')}-01`;
+    const deuxSuivant = premierSuivant.replace(/-01$/, '-02');
+    expect(
+      (
+        await rpc(
+          'emettre_factures_commission',
+          { p_jour: deuxSuivant, p_profil_coach_id: profilCoachV },
+          'admin',
+        )
+      ).corps,
+    ).toBe(0);
+    expect((await rpc('mes_factures_commission', {}, coachV)).corps).toEqual([]);
+
+    expect(
+      (
+        await rpc(
+          'emettre_factures_commission',
+          { p_jour: premierSuivant, p_profil_coach_id: profilCoachV },
+          'admin',
+        )
+      ).corps,
+    ).toBe(1);
+    const liste = (await rpc('mes_factures_commission', {}, coachV)).corps as {
+      numero: string;
+      mois: string;
+      montant_ttc_centimes: number;
+      nombre_lignes: number;
+    }[];
+    expect(liste).toHaveLength(1);
+    expect(liste[0].numero).toMatch(/^C-[0-9]{4}-[0-9]{6}$/);
+    expect(liste[0]).toMatchObject({
+      mois: `${annee}-${String(mois).padStart(2, '0')}-01`,
+      montant_ttc_centimes: 980,
+      nombre_lignes: 2,
+    });
+    expect(
+      (
+        await rpc(
+          'emettre_factures_commission',
+          { p_jour: premierSuivant, p_profil_coach_id: profilCoachV },
+          'admin',
+        )
+      ).corps,
+    ).toBe(0);
+  });
+
+  it('revenus du mois : encaissements, nombre, commission et net, du serveur ; six mois', async () => {
+    const { statut, corps } = await rpc('mes_revenus', { p_mois: aujourdhuiParis() }, coachV);
+    expect(statut).toBe(200);
+    const lignes = corps as {
+      encaissements_centimes: number;
+      nombre_paiements: number;
+      commission_centimes: number;
+      net_centimes: number;
+    }[];
+    expect(lignes).toHaveLength(6);
+    expect(lignes[0]).toMatchObject({
+      encaissements_centimes: 14700,
+      nombre_paiements: 3,
+      commission_centimes: 980,
+      net_centimes: 13720,
+    });
+    expect(lignes.slice(1).every((l) => l.nombre_paiements === 0)).toBe(true);
+  });
+
+  it('factures de commission et revenus : le coach seul ; aucune lecture directe des tables', async () => {
+    for (const fonction of ['mes_factures_commission', 'mes_revenus']) {
+      const corps = fonction === 'mes_revenus' ? { p_mois: aujourdhuiParis() } : {};
+      expect(messageDe((await rpc(fonction, corps, A)).corps)).toBe('profil_coach_requis');
+      expect(JSON.stringify((await rpc(fonction, corps, 'anon')).corps)).toMatch(
+        /permission denied/i,
+      );
+    }
+    for (const session of [coachV, A, 'anon'] as const) {
+      for (const table of ['factures_commission', 'compteurs_factures_commission']) {
+        expect(
+          (await appelRest(`/rest/v1/${table}?select=*`, { session })).statut,
+        ).toBeGreaterThanOrEqual(400);
+      }
+      expect(
+        JSON.stringify(
+          (
+            await rpc(
+              'emettre_factures_commission',
+              { p_jour: '2026-12-01', p_profil_coach_id: profilCoachV },
+              session,
+            )
+          ).corps,
+        ),
+      ).toMatch(/permission denied/i);
+    }
   });
 
   it('un client, anon : ni solde ni versements ; aucune table ni fonction du serveur pour personne d’autre que lui', async () => {

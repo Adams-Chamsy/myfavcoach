@@ -428,7 +428,7 @@ distincte au coach. C'est la conséquence directe du statut d'intermédiaire.
 - **Une facture par paiement encaissé**, idempotente par la référence du paiement chez le
   prestataire (`referencePrestataire`, unique) : le webhook et le constat
   (`docs/api.md` §7) peuvent tous deux la déclencher, une seule naît.
-- `pdfUrl` : vide jusqu'à L5 (factures et reçus téléchargeables, C-05).
+- `pdfUrl` : vide jusqu'à L5 (factures et reçus téléchargeables, C-05). **Depuis L5 (16 novembre 2026)** : toujours vide au jalon 1 ; une facture se lit dans l'application avec toutes ses mentions (`docs/prompts/L5.md`, décision 6). HT et TVA sont calculés à l'émission (migration 0076), l'identité fiscale du coach copiée dans la facture.
 - **La facture de commission de la plateforme au coach est reportée en L5**, avec les versements
   (`docs/prompts/L4.md`). L4 ne crée que la `LigneCommission` (§3.10).
 

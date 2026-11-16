@@ -311,6 +311,10 @@ describe('secrets interdits côté application', () => {
       // (convention de 0031).
       'supabase/migrations/0073_preparer_solde_et_versements.sql',
       'supabase/migrations/0074_solde_et_versements_regles.sql',
+      // 0075/0076 : grants et revokes de service_role sur les factures complètes et la facture
+      // de commission (convention de 0031).
+      'supabase/migrations/0075_preparer_factures_completes.sql',
+      'supabase/migrations/0076_factures_completes_regles.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

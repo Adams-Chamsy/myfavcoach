@@ -98,6 +98,14 @@ async function traiter(requete: Request): Promise<Response> {
     }
   }
 
+  // Les factures de commission du mois écoulé (L5, P5.5) : la base n'émet que le 1er (0076).
+  let facturesCommission: unknown = null;
+  if (!rapprochementSeul) {
+    const emises = await serveur.rpc('emettre_factures_commission', { p_jour: jour });
+    if (emises.error) console.error('echeances-quotidiennes : factures de commission non émises');
+    facturesCommission = emises.error ? { erreur: 'factures_commission_non_emises' } : emises.data;
+  }
+
   // Puis le rapprochement (P4.11a) : les trois jours pleins qui précèdent — la nuit laisse au
   // webhook le temps d'arriver —, et le jour lui-même quand on ne fait que rapprocher. Son échec
   // ne défait rien de ce qui vient d'être prélevé : il est dit au bilan et au journal.
@@ -133,7 +141,7 @@ async function traiter(requete: Request): Promise<Response> {
           parClasse: compterParClasse(rapprochement.ecarts),
           ecarts: rapprochement.ecarts.slice(0, 50),
         };
-  return reponseJson(200, { ...bilan, versements, rapprochement: resume });
+  return reponseJson(200, { ...bilan, versements, facturesCommission, rapprochement: resume });
 }
 
 Deno.serve(async (requete) => {
