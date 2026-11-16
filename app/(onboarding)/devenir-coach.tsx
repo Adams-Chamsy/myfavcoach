@@ -1,8 +1,7 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreFormulaireV2 } from '@/composants/presentation-v2';
 import { type Href, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
 import { Champ } from '@/composants/champ';
@@ -52,7 +51,6 @@ function telephoneValide(valeur: string): boolean {
 
 export default function DevenirCoach() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { profils, port, creerProfilCoach } = useDonnees();
   const { port: portAuth } = useSession();
@@ -137,93 +135,16 @@ export default function DevenirCoach() {
       libelleDestructeur="Se déconnecter"
       onDestructeur={() => void confirmerDeconnexion()}
     >
-      <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-        <EnteteOnboarding etape={1} desactive={chargement} />
-
-        <DefilementEcran
-          contentContainerStyle={{
-            paddingHorizontal: theme.espace.gouttiere,
-            paddingTop: theme.espace[2],
-            paddingBottom: theme.espace[6],
-            gap: theme.espace[4],
-          }}
-        >
-          <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-            Ouvre ton espace coach.
-          </Text>
-          <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
-            Ton compte reste le même. Tu passeras de l’un à l’autre quand tu veux.
-          </Text>
-
-          <View style={{ gap: theme.espace[3] }}>
-            {REASSURANCES.map((ligne) => (
-              <View
-                key={ligne.icone}
-                style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.espace[3] }}
-              >
-                <Icone nom={ligne.icone} couleur={theme.couleur.texte.secondaire} />
-                <Text
-                  style={{ ...theme.texte.petit, flex: 1, color: theme.couleur.texte.secondaire }}
-                >
-                  {ligne.texte}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          <View style={{ gap: theme.espace[2] }}>
-            <Text style={{ ...theme.texte.label, color: theme.couleur.texte.attenue }}>
-              Discipline
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.espace[2] }}>
-              {disciplines.map((discipline) => (
-                <Chip
-                  key={discipline.cle}
-                  variante="selection"
-                  libelle={discipline.libelle}
-                  selectionne={disciplineChoisie === discipline.cle}
-                  onPress={() => setDisciplineChoisie(discipline.cle)}
-                />
-              ))}
-            </View>
-          </View>
-
-          {prenomReprise === '' ? (
-            <Champ
-              libelle="Prénom"
-              valeur={prenom}
-              onChangeTexte={setPrenom}
-              desactive={chargement}
-            />
-          ) : null}
-          {nomReprise === '' ? (
-            <Champ libelle="Nom" valeur={nom} onChangeTexte={setNom} desactive={chargement} />
-          ) : null}
-
-          <Champ
-            libelle="Téléphone"
-            type="telephone"
-            valeur={telephone}
-            onChangeTexte={(valeur) => {
-              setTelephone(valeur);
-              if (erreurTelephone) setErreurTelephone(undefined);
-            }}
-            onBlur={() => {
-              if (telephone !== '' && !telephoneValide(telephone)) {
-                setErreurTelephone('Numéro de téléphone français attendu.');
-              }
-            }}
-            messageErreur={erreurTelephone}
-            desactive={chargement}
-          />
-        </DefilementEcran>
-
-        {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
-          (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B). « Réessayer » relance
-          vraiment l'envoi ; le détail est le repli serveur, jamais le texte du port, qui
-          répétait le titre. */}
-        <View style={{ paddingHorizontal: theme.espace.gouttiere }}>
-          {erreur ? (
+      <CadreFormulaireV2
+        reference="activation-coach"
+        surtitre="UN COMPTE, DEUX ESPACES"
+        entete={
+          <>
+            <EnteteOnboarding variante="coach" etape={1} desactive={chargement} />
+          </>
+        }
+        alerte={
+          erreur ? (
             <View accessibilityLiveRegion="polite">
               <EtatErreur
                 titre={textesRepliErreur.serveur.titre}
@@ -232,51 +153,118 @@ export default function DevenirCoach() {
                 onReessayer={() => void surValider()}
               />
             </View>
-          ) : null}
-        </View>
+          ) : null
+        }
+        actions={
+          <>
+            {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
+          (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B). « Réessayer » relance
+          vraiment l'envoi ; le détail est le repli serveur, jamais le texte du port, qui
+          répétait le titre. */}
+            <View style={{ paddingHorizontal: theme.espace.gouttiere }}></View>
 
-        <View
-          style={{
-            paddingHorizontal: theme.espace.gouttiere,
-            paddingTop: theme.espace[3],
-            paddingBottom: insets.bottom + theme.espace[3],
-            borderTopWidth: 1,
-            borderTopColor: theme.couleur.bordure.discrete,
-            backgroundColor: theme.couleur.fond.canevas,
-          }}
-        >
-          <Bouton
-            libelle="Ouvrir mon espace coach"
-            variante="primaire"
-            onPress={surValider}
-            desactive={!pretAValider || chargement}
-          />
-          {sansAucunProfil ? (
-            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: theme.espace[4] }}>
-              <Pressable
-                onPress={() => router.replace('/(onboarding)/1-identite' as Href)}
-                disabled={chargement}
-                accessibilityRole="link"
-                style={{ minHeight: theme.taille.tapMin, justifyContent: 'center' }}
+            <>
+              <Bouton
+                libelle="Ouvrir mon espace coach"
+                variante="primaire"
+                onPress={surValider}
+                desactive={!pretAValider || chargement}
+              />
+              {sansAucunProfil ? (
+                <View
+                  style={{ flexDirection: 'row', justifyContent: 'center', gap: theme.espace[4] }}
+                >
+                  <Pressable
+                    onPress={() => router.replace('/(onboarding)/1-identite' as Href)}
+                    disabled={chargement}
+                    accessibilityRole="link"
+                    style={{ minHeight: theme.taille.tapMin, justifyContent: 'center' }}
+                  >
+                    <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+                      Je cherche plutôt un coach
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setConfirmationDeconnexion(true)}
+                    disabled={chargement}
+                    accessibilityRole="link"
+                    style={{ minHeight: theme.taille.tapMin, justifyContent: 'center' }}
+                  >
+                    <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+                      Se déconnecter
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </>
+          </>
+        }
+      >
+        <Text style={{ ...theme.texte.v2TitreAuth, color: theme.couleur.texte.principal }}>
+          Ouvre ton espace coach.
+        </Text>
+        <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.secondaire }}>
+          Ton compte reste le même. Tu passeras de l’un à l’autre quand tu veux.
+        </Text>
+        <View style={{ gap: theme.espace[3] }}>
+          {REASSURANCES.map((ligne) => (
+            <View
+              key={ligne.icone}
+              style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.espace[3] }}
+            >
+              <Icone nom={ligne.icone} couleur={theme.couleur.texte.secondaire} />
+              <Text
+                style={{ ...theme.texte.v2Petit, flex: 1, color: theme.couleur.texte.secondaire }}
               >
-                <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-                  Je cherche plutôt un coach
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setConfirmationDeconnexion(true)}
-                disabled={chargement}
-                accessibilityRole="link"
-                style={{ minHeight: theme.taille.tapMin, justifyContent: 'center' }}
-              >
-                <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-                  Se déconnecter
-                </Text>
-              </Pressable>
+                {ligne.texte}
+              </Text>
             </View>
-          ) : null}
+          ))}
         </View>
-      </CanevasEcran>
+        <View style={{ gap: theme.espace[2] }}>
+          <Text style={{ ...theme.texte.label, color: theme.couleur.texte.attenue }}>
+            Discipline
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.espace[2] }}>
+            {disciplines.map((discipline) => (
+              <Chip
+                key={discipline.cle}
+                variante="selection"
+                libelle={discipline.libelle}
+                selectionne={disciplineChoisie === discipline.cle}
+                onPress={() => setDisciplineChoisie(discipline.cle)}
+              />
+            ))}
+          </View>
+        </View>
+        {prenomReprise === '' ? (
+          <Champ
+            libelle="Prénom"
+            valeur={prenom}
+            onChangeTexte={setPrenom}
+            desactive={chargement}
+          />
+        ) : null}
+        {nomReprise === '' ? (
+          <Champ libelle="Nom" valeur={nom} onChangeTexte={setNom} desactive={chargement} />
+        ) : null}
+        <Champ
+          libelle="Téléphone"
+          type="telephone"
+          valeur={telephone}
+          onChangeTexte={(valeur) => {
+            setTelephone(valeur);
+            if (erreurTelephone) setErreurTelephone(undefined);
+          }}
+          onBlur={() => {
+            if (telephone !== '' && !telephoneValide(telephone)) {
+              setErreurTelephone('Numéro de téléphone français attendu.');
+            }
+          }}
+          messageErreur={erreurTelephone}
+          desactive={chargement}
+        />
+      </CadreFormulaireV2>
     </Modale>
   );
 }

@@ -93,6 +93,23 @@ describe('Explorer (docs/ecrans/L3-02-recherche-filtres.md)', () => {
     expect(screen.queryByText('Me prévenir')).toBeNull();
   });
 
+  it('applique la clé réelle de la discipline choisie dans la liste', async () => {
+    const gestionnaire = jest.fn((parametres: ParametresRecherche) => ({
+      resultats: [coach()],
+      totalResultats: 1,
+    }));
+    await rendre(gestionnaire);
+    await fireEvent.press(screen.getByLabelText('Filtres'));
+    await fireEvent.press(screen.getByLabelText('Discipline, Toutes les disciplines'));
+    await fireEvent.press(screen.getByText('Cybersécurité'));
+    await fireEvent.press(screen.getByText('Appliquer'));
+    await waitFor(() =>
+      expect(gestionnaire).toHaveBeenLastCalledWith(
+        expect.objectContaining({ discipline: 'cybersécurité' }),
+      ),
+    );
+  });
+
   it('garde les filtres ouverts et ne recherche pas si le budget minimum dépasse le maximum', async () => {
     const gestionnaire = jest.fn(() => ({ resultats: [coach()], totalResultats: 1 }));
     await rendre(gestionnaire);
@@ -124,6 +141,7 @@ describe('Explorer (docs/ecrans/L3-02-recherche-filtres.md)', () => {
     // testé ici, seulement le bouton « Tout effacer » lui-même) : passe par la feuille de filtres
     // réelle, commune « Lyon » (COMMUNES_FIGEES).
     await fireEvent.press(screen.getByLabelText('Filtres'));
+    await fireEvent.press(screen.getByLabelText('Commune, Toutes les communes'));
     await waitFor(() => expect(screen.queryByText('Lyon')).toBeTruthy());
     await fireEvent.press(screen.getByText('Lyon'));
     await fireEvent.press(screen.getByText('Appliquer'));

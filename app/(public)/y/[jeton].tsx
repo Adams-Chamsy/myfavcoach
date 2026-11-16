@@ -1,9 +1,9 @@
+import { CadreFormulaireV2 } from '@/composants/presentation-v2';
 import { CanevasEcran } from '@/composants/canevas-ecran';
 import type { Href } from 'expo-router';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
 import { EmplacementImage } from '@/composants/emplacement-image';
@@ -14,21 +14,11 @@ import { Squelette } from '@/composants/squelette';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import type { Offre, ProfilCoachPublic } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
-import { themes } from '@/theme/tokens';
 
 // docs/ecrans/L3bis-I02-arrivee-par-invitation.md. Sans session, ouverte par un lien
 // https://<domaine>/y/<jeton> (Universal Link/App Link, docs/prompts/L3bis.md point 3 —
 // docs/dette.md pour ce qui reste hors de portée sans appareil physique).
 //
-// Le bandeau plein cadre est une île sombre au sens de CLAUDE.md §5 : ses couleurs viennent de
-// themes.sombre choisi EXPLICITEMENT, jamais de useTheme() — trouvé deux fois ailleurs
-// (barre-navigation.tsx, app/(public)/index.tsx) pour la même raison : un token inversible lu
-// via le contexte s'inverse sous un thème ambiant différent de celui prévu pour cette bannière
-// précise, qui doit rester lisible sur une photo quel que soit le thème choisi par ailleurs. Le
-// reste de l'écran (carte d'offre, bandeau de réassurance, actions) suit le thème ambiant
-// normalement, via useTheme().
-const sombre = themes.sombre;
-
 function choisirOffre(offres: Offre[]): Offre | null {
   if (offres.length === 0) return null;
   return offres.find((o) => o.estMiseEnAvant) ?? offres[0];
@@ -36,7 +26,6 @@ function choisirOffre(offres: Offre[]): Offre | null {
 
 export function CorpsArriveeParInvitation({ jeton }: { jeton: string | undefined }) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { port } = useDonnees();
 
@@ -153,152 +142,97 @@ export function CorpsArriveeParInvitation({ jeton }: { jeton: string | undefined
   const nomCoach = `${coach.prenom} ${coach.nom}`;
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <View style={{ height: 238 }}>
-        <EmplacementImage
-          nom={nomCoach}
-          ratio="pleinCadre"
-          remplir
-          source={coach.photoUrl ?? undefined}
-          fondRepli={sombre.fond.canevas}
-          couleurTexteRepli={sombre.texte.surSombre}
-        />
-        {/* Superposition fixe, île sombre : jamais theme.couleur (voir commentaire de tête de
-            fichier). Solide, pas un dégradé (écart à la maquette) : ce système de tokens ne
-            définit aucune couleur pré-mélangée avec une opacité arbitraire — en inventer une
-            (rgba(...) à la main) serait exactement la couleur en dur que CLAUDE.md §4 interdit. */}
-        <View
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            paddingTop: insets.top + 24,
-            paddingHorizontal: theme.espace.gouttiere,
-            paddingBottom: theme.espace[4],
-            backgroundColor: sombre.fond.canevas,
-            gap: theme.espace[2],
-          }}
-        >
-          <View
-            style={{
-              alignSelf: 'flex-start',
-              paddingVertical: theme.espace[1],
-              paddingHorizontal: theme.espace[3],
-              borderRadius: theme.rayon.badge,
-              backgroundColor: sombre.marque.primaireTeinte,
-            }}
-          >
-            <Text
-              style={{
-                ...theme.texte.legende,
-                fontWeight: '800',
-                letterSpacing: 1,
-                color: sombre.etat.succesEncre,
-              }}
-            >
-              INVITATION PERSONNELLE
-            </Text>
-          </View>
-          <Text
-            style={{
-              ...theme.texte.titre1,
-              color: sombre.texte.surSombre,
-            }}
-          >
-            {coach.prenom} t&apos;invite à te suivre ici
-          </Text>
-        </View>
-      </View>
-
+    <CadreFormulaireV2
+      reference="invitation"
+      surtitre="INVITATION PERSONNELLE"
+      titre={`${coach.prenom} t’invite à te suivre ici.`}
+      description={`Retrouve ${nomCoach} sur MyFavCoach.`}
+      actions={
+        <>
+          <Bouton libelle="Créer mon compte" variante="primaire" onPress={surCreerCompte} />
+          <Bouton libelle="Voir son profil d'abord" variante="secondaire" onPress={surVoirProfil} />
+        </>
+      }
+    >
       <View
         style={{
-          flex: 1,
-          padding: theme.espace.gouttiere,
+          padding: theme.espace[6],
           gap: theme.espace[4],
+          borderWidth: theme.taille.bordureFine,
+          borderColor: theme.couleur.bordure.discrete,
+          borderRadius: theme.rayon.carte,
+          backgroundColor: theme.couleur.fond.surface,
         }}
       >
-        <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
-          Tu travailles déjà avec {nomCoach}. {coach.prenom} regroupe son suivi sur My Fav Coach :
-          tes séances, tes échanges et ta progression au même endroit.
-        </Text>
-
-        {offre ? (
+        <View style={{ flexDirection: 'row', gap: theme.espace[3], alignItems: 'center' }}>
           <View
             style={{
-              borderRadius: theme.rayon.carte,
-              borderWidth: 1,
-              borderColor: theme.couleur.bordure.discrete,
-              backgroundColor: theme.couleur.fond.surface,
-              padding: theme.espace[4],
-              gap: theme.espace[2],
+              width: theme.taille.avatarLg,
+              height: theme.taille.avatarXl,
+              overflow: 'hidden',
+              borderRadius: theme.rayon.saisie,
             }}
           >
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'baseline',
-              }}
-            >
-              <Text
-                style={{
-                  ...theme.texte.corps,
-                  fontWeight: '800',
-                  color: theme.couleur.texte.principal,
-                }}
-              >
-                {offre.titre}
-              </Text>
-              <Text style={{ ...theme.texte.titre2, color: theme.couleur.texte.principal }}>
-                {(offre.prixCentimes / 100).toFixed(0)} €
-                <Text style={{ ...theme.texte.legende, color: theme.couleur.texte.attenue }}>
-                  {' '}
-                  /mois
-                </Text>
-              </Text>
-            </View>
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-              C&apos;est le tarif de {coach.prenom}. Tu peux arrêter à tout moment, sans
-              justification.
+            <EmplacementImage
+              nom={nomCoach}
+              ratio="pleinCadre"
+              remplir
+              source={coach.photoUrl ?? undefined}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ ...theme.texte.v2TitreOffre, color: theme.couleur.texte.principal }}>
+              {nomCoach}
+            </Text>
+            <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.secondaire }}>
+              {coach.discipline}
             </Text>
           </View>
+        </View>
+        {offre ? (
+          <>
+            <Text style={{ ...theme.texte.v2NomResultat, color: theme.couleur.texte.principal }}>
+              {offre.titre}
+            </Text>
+            <Text style={{ ...theme.texte.v2TitreTunnel, color: theme.couleur.marque.primaire }}>
+              {(offre.prixCentimes / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €
+              <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}>
+                {' '}
+                /mois
+              </Text>
+            </Text>
+            {offre.benefices.map((benefice) => (
+              <Text
+                key={benefice}
+                style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.principal }}
+              >
+                {benefice}
+              </Text>
+            ))}
+            <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}>
+              C’est le tarif de {coach.prenom}. Tu peux arrêter à tout moment, sans justification.
+            </Text>
+          </>
         ) : (
           <EtatVide
             titre="Rien à proposer pour l'instant"
             explication={`${coach.prenom} n'a pas encore publié d'offre.`}
           />
         )}
-
-        <View
-          style={{
-            borderRadius: theme.rayon.carte,
-            backgroundColor: theme.couleur.fond.creux,
-            padding: theme.espace[3],
-          }}
-        >
-          <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-            {coach.prenom} ne voit rien de ton compte tant que tu ne t&apos;abonnes pas. Créer un
-            compte ne l&apos;engage à rien, et toi non plus.
-          </Text>
-        </View>
       </View>
-
       <View
         style={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[3],
-          paddingBottom: insets.bottom + theme.espace[3],
-          borderTopWidth: 1,
-          borderTopColor: theme.couleur.bordure.discrete,
-          backgroundColor: theme.couleur.fond.canevas,
-          gap: theme.espace[2],
+          borderRadius: theme.rayon.carte,
+          backgroundColor: theme.couleur.marque.secondaire,
+          padding: theme.espace[4],
         }}
       >
-        <Bouton libelle="Créer mon compte" variante="primaire" onPress={surCreerCompte} />
-        <Bouton libelle="Voir son profil d'abord" variante="secondaire" onPress={surVoirProfil} />
+        <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.principal }}>
+          {coach.prenom} ne voit rien de ton compte tant que tu ne t’abonnes pas. Créer un compte ne
+          l’engage à rien, et toi non plus.
+        </Text>
       </View>
-    </CanevasEcran>
+    </CadreFormulaireV2>
   );
 }
 

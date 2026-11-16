@@ -1,10 +1,9 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
-import { useRouter } from 'expo-router';
+import { InterrupteurV2 } from '@/composants/interrupteur-v2';
+import { CadreCompteV2 } from '@/fonctionnalites/compte/cadre-compte-v2';
+import { presentationV2 as mesure } from '@/theme/tokens';
 import { useEffect, useState } from 'react';
-import { Pressable, Switch, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, Text, View } from 'react-native';
 
-import { BoutonIcone } from '@/composants/bouton-icone';
 import { EtatErreur } from '@/composants/etats/etat-erreur';
 import { textesRepliErreur } from '@/composants/etats/textes';
 import { Modale } from '@/composants/modale';
@@ -40,8 +39,6 @@ type EtapeEffacement = null | 'confirmer1' | 'confirmer2';
 
 export default function Confidentialite() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { port } = useDonnees();
 
   const [chargement, setChargement] = useState(true);
@@ -160,29 +157,17 @@ export default function Confidentialite() {
           libelleDestructeur="Effacer"
           onDestructeur={effacerMesures}
         >
-          <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: theme.espace[3],
-                paddingTop: insets.top + theme.espace[2],
-                paddingHorizontal: theme.espace.gouttiere,
-                paddingBottom: theme.espace[3],
-              }}
-            >
-              <BoutonIcone nom="retour" accessibilityLabel="Retour" onPress={() => router.back()} />
-              <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-                Mes autorisations
-              </Text>
-            </View>
-
+          <CadreCompteV2
+            surtitre="TES CHOIX DE CONFIDENTIALITÉ"
+            titre={'Mes autorisations.'}
+            description="Tu peux changer d’avis à tout moment."
+          >
             {chargement ? (
-              <View style={{ paddingHorizontal: theme.espace.gouttiere }}>
+              <View style={{ paddingHorizontal: 0 }}>
                 <Squelette forme="ligne" />
               </View>
             ) : erreurLecture ? (
-              <View style={{ paddingHorizontal: theme.espace.gouttiere }}>
+              <View style={{ paddingHorizontal: 0 }}>
                 <EtatErreur
                   titre={textesRepliErreur.serveur.titre}
                   explication={textesRepliErreur.serveur.explication}
@@ -191,14 +176,7 @@ export default function Confidentialite() {
                 />
               </View>
             ) : (
-              <DefilementEcran
-                contentContainerStyle={{
-                  paddingHorizontal: theme.espace.gouttiere,
-                  paddingTop: theme.espace[2],
-                  paddingBottom: insets.bottom + theme.espace[6],
-                  gap: theme.espace[4],
-                }}
-              >
+              <View style={{ gap: mesure.champEspace }}>
                 <View
                   style={{
                     flexDirection: 'row',
@@ -209,14 +187,14 @@ export default function Confidentialite() {
                 >
                   <Text
                     style={{
-                      ...theme.texte.corps,
+                      ...theme.texte.v2Corps,
                       flex: 1,
                       color: theme.couleur.texte.principal,
                     }}
                   >
                     Enregistrer mes données de santé
                   </Text>
-                  <Switch
+                  <InterrupteurV2
                     value={accorde}
                     onValueChange={surBasculeConsentement}
                     disabled={ecritureEnCours}
@@ -229,7 +207,7 @@ export default function Confidentialite() {
                   />
                 </View>
 
-                <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+                <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}>
                   {TEXTE_CONSENTEMENT_SANTE}
                 </Text>
                 <Text style={{ ...theme.texte.legende, color: theme.couleur.texte.attenue }}>
@@ -244,7 +222,7 @@ export default function Confidentialite() {
                     disabled={ecritureEnCours}
                     style={{ minHeight: theme.taille.tapMin, justifyContent: 'center' }}
                   >
-                    <Text style={{ ...theme.texte.corps, color: theme.couleur.etat.erreur }}>
+                    <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.etat.erreur }}>
                       Effacer mes mesures enregistrées
                     </Text>
                   </Pressable>
@@ -252,7 +230,7 @@ export default function Confidentialite() {
 
                 {mesuresEffacees ? (
                   <View accessibilityLiveRegion="polite">
-                    <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.succesEncre }}>
+                    <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.etat.succesEncre }}>
                       Tes mesures enregistrées ont été effacées.
                     </Text>
                   </View>
@@ -268,14 +246,14 @@ export default function Confidentialite() {
                 >
                   <Text
                     style={{
-                      ...theme.texte.corps,
+                      ...theme.texte.v2Corps,
                       flex: 1,
                       color: theme.couleur.texte.principal,
                     }}
                   >
                     Nouveautés et conseils
                   </Text>
-                  <Switch
+                  <InterrupteurV2
                     value={accordeCommunications}
                     onValueChange={(v) => void surBasculeCommunications(v)}
                     disabled={ecritureEnCours}
@@ -287,10 +265,10 @@ export default function Confidentialite() {
                     thumbColor={theme.couleur.fond.surface}
                   />
                 </View>
-                <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+                <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}>
                   {TEXTE_CONSENTEMENT_COMMUNICATIONS}
                 </Text>
-                <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.attenue }}>
+                <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.attenue }}>
                   Les messages liés à ton abonnement et à tes paiements arrivent quoi qu’il arrive :
                   ils ne relèvent pas d’une autorisation.
                 </Text>
@@ -304,7 +282,7 @@ export default function Confidentialite() {
                 >
                   <Text
                     style={{
-                      ...theme.texte.corps,
+                      ...theme.texte.v2Corps,
                       color: theme.couleur.marque.primaire,
                     }}
                   >
@@ -315,18 +293,18 @@ export default function Confidentialite() {
                 {historiqueOuvert ? (
                   <View style={{ gap: theme.espace[2] }}>
                     {historique === null ? (
-                      <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.attenue }}>
+                      <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.attenue }}>
                         Chargement…
                       </Text>
                     ) : historique.length === 0 ? (
-                      <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.attenue }}>
+                      <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.attenue }}>
                         Aucune décision enregistrée.
                       </Text>
                     ) : (
                       historique.map((l, index) => (
                         <Text
                           key={`${l.type}-${l.horodatage}-${index}`}
-                          style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}
+                          style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}
                         >
                           {new Date(l.horodatage).toLocaleDateString('fr-FR')} · {l.type} ·{' '}
                           {l.accorde ? 'accordé' : 'retiré'} (v{l.version})
@@ -335,9 +313,9 @@ export default function Confidentialite() {
                     )}
                   </View>
                 ) : null}
-              </DefilementEcran>
+              </View>
             )}
-          </CanevasEcran>
+          </CadreCompteV2>
         </Modale>
       </Modale>
     </Modale>

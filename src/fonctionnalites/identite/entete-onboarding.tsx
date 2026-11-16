@@ -1,3 +1,4 @@
+import { usePresentationV2 } from '@/composants/presentation-v2';
 import { useRouter } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -5,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BoutonIcone } from '@/composants/bouton-icone';
 import { Progression, type EtatSegment } from '@/composants/progression';
 import { useTheme } from '@/theme/fournisseur';
-import { font } from '@/theme/tokens';
+import { font, presentationV2 as mesure } from '@/theme/tokens';
 
 const NOMBRE_ETAPES = 4;
 
@@ -18,6 +19,7 @@ const NOMBRE_ETAPES = 4;
 // zone `overflow:hidden` du contenu, jamais dans le flux du ScrollView.
 export type ProprietesEnteteOnboarding = {
   etape: 1 | 2 | 3 | 4;
+  variante?: 'client' | 'coach';
   // Absent quand l'étape ne se saute pas : l'étape 1 de l'onboarding client (fiche L1-05 :
   // "« Passer » n'apparaît pas à l'étape 1", le prénom étant la seule donnée obligatoire de
   // tout l'onboarding) et toute l'activation coach (L1-08). Sa présence pilote directement
@@ -39,10 +41,12 @@ function segments(etape: number): EtatSegment[] {
 
 export function EnteteOnboarding({
   etape,
+  variante = 'client',
   onPasser,
   desactive = false,
 }: ProprietesEnteteOnboarding) {
   const theme = useTheme();
+  const presentationV2 = usePresentationV2();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -55,6 +59,74 @@ export function EnteteOnboarding({
   // plantait ("GO_BACK non géré") dès qu'on le pressait sur l'écran d'entrée d'une session —
   // voir src/test/routage/profondeur-pile-entree-onboarding.test.tsx.
   const peutRevenir = router.canGoBack();
+
+  if (presentationV2)
+    return (
+      <View>
+        {peutRevenir ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
+            disabled={desactive}
+            onPress={() => router.back()}
+            style={{
+              minHeight: theme.taille.tapMin,
+              marginVertical: mesure.retourMargeCible,
+              marginBottom: mesure.retourBas + mesure.retourMargeCible,
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ ...theme.texte.v2Retour, color: theme.couleur.marque.primaire }}>
+              ← Étape précédente
+            </Text>
+          </Pressable>
+        ) : null}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: mesure.progressionAvant,
+          }}
+        >
+          <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}>
+            Étape {etape} sur 4 · {variante === 'coach' ? 'Espace coach' : 'Ton profil'}
+          </Text>
+          {onPasser ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={onPasser}
+              disabled={desactive}
+              style={{ minHeight: theme.taille.tapMin, justifyContent: 'center' }}
+            >
+              <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.marque.primaire }}>
+                Passer
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+        <View
+          accessibilityRole="progressbar"
+          accessibilityLabel={`Étape ${etape} sur ${NOMBRE_ETAPES}`}
+          style={{ flexDirection: 'row', gap: mesure.progressionEspace }}
+        >
+          {segments(etape).map((etat, i) => (
+            <View
+              key={i}
+              style={{
+                flex: 1,
+                height: mesure.progressionHauteur,
+                borderRadius: theme.rayon.badge,
+                backgroundColor:
+                  etat === 'reste'
+                    ? theme.couleur.bordure.v2Progression
+                    : theme.couleur.marque.primaire,
+              }}
+            />
+          ))}
+        </View>
+      </View>
+    );
 
   return (
     <View

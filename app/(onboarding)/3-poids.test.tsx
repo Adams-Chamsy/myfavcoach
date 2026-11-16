@@ -63,7 +63,9 @@ describe('OnboardingPoids (docs/ecrans/L1-05-onboarding-client.md, étape 3/4)',
     await rendreEcran(portDonnees);
 
     expect(screen.getByLabelText('Poids actuel (kg)').props.accessibilityState.disabled).toBe(true);
-    expect(screen.getByLabelText('Poids visé (kg)').props.accessibilityState.disabled).toBe(true);
+    expect(screen.getByLabelText('Objectif de poids (kg)').props.accessibilityState.disabled).toBe(
+      true,
+    );
   });
 
   it("cocher l'interrupteur active les champs de poids", async () => {
@@ -101,7 +103,7 @@ describe('OnboardingPoids (docs/ecrans/L1-05-onboarding-client.md, étape 3/4)',
       true,
     );
     await fireEvent.changeText(screen.getByLabelText('Poids actuel (kg)'), '70,5');
-    await fireEvent.changeText(screen.getByLabelText('Poids visé (kg)'), '65');
+    await fireEvent.changeText(screen.getByLabelText('Objectif de poids (kg)'), '65');
     await fireEvent.press(screen.getByText('Continuer'));
 
     await waitFor(() => expect(mockPousser).toHaveBeenCalledWith('/(onboarding)/4-cest-parti'));
@@ -158,7 +160,7 @@ describe('OnboardingPoids (docs/ecrans/L1-05-onboarding-client.md, étape 3/4)',
     await waitFor(() =>
       expect(screen.getByLabelText('Poids actuel (kg)').props.value).toBe('82,3'),
     );
-    expect(screen.getByLabelText('Poids visé (kg)').props.value).toBe('78,0');
+    expect(screen.getByLabelText('Objectif de poids (kg)').props.value).toBe('78,0');
     expect(
       screen.getByLabelText("J'accepte l'enregistrement de mes données de santé").props.value,
     ).toBe(true);

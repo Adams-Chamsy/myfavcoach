@@ -1,4 +1,4 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreAuthentificationV2 } from '@/composants/presentation-v2';
 import DateTimePicker, {
   type DateTimePickerChangeEvent,
 } from '@react-native-community/datetimepicker';
@@ -6,10 +6,8 @@ import type { Href } from 'expo-router';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
-import { BoutonIcone } from '@/composants/bouton-icone';
 import { Champ } from '@/composants/champ';
 import { EtatErreur } from '@/composants/etats/etat-erreur';
 import { estMajeur, formatDateISO } from '@/fonctionnalites/identite/age';
@@ -111,7 +109,6 @@ function DeclencheurDate({
 
 export default function Inscription() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   // jeton (L3bis) : porté depuis I-02 (app/(public)/y/[jeton].tsx) — même mécanique que
   // viaCoach (app/(public)/index.tsx, docs/dette.md), transmis tel quel jusqu'aux métadonnées
@@ -272,193 +269,174 @@ export default function Inscription() {
   )} sur ${LONGUEUR_MOT_DE_PASSE_MIN}`;
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <DefilementEcran
-        contentContainerStyle={{
-          paddingTop: insets.top + theme.espace[3],
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[4],
-        }}
-      >
-        <BoutonIcone
-          nom="retour"
-          accessibilityLabel="Retour"
-          onPress={() => router.back()}
-          desactive={chargement}
+    <CadreAuthentificationV2
+      titre={'On commence\npar ton compte.'}
+      description="Quelques informations, et ton prochain déclic peut commencer."
+      onRetour={() => {
+        if (router.canGoBack?.()) router.back();
+        else router.replace('/(public)');
+      }}
+      actions={
+        <>
+          <>
+            <Bouton
+              libelle="Créer mon compte"
+              variante="primaire"
+              onPress={surCreerCompte}
+              desactive={!formulaireRempli || chargement}
+            />
+          </>
+        </>
+      }
+    >
+      {erreurGlobale ? (
+        <EtatErreur
+          titre="On a un souci de notre côté"
+          explication={messageErreurGlobale(erreurGlobale)}
+          nombreEchecs={nombreEchecs}
+          onReessayer={surCreerCompte}
+          code={erreurGlobale.code}
         />
+      ) : null}
 
-        {erreurGlobale ? (
-          <EtatErreur
-            titre="On a un souci de notre côté"
-            explication={messageErreurGlobale(erreurGlobale)}
-            nombreEchecs={nombreEchecs}
-            onReessayer={surCreerCompte}
-            code={erreurGlobale.code}
-          />
-        ) : null}
+      <Champ
+        libelle="Adresse e-mail"
+        type="email"
+        valeur={email}
+        onChangeTexte={(valeur) => {
+          setEmail(valeur);
+          if (erreurEmail) setErreurEmail(undefined);
+        }}
+        onBlur={() => {
+          if (email.trim() !== '') validerEmail(email);
+        }}
+        messageErreur={erreurEmail}
+        desactive={chargement}
+      />
 
-        <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-          On commence par ton compte.
-        </Text>
-
+      <View style={{ gap: theme.espace[2] }}>
         <Champ
-          libelle="Adresse e-mail"
-          type="email"
-          valeur={email}
+          libelle="Mot de passe"
+          type="motDePasse"
+          valeur={motDePasse}
           onChangeTexte={(valeur) => {
-            setEmail(valeur);
-            if (erreurEmail) setErreurEmail(undefined);
+            setMotDePasse(valeur);
+            if (erreurMotDePasse) setErreurMotDePasse(undefined);
           }}
           onBlur={() => {
-            if (email.trim() !== '') validerEmail(email);
+            if (motDePasse !== '') validerMotDePasse(motDePasse);
           }}
-          messageErreur={erreurEmail}
+          messageErreur={erreurMotDePasse}
           desactive={chargement}
         />
-
-        <View style={{ gap: theme.espace[2] }}>
-          <Champ
-            libelle="Mot de passe"
-            type="motDePasse"
-            valeur={motDePasse}
-            onChangeTexte={(valeur) => {
-              setMotDePasse(valeur);
-              if (erreurMotDePasse) setErreurMotDePasse(undefined);
-            }}
-            onBlur={() => {
-              if (motDePasse !== '') validerMotDePasse(motDePasse);
-            }}
-            messageErreur={erreurMotDePasse}
-            desactive={chargement}
-          />
-          {!erreurMotDePasse ? (
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-              {compteurMotDePasse}
-            </Text>
-          ) : null}
-        </View>
-
-        <View style={{ gap: theme.espace[2] }}>
-          <Text
-            style={{
-              ...theme.texte.label,
-              color: erreurDate ? theme.couleur.etat.erreurEncre : theme.couleur.texte.attenue,
-            }}
-          >
-            Date de naissance
+        {!erreurMotDePasse ? (
+          <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+            {compteurMotDePasse}
           </Text>
+        ) : null}
+      </View>
 
-          {Platform.OS === 'web' ? (
-            // @react-native-community/datetimepicker n'a aucune implémentation web
-            // (node_modules/.../src/datetimepicker.js, le repli sans suffixe de plateforme
-            // que Metro utilise faute de .web.js, rend null et se contente d'un
-            // console.warn) — même trou que expo-secure-store, voir docs/backend.md pour
-            // l'angle mort structurel que ça révèle sur nos vérifications. Un repli
-            // SILENCIEUX serait pire qu'un champ manquant : la règle des 18 ans ne pourrait
-            // jamais être confirmée sans que rien ne le dise. Le web n'étant de toute façon
-            // jamais une cible du produit (CLAUDE.md §1), ce message dit honnêtement que
-            // l'inscription ne peut pas aboutir ici plutôt que de laisser un bouton qui ne
-            // s'active jamais sans explication.
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-              Le sélecteur de date n’est pas disponible depuis un navigateur. Utilise l’application
-              mobile pour créer ton compte.
-            </Text>
-          ) : Platform.OS === 'android' ? (
-            <>
-              <DeclencheurDate
-                dateNaissance={dateNaissance}
-                enErreur={Boolean(erreurDate)}
-                desactive={chargement}
-                onPress={surOuvrirSelecteurAndroid}
+      <View style={{ gap: theme.espace[2] }}>
+        <Text
+          style={{
+            ...theme.texte.v2LabelChamp,
+            color: erreurDate ? theme.couleur.etat.erreurEncre : theme.couleur.texte.attenue,
+          }}
+        >
+          Date de naissance
+        </Text>
+
+        {Platform.OS === 'web' ? (
+          // @react-native-community/datetimepicker n'a aucune implémentation web
+          // (node_modules/.../src/datetimepicker.js, le repli sans suffixe de plateforme
+          // que Metro utilise faute de .web.js, rend null et se contente d'un
+          // console.warn) — même trou que expo-secure-store, voir docs/backend.md pour
+          // l'angle mort structurel que ça révèle sur nos vérifications. Un repli
+          // SILENCIEUX serait pire qu'un champ manquant : la règle des 18 ans ne pourrait
+          // jamais être confirmée sans que rien ne le dise. Le web n'étant de toute façon
+          // jamais une cible du produit (CLAUDE.md §1), ce message dit honnêtement que
+          // l'inscription ne peut pas aboutir ici plutôt que de laisser un bouton qui ne
+          // s'active jamais sans explication.
+          <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+            Le sélecteur de date n’est pas disponible depuis un navigateur. Utilise l’application
+            mobile pour créer ton compte.
+          </Text>
+        ) : Platform.OS === 'android' ? (
+          <>
+            <DeclencheurDate
+              dateNaissance={dateNaissance}
+              enErreur={Boolean(erreurDate)}
+              desactive={chargement}
+              onPress={surOuvrirSelecteurAndroid}
+            />
+            {afficherPickerAndroid ? (
+              <DateTimePicker
+                testID="selecteur-date-naissance"
+                value={dateNaissance ?? datePointOuverture}
+                mode="date"
+                display="default"
+                maximumDate={new Date()}
+                onValueChange={surChoixAndroid}
+                onDismiss={surFermetureSansChoixAndroid}
               />
-              {afficherPickerAndroid ? (
+            ) : null}
+          </>
+        ) : (
+          <>
+            <DeclencheurDate
+              dateNaissance={dateNaissance}
+              enErreur={Boolean(erreurDate)}
+              desactive={chargement}
+              onPress={surOuvrirSelecteurIOS}
+            />
+            {afficherPickerIOS ? (
+              <View style={{ gap: theme.espace[2] }}>
                 <DateTimePicker
                   testID="selecteur-date-naissance"
-                  value={dateNaissance ?? datePointOuverture}
+                  value={valeurIOSEnCours}
                   mode="date"
-                  display="default"
+                  display="spinner"
                   maximumDate={new Date()}
-                  onValueChange={surChoixAndroid}
-                  onDismiss={surFermetureSansChoixAndroid}
+                  onValueChange={surDeplacementIOS}
+                  accessibilityLabel="Date de naissance"
                 />
-              ) : null}
-            </>
-          ) : (
-            <>
-              <DeclencheurDate
-                dateNaissance={dateNaissance}
-                enErreur={Boolean(erreurDate)}
-                desactive={chargement}
-                onPress={surOuvrirSelecteurIOS}
-              />
-              {afficherPickerIOS ? (
-                <View style={{ gap: theme.espace[2] }}>
-                  <DateTimePicker
-                    testID="selecteur-date-naissance"
-                    value={valeurIOSEnCours}
-                    mode="date"
-                    display="spinner"
-                    maximumDate={new Date()}
-                    onValueChange={surDeplacementIOS}
-                    accessibilityLabel="Date de naissance"
-                  />
-                  <Bouton variante="secondaire" libelle="Valider la date" onPress={surValiderIOS} />
-                </View>
-              ) : null}
-            </>
-          )}
+                <Bouton variante="secondaire" libelle="Valider la date" onPress={surValiderIOS} />
+              </View>
+            ) : null}
+          </>
+        )}
 
-          {erreurDate ? (
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
-              {erreurDate}
-            </Text>
-          ) : null}
-        </View>
-
-        <Text
-          style={{ ...theme.texte.legende, color: theme.couleur.texte.attenue }}
-          accessibilityLabel="En créant ton compte, tu acceptes les CGU et la politique de confidentialité."
-        >
-          En créant ton compte, tu acceptes les{' '}
-          <Text
-            // L2-03 (C-06) : ouvre la surface publique du lecteur de document, sans session.
-            // L'enregistrement du consentement CGU AVEC SA VERSION reste un mécanisme distinct
-            // (VERSION_CGU_ACCEPTEE, src/services/auth/supabase.ts, déjà écrit à l'inscription
-            // depuis L1) — cette page ne fait que permettre de LIRE le texte, jamais l'accepter.
-            onPress={() => router.push('/(public)/documents/cgu' as Href)}
-            style={{ textDecorationLine: 'underline' }}
-          >
-            CGU
-          </Text>{' '}
-          et la{' '}
-          <Text
-            onPress={() => router.push('/(public)/documents/confidentialite' as Href)}
-            style={{ textDecorationLine: 'underline' }}
-          >
-            politique de confidentialité
+        {erreurDate ? (
+          <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
+            {erreurDate}
           </Text>
-          .
-        </Text>
-      </DefilementEcran>
-
-      <View
-        style={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[3],
-          paddingBottom: insets.bottom + theme.espace[3],
-          borderTopWidth: 1,
-          borderTopColor: theme.couleur.bordure.discrete,
-          backgroundColor: theme.couleur.fond.canevas,
-        }}
-      >
-        <Bouton
-          libelle="Créer mon compte"
-          variante="primaire"
-          onPress={surCreerCompte}
-          desactive={!formulaireRempli || chargement}
-        />
+        ) : null}
       </View>
-    </CanevasEcran>
+
+      <Text
+        style={{ ...theme.texte.legende, color: theme.couleur.texte.attenue }}
+        accessibilityLabel="En créant ton compte, tu acceptes les CGU et la politique de confidentialité."
+      >
+        En créant ton compte, tu acceptes les{' '}
+        <Text
+          // L2-03 (C-06) : ouvre la surface publique du lecteur de document, sans session.
+          // L'enregistrement du consentement CGU AVEC SA VERSION reste un mécanisme distinct
+          // (VERSION_CGU_ACCEPTEE, src/services/auth/supabase.ts, déjà écrit à l'inscription
+          // depuis L1) — cette page ne fait que permettre de LIRE le texte, jamais l'accepter.
+          onPress={() => router.push('/(public)/documents/cgu' as Href)}
+          style={{ textDecorationLine: 'underline' }}
+        >
+          CGU
+        </Text>{' '}
+        et la{' '}
+        <Text
+          onPress={() => router.push('/(public)/documents/confidentialite' as Href)}
+          style={{ textDecorationLine: 'underline' }}
+        >
+          politique de confidentialité
+        </Text>
+        .
+      </Text>
+    </CadreAuthentificationV2>
   );
 }

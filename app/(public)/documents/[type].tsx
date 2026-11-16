@@ -1,4 +1,5 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreFormulaireV2 } from '@/composants/presentation-v2';
+import { CanevasEcran } from '@/composants/canevas-ecran';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -64,31 +65,18 @@ export function CorpsDocumentLegal({ type }: { type: string | undefined }) {
   }
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <DefilementEcran
-        contentContainerStyle={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: insets.top + theme.espace[4],
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[3],
-        }}
-      >
-        <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-          {TITRES_DOCUMENTS[type]}
-        </Text>
-        <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.attenue }}>
-          Version du {formaterVersionDocument(VERSIONS_DOCUMENTS[type])}
-        </Text>
-        <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}>
-          {TEXTES_DOCUMENTS[type]}
-        </Text>
-      </DefilementEcran>
-
-      {/* Retour uniquement : aucune action d'acceptation ici, l'acceptation reste portée par le
-          geste qui la déclenche ailleurs (inscription, activation coach) — fiche, "Contenu —
-          surface publique". */}
-      {piedRetour}
-    </CanevasEcran>
+    <CadreFormulaireV2
+      surtitre="DOCUMENTS"
+      titre={TITRES_DOCUMENTS[type]}
+      alerte={<Bouton libelle="Retour" variante="secondaire" onPress={revenir} />}
+    >
+      <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.attenue }}>
+        Version du {formaterVersionDocument(VERSIONS_DOCUMENTS[type])}
+      </Text>
+      <Text style={{ ...theme.texte.v2LectureProfil, color: theme.couleur.texte.principal }}>
+        {TEXTES_DOCUMENTS[type]}
+      </Text>
+    </CadreFormulaireV2>
   );
 }
 

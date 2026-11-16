@@ -1,12 +1,11 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { Avatar } from '@/composants/avatar';
+import { useDispositionReferenceV2 } from '@/composants/presentation-v2';
+import { presentationV2 as mesure } from '@/theme/tokens';
+import { CadreTunnelV2 } from '@/composants/cadre-tunnel-v2';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
-import { BoutonIcone } from '@/composants/bouton-icone';
-import { Icone } from '@/composants/icones';
-import { Progression } from '@/composants/progression';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import type { ResultatConstat } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
@@ -87,7 +86,6 @@ export function EcranPaiement({
   onOuvrirConditions,
 }: ProprietesEcranPaiement) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const { port } = useDonnees();
 
   const [enCours, setEnCours] = useState<IntentionEnCours | null>(
@@ -236,164 +234,172 @@ export function EcranPaiement({
     etat.type === 'pret' || etat.type === 'expiree' || etat.type === 'demande_sans_reponse';
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <View
-        style={{
-          paddingTop: insets.top + theme.espace[2],
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[3],
-          gap: theme.espace[3],
-        }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.espace[3] }}>
-          <BoutonIcone nom="retour" accessibilityLabel="Retour" onPress={onRetour} />
-          <View style={{ flex: 1 }}>
-            <Text
-              accessibilityRole="header"
-              style={{ ...theme.texte.label, color: theme.couleur.texte.principal }}
-            >
-              Paiement
-            </Text>
-            <Text style={{ ...theme.texte.legende, color: theme.couleur.texte.attenue }}>
-              Étape 2 sur 2
-            </Text>
+    <CadreTunnelV2
+      etape={2}
+      surtitre="Dernière étape"
+      titre={'Tout est clair.\nAvant de t’engager.'}
+      description={
+        enCours ? `Voici le détail de ton abonnement avec ${enCours.coach.prenom}.` : undefined
+      }
+      onRetour={onRetour}
+      pied={
+        payerVisible || etat.type === 'non_terminee' ? (
+          <View style={{ gap: theme.espace[2] }}>
+            {etat.type === 'non_terminee' ? (
+              <Bouton
+                libelle="Reprendre le paiement"
+                variante="primaire"
+                onPress={() => void ouvrir(etat.urlPaiement)}
+              />
+            ) : recap ? (
+              <Bouton
+                libelle={`Payer ${euros(recap.totalCentimes)} €`}
+                variante="primaire"
+                onPress={() => void payer()}
+                desactive={!payerActif}
+              />
+            ) : null}
+            {etat.type !== 'non_terminee' ? (
+              <Text
+                style={{
+                  ...theme.texte.legende,
+                  color: theme.couleur.texte.attenue,
+                  textAlign: 'center',
+                }}
+              >
+                En continuant tu acceptes les{' '}
+                <Text
+                  accessibilityRole="link"
+                  onPress={onOuvrirConditions}
+                  style={{ textDecorationLine: 'underline' }}
+                >
+                  conditions d’abonnement
+                </Text>
+              </Text>
+            ) : null}
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.espace[1] }}>
-            <Icone nom="securite" couleur={theme.couleur.texte.secondaire} />
-            <Text style={{ ...theme.texte.legende, color: theme.couleur.texte.secondaire }}>
-              Sécurisé
-            </Text>
-          </View>
-        </View>
-        <Progression
-          variante="segments"
-          segments={['atteint', 'actuel']}
-          accessibilityLabel="Étape 2 sur 2"
-        />
-      </View>
+        ) : null
+      }
+    >
+      {etat.type === 'non_terminee' || etat.type === 'expiree' ? (
+        <Bandeau texte="Paiement non terminé. Rien n’a été débité." />
+      ) : null}
 
-      <DefilementEcran
-        contentContainerStyle={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[4],
-        }}
-      >
-        {etat.type === 'non_terminee' || etat.type === 'expiree' ? (
-          <Bandeau texte="Paiement non terminé. Rien n’a été débité." />
-        ) : null}
-
-        {enCours && recap ? (
+      {enCours && recap ? (
+        <View>
           <View
             style={{
-              borderRadius: theme.rayon.media,
-              backgroundColor: theme.couleur.fond.surface,
-              borderWidth: 1,
-              borderColor: theme.couleur.bordure.discrete,
-              padding: theme.espace[4],
-              gap: theme.espace[3],
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: theme.espace[4],
+              paddingBottom: theme.espace[6],
+              borderBottomWidth: mesure.bordure,
+              borderBottomColor: theme.couleur.bordure.marquee,
             }}
           >
-            <View style={{ gap: theme.espace[1] }}>
-              <Text style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal }}>
+            <Avatar nom={`${enCours.coach.prenom} ${enCours.coach.nom}`} taille="lg" />
+            <View style={{ flex: 1, gap: theme.espace[1] }}>
+              <Text style={{ ...theme.texte.v2NomResultat, color: theme.couleur.texte.principal }}>
                 {enCours.offre.titre}
               </Text>
-              <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-                {`${enCours.coach.prenom} ${enCours.coach.nom} · ${enCours.coach.discipline}`}
-              </Text>
+              <Text
+                style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}
+              >{`${enCours.coach.prenom} ${enCours.coach.nom} · ${enCours.coach.discipline}`}</Text>
             </View>
-            <Ligne libelle="Abonnement mensuel" valeur={`${euros(recap.prixCentimes)} €`} />
-            <Ligne libelle="À payer aujourd’hui" valeur={`${euros(recap.totalCentimes)} €`} fort />
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-              {`Puis le ${recap.jourPrelevement} de chaque mois · prochain prélèvement le ${dateLongue(recap.prochainPrelevementLe)}`}
-            </Text>
           </View>
-        ) : null}
-
-        {enCours ? (
-          <View style={{ gap: theme.espace[1] }}>
-            <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}>
-              Carte bancaire ou prélèvement SEPA
-            </Text>
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-              Tu choisiras sur la page de paiement sécurisée de notre prestataire.
-            </Text>
-          </View>
-        ) : null}
-
-        {/* Information précontractuelle (droit de rétractation) : emplacement réservé, rempli
-            seulement avec le texte validé par le juriste — aucun texte provisoire inventé (fiche,
-            Règles ; critère 8). Le tunnel ne passe pas en production sans lui. */}
-        {enCours ? <View testID="emplacement-retractation" /> : null}
-
-        <EtatRetour
-          etat={etat}
-          prenom={enCours?.coach.prenom ?? null}
-          onVerifier={() => {
-            setEtat({ type: 'constat_en_cours' });
-            void constater({ paiementRecu: 0, reseau: 0 });
-          }}
-          onVoirAbonnements={onVoirAbonnements}
-          onRevenirProfil={onRevenirProfil}
-        />
-      </DefilementEcran>
-
-      {payerVisible || etat.type === 'non_terminee' ? (
-        <View
-          style={{
-            paddingHorizontal: theme.espace.gouttiere,
-            paddingTop: theme.espace[3],
-            paddingBottom: insets.bottom + theme.espace[3],
-            gap: theme.espace[2],
-            borderTopWidth: 1,
-            borderTopColor: theme.couleur.bordure.discrete,
-          }}
-        >
-          {etat.type === 'non_terminee' ? (
-            <Bouton
-              libelle="Reprendre le paiement"
-              variante="primaire"
-              onPress={() => void ouvrir(etat.urlPaiement)}
-            />
-          ) : recap ? (
-            <Bouton
-              libelle={`Payer ${euros(recap.totalCentimes)} €`}
-              variante="primaire"
-              onPress={() => void payer()}
-              desactive={!payerActif}
-            />
-          ) : null}
-          {etat.type !== 'non_terminee' ? (
+          <View style={{ marginTop: mesure.paiementRecapAvant }}>
             <Text
               style={{
-                ...theme.texte.legende,
-                color: theme.couleur.texte.attenue,
-                textAlign: 'center',
+                ...theme.texte.v2TitreSection,
+                marginBottom: theme.espace[3],
+                color: theme.couleur.texte.principal,
               }}
             >
-              En continuant tu acceptes les{' '}
-              <Text
-                accessibilityRole="link"
-                onPress={onOuvrirConditions}
-                style={{ textDecorationLine: 'underline' }}
-              >
-                conditions d’abonnement
-              </Text>
+              Ton récapitulatif
             </Text>
-          ) : null}
+            <Ligne libelle="Abonnement mensuel" valeur={`${euros(recap.prixCentimes)} €`} />
+            <Ligne libelle="À payer aujourd’hui" valeur={`${euros(recap.totalCentimes)} €`} fort />
+            <View
+              style={{
+                marginTop: mesure.paiementRenouvellementAvant,
+                padding: theme.espace[4],
+                backgroundColor: theme.couleur.marque.primaireTeinte,
+                borderRadius: theme.rayon.carte,
+              }}
+            >
+              <Text
+                style={{ ...theme.texte.v2Corps, color: theme.couleur.marque.primaire }}
+              >{`Puis le ${recap.jourPrelevement} de chaque mois · prochain prélèvement le ${dateLongue(recap.prochainPrelevementLe)}`}</Text>
+            </View>
+          </View>
         </View>
       ) : null}
-    </CanevasEcran>
+
+      {enCours ? (
+        <View style={{ gap: theme.espace[3], marginTop: theme.espace[3] }}>
+          <Text style={{ ...theme.texte.v2Surtitre, color: theme.couleur.marque.primaire }}>
+            SUR LA PAGE DE PAIEMENT
+          </Text>
+          <Text style={{ ...theme.texte.v2NomResultat, color: theme.couleur.texte.principal }}>
+            Carte bancaire ou prélèvement SEPA
+          </Text>
+          <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+            Tu choisiras sur la page de paiement sécurisée de notre prestataire.
+          </Text>
+        </View>
+      ) : null}
+
+      {/* Information précontractuelle (droit de rétractation) : emplacement réservé, rempli
+            seulement avec le texte validé par le juriste — aucun texte provisoire inventé (fiche,
+            Règles ; critère 8). Le tunnel ne passe pas en production sans lui. */}
+      {enCours ? <View testID="emplacement-retractation" /> : null}
+
+      <EtatRetour
+        etat={etat}
+        prenom={enCours?.coach.prenom ?? null}
+        onVerifier={() => {
+          setEtat({ type: 'constat_en_cours' });
+          void constater({ paiementRecu: 0, reseau: 0 });
+        }}
+        onVoirAbonnements={onVoirAbonnements}
+        onRevenirProfil={onRevenirProfil}
+      />
+    </CadreTunnelV2>
   );
 }
 
 function Ligne({ libelle, valeur, fort }: { libelle: string; valeur: string; fort?: boolean }) {
   const theme = useTheme();
-  const style = fort ? theme.texte.titre3 : theme.texte.corps;
+  const { large } = useDispositionReferenceV2();
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.espace[2] }}>
-      <Text style={{ ...style, flex: 1, color: theme.couleur.texte.principal }}>{libelle}</Text>
-      <Text style={{ ...style, color: theme.couleur.texte.principal }}>{valeur}</Text>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        justifyContent: 'space-between',
+        gap: theme.espace[4],
+        paddingVertical: mesure.paiementLigneVertical,
+        marginTop: fort ? mesure.paiementTotalAvant : 0,
+        paddingTop: fort ? mesure.paiementTotalHaut : mesure.paiementLigneVertical,
+        borderTopWidth: fort ? mesure.bordure : 0,
+        borderTopColor: theme.couleur.bordure.marquee,
+      }}
+    >
+      <Text style={{ ...theme.texte.v2Corps, flex: 1, color: theme.couleur.texte.principal }}>
+        {libelle}
+      </Text>
+      <Text
+        style={{
+          ...(fort
+            ? large
+              ? theme.texte.v2TotalPaiementLarge
+              : theme.texte.v2TotalPaiement
+            : theme.texte.v2NomResultat),
+          color: fort ? theme.couleur.marque.primaire : theme.couleur.texte.principal,
+        }}
+      >
+        {valeur}
+      </Text>
     </View>
   );
 }

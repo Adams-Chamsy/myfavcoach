@@ -1,7 +1,7 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { InterrupteurV2 } from '@/composants/interrupteur-v2';
+import { CadreFormulaireV2 } from '@/composants/presentation-v2';
 import { useEffect, useState } from 'react';
-import { Switch, Text, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text, TextInput, View } from 'react-native';
 
 import { Bouton } from '@/composants/bouton';
 import { BoutonIcone } from '@/composants/bouton-icone';
@@ -66,7 +66,6 @@ export function EcranCreationOffre({
   onFermer: () => void;
 }) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const { port } = useDonnees();
 
   const [id, setId] = useState<string | undefined>(offreExistante?.id);
@@ -225,217 +224,223 @@ export function EcranCreationOffre({
       libelleDestructeur="Quitter"
       onDestructeur={() => sortieEnAttente?.reprendre()}
     >
-      <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-        <View
-          style={{
-            paddingTop: insets.top + theme.espace[3],
-            paddingHorizontal: theme.espace.gouttiere,
-            paddingBottom: theme.espace[2],
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: theme.espace[2],
-          }}
-        >
-          {/* A3 — maquette MyFavCoach-L2_dc.html, « Créer une offre » : ✕ · Nouvelle offre ·
+      <CadreFormulaireV2
+        reference="creation-offre"
+        surtitre={publieeLe ? 'OFFRE PUBLIÉE' : 'NOUVELLE OFFRE'}
+        titre={publieeLe ? 'Ton offre,\nen détail.' : 'Ce que tu fais.\nCe qu’ils reçoivent.'}
+        entete={
+          <>
+            <View
+              style={{
+                paddingTop: theme.espace[3],
+                paddingHorizontal: theme.espace.gouttiere,
+                paddingBottom: theme.espace[2],
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: theme.espace[2],
+              }}
+            >
+              {/* A3 — maquette MyFavCoach-L2_dc.html, « Créer une offre » : ✕ · Nouvelle offre ·
             Enregistrer. Sans la croix, le geste de retour était la seule sortie (iPhone, 2
             novembre 2026). */}
-          <BoutonIcone nom="fermer" accessibilityLabel="Fermer" onPress={onFermer} />
-          <Text
-            accessibilityRole="header"
-            style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal, flex: 1 }}
-          >
-            {offreExistante ? 'Modifier l’offre' : 'Nouvelle offre'}
-          </Text>
-          <Bouton
-            libelle="Enregistrer"
-            variante="discret"
-            onPress={() => void surEnregistrer()}
-            desactive={chargement}
-          />
-        </View>
-
-        {retour?.type === 'enregistre' ? (
-          <Text
-            accessibilityLiveRegion="polite"
+              <BoutonIcone nom="fermer" accessibilityLabel="Fermer" onPress={onFermer} />
+              <Text
+                accessibilityRole="header"
+                style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal, flex: 1 }}
+              >
+                {offreExistante ? 'Modifier l’offre' : 'Nouvelle offre'}
+              </Text>
+              <Bouton
+                libelle="Enregistrer"
+                variante="discret"
+                onPress={() => void surEnregistrer()}
+                desactive={chargement}
+              />
+            </View>
+          </>
+        }
+        alerte={
+          <View
             style={{
-              ...theme.texte.petit,
-              color: theme.couleur.texte.secondaire,
               paddingHorizontal: theme.espace.gouttiere,
-              paddingBottom: theme.espace[2],
-              textAlign: 'right',
+              paddingTop: theme.espace[3],
+              paddingBottom: theme.espace[3],
+              borderTopWidth: 1,
+              borderTopColor: theme.couleur.bordure.discrete,
+              gap: theme.espace[2],
             }}
           >
-            Brouillon enregistré.
-          </Text>
-        ) : null}
-        {retour?.type === 'echec' ? (
-          <View
-            accessibilityLiveRegion="polite"
-            style={{ paddingHorizontal: theme.espace.gouttiere, paddingBottom: theme.espace[2] }}
-          >
-            <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
-              {retour.titre}
-            </Text>
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
-              {retour.detail}
-            </Text>
-          </View>
-        ) : null}
-
-        <DefilementEcran
-          contentContainerStyle={{
-            paddingHorizontal: theme.espace.gouttiere,
-            paddingBottom: theme.espace[6],
-            gap: theme.espace[4],
-          }}
-        >
-          {retireeLe ? (
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-              Cette offre n’est plus en vente. Tes abonnés en cours gardent l’accès.
-            </Text>
-          ) : null}
-
-          <Champ libelle="Titre" valeur={titre} onChangeTexte={setTitre} desactive={chargement} />
-          <Champ
-            libelle="Description"
-            valeur={description}
-            onChangeTexte={setDescription}
-            desactive={chargement}
-          />
-
-          <View style={{ gap: theme.espace[1] }}>
-            <Champ
-              libelle="Prix mensuel (€)"
-              valeur={saisiePrix}
-              onChangeTexte={setSaisiePrix}
-              desactive={chargement}
-            />
-            {publieeLe ? (
-              <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.attenue }}>
-                Le prix est figé pour les abonnés déjà souscrits : un changement ici ne s’applique
-                qu’aux nouveaux.
+            {retour?.type === 'enregistre' ? (
+              <Text
+                accessibilityLiveRegion="polite"
+                style={{
+                  ...theme.texte.petit,
+                  color: theme.couleur.texte.secondaire,
+                  paddingHorizontal: theme.espace.gouttiere,
+                  paddingBottom: theme.espace[2],
+                  textAlign: 'right',
+                }}
+              >
+                Brouillon enregistré.
               </Text>
             ) : null}
-          </View>
-
-          <View style={{ gap: theme.espace[2] }}>
-            <Text style={{ ...theme.texte.label, color: theme.couleur.texte.attenue }}>
-              Ce que le client reçoit — {benefices.length} sur {NOMBRE_BENEFICES_MAX}
-            </Text>
-            {benefices.map((b, index) => (
-              <Chip
-                key={`${b}-${index}`}
-                variante="filtreRetirable"
-                libelle={b}
-                selectionne
-                onPress={() => {}}
-                onRetirer={() => setBenefices(benefices.filter((_, i) => i !== index))}
-                accessibilityLabelRetirer={`Retirer « ${b} »`}
-              />
-            ))}
-            {benefices.length < NOMBRE_BENEFICES_MAX ? (
-              <View style={{ flexDirection: 'row', gap: theme.espace[2] }}>
-                <TextInput
-                  value={nouveauBenefice}
-                  onChangeText={setNouveauBenefice}
-                  placeholder="Ajouter une ligne"
-                  style={{
-                    flex: 1,
-                    ...theme.texte.corps,
-                    color: theme.couleur.texte.principal,
-                    borderWidth: 1,
-                    borderColor: theme.couleur.bordure.discrete,
-                    borderRadius: theme.rayon.saisie,
-                    paddingHorizontal: theme.espace[3],
-                    paddingVertical: theme.espace[2],
-                  }}
-                />
-                <Bouton
-                  libelle="Ajouter"
-                  variante="secondaire"
-                  desactive={nouveauBenefice.trim() === ''}
-                  onPress={() => {
-                    setBenefices([...benefices, nouveauBenefice.trim()]);
-                    setNouveauBenefice('');
-                  }}
-                />
+            {retour?.type === 'echec' ? (
+              <View
+                accessibilityLiveRegion="polite"
+                style={{
+                  paddingHorizontal: theme.espace.gouttiere,
+                  paddingBottom: theme.espace[2],
+                }}
+              >
+                <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
+                  {retour.titre}
+                </Text>
+                <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
+                  {retour.detail}
+                </Text>
               </View>
             ) : null}
-          </View>
-
-          <View style={{ gap: theme.espace[2] }}>
-            <Text style={{ ...theme.texte.label, color: theme.couleur.texte.attenue }}>
-              Ce que tu fais toi-même
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.espace[2] }}>
-              {ENGAGEMENTS_POSSIBLES.map((e) => (
-                <Chip
-                  key={e}
-                  variante="selection"
-                  libelle={e}
-                  selectionne={engagements.includes(e)}
-                  onPress={() =>
-                    setEngagements(
-                      engagements.includes(e)
-                        ? engagements.filter((x) => x !== e)
-                        : [...engagements, e],
-                    )
-                  }
-                />
-              ))}
-            </View>
-          </View>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.espace[3] }}>
-            <Switch value={miseEnAvant} onValueChange={setMiseEnAvant} disabled={chargement} />
-            <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}>
-              Mise en avant (« LE PLUS CHOISI »)
-            </Text>
-          </View>
-        </DefilementEcran>
-
-        <View
-          style={{
-            paddingHorizontal: theme.espace.gouttiere,
-            paddingTop: theme.espace[3],
-            paddingBottom: insets.bottom + theme.espace[3],
-            borderTopWidth: 1,
-            borderTopColor: theme.couleur.bordure.discrete,
-            gap: theme.espace[2],
-          }}
-        >
-          {retour?.type === 'refus' ? (
-            <View accessibilityLiveRegion="polite" style={{ gap: theme.espace[1] }}>
-              <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
-                {retour.titre}
+            {retour?.type === 'refus' ? (
+              <View accessibilityLiveRegion="polite" style={{ gap: theme.espace[1] }}>
+                <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
+                  {retour.titre}
+                </Text>
+                <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
+                  {retour.detail}
+                </Text>
+              </View>
+            ) : null}
+            {!(publieeLe && !retireeLe) && raisonInactif ? (
+              <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+                {raisonInactif}
               </Text>
-              <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
-                {retour.detail}
-              </Text>
-            </View>
-          ) : null}
-          {!(publieeLe && !retireeLe) && raisonInactif ? (
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-              {raisonInactif}
+            ) : null}
+            {publieeLe && !retireeLe ? (
+              <Bouton
+                libelle="Retirer"
+                variante="secondaire"
+                onPress={() => void surRetirer()}
+                desactive={chargement}
+              />
+            ) : (
+              <Bouton
+                libelle="Publier"
+                variante="primaire"
+                onPress={() => void surPublier()}
+                desactive={!publicable || chargement}
+              />
+            )}
+          </View>
+        }
+      >
+        {retireeLe ? (
+          <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+            Cette offre n’est plus en vente. Tes abonnés en cours gardent l’accès.
+          </Text>
+        ) : null}
+
+        <Champ libelle="Titre" valeur={titre} onChangeTexte={setTitre} desactive={chargement} />
+        <Champ
+          libelle="Description"
+          valeur={description}
+          onChangeTexte={setDescription}
+          desactive={chargement}
+        />
+
+        <View style={{ gap: theme.espace[1] }}>
+          <Champ
+            libelle="Prix mensuel (€)"
+            valeur={saisiePrix}
+            onChangeTexte={setSaisiePrix}
+            desactive={chargement}
+          />
+          {publieeLe ? (
+            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.attenue }}>
+              Le prix est figé pour les abonnés déjà souscrits : un changement ici ne s’applique
+              qu’aux nouveaux.
             </Text>
           ) : null}
-          {publieeLe && !retireeLe ? (
-            <Bouton
-              libelle="Retirer"
-              variante="secondaire"
-              onPress={() => void surRetirer()}
-              desactive={chargement}
-            />
-          ) : (
-            <Bouton
-              libelle="Publier"
-              variante="primaire"
-              onPress={() => void surPublier()}
-              desactive={!publicable || chargement}
-            />
-          )}
         </View>
-      </CanevasEcran>
+
+        <View style={{ gap: theme.espace[2] }}>
+          <Text style={{ ...theme.texte.label, color: theme.couleur.texte.attenue }}>
+            Ce que le client reçoit — {benefices.length} sur {NOMBRE_BENEFICES_MAX}
+          </Text>
+          {benefices.map((b, index) => (
+            <Chip
+              key={`${b}-${index}`}
+              variante="filtreRetirable"
+              libelle={b}
+              selectionne
+              onPress={() => {}}
+              onRetirer={() => setBenefices(benefices.filter((_, i) => i !== index))}
+              accessibilityLabelRetirer={`Retirer « ${b} »`}
+            />
+          ))}
+          {benefices.length < NOMBRE_BENEFICES_MAX ? (
+            <View style={{ flexDirection: 'row', gap: theme.espace[2] }}>
+              <TextInput
+                value={nouveauBenefice}
+                onChangeText={setNouveauBenefice}
+                placeholder="Ajouter une ligne"
+                style={{
+                  flex: 1,
+                  ...theme.texte.corps,
+                  color: theme.couleur.texte.principal,
+                  borderWidth: 1,
+                  borderColor: theme.couleur.bordure.discrete,
+                  borderRadius: theme.rayon.saisie,
+                  paddingHorizontal: theme.espace[3],
+                  paddingVertical: theme.espace[2],
+                }}
+              />
+              <Bouton
+                libelle="Ajouter"
+                variante="secondaire"
+                desactive={nouveauBenefice.trim() === ''}
+                onPress={() => {
+                  setBenefices([...benefices, nouveauBenefice.trim()]);
+                  setNouveauBenefice('');
+                }}
+              />
+            </View>
+          ) : null}
+        </View>
+
+        <View style={{ gap: theme.espace[2] }}>
+          <Text style={{ ...theme.texte.label, color: theme.couleur.texte.attenue }}>
+            Ce que tu fais toi-même
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.espace[2] }}>
+            {ENGAGEMENTS_POSSIBLES.map((e) => (
+              <Chip
+                key={e}
+                variante="selection"
+                libelle={e}
+                selectionne={engagements.includes(e)}
+                onPress={() =>
+                  setEngagements(
+                    engagements.includes(e)
+                      ? engagements.filter((x) => x !== e)
+                      : [...engagements, e],
+                  )
+                }
+              />
+            ))}
+          </View>
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.espace[3] }}>
+          <InterrupteurV2
+            value={miseEnAvant}
+            onValueChange={setMiseEnAvant}
+            disabled={chargement}
+          />
+          <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.principal }}>
+            Mise en avant (« LE PLUS CHOISI »)
+          </Text>
+        </View>
+      </CadreFormulaireV2>
     </Modale>
   );
 }

@@ -758,7 +758,9 @@ const CORPUS: EntreeCorpus[] = [
     nom: 'app/(compte)/identifiants.tsx',
     creerElement: () => (
       <FournisseurSession key="identifiants" port={portAuthOnboarding}>
-        <Identifiants />
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <Identifiants />
+        </FournisseurDonnees>
       </FournisseurSession>
     ),
   },

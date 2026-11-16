@@ -1,3 +1,4 @@
+import { AccessoireCompteV2 } from '@/fonctionnalites/compte/cadre-compte-v2';
 import { useDispositionEcran } from '@/composants/canevas-ecran';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -72,6 +73,7 @@ export default function LayoutTabsCoach() {
         tabBar={(props) => (
           <BarreOngletsRoute
             variante="coach"
+            accessoire={large ? <AccessoireCompteV2 /> : undefined}
             entrees={ONGLETS}
             actionCentrale={{
               position: 2,

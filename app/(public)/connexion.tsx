@@ -1,9 +1,9 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreAuthentificationV2 } from '@/composants/presentation-v2';
+import { presentationV2 as mesure } from '@/theme/tokens';
 import type { Href } from 'expo-router';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { AccessibilityInfo, Pressable, Text, type TextInputInstance, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useParcoursVisiteur } from '@/fonctionnalites/accueil/fournisseur-parcours-visiteur';
 import { Bouton } from '@/composants/bouton';
@@ -23,7 +23,6 @@ function lienMotDePasseOublie(email: string): Href {
 
 export default function Connexion() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { retourCoach, oublierRetour } = useParcoursVisiteur();
   const params = useLocalSearchParams<{ email?: string }>();
@@ -78,120 +77,120 @@ export default function Connexion() {
   }
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <DefilementEcran
-        contentContainerStyle={{
-          paddingTop: insets.top + theme.espace[6],
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[4],
-        }}
-      >
-        {retourCoach ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              const id = retourCoach.coachId;
-              oublierRetour();
-              if (router.canGoBack?.()) router.back();
-              else router.replace(`/(public)/profil/${id}` as Href);
-            }}
-            style={{ minHeight: theme.taille.tapMin, justifyContent: 'center' }}
-          >
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.marque.primaire }}>
-              Retour au profil
-            </Text>
-          </Pressable>
-        ) : null}
-        <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-          Content de te revoir.
-        </Text>
-        {retourCoach ? (
-          <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-            Connecte-toi pour poursuivre. Tu retrouveras ensuite le profil du coach.
+    <CadreAuthentificationV2
+      titre={'Content de te revoir.'}
+      description="Retrouve tes coachs et ton accompagnement."
+      onRetour={() => {
+        if (router.canGoBack?.()) router.back();
+        else router.replace('/(public)');
+      }}
+      actions={
+        <>
+          <>
+            <Bouton
+              libelle="Se connecter"
+              variante="primaire"
+              onPress={surConnecter}
+              desactive={!formulaireRempli || chargement}
+            />
+            <View style={{ alignItems: 'flex-start', marginTop: mesure.connexionCompteMarge }}>
+              <Pressable
+                onPress={() => router.push('/(public)/inscription' as Href)}
+                disabled={chargement}
+                accessibilityRole="link"
+                style={{
+                  minHeight: theme.taille.tapMin,
+                  justifyContent: 'center',
+                  paddingHorizontal: theme.espace[3],
+                }}
+              >
+                <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.texte.secondaire }}>
+                  Pas encore de compte ·{' '}
+                  <Text
+                    style={{
+                      color: theme.couleur.marque.primaire,
+                      textDecorationLine: 'underline',
+                    }}
+                  >
+                    Créer un compte
+                  </Text>
+                </Text>
+              </Pressable>
+            </View>
+          </>
+        </>
+      }
+    >
+      {retourCoach ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            const id = retourCoach.coachId;
+            oublierRetour();
+            if (router.canGoBack?.()) router.back();
+            else router.replace(`/(public)/profil/${id}` as Href);
+          }}
+          style={{ minHeight: theme.taille.tapMin, justifyContent: 'center' }}
+        >
+          <Text style={{ ...theme.texte.petit, color: theme.couleur.marque.primaire }}>
+            Retour au profil
           </Text>
-        ) : null}
+        </Pressable>
+      ) : null}
+      {retourCoach ? (
+        <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+          Connecte-toi pour poursuivre. Tu retrouveras ensuite le profil du coach.
+        </Text>
+      ) : null}
 
+      <Champ
+        libelle="Adresse e-mail"
+        type="email"
+        valeur={email}
+        onChangeTexte={setEmail}
+        desactive={chargement}
+      />
+
+      <View style={{ gap: theme.espace[2] }}>
         <Champ
-          libelle="Adresse e-mail"
-          type="email"
-          valeur={email}
-          onChangeTexte={setEmail}
+          ref={refMotDePasse}
+          libelle="Mot de passe"
+          type="motDePasse"
+          valeur={motDePasse}
+          onChangeTexte={setMotDePasse}
           desactive={chargement}
         />
-
-        <View style={{ gap: theme.espace[2] }}>
-          <Champ
-            ref={refMotDePasse}
-            libelle="Mot de passe"
-            type="motDePasse"
-            valeur={motDePasse}
-            onChangeTexte={setMotDePasse}
-            desactive={chargement}
-          />
-          <Pressable
-            onPress={() => router.push(lienMotDePasseOublie(email))}
-            disabled={chargement}
-            accessibilityRole="link"
-            style={{ minHeight: theme.taille.tapMin, justifyContent: 'center' }}
-          >
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-              Mot de passe oublié
-            </Text>
-          </Pressable>
-        </View>
-
-        {messageEchec ? (
-          <View accessibilityLiveRegion="polite" style={{ gap: theme.espace[1] }}>
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
-              {messageEchec}
-            </Text>
-            {nombreEchecs >= SEUIL_ECHECS_AVANT_AIDE_REINITIALISATION ? (
-              <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-                Tu peux réinitialiser ton mot de passe.
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
-      </DefilementEcran>
-
-      <View
-        style={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[3],
-          paddingBottom: insets.bottom + theme.espace[3],
-          borderTopWidth: 1,
-          borderTopColor: theme.couleur.bordure.discrete,
-          backgroundColor: theme.couleur.fond.canevas,
-          gap: theme.espace[3],
-        }}
-      >
-        <Bouton
-          libelle="Se connecter"
-          variante="primaire"
-          onPress={surConnecter}
-          desactive={!formulaireRempli || chargement}
-        />
-        <View style={{ alignItems: 'center' }}>
-          <Pressable
-            onPress={() => router.push('/(public)/inscription' as Href)}
-            disabled={chargement}
-            accessibilityRole="link"
-            style={{
-              minHeight: theme.taille.tapMin,
-              justifyContent: 'center',
-              paddingHorizontal: theme.espace[3],
-            }}
-          >
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-              Pas encore de compte ·{' '}
-              <Text style={{ color: theme.couleur.marque.primaire, fontWeight: '700' }}>
-                Créer un compte
-              </Text>
-            </Text>
-          </Pressable>
-        </View>
+        <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}>
+          10 caractères minimum · {Math.min(motDePasse.length, 10)} sur 10
+        </Text>
+        <Pressable
+          onPress={() => router.push(lienMotDePasseOublie(email))}
+          disabled={chargement}
+          accessibilityRole="link"
+          style={{
+            minHeight: theme.taille.tapMin,
+            marginTop: mesure.connexionOubliMarge,
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={{ ...theme.texte.v2LabelChamp, color: theme.couleur.marque.primaire }}>
+            Mot de passe oublié
+          </Text>
+        </Pressable>
       </View>
-    </CanevasEcran>
+
+      {messageEchec ? (
+        <View accessibilityLiveRegion="polite" style={{ gap: theme.espace[1] }}>
+          <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
+            {messageEchec}
+          </Text>
+          {nombreEchecs >= SEUIL_ECHECS_AVANT_AIDE_REINITIALISATION ? (
+            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+              Tu peux réinitialiser ton mot de passe.
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+    </CadreAuthentificationV2>
   );
 }

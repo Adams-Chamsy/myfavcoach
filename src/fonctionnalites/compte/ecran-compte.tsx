@@ -1,4 +1,4 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { DefilementEcran, useDispositionEcran } from '@/composants/canevas-ecran';
 import Constants from 'expo-constants';
 import { useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
@@ -6,7 +6,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/composants/avatar';
-import { Carte } from '@/composants/carte';
+import { EntetePublicV2, FournisseurPresentationV2, FlecheV2 } from '@/composants/presentation-v2';
 import { EtatErreur } from '@/composants/etats/etat-erreur';
 import { BlocMesAbonnements } from '@/fonctionnalites/abonnement/bloc-mes-abonnements';
 import { textesRepliErreur } from '@/composants/etats/textes';
@@ -17,7 +17,7 @@ import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FeuilleBascule } from '@/fonctionnalites/identite/feuille-bascule';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { useTheme, type ThemeResolu } from '@/theme/fournisseur';
-import { themes } from '@/theme/tokens';
+import { themes, presentationV2 as mesure } from '@/theme/tokens';
 
 // Écran 24 « Mon compte et réglages » (docs/ecrans/L1-07-compte-reglages.md). Le MÊME écran
 // dans les deux espaces, même route relative « moi » : app/(client)/moi.tsx et
@@ -33,36 +33,47 @@ import { themes } from '@/theme/tokens';
 // cette liste, et « Supprimer mon compte » en dessous de « Se déconnecter » (styles distincts :
 // une déconnexion se répare en une reconnexion, une suppression non).
 
-type LigneReglage = { cle: string; libelle: string; icone: NomIcone; route: Href };
+type LigneReglage = {
+  cle: string;
+  libelle: string;
+  description: string;
+  icone: NomIcone;
+  route: Href;
+};
 
 const LIGNES_REGLAGES: LigneReglage[] = [
   {
     cle: 'informations',
     libelle: 'Mes informations',
+    description: 'Identité et profil',
     icone: 'profil',
     route: '/(compte)/informations' as Href,
   },
   {
     cle: 'identifiants',
     libelle: 'Adresse e-mail et mot de passe',
+    description: 'Sécurité du compte',
     icone: 'securite',
     route: '/(compte)/identifiants' as Href,
   },
   {
     cle: 'confidentialite',
     libelle: 'Mes autorisations',
+    description: 'Santé et communications',
     icone: 'information',
     route: '/(compte)/confidentialite' as Href,
   },
   {
     cle: 'documents',
     libelle: 'Documents contractuels',
+    description: 'Conditions et confidentialité',
     icone: 'document',
     route: '/(compte)/documents' as Href,
   },
   {
     cle: 'export',
     libelle: 'Exporter mes données',
+    description: 'Récupérer une copie',
     icone: 'document',
     route: '/(compte)/export' as Href,
   },
@@ -87,6 +98,7 @@ function ligneVersion() {
 
 export function EcranCompte() {
   const theme = useTheme();
+  const { large } = useDispositionEcran();
   // Onglet / route sous une navigation « headerShown: false » : rien au-dessus ne réserve la
   // barre d'état. Comme accueil.tsx et pilotage.tsx, l'écran pousse lui-même son premier
   // contenu sous l'encoche (src/test/accessibilite.test.tsx, ECRANS_CHROME_HAUT).
@@ -122,174 +134,233 @@ export function EcranCompte() {
         libelleDestructeur="Se déconnecter"
         onDestructeur={confirmerDeconnexion}
       >
-        <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-          <View
-            style={{
-              paddingTop: insets.top + theme.espace[2],
-              paddingHorizontal: theme.espace.gouttiere,
-              paddingBottom: theme.espace[2],
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: theme.espace[3],
-            }}
-          >
-            <Pressable
-              onPress={() => setFeuilleOuverte(true)}
-              accessibilityRole="button"
-              accessibilityLabel={`${nom || 'Mon compte'}, changer d'espace`}
-              style={{
-                minWidth: theme.taille.tapMin,
-                minHeight: theme.taille.tapMin,
-                alignItems: 'center',
-                justifyContent: 'center',
+        <FournisseurPresentationV2>
+          <View style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+            {!large ? (
+              <EntetePublicV2
+                accessoire={
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Mon compte, changer d’espace"
+                    onPress={() => setFeuilleOuverte(true)}
+                    style={{
+                      minHeight: theme.taille.tapMin,
+                      minWidth: theme.taille.tapMin,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Avatar nom={nom} taille="sm" />
+                  </Pressable>
+                }
+              />
+            ) : null}
+            <DefilementEcran
+              ample
+              contentContainerStyle={{
+                paddingHorizontal: large ? theme.espace[12] : mesure.enteteHorizontal,
+                paddingTop: large ? mesure.contenuLargePadding : theme.espace[6],
+                paddingBottom: insets.bottom + mesure.contenuBas,
               }}
             >
-              <Avatar nom={nom} taille="lg" />
-            </Pressable>
-            <View style={{ flex: 1, gap: theme.espace[1] }}>
-              <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-                {nom}
-              </Text>
-              <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-                {session?.email ?? ''}
-              </Text>
-            </View>
-          </View>
-
-          <DefilementEcran
-            contentContainerStyle={{
-              paddingHorizontal: theme.espace.gouttiere,
-              paddingTop: theme.espace[2],
-              paddingBottom: insets.bottom + theme.espace[6],
-              gap: theme.espace[4],
-            }}
-          >
-            <View style={{ gap: theme.espace[2], paddingVertical: theme.espace[4] }}>
-              <Text
-                accessibilityRole="header"
-                style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}
-              >
-                Mon compte.
-              </Text>
-              <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-                Tes accompagnements et tes réglages, au même endroit.
-              </Text>
-            </View>
-            {chargement ? (
-              <>
-                <Squelette forme="liste" />
-                <Squelette forme="carte" />
-              </>
-            ) : (
-              <>
-                {!profils ? (
-                  <EtatErreur
-                    titre={textesRepliErreur.serveur.titre}
-                    explication={textesRepliErreur.serveur.explication}
-                    nombreEchecs={0}
-                    onReessayer={() => {}}
-                  />
-                ) : null}
-
-                {/* L4-24b : entre l'en-tête et la liste de réglages, espace client seulement (les
-                    abonnés d'un coach sont une autre lecture, L7). */}
-                {profils?.profilActif === 'client' ? (
-                  <BlocMesAbonnements
-                    onRegler={(abonnementId) =>
-                      router.push(
-                        `/(client)/abonnement/${encodeURIComponent(abonnementId)}/refus` as Href,
-                      )
-                    }
-                  />
-                ) : null}
-
-                <Carte>
-                  {LIGNES_REGLAGES.map((ligne, index) => (
-                    <View key={ligne.cle}>
-                      {index > 0 ? (
-                        <View
-                          style={{ height: 1, backgroundColor: theme.couleur.bordure.discrete }}
-                        />
-                      ) : null}
-                      <Pressable
-                        onPress={() => router.push(ligne.route)}
-                        accessibilityRole="button"
-                        accessibilityLabel={ligne.libelle}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: theme.espace[3],
-                          paddingHorizontal: theme.espace[4],
-                          paddingVertical: theme.espace[4],
-                          minHeight: theme.taille.tapMin,
-                        }}
-                      >
-                        <Icone nom={ligne.icone} couleur={theme.couleur.texte.secondaire} />
-                        <Text
-                          style={{
-                            ...theme.texte.corps,
-                            flex: 1,
-                            color: theme.couleur.texte.principal,
-                          }}
-                        >
-                          {ligne.libelle}
-                        </Text>
-                        <Icone nom="suivant" couleur={theme.couleur.texte.attenue} />
-                      </Pressable>
-                    </View>
-                  ))}
-                </Carte>
-
-                <BlocEncre
-                  theme={theme}
-                  coachExiste={coachExiste}
-                  onPress={() => setFeuilleOuverte(true)}
-                />
-
-                <Pressable
-                  onPress={() => setConfirmationDeconnexion(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Se déconnecter"
-                  accessibilityHint="Ferme ta session. Il faudra te reconnecter avec ton mot de passe."
-                  style={{
-                    minHeight: theme.taille.tapMin,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text style={{ ...theme.texte.titre3, color: theme.couleur.etat.erreur }}>
-                    Se déconnecter
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => router.push('/(compte)/suppression' as Href)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Supprimer mon compte"
-                  style={{
-                    minHeight: theme.taille.tapMin,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreur }}>
-                    Supprimer mon compte
-                  </Text>
-                </Pressable>
-
+              <View style={{ marginBottom: mesure.enteteBas }}>
                 <Text
                   style={{
-                    ...theme.texte.legende,
-                    color: theme.couleur.texte.attenue,
-                    textAlign: 'center',
+                    ...theme.texte.v2Surtitre,
+                    color: theme.couleur.marque.primaire,
+                    marginBottom: mesure.titreHaut,
                   }}
                 >
-                  {ligneVersion()}
+                  {profils?.profilActif === 'coach' ? 'TON ESPACE COACH' : 'TON ESPACE CLIENT'}
                 </Text>
-              </>
-            )}
-          </DefilementEcran>
-        </CanevasEcran>
+                <Text
+                  accessibilityRole="header"
+                  style={{
+                    ...(large ? theme.texte.v2TitreAuthLarge : theme.texte.v2TitreAuth),
+                    color: theme.couleur.texte.principal,
+                  }}
+                >
+                  {profils?.profilActif === 'coach'
+                    ? 'Un compte.\nDeux façons d’avancer.'
+                    : 'À toi de choisir.'}
+                </Text>
+                {profils?.profilActif !== 'coach' ? (
+                  <Text
+                    style={{
+                      ...theme.texte.v2Corps,
+                      color: theme.couleur.texte.secondaire,
+                      marginTop: mesure.descriptionHaut,
+                    }}
+                  >
+                    Tes accompagnements et tes réglages, au même endroit.
+                  </Text>
+                ) : null}
+              </View>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: mesure.profilEspace,
+                  marginBottom: mesure.profilBas,
+                }}
+              >
+                <Pressable
+                  onPress={() => setFeuilleOuverte(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${nom || 'Mon compte'}, changer d'espace`}
+                  style={{
+                    minWidth: theme.taille.tapMin,
+                    minHeight: theme.taille.tapMin,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Avatar nom={nom} taille="lg" />
+                </Pressable>
+                <View style={{ flex: 1, gap: theme.espace[1] }}>
+                  <Text
+                    style={{ ...theme.texte.v2NomProfil, color: theme.couleur.texte.principal }}
+                  >
+                    {nom}
+                  </Text>
+                  <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}>
+                    {session?.email ?? ''}
+                  </Text>
+                </View>
+              </View>
+              <View style={{ gap: theme.espace[4] }}>
+                {chargement ? (
+                  <>
+                    <Squelette forme="liste" />
+                    <Squelette forme="carte" />
+                  </>
+                ) : (
+                  <>
+                    {!profils ? (
+                      <EtatErreur
+                        titre={textesRepliErreur.serveur.titre}
+                        explication={textesRepliErreur.serveur.explication}
+                        nombreEchecs={0}
+                        onReessayer={() => {}}
+                      />
+                    ) : null}
+
+                    {/* L4-24b : entre l'en-tête et la liste de réglages, espace client seulement (les
+                    abonnés d'un coach sont une autre lecture, L7). */}
+                    {profils?.profilActif === 'client' ? (
+                      <BlocMesAbonnements
+                        onRegler={(abonnementId) =>
+                          router.push(
+                            `/(client)/abonnement/${encodeURIComponent(abonnementId)}/refus` as Href,
+                          )
+                        }
+                      />
+                    ) : null}
+
+                    <View>
+                      {LIGNES_REGLAGES.map((ligne, index) => (
+                        <View key={ligne.cle}>
+                          {index > 0 ? (
+                            <View
+                              style={{ height: 1, backgroundColor: theme.couleur.bordure.marquee }}
+                            />
+                          ) : null}
+                          <Pressable
+                            onPress={() => router.push(ligne.route)}
+                            accessibilityRole="button"
+                            accessibilityLabel={ligne.libelle}
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: theme.espace[3],
+                              paddingHorizontal: 0,
+                              paddingVertical: mesure.reglageVertical,
+                              minHeight: mesure.reglageHauteur,
+                            }}
+                          >
+                            <Icone
+                              nom={ligne.icone}
+                              taille={mesure.icone}
+                              couleur={theme.couleur.texte.secondaire}
+                            />
+                            <View style={{ flex: 1, gap: theme.espace[1] }}>
+                              <Text
+                                style={{
+                                  ...theme.texte.v2LabelChamp,
+                                  fontSize: mesure.reglageTexte,
+                                  lineHeight: mesure.reglageInterligne,
+                                  color: theme.couleur.texte.principal,
+                                }}
+                              >
+                                {ligne.libelle}
+                              </Text>
+                              <Text
+                                style={{
+                                  ...theme.texte.v2Petit,
+                                  color: theme.couleur.texte.secondaire,
+                                }}
+                              >
+                                {ligne.description}
+                              </Text>
+                            </View>
+                            <FlecheV2 couleur={theme.couleur.texte.secondaire} />
+                          </Pressable>
+                        </View>
+                      ))}
+                    </View>
+
+                    <BlocEncre
+                      theme={theme}
+                      coachExiste={coachExiste}
+                      onPress={() => setFeuilleOuverte(true)}
+                    />
+
+                    <Pressable
+                      onPress={() => setConfirmationDeconnexion(true)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Se déconnecter"
+                      accessibilityHint="Ferme ta session. Il faudra te reconnecter avec ton mot de passe."
+                      style={{
+                        minHeight: mesure.reglageHauteur,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{ ...theme.texte.titre3, color: theme.couleur.etat.erreur }}>
+                        Se déconnecter
+                      </Text>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => router.push('/(compte)/suppression' as Href)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Supprimer mon compte"
+                      style={{
+                        minHeight: mesure.reglageHauteur,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.etat.erreur }}>
+                        Supprimer mon compte
+                      </Text>
+                    </Pressable>
+
+                    <Text
+                      style={{
+                        ...theme.texte.legende,
+                        color: theme.couleur.texte.attenue,
+                        textAlign: 'center',
+                      }}
+                    >
+                      {ligneVersion()}
+                    </Text>
+                  </>
+                )}
+              </View>
+            </DefilementEcran>
+          </View>
+        </FournisseurPresentationV2>
       </Modale>
     </FeuilleBascule>
   );

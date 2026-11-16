@@ -102,7 +102,7 @@ export default function Pilotage() {
       { libelle: 'Vérifier ton identité', fait: true, route: '/(coach)/creer/offre' },
     ];
     titre = `Bienvenue ${profils.identiteActive.prenom}`;
-    contenu = <PremierLancement lignes={lignes} />;
+    contenu = <PremierLancement lignes={lignes} prenom={profils.identiteActive.prenom} />;
   } else {
     contenu = (
       <>

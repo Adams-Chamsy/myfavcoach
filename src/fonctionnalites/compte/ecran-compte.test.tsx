@@ -72,7 +72,7 @@ async function rendreEcran(
   );
   portDonnees.definirAbonnementsPourTest(abonnements);
 
-  render(
+  await render(
     <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
       <FournisseurTheme>
         <FournisseurSession port={portAuth}>

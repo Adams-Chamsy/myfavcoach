@@ -130,6 +130,6 @@ describe('OnboardingIdentite (docs/ecrans/L1-05-onboarding-client.md, étape 1/4
     await rendreEcran(portDonnees);
 
     await waitFor(() => expect(screen.getByLabelText('Prénom').props.value).toBe('Camille'));
-    expect(screen.getByLabelText('Nom').props.value).toBe('Dupont');
+    expect(screen.getByLabelText('Nom (facultatif)').props.value).toBe('Dupont');
   });
 });

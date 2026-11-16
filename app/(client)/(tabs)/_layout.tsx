@@ -1,3 +1,4 @@
+import { AccessoireCompteV2 } from '@/fonctionnalites/compte/cadre-compte-v2';
 import { useDispositionEcran } from '@/composants/canevas-ecran';
 import { Tabs } from 'expo-router/js-tabs';
 
@@ -29,7 +30,14 @@ export default function LayoutTabsClient() {
   return (
     <Tabs
       screenOptions={{ headerShown: false, tabBarPosition: large ? 'top' : 'bottom' }}
-      tabBar={(props) => <BarreOngletsRoute variante="client" entrees={ONGLETS} {...props} />}
+      tabBar={(props) => (
+        <BarreOngletsRoute
+          variante="client"
+          entrees={ONGLETS}
+          accessoire={large ? <AccessoireCompteV2 /> : undefined}
+          {...props}
+        />
+      )}
     >
       <Tabs.Screen name="accueil" />
       <Tabs.Screen name="explorer" />

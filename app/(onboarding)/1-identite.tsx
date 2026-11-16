@@ -1,8 +1,7 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreFormulaireV2 } from '@/composants/presentation-v2';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
 import { Champ } from '@/composants/champ';
@@ -23,7 +22,6 @@ const LONGUEUR_PRENOM_MAX = 40;
 // avec le nom (facultatif, jamais affiché publiquement au client).
 export default function OnboardingIdentite() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   // creerProfilClient vient du fournisseur (une écriture d'EtatProfils, enveloppée) : elle
   // active l'espace client, ce que la feuille de bascule doit lire juste après.
@@ -68,66 +66,67 @@ export default function OnboardingIdentite() {
   }
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <EnteteOnboarding etape={1} desactive={chargement} />
-
-      <DefilementEcran
-        contentContainerStyle={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[2],
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[4],
-        }}
-      >
-        <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-          Comment on t’appelle ?
-        </Text>
-
-        <Champ libelle="Prénom" valeur={prenom} onChangeTexte={setPrenom} desactive={chargement} />
-
-        <Champ
-          libelle="Nom"
-          valeur={nom}
-          onChangeTexte={setNom}
-          desactive={chargement}
-          placeholder="Facultatif"
-        />
-      </DefilementEcran>
-
-      {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
+    <CadreFormulaireV2
+      reference="identite"
+      surtitre="FAISONS CONNAISSANCE"
+      titre="Comment on t’appelle ?"
+      description="Le prénom est la seule information obligatoire de cette étape."
+      entete={
+        <>
+          <EnteteOnboarding etape={1} desactive={chargement} />
+        </>
+      }
+      alerte={
+        erreur ? (
+          <View
+            accessibilityLiveRegion="polite"
+            style={{ paddingHorizontal: theme.espace.gouttiere, paddingTop: theme.espace[2] }}
+          >
+            <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
+              {textesRepliErreur.serveur.titre}
+            </Text>
+            <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
+              {textesRepliErreur.serveur.explication}
+            </Text>
+          </View>
+        ) : null
+      }
+      actions={
+        <>
+          {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
           (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B). Le repli serveur, titre et
           détail, jamais le texte du port. */}
-      {erreur ? (
-        <View
-          accessibilityLiveRegion="polite"
-          style={{ paddingHorizontal: theme.espace.gouttiere, paddingTop: theme.espace[2] }}
-        >
-          <Text style={{ ...theme.texte.label, color: theme.couleur.etat.erreurEncre }}>
-            {textesRepliErreur.serveur.titre}
-          </Text>
-          <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
-            {textesRepliErreur.serveur.explication}
-          </Text>
-        </View>
-      ) : null}
 
-      <View
-        style={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingTop: theme.espace[3],
-          paddingBottom: insets.bottom + theme.espace[3],
-          borderTopWidth: 1,
-          borderTopColor: theme.couleur.bordure.discrete,
-          backgroundColor: theme.couleur.fond.canevas,
-        }}
-      >
-        <Bouton
-          libelle="Continuer"
-          variante="primaire"
-          onPress={surContinuer}
-          desactive={!prenomValide || chargement}
-        />
+          <>
+            <Bouton
+              libelle="Continuer"
+              variante="primaire"
+              onPress={surContinuer}
+              desactive={!prenomValide || chargement}
+            />
+          </>
+        </>
+      }
+    >
+      <View style={{ flexDirection: 'row', gap: theme.espace[3] }}>
+        <View style={{ flex: 1 }}>
+          <Champ
+            libelle="Prénom"
+            valeur={prenom}
+            onChangeTexte={setPrenom}
+            desactive={chargement}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Champ
+            libelle="Nom (facultatif)"
+            valeur={nom}
+            onChangeTexte={setNom}
+            desactive={chargement}
+            placeholder="Facultatif"
+          />
+        </View>
       </View>
-    </CanevasEcran>
+    </CadreFormulaireV2>
   );
 }

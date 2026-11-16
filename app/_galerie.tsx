@@ -1,3 +1,4 @@
+import { useLocalSearchParams, Link, useRouter, type Href } from 'expo-router';
 import Presentation from './(public)/presentation';
 import { SignatureMarque } from '@/fonctionnalites/accueil/ouverture-marque';
 import type { ReactNode } from 'react';
@@ -5,7 +6,9 @@ import { useEffect, useState } from 'react';
 import { ScrollView, Switch, Text, View } from 'react-native';
 
 import { Avatar, type TailleAvatar } from '@/composants/avatar';
-import { BarreNavigation } from '@/composants/barre-navigation';
+import { useDispositionEcran } from '@/composants/canevas-ecran';
+import { AccessoireCompteV2 } from '@/fonctionnalites/compte/cadre-compte-v2';
+import { BarreNavigation, type ElementNavigation } from '@/composants/barre-navigation';
 import { Badge, type StatutBadge } from '@/composants/badge';
 import { Bouton } from '@/composants/bouton';
 import { BoutonIcone } from '@/composants/bouton-icone';
@@ -97,6 +100,7 @@ import type { StyleOmbre } from '@/theme/types';
 // vraiment la route du bundle de production est resolver.blockList dans metro.config.js
 // (verifie par `npx expo export -p web` + `grep -r "_galerie" dist/`, critere d'acceptation 2).
 export default function Galerie() {
+  const { ecran } = useLocalSearchParams<{ ecran?: string }>();
   const [themeClair, setThemeClair] = useState(true);
   const [mouvementReduitForce, setMouvementReduitForce] = useState(false);
 
@@ -105,12 +109,16 @@ export default function Galerie() {
   return (
     <FournisseurTheme themeForce={themeClair ? 'clair' : 'sombre'}>
       <FournisseurMouvementReduit force={mouvementReduitForce}>
-        <Corps
-          themeClair={themeClair}
-          onChangeThemeClair={setThemeClair}
-          mouvementReduitForce={mouvementReduitForce}
-          onChangeMouvementReduitForce={setMouvementReduitForce}
-        />
+        {ecran ? (
+          <ApercuPleinEcran identifiant={ecran} />
+        ) : (
+          <Corps
+            themeClair={themeClair}
+            onChangeThemeClair={setThemeClair}
+            mouvementReduitForce={mouvementReduitForce}
+            onChangeMouvementReduitForce={setMouvementReduitForce}
+          />
+        )}
       </FournisseurMouvementReduit>
     </FournisseurTheme>
   );
@@ -2205,6 +2213,118 @@ function DemonstrationOuverture() {
           </Text>
         )}
       </View>
+    </View>
+  );
+}
+
+// La même instance d'écran que dans les vignettes, sans cadre ni rognage. Ce mode de
+// développement permet les comparaisons géométriques à la taille réelle de la fenêtre.
+/** Le rendu isolé rétablit le chrome fourni par les layouts d’onglets réels. */
+function ChromeApercuV2({ identifiant, children }: { identifiant: string; children: ReactNode }) {
+  const { large } = useDispositionEcran();
+  const router = useRouter();
+  const coach = /^(l2-09-|l2-11-)/.test(identifiant);
+  const client = /^(l1-07-|l3-01-|l3-02-|l3-03-)/.test(identifiant);
+  if (!coach && !client) return <>{children}</>;
+  const liens: { icone: NomIcone; libelle: string; route: Href }[] = coach
+    ? [
+        { icone: 'pilotage', libelle: 'Pilotage', route: '/(coach)/(tabs)/pilotage' },
+        { icone: 'clients', libelle: 'Clients', route: '/(coach)/(tabs)/clients' },
+        { icone: 'ajouter', libelle: 'Créer', route: '/(coach)/creer/offre' },
+        { icone: 'agenda', libelle: 'Agenda', route: '/(coach)/(tabs)/agenda' },
+        { icone: 'virement', libelle: 'Revenus', route: '/(coach)/(tabs)/revenus' },
+      ]
+    : [
+        { icone: 'accueil', libelle: 'Accueil', route: '/(client)/(tabs)/accueil' },
+        { icone: 'recherche', libelle: 'Explorer', route: '/(client)/(tabs)/explorer' },
+        { icone: 'seance', libelle: 'Séance', route: '/(client)/(tabs)/seance' },
+        { icone: 'message', libelle: 'Messages', route: '/(client)/(tabs)/messages' },
+        { icone: 'profil', libelle: 'Moi', route: '/(client)/(tabs)/moi' },
+      ];
+  const actif = coach
+    ? 'Pilotage'
+    : identifiant.startsWith('l1-07-')
+      ? 'Moi'
+      : /^l3-0[23]-/.test(identifiant)
+        ? 'Explorer'
+        : 'Accueil';
+  const elements: ElementNavigation[] = liens.map((l) => ({
+    icone: l.icone,
+    libelle: l.libelle,
+    actif: l.libelle === actif,
+    misEnAvant: coach && l.libelle === 'Créer',
+    onPress: () => router.push(l.route),
+  }));
+  const barre = (
+    <BarreNavigation
+      variante={coach ? 'coach' : 'client'}
+      elements={elements}
+      accessoire={large ? <AccessoireCompteV2 /> : undefined}
+    />
+  );
+  return (
+    <View style={{ flex: 1 }}>
+      {large ? barre : null}
+      <View style={{ flex: 1 }}>{children}</View>
+      {!large ? barre : null}
+    </View>
+  );
+}
+
+function ApercuPleinEcran({ identifiant }: { identifiant: string }) {
+  const theme = useTheme();
+  const [session, setSession] = useState<Awaited<
+    ReturnType<typeof creerSessionDemonstration>
+  > | null>(null);
+  useEffect(() => {
+    let monte = true;
+    void creerSessionDemonstration().then(async (s) => {
+      if (identifiant.startsWith('l1-03-')) await s.portAuth.deconnecter();
+      if (monte) setSession(s);
+    });
+    return () => {
+      monte = false;
+    };
+  }, [identifiant]);
+  const ecrans = [...ECRANS_L1, ...ECRANS_L2, ...ECRANS_L3, ...ECRANS_L3BIS, ...ECRANS_L4];
+  const slug = (titre: string) =>
+    titre
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/-$/, '');
+  const ecran = ecrans.find((e) => slug(e.titre) === identifiant);
+  if (!ecran)
+    return (
+      <ScrollView contentContainerStyle={{ padding: theme.espace[6], gap: theme.espace[3] }}>
+        {ecrans.map((e) => (
+          <Link
+            key={e.titre}
+            href={{ pathname: '/_galerie', params: { ecran: slug(e.titre) } }}
+            style={{
+              ...theme.texte.corps,
+              color: theme.couleur.marque.primaire,
+              minHeight: theme.taille.tapMin,
+            }}
+          >
+            {e.titre}
+          </Link>
+        ))}
+      </ScrollView>
+    );
+  if (!session) return null;
+  return (
+    <View
+      testID="apercu-plein-ecran"
+      accessibilityLabel={ecran.titre}
+      style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}
+    >
+      <FournisseurSession port={session.portAuth}>
+        <FournisseurDonnees port={session.portDonnees}>
+          <ChromeApercuV2 identifiant={identifiant}>{ecran.rendu()}</ChromeApercuV2>
+        </FournisseurDonnees>
+      </FournisseurSession>
     </View>
   );
 }

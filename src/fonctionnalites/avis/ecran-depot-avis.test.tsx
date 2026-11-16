@@ -78,9 +78,11 @@ const accepter = (port: FauxPort) =>
 describe('L4-27a · Déposer ou modifier un avis', () => {
   // Contenu : en-tête, carte du coach, « Suivi depuis {durée} » (correction 1), les trois blocs,
   // l'encart qui annonce prénom, initiale du nom et durée (correction 2, critère 5).
-  it('dépôt : « Ton avis », le coach, « Suivi depuis 4 mois », les trois blocs et l’encart de publication', async () => {
+  it('dépôt : le titre V2, le coach, « Suivi depuis 4 mois », les trois blocs et l’encart de publication', async () => {
     await rendre(POSSIBLE);
-    await waitFor(() => expect(screen.queryByText('Ton avis')).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.queryByRole('header', { name: 'Comment ça se passe ?' })).toBeTruthy(),
+    );
     await waitFor(() => expect(screen.queryByText('Yannick Berthaud')).toBeTruthy());
     expect(screen.getByText('Suivi depuis 4 mois')).toBeTruthy();
     expect(screen.getByText('Comment ça se passe ?')).toBeTruthy();

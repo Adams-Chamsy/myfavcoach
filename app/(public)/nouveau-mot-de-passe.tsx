@@ -1,9 +1,8 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreAuthentificationV2 } from '@/composants/presentation-v2';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
 import { Champ } from '@/composants/champ';
@@ -31,7 +30,6 @@ function messageErreur(erreur: ErreurAuth): string {
 
 export default function NouveauMotDePasse() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { port } = useSession();
 
@@ -106,103 +104,91 @@ export default function NouveauMotDePasse() {
   }
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <DefilementEcran
-        contentContainerStyle={{
-          paddingTop: insets.top + theme.espace[6],
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[4],
-        }}
-      >
-        <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-          Choisis un nouveau mot de passe.
+    <CadreAuthentificationV2
+      titre={'Choisis un nouveau\nmot de passe.'}
+      description="Entre 10 et 72 caractères."
+      onRetour={() => {
+        if (router.canGoBack?.()) router.back();
+        else router.replace('/(public)/connexion');
+      }}
+      actions={
+        <>
+          {etat.type === 'pret' ? (
+            <>
+              <Bouton
+                libelle="Valider"
+                variante="primaire"
+                onPress={surValider}
+                desactive={motDePasse === '' || chargement}
+              />
+            </>
+          ) : null}
+        </>
+      }
+    >
+      {etat.type === 'attente' ? (
+        <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
+          On prépare ton lien…
         </Text>
+      ) : null}
 
-        {etat.type === 'attente' ? (
-          <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
-            On prépare ton lien…
-          </Text>
-        ) : null}
-
-        {etat.type === 'lien_expire' ? (
-          <View
-            accessibilityLiveRegion="polite"
-            style={{
-              gap: theme.espace[3],
-              padding: theme.espace[4],
-              borderRadius: theme.rayon.feuille,
-              backgroundColor: theme.couleur.etat.erreurTeinte,
-              borderWidth: 1,
-              borderColor: theme.couleur.etat.erreurBordure,
-            }}
-          >
-            <Text style={{ ...theme.texte.actionAccent, color: theme.couleur.etat.erreurEncre }}>
-              Ce lien a expiré
-            </Text>
-            <Bouton
-              variante="primaire"
-              libelle="M’en renvoyer un"
-              onPress={() => router.replace('/(public)/mot-de-passe-oublie')}
-            />
-          </View>
-        ) : null}
-
-        {etat.type === 'erreur' ? (
-          <View
-            accessibilityLiveRegion="polite"
-            style={{
-              gap: theme.espace[2],
-              padding: theme.espace[4],
-              borderRadius: theme.rayon.feuille,
-              backgroundColor: theme.couleur.etat.erreurTeinte,
-              borderWidth: 1,
-              borderColor: theme.couleur.etat.erreurBordure,
-            }}
-          >
-            <Text style={{ ...theme.texte.corps, color: theme.couleur.etat.erreurEncre }}>
-              {messageErreur(etat.erreur)}
-            </Text>
-          </View>
-        ) : null}
-
-        {etat.type === 'pret' ? (
-          <Champ
-            libelle="Nouveau mot de passe"
-            type="motDePasse"
-            valeur={motDePasse}
-            onChangeTexte={(valeur) => {
-              setMotDePasse(valeur);
-              if (erreurMotDePasse) setErreurMotDePasse(undefined);
-            }}
-            onBlur={() => {
-              if (motDePasse !== '') validerMotDePasse(motDePasse);
-            }}
-            messageErreur={erreurMotDePasse}
-            desactive={chargement}
-          />
-        ) : null}
-      </DefilementEcran>
-
-      {etat.type === 'pret' ? (
+      {etat.type === 'lien_expire' ? (
         <View
+          accessibilityLiveRegion="polite"
           style={{
-            paddingHorizontal: theme.espace.gouttiere,
-            paddingTop: theme.espace[3],
-            paddingBottom: insets.bottom + theme.espace[3],
-            borderTopWidth: 1,
-            borderTopColor: theme.couleur.bordure.discrete,
-            backgroundColor: theme.couleur.fond.canevas,
+            gap: theme.espace[3],
+            padding: theme.espace[4],
+            borderRadius: theme.rayon.feuille,
+            backgroundColor: theme.couleur.etat.erreurTeinte,
+            borderWidth: 1,
+            borderColor: theme.couleur.etat.erreurBordure,
           }}
         >
+          <Text style={{ ...theme.texte.actionAccent, color: theme.couleur.etat.erreurEncre }}>
+            Ce lien a expiré
+          </Text>
           <Bouton
-            libelle="Valider"
             variante="primaire"
-            onPress={surValider}
-            desactive={motDePasse === '' || chargement}
+            libelle="M’en renvoyer un"
+            onPress={() => router.replace('/(public)/mot-de-passe-oublie')}
           />
         </View>
       ) : null}
-    </CanevasEcran>
+
+      {etat.type === 'erreur' ? (
+        <View
+          accessibilityLiveRegion="polite"
+          style={{
+            gap: theme.espace[2],
+            padding: theme.espace[4],
+            borderRadius: theme.rayon.feuille,
+            backgroundColor: theme.couleur.etat.erreurTeinte,
+            borderWidth: 1,
+            borderColor: theme.couleur.etat.erreurBordure,
+          }}
+        >
+          <Text style={{ ...theme.texte.corps, color: theme.couleur.etat.erreurEncre }}>
+            {messageErreur(etat.erreur)}
+          </Text>
+        </View>
+      ) : null}
+
+      {etat.type === 'pret' ? (
+        <Champ
+          libelle="Nouveau mot de passe"
+          type="motDePasse"
+          valeur={motDePasse}
+          onChangeTexte={(valeur) => {
+            setMotDePasse(valeur);
+            if (erreurMotDePasse) setErreurMotDePasse(undefined);
+          }}
+          onBlur={() => {
+            if (motDePasse !== '') validerMotDePasse(motDePasse);
+          }}
+          messageErreur={erreurMotDePasse}
+          desactive={chargement}
+        />
+      ) : null}
+    </CadreAuthentificationV2>
   );
 }

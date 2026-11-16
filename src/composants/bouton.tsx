@@ -1,3 +1,5 @@
+import { FlecheV2, usePresentationV2 } from './presentation-v2';
+import { presentationV2 as mesure } from '@/theme/tokens';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
@@ -121,6 +123,7 @@ export function Bouton({
   previsualiserEtat,
 }: ProprietesBouton) {
   const theme = useTheme();
+  const presentationV2 = usePresentationV2();
   const {
     actif: mouvementReduitActif,
     appui: dureeAppui,
@@ -134,17 +137,24 @@ export function Bouton({
   const echelle = useSharedValue(1);
 
   const couleurs = couleursVariante(theme, variante);
-  const fond = desactive ? couleurs.fondDesactive : estPresse ? couleurs.fondPresse : couleurs.fond;
-  const texte = desactive
-    ? couleurs.texteDesactive
-    : estPresse
-      ? (couleurs.textePresse ?? couleurs.texte)
-      : couleurs.texte;
-  const bordure = desactive
-    ? couleurs.bordureDesactive
-    : estPresse
-      ? (couleurs.bordurePresse ?? couleurs.bordure)
-      : couleurs.bordure;
+  const fond =
+    desactive && !presentationV2
+      ? couleurs.fondDesactive
+      : estPresse
+        ? couleurs.fondPresse
+        : couleurs.fond;
+  const texte =
+    desactive && !presentationV2
+      ? couleurs.texteDesactive
+      : estPresse
+        ? (couleurs.textePresse ?? couleurs.texte)
+        : couleurs.texte;
+  const bordure =
+    desactive && !presentationV2
+      ? couleurs.bordureDesactive
+      : estPresse
+        ? (couleurs.bordurePresse ?? couleurs.bordure)
+        : couleurs.bordure;
 
   const styleAnime = useAnimatedStyle(() => ({ transform: [{ scale: echelle.value }] }));
 
@@ -204,19 +214,27 @@ export function Bouton({
             alignItems: 'center',
             justifyContent: 'center',
             gap: theme.espace[2],
-            minHeight: theme.taille.tapDefaut,
-            paddingHorizontal: theme.espace[6],
-            paddingVertical: theme.espace[3],
+            minHeight: presentationV2 ? mesure.actionHauteur : theme.taille.tapDefaut,
+            paddingHorizontal: presentationV2 ? mesure.actionHorizontal : theme.espace[6],
+            paddingVertical: presentationV2 ? mesure.actionVertical : theme.espace[3],
             borderRadius: theme.rayon.bouton,
             backgroundColor: fond,
-            borderWidth: bordure ? EPAISSEUR_BORDURE_SECONDAIRE : 0,
-            borderColor: bordure,
+            borderWidth:
+              presentationV2 && variante !== 'discret'
+                ? mesure.bordure
+                : bordure
+                  ? EPAISSEUR_BORDURE_SECONDAIRE
+                  : 0,
+            borderColor: presentationV2 ? (bordure ?? fond) : bordure,
+            opacity: presentationV2 && desactive ? mesure.actionOpaciteDesactivee : 1,
           }}
         >
           {icone ? <Icone nom={icone} taille={18} couleur={texte} /> : null}
           <Text
             style={{
-              ...theme.texte.actionAccent,
+              ...(presentationV2 && variante !== 'accent'
+                ? theme.texte.v2Bouton
+                : theme.texte.actionAccent),
               color: texte,
               flexShrink: 1,
               textAlign: 'center',
@@ -224,6 +242,7 @@ export function Bouton({
           >
             {libelle}
           </Text>
+          {presentationV2 && !icone && variante !== 'discret' ? <FlecheV2 couleur={texte} /> : null}
         </Pressable>
       </View>
     </Animated.View>

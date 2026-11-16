@@ -1,8 +1,10 @@
-import { DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreTunnelV2 } from '@/composants/cadre-tunnel-v2';
+import { useDispositionReferenceV2 } from '@/composants/presentation-v2';
+import { presentationV2 as mesure } from '@/theme/tokens';
 import { useCallback, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Avatar } from '@/composants/avatar';
 import { Bouton } from '@/composants/bouton';
 import { EtatErreur } from '@/composants/etats/etat-erreur';
 import { textesRepliErreur } from '@/composants/etats/textes';
@@ -58,7 +60,7 @@ export function phraseEngagement(engagements: string[]): string | null {
 
 export function EcranConfirmation({ abonnementId, onVoirProfil }: ProprietesEcranConfirmation) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
+  const { large } = useDispositionReferenceV2();
   const { port } = useDonnees();
   const [etat, setEtat] = useState<Etat>({ type: 'lecture' });
 
@@ -117,36 +119,52 @@ export function EcranConfirmation({ abonnementId, onVoirProfil }: ProprietesEcra
         : { libelle: 'Carte', valeur: chiffres.trim() || '—' };
     const engagement = phraseEngagement(d.offreEngagementHumain);
     return (
-      <View style={{ gap: theme.espace[6] }}>
-        <View style={{ alignItems: 'center', gap: theme.espace[3] }}>
+      <View
+        style={{
+          flexDirection: large ? 'row' : 'column',
+          gap: large ? mesure.tunnelColonnes : theme.espace[6],
+        }}
+      >
+        <View style={{ flex: 1, gap: theme.espace[3] }}>
           <View
             style={{
-              width: theme.taille.tapMin,
-              height: theme.taille.tapMin,
+              width: large ? mesure.confirmationPastilleLarge : mesure.confirmationPastille,
+              height: large ? mesure.confirmationPastilleLarge : mesure.confirmationPastille,
+              marginBottom: large
+                ? mesure.confirmationPastilleLargeApres
+                : mesure.confirmationPastilleApres,
               borderRadius: theme.rayon.pilule,
-              backgroundColor: theme.couleur.etat.succesTeinte,
+              backgroundColor: enAttente
+                ? theme.couleur.marque.secondaire
+                : theme.couleur.marque.primaire,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Icone nom="valide" couleur={theme.couleur.etat.succesEncre} />
+            <Icone
+              nom={enAttente ? 'agenda' : 'valide'}
+              couleur={
+                enAttente ? theme.couleur.marque.secondaireEncre : theme.couleur.texte.surMarque
+              }
+            />
           </View>
+          <Text style={{ ...theme.texte.v2Surtitre, color: theme.couleur.marque.primaire }}>
+            {enAttente ? 'DEMANDE ENREGISTRÉE' : 'ABONNEMENT CONFIRMÉ'}
+          </Text>
           <Text
             accessibilityRole="header"
             style={{
-              ...theme.texte.titre2,
+              ...(large ? theme.texte.v2TitreConfirmationLarge : theme.texte.v2TitreConfirmation),
               color: theme.couleur.texte.principal,
-              textAlign: 'center',
             }}
           >
-            {enAttente ? 'Ta demande est enregistrée' : `C’est parti avec ${d.coachPrenom}`}
+            {enAttente ? 'Ta demande\nest enregistrée.' : `C’est parti\navec ${d.coachPrenom}.`}
           </Text>
           {enAttente ? (
             <Text
               style={{
-                ...theme.texte.corps,
+                ...theme.texte.v2Corps,
                 color: theme.couleur.texte.secondaire,
-                textAlign: 'center',
               }}
             >
               {`Ton prélèvement de ${euros(montant)} € est en cours auprès de ta banque. Ton suivi avec ${d.coachPrenom} commence dès qu’elle l’a confirmé.`}
@@ -154,23 +172,53 @@ export function EcranConfirmation({ abonnementId, onVoirProfil }: ProprietesEcra
           ) : engagement ? (
             <Text
               style={{
-                ...theme.texte.corps,
+                ...theme.texte.v2Corps,
                 color: theme.couleur.texte.secondaire,
-                textAlign: 'center',
               }}
             >
               {engagement}
             </Text>
           ) : null}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: theme.espace[3],
+              marginTop: mesure.confirmationCoachAvant,
+              paddingTop: mesure.confirmationCoachHaut,
+              borderTopWidth: mesure.bordure,
+              borderTopColor: theme.couleur.bordure.marquee,
+            }}
+          >
+            <Avatar nom={`${d.coachPrenom} ${d.coachNom}`} taille="lg" />
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{ ...theme.texte.v2NomResultat, color: theme.couleur.texte.principal }}
+              >{`${d.coachPrenom} ${d.coachNom}`}</Text>
+              {d.coachCommuneBase ? (
+                <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}>
+                  {d.coachCommuneBase}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+          {large ? (
+            <Bouton
+              libelle={`Voir le profil de ${d.coachPrenom}`}
+              variante="primaire"
+              onPress={() => onVoirProfil(d.coachId)}
+            />
+          ) : null}
         </View>
 
         <View
           style={{
-            borderRadius: theme.rayon.media,
+            width: large ? mesure.tunnelAside : undefined,
+            borderRadius: mesure.tunnelOffreRayon,
             backgroundColor: theme.couleur.fond.surface,
-            borderWidth: 1,
+            borderWidth: mesure.bordure,
             borderColor: theme.couleur.bordure.discrete,
-            padding: theme.espace[4],
+            padding: theme.espace[6],
             gap: theme.espace[3],
           }}
         >
@@ -180,7 +228,7 @@ export function EcranConfirmation({ abonnementId, onVoirProfil }: ProprietesEcra
             Tu peux arrêter quand tu veux, l’arrêt prend effet à la fin du mois payé.
           </Text>
           <View style={{ gap: theme.espace[1] }}>
-            <Text style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal }}>
+            <Text style={{ ...theme.texte.v2TitreOffre, color: theme.couleur.texte.principal }}>
               {d.offreTitre}
             </Text>
             <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
@@ -197,28 +245,18 @@ export function EcranConfirmation({ abonnementId, onVoirProfil }: ProprietesEcra
           ) : null}
           <Ligne libelle={ligneMoyen.libelle} valeur={ligneMoyen.valeur} />
         </View>
-
-        <Bouton
-          libelle={`Voir le profil de ${d.coachPrenom}`}
-          variante="primaire"
-          onPress={() => onVoirProfil(d.coachId)}
-        />
+        {!large ? (
+          <Bouton
+            libelle={`Voir le profil de ${d.coachPrenom}`}
+            variante="primaire"
+            onPress={() => onVoirProfil(d.coachId)}
+          />
+        ) : null}
       </View>
     );
   })();
 
-  return (
-    <DefilementEcran
-      style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}
-      contentContainerStyle={{
-        paddingTop: insets.top + theme.espace[6],
-        paddingHorizontal: theme.espace.gouttiere,
-        paddingBottom: insets.bottom + theme.espace[6],
-      }}
-    >
-      {contenu}
-    </DefilementEcran>
-  );
+  return <CadreTunnelV2>{contenu}</CadreTunnelV2>;
 }
 
 function Ligne({ libelle, valeur, fort }: { libelle: string; valeur: string; fort?: boolean }) {

@@ -32,7 +32,7 @@ async function rendre(
   portDonnees: ReturnType<typeof creerFauxPortDonnees>,
 ) {
   const portAuth = creerFauxPortAuth();
-  render(
+  await render(
     <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
       <FournisseurTheme>
         <FournisseurSession port={portAuth}>
@@ -87,7 +87,7 @@ describe('Arrivée par invitation (docs/ecrans/L3bis-I02-arrivee-par-invitation.
     await rendre('jeton-reel', port);
 
     await waitFor(() =>
-      expect(screen.queryByText("Yannick t'invite à te suivre ici")).toBeTruthy(),
+      expect(screen.queryByText('Yannick t’invite à te suivre ici.')).toBeTruthy(),
     );
     expect(screen.getByText('Suivi complet')).toBeTruthy();
     expect(screen.getByText(/49 €/)).toBeTruthy();

@@ -208,6 +208,7 @@ describe('DevenirCoach (docs/ecrans/L1-08-activation-espace-coach.md)', () => {
 
     const AUTORISES = new Set([
       '@/composants/canevas-ecran',
+      '@/composants/presentation-v2', // Cadre visuel V2 ; les ports autorisés restent identiques.
       'expo-router',
       'react',
       'react-native',

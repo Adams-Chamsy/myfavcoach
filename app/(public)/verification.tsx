@@ -1,4 +1,4 @@
-import { CanevasEcran } from '@/composants/canevas-ecran';
+import { CadreFormulaireV2 } from '@/composants/presentation-v2';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -157,12 +157,13 @@ export default function Verification() {
   }
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
+    <CadreFormulaireV2
+      reference="verification-email"
+      surtitre="VÉRIFICATION DU COMPTE"
+      titre="Regarde tes e-mails."
+    >
       <View
         style={{
-          flex: 1,
-          justifyContent: 'center',
-          padding: theme.espace.gouttiere,
           gap: theme.espace[6],
         }}
       >
@@ -174,7 +175,7 @@ export default function Verification() {
           />
         ) : null}
 
-        <View style={{ alignItems: 'center', gap: theme.espace[4] }}>
+        <View style={{ alignItems: 'flex-start', gap: theme.espace[4] }}>
           <View
             style={{
               width: TAILLE_PASTILLE,
@@ -190,19 +191,8 @@ export default function Verification() {
 
           <Text
             style={{
-              ...theme.texte.titre1,
-              color: theme.couleur.texte.principal,
-              textAlign: 'center',
-            }}
-          >
-            Regarde tes e-mails.
-          </Text>
-
-          <Text
-            style={{
-              ...theme.texte.corps,
+              ...theme.texte.v2Corps,
               color: theme.couleur.texte.secondaire,
-              textAlign: 'center',
             }}
           >
             On a envoyé un lien à{' '}
@@ -302,7 +292,7 @@ export default function Verification() {
           <Bouton variante="discret" libelle="Se connecter" onPress={surSeConnecter} />
         </View>
       </View>
-    </CanevasEcran>
+    </CadreFormulaireV2>
   );
 }
 
@@ -343,7 +333,7 @@ function EtatErreurRenvoi({
     >
       <Icone nom="alerte" taille={theme.taille.icone} couleur={theme.couleur.etat.erreur} />
       <View style={{ flex: 1, gap: theme.espace[3] }}>
-        <Text style={{ ...theme.texte.corps, color: theme.couleur.etat.erreurEncre }}>
+        <Text style={{ ...theme.texte.v2Corps, color: theme.couleur.etat.erreurEncre }}>
           {messageErreur(erreur)}
         </Text>
         <Bouton

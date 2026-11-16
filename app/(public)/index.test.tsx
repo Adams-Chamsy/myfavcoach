@@ -32,7 +32,7 @@ async function rendre(presentation = false) {
 describe('accueil visiteur et présentation validés', () => {
   it('permet de découvrir sans compte et sans passer par la présentation', async () => {
     await rendre();
-    await fireEvent.press(screen.getByText('Découvrir les coachs'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Découvrir les coachs' }));
     expect(mockPousser).toHaveBeenCalledWith('/(public)/decouvrir');
   });
   it('garde la présentation facultative et la connexion explicites', async () => {
@@ -60,8 +60,8 @@ describe('accueil visiteur et présentation validés', () => {
     expect(screen.getByText('Compare les offres.')).toBeTruthy();
     await fireEvent.press(screen.getByText('Suivant'));
     expect(screen.getByText('Choisis ton accompagnement.')).toBeTruthy();
-    expect(screen.getByText('Étape 3 sur 3')).toBeTruthy();
-    await fireEvent.press(screen.getByText('Découvrir les coachs'));
+    expect(screen.getByLabelText('Étape 3 sur 3')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Découvrir les coachs' }));
     expect(mockRemplacer).toHaveBeenCalledWith('/(public)/decouvrir');
   });
   it('permet de passer et de revenir sans compléter le carrousel', async () => {
@@ -69,9 +69,9 @@ describe('accueil visiteur et présentation validés', () => {
     await fireEvent.press(screen.getByText('Passer'));
     expect(mockRetour).toHaveBeenCalled();
     await fireEvent.press(screen.getByLabelText('Étape 2 : Compare les offres.'));
-    expect(screen.getByText('Étape 2 sur 3')).toBeTruthy();
+    expect(screen.getByLabelText('Étape 2 sur 3')).toBeTruthy();
     await fireEvent.press(screen.getByLabelText('Étape précédente'));
-    expect(screen.getByText('Étape 1 sur 3')).toBeTruthy();
+    expect(screen.getByLabelText('Étape 1 sur 3')).toBeTruthy();
   });
   it('ne tronque pas le titre et préserve les cibles de connexion et coach', async () => {
     await rendre();

@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 
+import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
+import { creerFauxPortDonnees } from '@/services/donnees/faux';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
 import { FournisseurTheme } from '@/theme/fournisseur';
@@ -37,13 +39,15 @@ async function rendre(options: { avecChangementEnAttente?: boolean } = {}) {
     <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
       <FournisseurTheme>
         <FournisseurSession port={portAuth}>
-          <Identifiants />
+          <FournisseurDonnees port={creerFauxPortDonnees()}>
+            <Identifiants />
+          </FournisseurDonnees>
         </FournisseurSession>
       </FournisseurTheme>
     </SafeAreaProvider>,
   );
 
-  await waitFor(() => expect(screen.queryByText('Adresse e-mail et mot de passe')).toBeTruthy());
+  await waitFor(() => expect(screen.queryByText('Tes accès, sous contrôle.')).toBeTruthy());
   return { portAuth };
 }
 

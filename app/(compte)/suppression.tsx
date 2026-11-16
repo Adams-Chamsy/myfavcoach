@@ -1,11 +1,10 @@
-import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
+import { CadreCompteV2 } from '@/fonctionnalites/compte/cadre-compte-v2';
+import { presentationV2 as mesure } from '@/theme/tokens';
 import { useRouter, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
-import { BoutonIcone } from '@/composants/bouton-icone';
 import { Champ } from '@/composants/champ';
 import { EtatErreur } from '@/composants/etats/etat-erreur';
 import { textesRepliErreur } from '@/composants/etats/textes';
@@ -33,7 +32,6 @@ function texteAbonnementsActifs(prenoms: (string | null)[]): string {
 
 export default function Suppression() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { port, profils } = useDonnees();
   const { port: portAuth } = useSession();
@@ -92,37 +90,31 @@ export default function Suppression() {
   }
 
   return (
-    <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.espace[3],
-          paddingTop: insets.top + theme.espace[2],
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[3],
-        }}
-      >
-        <BoutonIcone nom="retour" accessibilityLabel="Retour" onPress={() => router.back()} />
-        <Text style={{ ...theme.texte.titre1, color: theme.couleur.texte.principal }}>
-          Ce qui disparaît, et quand.
-        </Text>
-      </View>
-
-      <DefilementEcran
-        contentContainerStyle={{
-          paddingHorizontal: theme.espace.gouttiere,
-          paddingBottom: theme.espace[6],
-          gap: theme.espace[4],
-        }}
-      >
+    <CadreCompteV2
+      surtitre="UNE DÉCISION IMPORTANTE"
+      titre={'Ce qui disparaît,\net quand.'}
+      description=""
+      alerte={
+        erreur ? (
+          <View accessibilityLiveRegion="polite">
+            <EtatErreur
+              titre={textesRepliErreur.serveur.titre}
+              explication={textesRepliErreur.serveur.explication}
+              nombreEchecs={0}
+              onReessayer={() => void surSupprimer()}
+            />
+          </View>
+        ) : null
+      }
+    >
+      <View style={{ gap: mesure.champEspace }}>
         <View style={{ flexDirection: 'row', gap: theme.espace[3] }}>
           <Icone nom="fermer" couleur={theme.couleur.etat.erreur} />
           <View style={{ flex: 1 }}>
             <Text style={{ ...theme.texte.label, color: theme.couleur.texte.principal }}>
               Tout de suite
             </Text>
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+            <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}>
               Ton profil, tes objectifs, ton poids, tes mesures et tes échanges.
             </Text>
           </View>
@@ -133,7 +125,7 @@ export default function Suppression() {
             <Text style={{ ...theme.texte.label, color: theme.couleur.texte.principal }}>
               Conservé 10 ans
             </Text>
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+            <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}>
               Tes factures, parce que la loi l’exige. Elles ne contiennent aucune donnée de santé.
             </Text>
           </View>
@@ -144,21 +136,21 @@ export default function Suppression() {
             <Text style={{ ...theme.texte.label, color: theme.couleur.texte.principal }}>
               À récupérer avant
             </Text>
-            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+            <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.texte.secondaire }}>
               Tu peux exporter tes données. Après suppression, ce n’est plus possible.
             </Text>
           </View>
         </View>
 
         {profils?.profilActif === 'coach' && offresPubliees ? (
-          <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
+          <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.etat.erreurEncre }}>
             Tes offres sont retirées ; tes abonnés en cours gardent l’accès jusqu’à la fin de leur
             période payée.
           </Text>
         ) : null}
 
         {profils?.profilActif === 'client' && coachsActifs.length > 0 ? (
-          <Text style={{ ...theme.texte.petit, color: theme.couleur.etat.erreurEncre }}>
+          <Text style={{ ...theme.texte.v2Petit, color: theme.couleur.etat.erreurEncre }}>
             {texteAbonnementsActifs(coachsActifs)}
           </Text>
         ) : null}
@@ -176,30 +168,19 @@ export default function Suppression() {
           onChangeTexte={setMotif}
           desactive={chargement}
         />
-      </DefilementEcran>
+      </View>
 
       {/* Hors de la zone de défilement : un message d'erreur doit être dans le champ de vision
           (2 novembre 2026, docs/prompts/defauts-L2-iphone.md, partie B). « Réessayer » relance
           vraiment l'envoi ; le détail est le repli serveur, jamais le texte du port, qui
           répétait le titre. */}
-      <View style={{ paddingHorizontal: theme.espace.gouttiere }}>
-        {erreur ? (
-          <View accessibilityLiveRegion="polite">
-            <EtatErreur
-              titre={textesRepliErreur.serveur.titre}
-              explication={textesRepliErreur.serveur.explication}
-              nombreEchecs={0}
-              onReessayer={() => void surSupprimer()}
-            />
-          </View>
-        ) : null}
-      </View>
+      <View style={{ paddingHorizontal: 0 }}></View>
 
       <View
         style={{
-          paddingHorizontal: theme.espace.gouttiere,
+          paddingHorizontal: 0,
           paddingTop: theme.espace[3],
-          paddingBottom: insets.bottom + theme.espace[3],
+          paddingBottom: 0,
           gap: theme.espace[2],
         }}
       >
@@ -216,6 +197,6 @@ export default function Suppression() {
           desactive={!pretAConfirmer || chargement}
         />
       </View>
-    </CanevasEcran>
+    </CadreCompteV2>
   );
 }

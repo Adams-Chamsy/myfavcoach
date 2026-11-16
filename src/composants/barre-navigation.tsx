@@ -1,10 +1,12 @@
+import type { ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { Marque } from '@/composants/marque';
 import { useDispositionEcran } from '@/composants/canevas-ecran';
 import { Icone, type NomIcone } from '@/composants/icones';
+import { SvgXml } from 'react-native-svg';
 import { useTheme } from '@/theme/fournisseur';
-import { font, themes } from '@/theme/tokens';
+import { font, themes, presentationV2 as mesure } from '@/theme/tokens';
 
 export type ElementNavigation = {
   icone: NomIcone;
@@ -25,6 +27,8 @@ export type ElementNavigation = {
 
 export type ProprietesBarreNavigation = {
   variante: 'client' | 'coach';
+  dansEntete?: boolean;
+  accessoire?: ReactNode;
   elements: ElementNavigation[];
   // Marge basse issue des zones sures du systeme (useSafeAreaInsets), jamais codee en dur ici
   // (docs/ecrans/L0-01-coquille-client.md : "lues depuis les zones sûres du système, jamais
@@ -46,32 +50,60 @@ function libelleOnglet(element: ElementNavigation, index: number, total: number)
   return segments.join(', ');
 }
 
-export function BarreNavigation({ variante, elements, paddingBas = 0 }: ProprietesBarreNavigation) {
+const tracesNavigationV2: Partial<Record<NomIcone, string>> = {
+  accueil: '<path d="m3 10 9-7 9 7v11h-6v-7H9v7H3z"/>',
+  recherche: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
+  seance: '<rect x="4" y="4" width="16" height="17" rx="2"/><path d="M8 2v4m8-4v4M8 11h8m-8 5h5"/>',
+  message: '<path d="M21 11a9 9 0 0 1-9 9H4l-2 2V11a9 9 0 0 1 19 0Z"/>',
+  profil: '<circle cx="12" cy="8" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/>',
+  pilotage: '<path d="m3 10 9-7 9 7v11h-6v-7H9v7H3z"/>',
+  clients:
+    '<circle cx="9" cy="7" r="3"/><path d="M2 21v-3a7 7 0 0 1 14 0v3M16 4a3 3 0 0 1 0 6m3 4a5 5 0 0 1 3 5v2"/>',
+  ajouter: '<path d="M12 4v16M4 12h16"/>',
+  agenda: '<rect x="4" y="4" width="16" height="17" rx="2"/><path d="M8 2v4m8-4v4M8 11h8m-8 5h5"/>',
+  virement: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/>',
+};
+
+export function BarreNavigation({
+  variante,
+  elements,
+  paddingBas = 0,
+  dansEntete = false,
+  accessoire,
+}: ProprietesBarreNavigation) {
   const theme = useTheme();
   const { large } = useDispositionEcran();
-  // La navigation coach V2 est une surface claire fixe, fond et contenu toujours pairés.
   const couleurs = variante === 'coach' ? themes.clair : theme.couleur;
   return (
     <View
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        width: '100%',
-        alignSelf: 'center',
-        maxWidth: large ? theme.taille.contenu : undefined,
+        justifyContent: 'space-between',
+        flex: dansEntete ? 1 : undefined,
+        width: dansEntete ? undefined : '100%',
+        alignSelf: dansEntete ? undefined : 'center',
+        maxWidth: undefined,
+        minHeight: large && !dansEntete ? mesure.enteteLarge : undefined,
         backgroundColor: couleurs.fond.canevas,
         borderTopWidth: large ? 0 : theme.taille.bordureFine,
-        borderBottomWidth: large ? theme.taille.bordureFine : 0,
-        borderColor: couleurs.bordure.discrete,
-        paddingHorizontal: large ? theme.espace[8] : theme.espace[2],
-        paddingTop: theme.espace[3],
-        paddingBottom: large ? theme.espace[3] : theme.espace[4] + paddingBas,
-        gap: large ? theme.espace[6] : 0,
+        borderBottomWidth: large && !dansEntete ? theme.taille.bordureFine : 0,
+        borderColor: couleurs.bordure.marquee,
+        paddingHorizontal: dansEntete ? 0 : large ? theme.espace[8] : mesure.navigationHorizontal,
+        paddingTop: dansEntete ? 0 : large ? theme.espace[3] : mesure.navigationHaut,
+        paddingBottom: dansEntete
+          ? 0
+          : large
+            ? theme.espace[3]
+            : Math.max(mesure.navigationBas, paddingBas),
+        gap: large ? theme.espace[2] : 0,
       }}
     >
-      {large ? <Marque surFondClair={variante === 'coach'} /> : null}
+      {large && !dansEntete ? <Marque surFondClair={variante === 'coach'} /> : null}
       {elements.map((element, index) => {
         const couleur = element.actif ? couleurs.marque.primaire : couleurs.texte.secondaire;
+        const trace = tracesNavigationV2[element.icone];
+        const halo = element.misEnAvant ? mesure.navigationHaloCreation : mesure.navigationHalo;
         return (
           <Pressable
             key={index}
@@ -82,39 +114,55 @@ export function BarreNavigation({ variante, elements, paddingBas = 0 }: Propriet
             }
             accessibilityLabel={libelleOnglet(element, index, elements.length)}
             style={{
-              flex: 1,
-              minHeight: theme.taille.tapMin,
+              flex: large ? 1 : undefined,
+              opacity: 1,
+              minWidth: mesure.navigationLargeur,
+              minHeight: mesure.navigationCible,
               alignItems: 'center',
               justifyContent: 'center',
-              gap: theme.espace[1],
-              opacity: 1,
+              gap: mesure.navigationEspace,
+              paddingHorizontal: large ? theme.espace[3] : 0,
+              paddingVertical: large ? theme.espace[2] : 0,
             }}
           >
             {!large || element.misEnAvant ? (
               <View
-                style={
-                  element.misEnAvant
-                    ? {
-                        width: theme.taille.tapMin,
-                        height: theme.taille.tapMin,
-                        borderRadius: theme.rayon.pilule,
-                        backgroundColor: couleurs.marque.primaire,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }
-                    : {
-                        paddingHorizontal: theme.espace[2],
-                        paddingVertical: theme.espace[1],
-                        borderRadius: theme.rayon.champ,
-                        backgroundColor: element.actif ? couleurs.marque.primaireTeinte : undefined,
-                      }
-                }
+                style={{
+                  width: mesure.navigationIcone,
+                  height: mesure.navigationIcone,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: element.misEnAvant ? theme.espace[1] : 0,
+                }}
               >
-                <Icone
-                  nom={element.icone}
-                  couleur={element.misEnAvant ? couleurs.texte.surMarque : couleur}
-                  actif={element.actif}
-                />
+                {element.actif || element.misEnAvant ? (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      left: -halo,
+                      top: -halo,
+                      width: mesure.navigationIcone + halo * 2,
+                      height: mesure.navigationIcone + halo * 2,
+                      borderRadius: element.misEnAvant ? theme.rayon.pilule : theme.rayon.badge,
+                      backgroundColor: element.misEnAvant
+                        ? couleurs.marque.primaire
+                        : couleurs.marque.primaireTeinte,
+                    }}
+                  />
+                ) : null}
+                {trace ? (
+                  <SvgXml
+                    width={mesure.navigationIcone}
+                    height={mesure.navigationIcone}
+                    xml={`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${element.misEnAvant ? couleurs.texte.surMarque : couleur}" stroke-width="${mesure.iconeTrait}" stroke-linecap="round" stroke-linejoin="round">${trace}</svg>`}
+                  />
+                ) : (
+                  <Icone
+                    nom={element.icone}
+                    taille={mesure.navigationIcone}
+                    couleur={element.misEnAvant ? couleurs.texte.surMarque : couleur}
+                  />
+                )}
                 {element.pastilleNonLus ? (
                   <View
                     style={{
@@ -132,8 +180,11 @@ export function BarreNavigation({ variante, elements, paddingBas = 0 }: Propriet
             ) : null}
             <Text
               style={{
-                ...theme.texte.legende,
-                fontFamily: element.actif ? font.uiBold : font.uiSemibold,
+                fontFamily: element.actif || element.misEnAvant ? font.uiBold : font.uiRegular,
+                fontSize: large ? mesure.navigationLabelLarge : mesure.navigationLabel,
+                lineHeight:
+                  (large ? mesure.navigationLabelLarge : mesure.navigationLabel) *
+                  mesure.navigationLabelInterligne,
                 color: element.misEnAvant ? couleurs.marque.primaire : couleur,
               }}
             >
@@ -142,8 +193,11 @@ export function BarreNavigation({ variante, elements, paddingBas = 0 }: Propriet
             {large && element.actif ? (
               <View
                 style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: theme.espace[3],
+                  right: theme.espace[3],
                   height: theme.taille.bordureFine,
-                  alignSelf: 'stretch',
                   backgroundColor: couleurs.marque.primaire,
                 }}
               />
@@ -151,6 +205,7 @@ export function BarreNavigation({ variante, elements, paddingBas = 0 }: Propriet
           </Pressable>
         );
       })}
+      {accessoire}
     </View>
   );
 }

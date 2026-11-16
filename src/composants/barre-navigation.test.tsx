@@ -85,32 +85,22 @@ describe('BarreNavigation', () => {
     }
   });
 
-  // Critere 3 (docs/ecrans/L0-01-coquille-client.md) : identifiable "sans la couleur" —
-  // epaisseur de trait de l'icone (iconeTraitActif vs iconeTrait) et graisse du libelle.
-  it("distingue l'onglet actif par l'epaisseur du trait et le poids du libelle, pas par la seule couleur", async () => {
+  // V2 validée : halo et graisse du libellé, avec un état sélectionné explicite.
+  // Les traits sont désormais ceux de la référence V2, de même épaisseur sur les cinq icônes.
+  it('distingue l’onglet actif par son halo, son libellé gras et son état sélectionné', async () => {
     const { toJSON } = await rendreBarre({ variante: 'client', elements: elementsClient(0) });
-
-    const arbre = toJSON();
-    const traitActif = trouver(
-      arbre,
-      (n) => n.type === 'RNSVGSvgView' && n.props?.strokeWidth === taille.iconeTraitActif,
-    );
-    const traitsInactifs: ReactTestRendererJSON[] = [];
-    function collecterTraits(noeud: Noeud) {
-      if (!noeud || typeof noeud === 'string') return;
-      // RNSVGSvgView seulement : le RNSVGGroup interne repete le meme strokeWidth et compterait deux fois.
-      if (noeud.type === 'RNSVGSvgView' && noeud.props?.strokeWidth === taille.iconeTrait) {
-        traitsInactifs.push(noeud);
-      }
-      for (const enfant of noeud.children ?? []) collecterTraits(enfant);
-    }
-    collecterTraits(arbre);
-
-    expect(traitActif).toBeTruthy();
-    expect(traitsInactifs).toHaveLength(4);
-
+    expect(
+      trouver(
+        toJSON(),
+        (n) => n.props?.style?.backgroundColor === themes.clair.marque.primaireTeinte,
+      ),
+    ).toBeTruthy();
     expect(screen.getByText('Accueil').props.style.fontFamily).toBe(font.uiBold);
-    expect(screen.getByText('Explorer').props.style.fontFamily).toBe(font.uiSemibold);
+    expect(screen.getByText('Explorer').props.style.fontFamily).toBe(font.uiRegular);
+    expect(
+      screen.getByLabelText('Accueil, onglet, sélectionné, 1 sur 5').props.accessibilityState
+        .selected,
+    ).toBe(true);
   });
 
   // Critere 4 (docs/ecrans/L0-01-coquille-client.md) : "VoiceOver annonce « Accueil, onglet,
@@ -275,7 +265,7 @@ describe('BarreNavigation', () => {
     expect(source).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 
-  it('ajoute la marge basse fournie (zones sures du systeme) a la marge de base', async () => {
+  it('respecte le plus grand retrait entre la base et la zone sûre, comme la V2', async () => {
     const theme = { espace: { 4: 16 } };
     const { toJSON } = await rendreBarre({
       variante: 'client',
@@ -284,7 +274,7 @@ describe('BarreNavigation', () => {
     });
 
     const conteneur = toJSON()!;
-    expect(conteneur.props.style.paddingBottom).toBe(theme.espace[4] + 34);
+    expect(conteneur.props.style.paddingBottom).toBe(Math.max(theme.espace[4], 34));
   });
 
   // Critere 7 (docs/ecrans/L0-02-coquille-coach.md) : basculer (client) -> (coach) change le
