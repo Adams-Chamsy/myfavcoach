@@ -2,6 +2,7 @@
 // moyen enregistré au premier paiement (docs/backend.md, « Pas de Stripe Billing »). Seul fichier
 // qui traduit un paiement Stripe vers le vocabulaire de _partage/prelevement.ts.
 import { type PaiementPrestataire, type Prestataire } from './prelevement.ts';
+import { type Capacite, type PrestataireComptes } from './compte-versement.ts';
 import { type Encaissement, type PrestataireRapprochement } from './rapprochement.ts';
 import { Stripe } from './stripe.ts';
 
@@ -102,6 +103,74 @@ export function rapprochementStripe(stripe: Stripe): PrestataireRapprochement {
         if (introuvable(erreur)) return null;
         throw erreur;
       }
+    },
+  };
+}
+
+// Les comptes des coachs (L5, P5.2 ; docs/backend.md §13, « Connect ») : Accounts v2, le modèle
+// Express de CLAUDE.md §2 — tableau de bord Express, inscription hébergée par Stripe, qui
+// vérifie l'identité du coach. Avec ce tableau de bord, Stripe impose que la plateforme porte
+// les frais et les soldes négatifs. Le compte ne fait que RECEVOIR des virements de la
+// plateforme (configuration « recipient »).
+type CapaciteStripe = {
+  status: 'active' | 'pending' | 'restricted' | 'unsupported';
+  status_details?: { resolution?: string }[];
+};
+
+function capacite(c: CapaciteStripe | null | undefined): Capacite | null {
+  if (!c) return null;
+  return {
+    statut: c.status,
+    aFournir: (c.status_details ?? []).some((d) => d.resolution === 'provide_info'),
+  };
+}
+
+export function comptesStripe(stripe: Stripe): PrestataireComptes {
+  return {
+    async creerCompte(coach, cleIdempotence) {
+      const compte = await stripe.v2.core.accounts.create(
+        {
+          ...(coach.email ? { contact_email: coach.email } : {}),
+          display_name: coach.nomAffiche,
+          dashboard: 'express',
+          identity: { country: 'fr', entity_type: 'individual' },
+          defaults: {
+            responsibilities: { fees_collector: 'application', losses_collector: 'application' },
+          },
+          configuration: {
+            recipient: {
+              capabilities: { stripe_balance: { stripe_transfers: { requested: true } } },
+            },
+          },
+          metadata: { profil_coach_id: coach.profilCoachId },
+        },
+        { idempotencyKey: cleIdempotence },
+      );
+      return compte.id;
+    },
+    async lireCapacites(reference) {
+      const compte = await stripe.v2.core.accounts.retrieve(reference, {
+        include: ['configuration.recipient'],
+      });
+      const solde = compte.configuration?.recipient?.capabilities?.stripe_balance;
+      return {
+        transferts: capacite(solde?.stripe_transfers),
+        virements: capacite(solde?.payouts),
+      };
+    },
+    async creerLienInscription(reference, urlRetour, urlReprise) {
+      const lien = await stripe.v2.core.accountLinks.create({
+        account: reference,
+        use_case: {
+          type: 'account_onboarding',
+          account_onboarding: {
+            configurations: ['recipient'],
+            return_url: urlRetour,
+            refresh_url: urlReprise,
+          },
+        },
+      });
+      return lien.url;
     },
   };
 }

@@ -299,6 +299,10 @@ describe('secrets interdits côté application', () => {
       // 0068 : revokes de service_role sur les fonctions de la résiliation à la suppression du
       // compte (convention de 0031).
       'supabase/migrations/0068_resilier_a_la_suppression_du_compte.sql',
+      // 0069/0070 : grants et revokes de service_role sur l'identité fiscale et le compte de
+      // versement du coach (convention de 0031).
+      'supabase/migrations/0069_preparer_identite_fiscale_et_compte_versement.sql',
+      'supabase/migrations/0070_identite_fiscale_regle.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

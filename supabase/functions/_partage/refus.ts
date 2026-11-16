@@ -115,6 +115,17 @@ export const TEXTES_REFUS = {
     detail:
       "Tu ne peux pas encore promettre un délai de réponse par messagerie. Retire cet engagement pour publier ; tu pourras l'ajouter quand la messagerie sera là.",
   },
+  // coach-identification (L5, P5.2, 16 novembre 2026 ; textes à relire,
+  // docs/decisions-en-attente.md).
+  profil_coach_requis: {
+    title: 'Passe sur ton espace coach',
+    detail: 'Cette démarche se fait depuis ton espace coach.',
+  },
+  identite_fiscale_invalide: {
+    title: 'Ces informations ne sont pas valides',
+    detail:
+      'Vérifie ton SIREN (9 chiffres), ton adresse, ton code postal (5 chiffres) et ton régime de TVA.',
+  },
   // tous
   non_authentifie: {
     title: 'Ta session a expiré',

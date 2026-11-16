@@ -144,3 +144,19 @@ abonnements (ligne « Bandeau client » plus haut).
 
 **Reste, hors de portée du jalon 1** : rien ne prévient l'abonné que son coach est parti (L10,
 notifications), et la purge réelle des comptes à J+30 n'existe toujours pas (ligne plus haut).
+
+### L5 — ouvert le 16 novembre 2026
+
+- **Le SIREN d'un coach n'est vérifié que dans sa forme** (neuf chiffres, clé de contrôle,
+  migration 0070) : ni son existence, ni qu'il appartient au coach. Une facture émise au nom du
+  coach porterait un SIREN faux mais bien formé. À traiter avant tout paiement réel (L12) :
+  interroger le registre, ou s'appuyer sur ce que Stripe a vérifié.
+- **Le virement du compte Stripe du coach vers sa banque n'est pas suivi par l'application**
+  (`docs/prompts/L5.md`, décision 3) : « versé » veut dire « accepté par Stripe sur le compte du
+  coach ». Un rejet par la banque ne se voit que dans le tableau de bord Express. À traiter
+  avec les événements Connect, L12.
+- **Les factures ne sont pas des fichiers** (décision 6) : écrans seulement, `pdfUrl` vide. À
+  confirmer avec le juriste ; fichier téléchargeable en L12.
+- **Rien de L5 n'a encore rencontré Stripe avec la clé du projet** : elle n'a pas accès aux
+  comptes connectés (`docs/decisions-en-attente.md`, « En attente du développeur »). Échéance :
+  porte de sortie de L5.

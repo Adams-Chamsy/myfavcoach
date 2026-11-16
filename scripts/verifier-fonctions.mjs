@@ -24,6 +24,7 @@ const FONCTIONS = [
   'anomalies-retraitement/index.ts',
   'echeances-quotidiennes/index.ts',
   'offre-publication/index.ts',
+  'coach-identification/index.ts',
 ];
 
 function trouverDeno() {

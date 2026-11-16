@@ -5842,6 +5842,216 @@ describe('abonnements — L4 (0033)', () => {
 // d'administration, sans connexion. Règle 13 (docs/prompts/L4.md) : ce bloc ne suppose rien de
 // l'état que d'autres blocs ont donné à A et B -- il crée leur profil client s'il manque et les
 // bascule lui-même en espace client.
+// ---------------------------------------------------------------------------------------------
+// L5 — identité fiscale du coach et compte de versement (0069, 0070 ; docs/prompts/L5.md, P5.2 ;
+// docs/domaine.md §3.2, §3.3). Aucune de ces données n'est publique : tout passe par des
+// fonctions, le coach ne lit que les siennes, et la référence du compte chez le prestataire ne
+// sort jamais. B est le coach (profil coach créé par describe('offres')) ; A est un client.
+// ---------------------------------------------------------------------------------------------
+describe('identité fiscale et compte de versement — L5 (0069, 0070)', () => {
+  const rpc = (fonction: string, corps: Record<string, unknown>, session: Appelant) =>
+    appelRest(`/rest/v1/rpc/${fonction}`, { methode: 'POST', session, corps });
+  // SIREN à la clé de contrôle juste (Luhn) ; le suivant ne diffère que du dernier chiffre.
+  const SIREN = '732829320';
+  const identite = (autres: Record<string, unknown> = {}) => ({
+    p_siren: SIREN,
+    p_adresse_ligne: '12 rue des Lilas',
+    p_code_postal: '69003',
+    p_commune: 'Lyon',
+    p_regime_tva: 'franchise_en_base',
+    p_taux_tva_pour_mille: null,
+    ...autres,
+  });
+  let espaceInitialDeB: string;
+  let profilCoachDeB: string;
+
+  beforeAll(async () => {
+    espaceInitialDeB = (await rpc('profil_actif_courant', {}, B)).corps as string;
+    const bascule = await rpc('basculer_profil', { profil: 'coach' }, B);
+    if (bascule.statut >= 400) {
+      throw new Error(`Préparation du banc : bascule de B en coach refusée (${bascule.statut})`);
+    }
+    const { corps } = await appelRest(
+      `/rest/v1/profils_coach?compte_id=eq.${B.compteId}&select=id`,
+      { session: 'admin' },
+    );
+    profilCoachDeB = (corps as { id: string }[])[0].id;
+  }, 30_000);
+
+  afterAll(async () => {
+    if (espaceInitialDeB === 'client') await rpc('basculer_profil', { profil: 'client' }, B);
+  }, 30_000);
+
+  it('avant toute saisie : compte de versement absent, identité fiscale incomplète, publication impossible', async () => {
+    const { statut, corps } = await rpc('mon_identification', {}, B);
+    expect(statut).toBe(200);
+    expect(corps).toEqual([
+      {
+        profil_coach_id: profilCoachDeB,
+        compte_versement: 'absent',
+        identite_fiscale_complete: false,
+        peut_publier: false,
+      },
+    ]);
+    expect((await rpc('mon_identite_fiscale', {}, B)).corps).toEqual([]);
+  });
+
+  it('le coach enregistre son identité fiscale (franchise en base) et la relit ; elle est complète', async () => {
+    expect((await rpc('enregistrer_identite_fiscale', identite(), B)).statut).toBe(204);
+    expect((await rpc('mon_identite_fiscale', {}, B)).corps).toEqual([
+      {
+        siren: SIREN,
+        adresse_ligne: '12 rue des Lilas',
+        code_postal: '69003',
+        commune: 'Lyon',
+        regime_tva: 'franchise_en_base',
+        taux_tva_pour_mille: null,
+      },
+    ]);
+    const [identification] = (await rpc('mon_identification', {}, B)).corps as {
+      identite_fiscale_complete: boolean;
+      peut_publier: boolean;
+    }[];
+    expect(identification.identite_fiscale_complete).toBe(true);
+    // Complète, mais sans compte de versement opérationnel : toujours pas de publication.
+    expect(identification.peut_publier).toBe(false);
+  });
+
+  it.each([
+    ['un SIREN de huit chiffres', { p_siren: '73282932' }],
+    ['un SIREN dont la clé de contrôle est fausse', { p_siren: '732829321' }],
+    ['un SIREN avec des lettres', { p_siren: '7328A9320' }],
+    ['un code postal de quatre chiffres', { p_code_postal: '6900' }],
+    ['une adresse vide', { p_adresse_ligne: '   ' }],
+    ['une commune vide', { p_commune: '' }],
+    ['un assujetti sans taux', { p_regime_tva: 'assujetti', p_taux_tva_pour_mille: null }],
+    ['un taux hors bornes', { p_regime_tva: 'assujetti', p_taux_tva_pour_mille: 1200 }],
+    ['une franchise en base avec un taux', { p_taux_tva_pour_mille: 200 }],
+  ])(
+    '%s : identite_fiscale_invalide, et ce qui était enregistré ne bouge pas',
+    async (_quoi, autres) => {
+      const { statut, corps } = await rpc('enregistrer_identite_fiscale', identite(autres), B);
+      expect(statut).toBe(400);
+      expect(messageDe(corps)).toBe('identite_fiscale_invalide');
+      expect((await rpc('mon_identite_fiscale', {}, B)).corps).toMatchObject([
+        { siren: SIREN, code_postal: '69003', commune: 'Lyon', regime_tva: 'franchise_en_base' },
+      ]);
+    },
+  );
+
+  it('un coach assujetti, avec son taux : accepté, et l’enregistrement remplace le précédent', async () => {
+    const assujetti = identite({ p_regime_tva: 'assujetti', p_taux_tva_pour_mille: 200 });
+    expect((await rpc('enregistrer_identite_fiscale', assujetti, B)).statut).toBe(204);
+    expect((await rpc('mon_identite_fiscale', {}, B)).corps).toMatchObject([
+      { regime_tva: 'assujetti', taux_tva_pour_mille: 200 },
+    ]);
+    // Remis en franchise en base pour la suite du banc.
+    expect((await rpc('enregistrer_identite_fiscale', identite(), B)).statut).toBe(204);
+  });
+
+  it('un client (A) ne peut ni enregistrer ni lire une identité fiscale : profil_coach_requis ; anon n’exécute rien', async () => {
+    for (const fonction of [
+      'enregistrer_identite_fiscale',
+      'mon_identite_fiscale',
+      'mon_identification',
+    ]) {
+      const corps = fonction === 'enregistrer_identite_fiscale' ? identite() : {};
+      expect(messageDe((await rpc(fonction, corps, A)).corps)).toBe('profil_coach_requis');
+      expect(JSON.stringify((await rpc(fonction, corps, 'anon')).corps)).toMatch(
+        /permission denied/i,
+      );
+    }
+  });
+
+  it('les deux tables ne se lisent ni ne s’écrivent directement : ni le coach, ni un client, ni anon', async () => {
+    for (const table of ['identites_fiscales_coach', 'comptes_versement_coach']) {
+      for (const session of [B, A, 'anon'] as const) {
+        expect(
+          (await appelRest(`/rest/v1/${table}?select=*`, { session })).statut,
+        ).toBeGreaterThanOrEqual(400);
+      }
+      const ecriture = await appelRest(`/rest/v1/${table}`, {
+        methode: 'POST',
+        session: B,
+        corps: { profil_coach_id: profilCoachDeB },
+      });
+      expect(ecriture.statut).toBeGreaterThanOrEqual(400);
+    }
+  });
+
+  it('le serveur pose le compte de versement une seule fois : un second appel rend la référence gardée', async () => {
+    const reference = `acct_banc_${SUFFIXE_COMPTE}`;
+    const premier = await rpc(
+      'poser_compte_versement',
+      { p_profil_coach_id: profilCoachDeB, p_reference: reference },
+      'admin',
+    );
+    expect(premier.corps).toBe(reference);
+    const second = await rpc(
+      'poser_compte_versement',
+      { p_profil_coach_id: profilCoachDeB, p_reference: `${reference}_autre` },
+      'admin',
+    );
+    expect(second.corps).toBe(reference);
+    expect(
+      (await rpc('compte_versement_serveur', { p_profil_coach_id: profilCoachDeB }, 'admin')).corps,
+    ).toEqual([{ reference_compte_prestataire: reference, etat: 'a_completer' }]);
+  });
+
+  it('le coach lit l’état posé par le serveur, jamais la référence du compte ; opérationnel + identité complète : il peut publier', async () => {
+    const avant = (await rpc('mon_identification', {}, B)).corps;
+    expect(avant).toMatchObject([{ compte_versement: 'a_completer', peut_publier: false }]);
+    expect(JSON.stringify(avant)).not.toContain('acct_banc_');
+
+    for (const etat of ['en_verification', 'restreint', 'operationnel']) {
+      const pose = await rpc(
+        'poser_etat_compte_versement',
+        { p_profil_coach_id: profilCoachDeB, p_etat: etat },
+        'admin',
+      );
+      expect(pose.statut).toBe(204);
+      expect((await rpc('mon_identification', {}, B)).corps).toMatchObject([
+        { compte_versement: etat, peut_publier: etat === 'operationnel' },
+      ]);
+    }
+  });
+
+  it('seul le serveur pose un compte ou son état : le coach, un client et anon sont refusés', async () => {
+    for (const session of [B, A, 'anon'] as const) {
+      for (const [fonction, corps] of [
+        [
+          'poser_compte_versement',
+          { p_profil_coach_id: profilCoachDeB, p_reference: 'acct_pirate' },
+        ],
+        [
+          'poser_etat_compte_versement',
+          { p_profil_coach_id: profilCoachDeB, p_etat: 'operationnel' },
+        ],
+        ['compte_versement_serveur', { p_profil_coach_id: profilCoachDeB }],
+      ] as const) {
+        const { statut, corps: reponse } = await rpc(fonction, corps, session);
+        expect(statut).toBeGreaterThanOrEqual(400);
+        expect(JSON.stringify(reponse)).toMatch(/permission denied/i);
+      }
+    }
+  });
+
+  it('l’état « absent » ne se pose pas, et un coach sans compte n’a pas d’état à poser', async () => {
+    const absent = await rpc(
+      'poser_etat_compte_versement',
+      { p_profil_coach_id: profilCoachDeB, p_etat: 'absent' },
+      'admin',
+    );
+    expect(messageDe(absent.corps)).toBe('etat_invalide');
+    const inconnu = await rpc(
+      'poser_etat_compte_versement',
+      { p_profil_coach_id: randomUUID(), p_etat: 'operationnel' },
+      'admin',
+    );
+    expect(messageDe(inconnu.corps)).toBe('compte_versement_introuvable');
+  });
+});
+
 // Rapprochement quotidien (0066, P4.11a ; docs/prompts/L4.md, point 12). La comparaison avec le
 // prestataire est dans la fonction serveur (supabase/functions/_partage/rapprochement.ts, tests
 // Deno) ; ici, ce que la base lui offre : le serveur seul lit les factures à rapprocher et écrit
