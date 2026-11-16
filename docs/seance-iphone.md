@@ -12,6 +12,50 @@ l'application depuis un navigateur du téléphone, la mise à l'échelle du text
 Préparation : `npm start`, le relais Stripe (`npm run relais:stripe`), l'iPhone sur le même
 réseau. Comptes : `comptes-scenarios.local.md`.
 
+## L0 et L1 — socle, identité
+
+Critères jamais vus sur un appareil, relevés dans `docs/dette.md` et dans les prompts de L0 et
+de L1. La porte de sortie de L1 a été close le 16 novembre 2026 sans eux (`docs/bilan-L4.md`).
+
+- [ ] **Démarrage à froid.** Du splash vert à la signature de marque, puis à la bienvenue : aucun
+      saut du logo, la signature dure environ deux secondes la première fois, moins ensuite.
+- [ ] **Bienvenue et découverte sans compte.** « Découvrir les coachs », un profil, « S'abonner »
+      qui mène à la connexion, et le même profil retrouvé après la connexion.
+- [ ] **Inscription.** Le sélecteur de date (roue iOS, « Valider la date ») ; un mineur est
+      refusé avec « My Fav Coach est réservé aux majeurs. » ; à 200 %, les trois champs restent
+      atteignables et le pied reste fixe.
+- [ ] **Courriel de vérification, application fermée.** Le lien ouvre l'application et connecte.
+      Même essai avec le lien de réinitialisation du mot de passe. Si le lien porte des jetons
+      après un `#` au lieu d'un `code`, le dire à Claude (`docs/dette.md`).
+- [ ] **Connexion ratée.** Après un mauvais mot de passe, le curseur revient dans le champ du
+      mot de passe ; VoiceOver annonce l'erreur.
+- [ ] **Bascule d'espace.** Client vers coach et retour, sur iPhone à encoche : la barre du bas
+      change, rien ne passe sous l'heure ni sous la barre gestuelle ; le retour arrière ne
+      ramène jamais dans l'espace quitté.
+- [ ] **Mes informations.** Modifier un champ, glisser pour revenir : la modale « Modifications
+      non enregistrées » apparaît (le geste iOS, pas seulement le chevron).
+- [ ] **Suppression de compte, sur un compte de test jetable.** Le bandeau « Ton abonnement est
+      actif… » si le compte est abonné ; après « SUPPRIMER », retour à la bienvenue, et
+      l'abonnement apparaît « RÉSILIATION PROGRAMMÉE » côté base (Claude le vérifie).
+
+## L2 et L3 — coach, offres, découverte
+
+- [ ] **Dépôt d'une pièce.** L'application Fichiers s'ouvre, un PDF et une photo passent, un
+      fichier de plus de 10 Mo est refusé ; « Remplacer » fonctionne.
+- [ ] **Créer une offre.** Écrire « illimité » dans le titre, publier : le refus s'affiche
+      au-dessus du bouton, lisible sans défiler ; corriger, publier.
+- [ ] **Fermer une offre modifiée** par le geste de retour : la modale apparaît.
+- [ ] **Recherche.** Filtres, aucun résultat, retour d'un profil vers la liste au même endroit.
+
+## L3bis — invitations
+
+La porte de sortie de L3bis a été close le 16 novembre 2026 (`docs/bilan-L4.md`).
+
+- [ ] **Partager son lien.** « Inviter mes clients », copier le lien, le coller dans Messages.
+- [ ] **Ouvrir le lien.** Tant que `myfavcoach.fr` n'existe pas, le lien n'ouvre pas
+      l'application depuis une messagerie : seul le schéma `myfavcoach://y/<jeton>` s'essaie
+      (depuis Notes ou Safari). À refaire avec le vrai domaine.
+
 ## L4 — abonnement et paiement
 
 Critères des fiches de L4 qu'aucun test ni aucun navigateur piloté ne couvre (relevé de P4.10,
