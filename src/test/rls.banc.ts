@@ -769,6 +769,44 @@ describe('profils_coach', () => {
     }
   });
 
+  // Sens illégitime de profils_client_update_espace_client (0002), jusque-là sans test nommé
+  // (docs/dette.md, revue de la porte de sortie de L1) : la politique exige l'espace CLIENT. Le
+  // même compte, passé en espace coach, ne modifie plus son profil client — RLS ne lève rien,
+  // elle ne touche aucune ligne (CLAUDE.md §10 : une donnée d'un profil est inaccessible depuis
+  // l'autre). Le sens légitime est « A modifie son propre profil client : accepté », plus haut.
+  it('B, en espace coach, modifie son propre profil client : aucune ligne touchée, le profil est intact', async () => {
+    const lire = async () =>
+      (
+        (
+          await appelRest(`/rest/v1/profils_client?compte_id=eq.${B.compteId}&select=nom`, {
+            session: 'admin',
+          })
+        ).corps as { nom: string | null }[]
+      )[0].nom;
+    const avant = await lire();
+    try {
+      const bascule = await appelRest('/rest/v1/rpc/basculer_profil', {
+        methode: 'POST',
+        session: B,
+        corps: { profil: 'coach' },
+      });
+      expect(bascule.corps).toBe('coach');
+      const { statut, corps } = await appelRest(
+        `/rest/v1/profils_client?compte_id=eq.${B.compteId}&select=nom`,
+        { methode: 'PATCH', session: B, corps: { nom: 'Depuis-l-espace-coach' } },
+      );
+      expect(statut).toBe(200);
+      expect(corps).toEqual([]);
+      expect(await lire()).toBe(avant);
+    } finally {
+      await appelRest('/rest/v1/rpc/basculer_profil', {
+        methode: 'POST',
+        session: B,
+        corps: { profil: 'client' },
+      });
+    }
+  });
+
   it("C bascule vers 'coach' : refusé avec un message exploitable", async () => {
     const { statut, corps } = await appelRest('/rest/v1/rpc/basculer_profil', {
       methode: 'POST',
@@ -949,6 +987,74 @@ describe('consentements (journal — chaîne de confidentialité de la donnée d
       );
     }
   }, 30_000);
+
+  // Sens légitime de consentements_insert_proprietaire, NOMMÉ (docs/dette.md, revue de la porte
+  // de sortie de L1) : jusque-là, seule la préparation ci-dessus le prouvait, et « un beforeAll
+  // qui réussit n'est pas une preuve » (CLAUDE.md §8). Même requête que l'application
+  // (enregistrerConsentementSante : insertion par la session du titulaire).
+  // Sur le compte C : A et B portent des états que d'autres tests supposent (un seul type pour
+  // A, aucun consentement pour B).
+  it('C enregistre son propre consentement : accepté, et il le relit dans son journal', async () => {
+    const version = `banc-${Date.now()}`;
+    const { statut } = await appelRest('/rest/v1/consentements', {
+      methode: 'POST',
+      session: C,
+      prefer: 'return=minimal',
+      corps: {
+        compte_id: C.compteId,
+        type: 'communicationsCommerciales',
+        accorde: false,
+        version,
+        origine: 'banc',
+      },
+    });
+    expect(statut).toBe(201);
+    const { corps } = await appelRest(
+      `/rest/v1/consentements?compte_id=eq.${C.compteId}&version=eq.${version}&select=type,accorde`,
+      { session: C },
+    );
+    expect(corps).toEqual([{ type: 'communicationsCommerciales', accorde: false }]);
+  });
+
+  // 0067 : la liste des types est fermée (docs/domaine.md §3.12). Un type inconnu fausserait
+  // l'état courant d'un consentement sans que rien ne le dise.
+  it('un consentement d’un type hors de la liste : refusé par la base (23514)', async () => {
+    const { statut, corps } = await appelRest('/rest/v1/consentements', {
+      methode: 'POST',
+      session: C,
+      corps: {
+        compte_id: C.compteId,
+        type: 'donnees_sante',
+        accorde: true,
+        version: '2026-08-01',
+        origine: 'banc',
+      },
+    });
+    expect(statut).toBe(400);
+    expect((corps as { code?: string }).code).toBe('23514');
+  });
+
+  // Enregistrés comme des REFUS (accorde: false) : la liste des types est ce qu'on prouve ici, et
+  // un consentement santé accordé à C fausserait « C écrit son poids de départ sans consentement »
+  // (trouvé en le faisant, 16 novembre 2026).
+  it.each(['donneesSante', 'notificationsPush', 'communicationsCommerciales'])(
+    'un consentement de type %s : accepté',
+    async (type) => {
+      const { statut } = await appelRest('/rest/v1/consentements', {
+        methode: 'POST',
+        session: C,
+        prefer: 'return=minimal',
+        corps: {
+          compte_id: C.compteId,
+          type,
+          accorde: false,
+          version: '2026-08-01',
+          origine: 'banc',
+        },
+      });
+      expect(statut).toBe(201);
+    },
+  );
 
   it("l'insertion d'un consentement sans version est refusée", async () => {
     const { statut } = await appelRest('/rest/v1/consentements', {
