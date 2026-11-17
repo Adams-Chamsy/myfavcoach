@@ -164,4 +164,7 @@ notifications), et la purge réelle des comptes à J+30 n'existe toujours pas (l
   `toLocaleDateString` avec le jour, ailleurs que dans `src/fonctionnalites/factures/format.ts`,
   écrit le premier du mois sans « er ». Trouvé le 17 novembre 2026 sur I-01 et corrigé pour L5
   seulement. À balayer : un seul formateur de dates pour toute l'application. Échéance : porte de
-  sortie de L5 (balayage), sinon report écrit.
+  sortie de L5 (balayage), sinon report écrit. **Soldé le 17 novembre 2026** : les quatre écrans
+  d'abonnement (L4) qui écrivaient le jour et le mois en lettres passent par
+  `src/fonctionnalites/factures/format.ts`. Les dates écrites en chiffres (« 01/02/2027 ») ne sont
+  pas concernées et restent telles quelles.

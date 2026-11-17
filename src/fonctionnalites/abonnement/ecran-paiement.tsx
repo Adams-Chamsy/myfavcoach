@@ -12,6 +12,7 @@ import type { ResultatConstat } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
 import { nouvelleCleIdempotence } from './cle-idempotence';
 import type { IntentionEnCours } from './intention-en-cours';
+import { dateLongue } from '@/fonctionnalites/factures/format';
 
 // docs/ecrans/L4-04b-recapitulatif-paiement.md (P4.6b). L'écran montre ce que le client va payer,
 // ouvre la page de paiement du prestataire (il ne collecte rien lui-même), puis ne conclut QUE par le
@@ -64,15 +65,6 @@ function euros(centimes: number): string {
   return (centimes / 100).toLocaleString('fr-FR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  });
-}
-
-function dateLongue(iso: string): string {
-  return new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', {
-    timeZone: 'Europe/Paris',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
   });
 }
 

@@ -11,6 +11,7 @@ import { Squelette } from '@/composants/squelette';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import type { DetailAbonnement } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
+import { dateCourte } from '@/fonctionnalites/factures/format';
 
 // docs/ecrans/L4-04c-confirmation-abonnement.md (P4.7). Dire ce qui vient de se passer : combien
 // a été payé (ou va l'être), quand aura lieu le prochain prélèvement, et comment arrêter. Tout
@@ -35,15 +36,6 @@ function euros(centimes: number): string {
   return (centimes / 100).toLocaleString('fr-FR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  });
-}
-
-// « 12 octobre » (fiche) : jour et mois, Europe/Paris.
-function dateCourte(iso: string): string {
-  return new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', {
-    timeZone: 'Europe/Paris',
-    day: 'numeric',
-    month: 'long',
   });
 }
 

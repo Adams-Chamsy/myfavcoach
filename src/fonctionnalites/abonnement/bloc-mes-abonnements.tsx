@@ -18,6 +18,7 @@ import type {
   TransitionAbonnement,
 } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
+import { dateLongue } from '@/fonctionnalites/factures/format';
 
 // docs/ecrans/L4-24b-mes-abonnements.md — le bloc « Mes abonnements » de l'écran compte, espace
 // client. Deux obligations : la résiliation en ligne, et (plus tard) le point d'entrée de
@@ -46,15 +47,6 @@ const ETATS: Partial<Record<StatutAbonnement, { libelle: string; badge: StatutBa
   suspendu: { libelle: 'SUSPENDU', badge: 'erreur' },
   resiliation_programmee: { libelle: 'RÉSILIATION PROGRAMMÉE', badge: 'alerte' },
 };
-
-function dateLongue(iso: string): string {
-  return new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', {
-    timeZone: 'Europe/Paris',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-}
 
 function prixMensuel(centimes: number): string {
   return `${(centimes / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €/mois`;

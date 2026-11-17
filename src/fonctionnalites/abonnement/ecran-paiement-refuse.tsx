@@ -12,6 +12,7 @@ import { Squelette } from '@/composants/squelette';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import type { DetailAbonnement, MotifBanque, RefusServeur } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
+import { dateLongue } from '@/fonctionnalites/factures/format';
 
 // docs/ecrans/L4-20-paiement-refuse.md (P4.7). Un seul contexte : l'échec d'une échéance
 // (abonnement `impaye` ou `suspendu`). L'écran dit pourquoi la banque a refusé, que rien n'a été
@@ -66,15 +67,6 @@ function euros(centimes: number): string {
   return (centimes / 100).toLocaleString('fr-FR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  });
-}
-
-function dateLongue(iso: string): string {
-  return new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', {
-    timeZone: 'Europe/Paris',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
   });
 }
 

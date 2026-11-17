@@ -1,5 +1,6 @@
-// Mise en forme des montants et des dates des factures et des revenus (L5). Aucun calcul : le
-// serveur rend les montants en centimes et les dates, l'écran ne fait que les écrire en français.
+// Mise en forme des montants et des dates, en français. Né avec les factures et les revenus (L5),
+// partagé depuis la porte de L5 par les écrans d'abonnement et d'invitation : un seul endroit où
+// écrire « 1er février ». Aucun calcul : le serveur rend les montants en centimes et les dates.
 
 export function euros(centimes: number): string {
   return `${(centimes / 100).toLocaleString('fr-FR', {
