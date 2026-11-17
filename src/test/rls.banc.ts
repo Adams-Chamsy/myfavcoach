@@ -9529,4 +9529,254 @@ describe('programmes, séances, exercices — L6 (0080, 0081)', () => {
       (corps as { id: string; statut: string }[]).find((p) => p.id === programme)?.statut,
     ).toBe('archive');
   });
+
+  // P6.4 (0084, 0085) — affecter un programme publié à un abonné : ses séances sont datées depuis
+  // le début, le client les lit (et leurs médias) tant qu'il a accès, jamais un autre. A
+  // s'abonne à coachP ici ; une pause coupe l'accès (dernier test : il la lève ensuite).
+  describe('affectation et accès du client (P6.4)', () => {
+    let programmeAffecte: string;
+    let seanceJour1: string;
+    let cheminMedia: string;
+    let abonnementA: string;
+    let profilClientA: string;
+
+    beforeAll(async () => {
+      const { corps: profils } = await appelRest(
+        `/rest/v1/profils_client?compte_id=eq.${A.compteId}&select=id`,
+        { session: 'admin' },
+      );
+      profilClientA = (profils as { id: string }[])[0].id;
+      const offre = await appelRest('/rest/v1/offres', {
+        methode: 'POST',
+        session: 'admin',
+        corps: {
+          coach_id: profilCoachP,
+          titre: 'Suivi',
+          prix_centimes: 4900,
+          benefices: ['a', 'b', 'c'],
+          engagement_humain: ['ajustement_hebdomadaire'],
+          publiee_le: new Date(Date.now() - 86_400_000).toISOString(),
+        },
+      });
+      const offreId = (offre.corps as { id: string }[])[0].id;
+      const souscription = await appelRest('/rest/v1/rpc/souscrire_abonnement', {
+        methode: 'POST',
+        session: 'admin',
+        corps: {
+          p_profil_client_id: profilClientA,
+          p_offre_id: offreId,
+          p_moyen: 'carte',
+          p_reference_paiement: `banc-${SUFFIXE_COMPTE}-l6-a`,
+          p_prix_fige_centimes: 4900,
+          p_intention_creee_le: new Date().toISOString(),
+        },
+      });
+      if (souscription.statut !== 200) {
+        throw new Error(`Préparation du banc : abonnement de A refusé (${souscription.statut})`);
+      }
+      abonnementA = souscription.corps as string;
+
+      // Le programme : deux séances (jours 1 et 3), un exercice avec média au jour 1, publié.
+      programmeAffecte = await creerProgramme();
+      seanceJour1 = (
+        await rpc('ajouter_seance', { p_programme_id: programmeAffecte, p_jour_relatif: 1 }, coachP)
+      ).corps as string;
+      await rpc('ajouter_seance', { p_programme_id: programmeAffecte, p_jour_relatif: 3 }, coachP);
+      const exercice = (
+        await rpc(
+          'ajouter_exercice',
+          {
+            p_seance_id: seanceJour1,
+            p_nom: 'Squat',
+            p_series: 3,
+            p_repetitions: 10,
+            p_charge_grammes: 12000,
+            p_consigne: null,
+          },
+          coachP,
+        )
+      ).corps as string;
+      cheminMedia = `${profilCoachP}/${SUFFIXE_COMPTE}-seance.png`;
+      if ((await deposer(cheminMedia, coachP)) >= 300)
+        throw new Error('Préparation : dépôt refusé');
+      const media = (
+        await rpc(
+          'enregistrer_media',
+          {
+            p_chemin: cheminMedia,
+            p_nom_fichier: 'seance.png',
+            p_type_mime: 'image/png',
+            p_poids_octets: 37,
+          },
+          coachP,
+        )
+      ).corps as string;
+      await rpc('joindre_media', { p_exercice_id: exercice, p_media_id: media }, coachP);
+      await rpc(
+        'modifier_seance',
+        {
+          p_seance_id: seanceJour1,
+          p_titre: 'Bas du corps',
+          p_duree_minutes: 42,
+          p_jour_relatif: 1,
+        },
+        coachP,
+      );
+      const publication = await rpc(
+        'publier_programme',
+        { p_programme_id: programmeAffecte },
+        coachP,
+      );
+      if (publication.statut !== 204) throw new Error('Préparation : publication refusée');
+    }, 90_000);
+
+    it('le coach voit A parmi ses abonnés affectables, et lui affecte le programme à partir d’aujourd’hui', async () => {
+      const { corps: abonnes } = await rpc('abonnes_affectables', {}, coachP);
+      expect((abonnes as { profil_client_id: string }[]).map((a) => a.profil_client_id)).toContain(
+        profilClientA,
+      );
+      const affectation = await rpc(
+        'affecter_programme',
+        {
+          p_programme_id: programmeAffecte,
+          p_profil_client_id: profilClientA,
+          p_debut: aujourdhuiParis(),
+        },
+        coachP,
+      );
+      expect(affectation.statut).toBe(200);
+      expect(affectation.corps).toBe(2);
+      const { corps } = await rpc('mes_programmes', {}, coachP);
+      expect(
+        (corps as { id: string; abonnes_en_cours: number }[]).find((p) => p.id === programmeAffecte)
+          ?.abonnes_en_cours,
+      ).toBe(1);
+    });
+
+    it('A lit sa séance du jour, ses exercices et signe l’URL de leur média ; B ne lit ni ne signe rien', async () => {
+      const { statut, corps } = await rpc('mes_seances_du_jour', {}, A);
+      expect(statut).toBe(200);
+      const duJour = (
+        corps as { id: string; titre: string; statut: string; nombre_exercices: number }[]
+      ).find((s) => s.titre === 'Bas du corps');
+      expect(duJour).toMatchObject({ statut: 'a_faire', nombre_exercices: 1 });
+      const { corps: entete } = await rpc(
+        'ma_seance_programmee',
+        { p_seance_programmee_id: duJour!.id },
+        A,
+      );
+      expect((entete as { date_prevue: string; coach_prenom: string }[])[0]).toMatchObject({
+        date_prevue: aujourdhuiParis(),
+        coach_prenom: 'Prog',
+      });
+      const { corps: exercices } = await rpc(
+        'exercices_de_ma_seance',
+        { p_seance_programmee_id: duJour!.id },
+        A,
+      );
+      expect((exercices as { nom: string; media_chemin: string }[])[0]).toMatchObject({
+        nom: 'Squat',
+        media_chemin: cheminMedia,
+      });
+      expect((await signer(cheminMedia, A)).statut).toBeLessThan(300);
+
+      await basculer(B, 'client').catch(() => undefined);
+      expect(
+        messageDe(
+          (await rpc('ma_seance_programmee', { p_seance_programmee_id: duJour!.id }, B)).corps,
+        ),
+      ).toMatch(/seance_introuvable|profil_client_requis/);
+      expect((await signer(cheminMedia, B)).statut).toBeGreaterThanOrEqual(400);
+      await basculer(B, 'coach');
+      expect(messageDe((await rpc('mes_seances_du_jour', {}, coachP)).corps)).toBe(
+        'profil_client_requis',
+      );
+    });
+
+    it('un second programme en cours est refusé ; retour en édition interdit ; séance programmée non supprimable ; un client sans abonnement ne reçoit rien', async () => {
+      expect(
+        messageDe(
+          (
+            await rpc(
+              'affecter_programme',
+              {
+                p_programme_id: programmeAffecte,
+                p_profil_client_id: profilClientA,
+                p_debut: aujourdhuiParis(),
+              },
+              coachP,
+            )
+          ).corps,
+        ),
+      ).toBe('programme_deja_en_cours');
+      expect(
+        messageDe(
+          (await rpc('revenir_en_edition', { p_programme_id: programmeAffecte }, coachP)).corps,
+        ),
+      ).toBe('retour_edition_interdit');
+      const { corps: profilsB } = await appelRest(
+        `/rest/v1/profils_client?compte_id=eq.${coachP.compteId}&select=id`,
+        { session: 'admin' },
+      );
+      const sansAbonnement =
+        (profilsB as { id: string }[])[0]?.id ?? '00000000-0000-0000-0000-000000000000';
+      expect(
+        messageDe(
+          (
+            await rpc(
+              'affecter_programme',
+              {
+                p_programme_id: programmeAffecte,
+                p_profil_client_id: sansAbonnement,
+                p_debut: aujourdhuiParis(),
+              },
+              coachP,
+            )
+          ).corps,
+        ),
+      ).toBe('abonnement_sans_acces');
+      expect(
+        messageDe(
+          (
+            await rpc(
+              'affecter_programme',
+              {
+                p_programme_id: programmeAffecte,
+                p_profil_client_id: profilClientA,
+                p_debut: '2020-01-01',
+              },
+              coachP,
+            )
+          ).corps,
+        ),
+      ).toBe('date_invalide');
+    });
+
+    it('décision 2 : en pause, A n’a plus accès (ni séance du jour, ni séance, ni média) ; à la reprise, il le retrouve', async () => {
+      const { corps } = await rpc('mes_seances_du_jour', {}, A);
+      const duJour = (corps as { id: string; titre: string }[]).find(
+        (s) => s.titre === 'Bas du corps',
+      )!;
+      const pause = await rpc(
+        'demander_pause_jours',
+        { p_abonnement_id: abonnementA, p_jours: 14 },
+        A,
+      );
+      expect(pause.statut).toBeLessThan(300);
+      try {
+        const { corps: pendant } = await rpc('mes_seances_du_jour', {}, A);
+        expect((pendant as { titre: string }[]).map((s) => s.titre)).not.toContain('Bas du corps');
+        expect(
+          messageDe(
+            (await rpc('ma_seance_programmee', { p_seance_programmee_id: duJour.id }, A)).corps,
+          ),
+        ).toBe('abonnement_sans_acces');
+        expect((await signer(cheminMedia, A)).statut).toBeGreaterThanOrEqual(400);
+      } finally {
+        await rpc('reprendre_abonnement', { p_abonnement_id: abonnementA }, A);
+      }
+      const { corps: apres } = await rpc('mes_seances_du_jour', {}, A);
+      expect((apres as { titre: string }[]).map((s) => s.titre)).toContain('Bas du corps');
+    });
+  });
 });

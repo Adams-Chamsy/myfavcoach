@@ -326,6 +326,9 @@ describe('secrets interdits côté application', () => {
       // 0082/0083 : grants et revokes de service_role sur les médias (convention de 0031).
       'supabase/migrations/0082_preparer_medias.sql',
       'supabase/migrations/0083_medias_regles.sql',
+      // 0084/0085 : grants et revokes de service_role sur l'affectation (convention de 0031).
+      'supabase/migrations/0084_preparer_affectation.sql',
+      'supabase/migrations/0085_affectation_regles.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',
