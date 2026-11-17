@@ -8974,3 +8974,365 @@ describe('soumission du dossier de vérification', () => {
     expect(statut).toBeGreaterThanOrEqual(400);
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+// L6 — programmes, séances, exercices (0080, 0081 ; docs/prompts/L6.md, P6.2 ; docs/domaine.md
+// §3.6, §4.6). Aucune table n'est accessible directement : tout passe par des fonctions, en espace
+// coach, et un coach ne voit rien d'un autre. Un coach à lui (connecté) ; l'« autre coach » est B,
+// dont ce bloc crée le profil coach s'il manque, et qu'il bascule lui-même (règle 13 de
+// docs/prompts/L4.md) ; A sert l'espace client.
+// ---------------------------------------------------------------------------------------------
+describe('programmes, séances, exercices — L6 (0080, 0081)', () => {
+  const rpc = (fonction: string, corps: Record<string, unknown>, session: Appelant) =>
+    appelRest(`/rest/v1/rpc/${fonction}`, { methode: 'POST', session, corps });
+  let coachP: Session;
+  let profilCoachP: string;
+
+  const basculer = async (session: Session, profil: 'coach' | 'client') => {
+    const bascule = await rpc('basculer_profil', { profil }, session);
+    if (bascule.statut >= 400) {
+      throw new Error(`Préparation du banc : bascule en ${profil} refusée (${bascule.statut})`);
+    }
+  };
+  const verification = (statut: string) =>
+    appelRest(`/rest/v1/profils_coach?id=eq.${profilCoachP}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { statut_verification: statut },
+    });
+
+  beforeAll(async () => {
+    coachP = await creerCompteReel(`${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-l6-coach@${DOMAINE_EMAIL}`, {
+      date_naissance: '1988-01-01',
+      cgu_version_acceptee: '2026-08-01',
+    });
+    const profil = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { compte_id: coachP.compteId, prenom: 'Prog', nom: 'Coach', discipline: 'yoga' },
+    });
+    profilCoachP = (profil.corps as { id: string }[])[0].id;
+    await verification('verifiee');
+    await basculer(coachP, 'coach');
+
+    const { corps: profilB } = await appelRest(
+      `/rest/v1/profils_coach?compte_id=eq.${B.compteId}&select=id`,
+      { session: 'admin' },
+    );
+    if ((profilB as unknown[]).length === 0) {
+      await appelRest('/rest/v1/profils_coach', {
+        methode: 'POST',
+        session: 'admin',
+        corps: { compte_id: B.compteId, prenom: 'Autre', nom: 'Coach', discipline: 'yoga' },
+      });
+    }
+    await basculer(B, 'coach');
+    const { corps: profilA } = await appelRest(
+      `/rest/v1/profils_client?compte_id=eq.${A.compteId}&select=id`,
+      { session: 'admin' },
+    );
+    if ((profilA as unknown[]).length === 0) await creerProfilClientParLeServeur(A, 'Client');
+    await basculer(A, 'client');
+  }, 60_000);
+
+  afterAll(async () => {
+    if (coachP) await supprimerCompteReel(coachP.compteId);
+  }, 30_000);
+
+  const creerProgramme = async (): Promise<string> => {
+    const { statut, corps } = await rpc('creer_programme', {}, coachP);
+    expect(statut).toBe(200);
+    return corps as string;
+  };
+
+  it('le coach crée un programme, le modifie, lui ajoute une séance et un exercice, et relit tout', async () => {
+    const programme = await creerProgramme();
+    expect(
+      (
+        await rpc(
+          'modifier_programme',
+          { p_programme_id: programme, p_titre: 'Remise en route', p_duree_semaines: 8 },
+          coachP,
+        )
+      ).statut,
+    ).toBe(204);
+    const seance = await rpc(
+      'ajouter_seance',
+      { p_programme_id: programme, p_jour_relatif: 1 },
+      coachP,
+    );
+    expect(seance.statut).toBe(200);
+    expect(
+      (
+        await rpc(
+          'modifier_seance',
+          {
+            p_seance_id: seance.corps,
+            p_titre: 'Mobilité douce',
+            p_duree_minutes: 18,
+            p_jour_relatif: 1,
+          },
+          coachP,
+        )
+      ).statut,
+    ).toBe(204);
+    const exercice = await rpc(
+      'ajouter_exercice',
+      {
+        p_seance_id: seance.corps,
+        p_nom: 'Squat gobelet',
+        p_series: 3,
+        p_repetitions: 12,
+        p_charge_grammes: 12000,
+        p_consigne: 'Dos droit.',
+      },
+      coachP,
+    );
+    expect(exercice.statut).toBe(200);
+
+    const { corps: programmes } = await rpc('mes_programmes', {}, coachP);
+    expect((programmes as { id: string }[]).find((p) => p.id === programme)).toEqual({
+      id: programme,
+      titre: 'Remise en route',
+      duree_semaines: 8,
+      statut: 'brouillon',
+      nombre_seances: 1,
+      abonnes_en_cours: 0,
+    });
+    const { corps: seances } = await rpc(
+      'seances_du_programme',
+      { p_programme_id: programme },
+      coachP,
+    );
+    expect(seances).toEqual([
+      {
+        id: seance.corps,
+        titre: 'Mobilité douce',
+        duree_minutes: 18,
+        jour_relatif: 1,
+        nombre_exercices: 1,
+      },
+    ]);
+    const { corps: exercices } = await rpc(
+      'exercices_de_la_seance',
+      { p_seance_id: seance.corps },
+      coachP,
+    );
+    expect(exercices).toEqual([
+      {
+        id: exercice.corps,
+        ordre: 1,
+        nom: 'Squat gobelet',
+        series: 3,
+        repetitions: 12,
+        charge_grammes: 12000,
+        consigne: 'Dos droit.',
+      },
+    ]);
+  });
+
+  it('aucune des trois tables n’est accessible directement, même au coach', async () => {
+    for (const table of ['programmes', 'seances', 'exercices']) {
+      const lecture = await appelRest(`/rest/v1/${table}?select=id`, { session: coachP });
+      expect(lecture.statut).toBeGreaterThanOrEqual(400);
+      const ecriture = await appelRest(`/rest/v1/${table}`, {
+        methode: 'POST',
+        session: coachP,
+        corps: { profil_coach_id: profilCoachP },
+      });
+      expect(ecriture.statut).toBeGreaterThanOrEqual(400);
+    }
+  });
+
+  it('un autre coach ne voit ni ne modifie ce programme ; en espace client, refus', async () => {
+    const programme = await creerProgramme();
+    const seance = (
+      await rpc('ajouter_seance', { p_programme_id: programme, p_jour_relatif: 2 }, coachP)
+    ).corps as string;
+
+    const { corps: chezB } = await rpc('mes_programmes', {}, B);
+    expect((chezB as { id: string }[]).map((p) => p.id)).not.toContain(programme);
+    expect(
+      messageDe((await rpc('seances_du_programme', { p_programme_id: programme }, B)).corps),
+    ).toBe('programme_introuvable');
+    expect(
+      messageDe(
+        (
+          await rpc(
+            'modifier_programme',
+            { p_programme_id: programme, p_titre: 'Volé', p_duree_semaines: 4 },
+            B,
+          )
+        ).corps,
+      ),
+    ).toBe('programme_introuvable');
+    expect(messageDe((await rpc('exercices_de_la_seance', { p_seance_id: seance }, B)).corps)).toBe(
+      'seance_introuvable',
+    );
+    expect(messageDe((await rpc('supprimer_seance', { p_seance_id: seance }, B)).corps)).toBe(
+      'seance_introuvable',
+    );
+    expect(
+      messageDe((await rpc('publier_programme', { p_programme_id: programme }, B)).corps),
+    ).toBe('programme_introuvable');
+
+    expect(messageDe((await rpc('mes_programmes', {}, A)).corps)).toBe('profil_coach_requis');
+    expect(messageDe((await rpc('creer_programme', {}, A)).corps)).toBe('profil_coach_requis');
+    // Le programme est intact.
+    const { corps: seances } = await rpc(
+      'seances_du_programme',
+      { p_programme_id: programme },
+      coachP,
+    );
+    expect((seances as unknown[]).length).toBe(1);
+  });
+
+  it('les formes refusées : jour hors programme, durée trop courte, exercice invalide', async () => {
+    const programme = await creerProgramme();
+    expect(
+      messageDe(
+        (await rpc('ajouter_seance', { p_programme_id: programme, p_jour_relatif: 29 }, coachP))
+          .corps,
+      ),
+    ).toBe('jour_hors_programme');
+    const seance = (
+      await rpc('ajouter_seance', { p_programme_id: programme, p_jour_relatif: 28 }, coachP)
+    ).corps as string;
+    expect(
+      messageDe(
+        (
+          await rpc(
+            'modifier_programme',
+            { p_programme_id: programme, p_titre: 'Court', p_duree_semaines: 3 },
+            coachP,
+          )
+        ).corps,
+      ),
+    ).toBe('duree_trop_courte');
+    expect(
+      messageDe(
+        (
+          await rpc(
+            'ajouter_exercice',
+            {
+              p_seance_id: seance,
+              p_nom: ' ',
+              p_series: null,
+              p_repetitions: null,
+              p_charge_grammes: null,
+              p_consigne: null,
+            },
+            coachP,
+          )
+        ).corps,
+      ),
+    ).toBe('exercice_invalide');
+  });
+
+  it('déplacer et supprimer un exercice ; dupliquer une semaine copie ses séances et leurs exercices', async () => {
+    const programme = await creerProgramme();
+    const seance = (
+      await rpc('ajouter_seance', { p_programme_id: programme, p_jour_relatif: 3 }, coachP)
+    ).corps as string;
+    const ajouter = async (nom: string) =>
+      (
+        await rpc(
+          'ajouter_exercice',
+          {
+            p_seance_id: seance,
+            p_nom: nom,
+            p_series: null,
+            p_repetitions: null,
+            p_charge_grammes: null,
+            p_consigne: null,
+          },
+          coachP,
+        )
+      ).corps as string;
+    const premier = await ajouter('Échauffement');
+    const second = await ajouter('Gainage');
+    expect(
+      (await rpc('deplacer_exercice', { p_exercice_id: second, p_sens: 'haut' }, coachP)).statut,
+    ).toBe(204);
+    const noms = async (id: string) =>
+      (
+        (await rpc('exercices_de_la_seance', { p_seance_id: id }, coachP)).corps as {
+          nom: string;
+        }[]
+      ).map((e) => e.nom);
+    expect(await noms(seance)).toEqual(['Gainage', 'Échauffement']);
+
+    const copie = await rpc(
+      'dupliquer_semaine',
+      { p_programme_id: programme, p_semaine: 1 },
+      coachP,
+    );
+    expect(copie.corps).toBe(1);
+    const { corps: seances } = await rpc(
+      'seances_du_programme',
+      { p_programme_id: programme },
+      coachP,
+    );
+    const copiee = (seances as { id: string; jour_relatif: number }[]).find(
+      (s) => s.jour_relatif === 10,
+    );
+    expect(copiee).toBeDefined();
+    expect(await noms(copiee!.id)).toEqual(['Gainage', 'Échauffement']);
+
+    expect((await rpc('supprimer_exercice', { p_exercice_id: premier }, coachP)).statut).toBe(204);
+    expect(await noms(seance)).toEqual(['Gainage']);
+  });
+
+  it('§4.6 : publier exige un coach vérifié et une séance ; publié, plus rien ne se modifie ; archiver ; revenir en édition', async () => {
+    const programme = await creerProgramme();
+    expect(
+      messageDe((await rpc('publier_programme', { p_programme_id: programme }, coachP)).corps),
+    ).toBe('programme_vide');
+    const seance = (
+      await rpc('ajouter_seance', { p_programme_id: programme, p_jour_relatif: 1 }, coachP)
+    ).corps as string;
+
+    await verification('en_examen');
+    try {
+      expect(
+        messageDe((await rpc('publier_programme', { p_programme_id: programme }, coachP)).corps),
+      ).toBe('identite_non_verifiee');
+    } finally {
+      await verification('verifiee');
+    }
+    expect((await rpc('publier_programme', { p_programme_id: programme }, coachP)).statut).toBe(
+      204,
+    );
+
+    expect(
+      messageDe(
+        (await rpc('ajouter_seance', { p_programme_id: programme, p_jour_relatif: 2 }, coachP))
+          .corps,
+      ),
+    ).toBe('programme_non_modifiable');
+    expect(messageDe((await rpc('supprimer_seance', { p_seance_id: seance }, coachP)).corps)).toBe(
+      'programme_non_modifiable',
+    );
+
+    expect((await rpc('revenir_en_edition', { p_programme_id: programme }, coachP)).statut).toBe(
+      204,
+    );
+    expect(
+      (await rpc('ajouter_seance', { p_programme_id: programme, p_jour_relatif: 2 }, coachP))
+        .statut,
+    ).toBe(200);
+    expect((await rpc('publier_programme', { p_programme_id: programme }, coachP)).statut).toBe(
+      204,
+    );
+    expect((await rpc('archiver_programme', { p_programme_id: programme }, coachP)).statut).toBe(
+      204,
+    );
+    expect(
+      messageDe((await rpc('revenir_en_edition', { p_programme_id: programme }, coachP)).corps),
+    ).toBe('transition_interdite');
+    const { corps } = await rpc('mes_programmes', {}, coachP);
+    expect(
+      (corps as { id: string; statut: string }[]).find((p) => p.id === programme)?.statut,
+    ).toBe('archive');
+  });
+});

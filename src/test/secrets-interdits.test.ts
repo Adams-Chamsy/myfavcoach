@@ -320,6 +320,9 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0078_rappel_commission_regles.sql',
       // 0079 : revokes de service_role repris de 0068 (convention de 0031).
       'supabase/migrations/0079_resilier_a_la_revocation_du_coach.sql',
+      // 0080/0081 : grants et revokes de service_role sur les programmes (convention de 0031).
+      'supabase/migrations/0080_preparer_programmes.sql',
+      'supabase/migrations/0081_programmes_regles.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',
