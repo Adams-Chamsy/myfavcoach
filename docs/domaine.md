@@ -744,7 +744,18 @@ en_pause|impaye|suspendu --(résiliation client)--> resilie   [effet le jour mê
 actif --(offre supprimée par la plateforme)--> resilie [prorata remboursé]
 actif --(compte du client ou du coach supprimé)--> resiliation_programmee   [fin de la période payée, aucun remboursement]
 en_pause|impaye|suspendu --(compte du client ou du coach supprimé)--> resilie   [effet le jour même]
+actif --(coach révoqué par la plateforme)--> resiliation_programmee   [mêmes effets que sa suppression, 0079]
+en_pause|impaye|suspendu --(coach révoqué par la plateforme)--> resilie   [effet le jour même]
 ```
+
+**Révocation d'un coach (écrit le 17 novembre 2026, migration 0079).** Mêmes effets que la
+suppression du compte du coach, par le même filet du matin, au plus tard le lendemain de la
+révocation et toujours avant toute nouvelle échéance : ses offres sont retirées, ses abonnés
+actifs gardent l'accès jusqu'à la fin de leur période payée, sans remboursement au prorata ; un
+SEPA encore en attente n'est pas touché, et s'il est confirmé ensuite, il est programmé en
+résiliation au filet suivant. Une telle résiliation ne s'annule pas. La levée d'une révocation ne
+rétablit aucun abonnement. Le solde déjà acquis par le coach reste versable. **À relire par le
+développeur et le juriste.**
 
 **Suppression d'un compte (écrit le 16 novembre 2026, migration 0068).** Jusque-là, cette machine
 écrivait « coach part → resilie [prorata remboursé] », et rien n'était construit : supprimer un
