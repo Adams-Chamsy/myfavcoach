@@ -86,6 +86,8 @@ import { EcranFacture } from '@/fonctionnalites/factures/ecran-facture';
 import { EcranFactures } from '@/fonctionnalites/factures/ecran-factures';
 import { EcranFacturation } from '@/fonctionnalites/revenus/ecran-facturation';
 import { EcranRevenus } from '@/fonctionnalites/revenus/ecran-revenus';
+import { CarteSeanceDuJour } from '@/fonctionnalites/seance/carte-seance-du-jour';
+import { EcranSeanceDuJour } from '@/fonctionnalites/seance/ecran-seance-du-jour';
 import { EcranBibliotheque } from '@/fonctionnalites/studio/ecran-bibliotheque';
 import { EcranProgramme } from '@/fonctionnalites/studio/ecran-programme';
 import { EcranProgrammes } from '@/fonctionnalites/studio/ecran-programmes';
@@ -2239,11 +2241,60 @@ function StudioAvecFixture({
   );
 }
 
+// L6 : la séance du jour d'une cliente, en cours (seancesDemonstration[0]).
+function SeanceDuJourAvecFixture() {
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    const demo = seancesDemonstration[0]!;
+    p.definirSeanceClientPourTest(
+      {
+        id: 'sp-1',
+        titre: demo.titre,
+        dureeMinutes: demo.dureeMinutes,
+        datePrevue: '2026-11-17',
+        statut: 'en_cours',
+        demarreeLe: new Date().toISOString(),
+        rattrapee: false,
+        coachPrenom: 'Yannick',
+        coachNom: 'Berthaud',
+        nombreExercices: 1,
+        duJour: true,
+      },
+      [
+        {
+          id: 'ex-squat',
+          ordre: 1,
+          nom: 'Squat gobelet',
+          series: 3,
+          repetitions: 12,
+          chargeGrammes: 12000,
+          consigne: '',
+          mediaChemin: 'coach/squat.mp4',
+          mediaTypeMime: 'video/mp4',
+        },
+      ],
+    );
+    return p;
+  });
+  return (
+    <FournisseurDonnees port={port}>
+      <CarteSeanceDuJour onOuvrir={() => {}} />
+      <EcranSeanceDuJour
+        seanceProgrammeeId="sp-1"
+        onRetour={() => {}}
+        onTerminee={() => {}}
+        ouvrirPage={async () => {}}
+      />
+    </FournisseurDonnees>
+  );
+}
+
 const ECRANS_L6: { titre: string; rendu: () => ReactNode }[] = [
   { titre: 'L6-11 · Studio, mes programmes', rendu: () => <StudioAvecFixture ecran="liste" /> },
   { titre: 'L6-11 · Un programme', rendu: () => <StudioAvecFixture ecran="programme" /> },
   { titre: 'L6-11 · Une séance', rendu: () => <StudioAvecFixture ecran="seance" /> },
   { titre: 'L6-11 · Bibliothèque', rendu: () => <StudioAvecFixture ecran="bibliotheque" /> },
+  { titre: 'L6-05 · Séance du jour', rendu: () => <SeanceDuJourAvecFixture /> },
 ];
 
 const ECRANS_L4: { titre: string; rendu: () => ReactNode }[] = [

@@ -169,6 +169,13 @@ function creerPortDonneesEnAttente(promesse: Promise<EtatProfils>): PortDonnees 
     urlMedia: jest.fn(),
     lireAbonnesAffectables: jest.fn(),
     affecterProgramme: jest.fn(),
+    lireSeancesDuJour: jest.fn(),
+    lireSeanceProgrammee: jest.fn(),
+    lireExercicesDeMaSeance: jest.fn(),
+    lireSeriesDeMaSeance: jest.fn(),
+    demarrerSeance: jest.fn(),
+    enregistrerSerie: jest.fn(),
+    terminerSeance: jest.fn(),
   };
 }
 
@@ -421,6 +428,13 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       urlMedia: jest.fn(),
       lireAbonnesAffectables: jest.fn(),
       affecterProgramme: jest.fn(),
+      lireSeancesDuJour: jest.fn(),
+      lireSeanceProgrammee: jest.fn(),
+      lireExercicesDeMaSeance: jest.fn(),
+      lireSeriesDeMaSeance: jest.fn(),
+      demarrerSeance: jest.fn(),
+      enregistrerSerie: jest.fn(),
+      terminerSeance: jest.fn(),
     };
 
     await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);

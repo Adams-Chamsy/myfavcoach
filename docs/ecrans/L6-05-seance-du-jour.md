@@ -25,7 +25,7 @@ faite). Sinon, pas de carte : l'absence est l'état honnête, aucune carte de re
 
 ## L'écran de la séance
 
-Fond sombre de la maquette (thème forcé sombre, lu explicitement : `CLAUDE.md` §5).
+**Thème clair**, pas le fond sombre de la maquette : le mode sombre est hors périmètre au jalon 1 (`docs/perimetre.md` §3), et le thème est forcé en clair (`src/theme/fournisseur.tsx`). Décidé le 17 novembre 2026, à relire.
 
 1. En-tête : temps écoulé depuis le démarrage (« 18:42 écoulées »), titre de la séance,
    « Exercice {i} sur {n} · il te reste ~{m} min ».

@@ -127,4 +127,11 @@ essayer tant que le domaine n'existe pas (`docs/dette.md`).
 - [ ] **Bibliothèque** : « Ajouter un média » ouvre le sélecteur de fichiers de l'iPhone
       (photo, vidéo, PDF) ; un fichier de plus de 50 Mo est refusé avant l'envoi.
 - [ ] **Affecter** : la feuille liste les abonnés ; à 200 %, les puces passent à la ligne.
+- [ ] **Séance du jour** (« Lina Rappel », `essai-rappel-…@mfc.test`, ou un abonné qui reçoit un
+      programme ce jour-là) : la carte de l'accueil, « Commencer la séance », le chronomètre qui
+      tourne écran allumé ; « Démo » ouvre la vidéo dans le navigateur intégré et le retour
+      ramène à la séance ; les champs de série gardent le clavier numérique ; « Terminer la
+      séance », la feuille au-dessus du clavier ; de retour, la carte dit « Faite ».
+- [ ] **Ressenti d'effort** avec le consentement santé accordé (Moi, Confidentialité) : les dix
+      puces, à 200 % elles passent à la ligne ; sans consentement, aucune question.
 

@@ -36,6 +36,7 @@ import type {
   FactureCommission,
   RappelCommission,
   ResultatStudio,
+  StatutSeanceProgrammee,
   StatutProgramme,
   FactureDetail,
   FactureResume,
@@ -1787,6 +1788,142 @@ export const portDonneesSupabase: PortDonnees = {
       'affecter_programme',
       { p_programme_id: programmeId, p_profil_client_id: profilClientId, p_debut: debut },
       (d) => d as number,
+    );
+  },
+
+  async lireSeancesDuJour() {
+    const { data, error } = await supabase.rpc('mes_seances_du_jour');
+    if (error) throw error;
+    return (
+      data as {
+        id: string;
+        titre: string;
+        duree_minutes: number;
+        nombre_exercices: number;
+        coach_prenom: string;
+        coach_nom: string;
+        statut: StatutSeanceProgrammee;
+      }[]
+    ).map((l) => ({
+      id: l.id,
+      titre: l.titre,
+      dureeMinutes: l.duree_minutes,
+      nombreExercices: l.nombre_exercices,
+      coachPrenom: l.coach_prenom,
+      coachNom: l.coach_nom,
+      statut: l.statut,
+    }));
+  },
+
+  async lireSeanceProgrammee(id) {
+    const { data, error } = await supabase.rpc('ma_seance_programmee', {
+      p_seance_programmee_id: id,
+    });
+    if (error) throw error;
+    const l = (
+      data as {
+        id: string;
+        titre: string;
+        duree_minutes: number;
+        date_prevue: string;
+        statut: StatutSeanceProgrammee;
+        demarree_le: string | null;
+        rattrapee: boolean;
+        coach_prenom: string;
+        coach_nom: string;
+      }[]
+    )[0];
+    if (!l) throw new Error('seance_introuvable');
+    return {
+      id: l.id,
+      titre: l.titre,
+      dureeMinutes: l.duree_minutes,
+      datePrevue: l.date_prevue,
+      statut: l.statut,
+      demarreeLe: l.demarree_le,
+      rattrapee: l.rattrapee,
+      coachPrenom: l.coach_prenom,
+      coachNom: l.coach_nom,
+    };
+  },
+
+  async lireExercicesDeMaSeance(id) {
+    const { data, error } = await supabase.rpc('exercices_de_ma_seance', {
+      p_seance_programmee_id: id,
+    });
+    if (error) throw error;
+    return (
+      data as {
+        id: string;
+        ordre: number;
+        nom: string;
+        series: number | null;
+        repetitions: number | null;
+        charge_grammes: number | null;
+        consigne: string;
+        media_chemin: string | null;
+        media_type_mime: string | null;
+      }[]
+    ).map((l) => ({
+      id: l.id,
+      ordre: l.ordre,
+      nom: l.nom,
+      series: l.series,
+      repetitions: l.repetitions,
+      chargeGrammes: l.charge_grammes,
+      consigne: l.consigne,
+      mediaChemin: l.media_chemin,
+      mediaTypeMime: l.media_type_mime,
+    }));
+  },
+
+  async lireSeriesDeMaSeance(id) {
+    const { data, error } = await supabase.rpc('series_de_ma_seance', {
+      p_seance_programmee_id: id,
+    });
+    if (error) throw error;
+    return (
+      data as {
+        exercice_id: string;
+        numero: number;
+        repetitions: number | null;
+        charge_grammes: number | null;
+      }[]
+    ).map((l) => ({
+      exerciceId: l.exercice_id,
+      numero: l.numero,
+      repetitions: l.repetitions,
+      chargeGrammes: l.charge_grammes,
+    }));
+  },
+
+  demarrerSeance(id) {
+    return rpcStudio('demarrer_seance', { p_seance_programmee_id: id }, sansValeur);
+  },
+
+  enregistrerSerie(id, serie) {
+    return rpcStudio(
+      'enregistrer_serie',
+      {
+        p_seance_programmee_id: id,
+        p_exercice_id: serie.exerciceId,
+        p_numero: serie.numero,
+        p_repetitions: serie.repetitions,
+        p_charge_grammes: serie.chargeGrammes,
+      },
+      sansValeur,
+    );
+  },
+
+  terminerSeance(id, ressentiEffort, commentaire) {
+    return rpcStudio(
+      'terminer_seance',
+      {
+        p_seance_programmee_id: id,
+        p_ressenti_effort: ressentiEffort,
+        p_commentaire: commentaire,
+      },
+      sansValeur,
     );
   },
 

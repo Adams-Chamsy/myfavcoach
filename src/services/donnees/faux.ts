@@ -26,9 +26,12 @@ import type {
   RappelCommission,
   AbonneAffectable,
   ExerciceProgramme,
+  ExerciceDeSeance,
   MediaBibliotheque,
   ProgrammeResume,
   ResultatStudio,
+  SeanceProgrammeeDetail,
+  SerieSaisie,
   StatutProgramme,
   FactureDetail,
   FactureResume,
@@ -227,6 +230,18 @@ export type FauxPortDonnees = PortDonnees & {
   // Le prochain appel d'écriture du studio est refusé avec ce code.
   definirRefusStudioPourTest(code: string | null): void;
   lireProgrammesPourTest(): ProgrammeResume[];
+  // L6, séance du jour : une séance programmée du client, ses exercices, et ce qu'il a saisi.
+  definirSeanceClientPourTest(
+    seance: SeanceProgrammeeDetail & { nombreExercices: number; duJour: boolean },
+    exercices: ExerciceDeSeance[],
+  ): void;
+  lireSeanceClientPourTest(id: string):
+    | (SeanceProgrammeeDetail & {
+        ressentiEffort: number | null;
+        commentaire: string | null;
+        series: SerieSaisie[];
+      })
+    | null;
 };
 
 // docs/api.md §3 : un compte neuf a toujours profilActif = 'client' (colonne NOT NULL, défaut
@@ -401,6 +416,16 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
   let abonnesAffectables: AbonneAffectable[] = [];
   let coachVerifie = true;
   let refusStudio: string | null = null;
+  type FauxSeanceClient = SeanceProgrammeeDetail & {
+    nombreExercices: number;
+    duJour: boolean;
+    exercices: ExerciceDeSeance[];
+    series: SerieSaisie[];
+    ressentiEffort: number | null;
+    commentaire: string | null;
+  };
+  const seancesClient: FauxSeanceClient[] = [];
+  const seanceClient = (id: string) => seancesClient.find((x) => x.id === id);
   let compteurStudio = 0;
   const nouvelId = (prefixe: string) => `${prefixe}-${++compteurStudio}`;
   const ok = <T>(valeur: T): ResultatStudio<T> => ({ issue: 'ok', valeur });
@@ -1121,6 +1146,98 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     },
     definirRefusStudioPourTest(code) {
       refusStudio = code;
+    },
+    definirSeanceClientPourTest(seance, exercices) {
+      seancesClient.push({
+        ...seance,
+        exercices,
+        series: [],
+        ressentiEffort: null,
+        commentaire: null,
+      });
+    },
+    lireSeanceClientPourTest(id) {
+      const x = seanceClient(id);
+      if (!x) return null;
+      const { exercices: _e, nombreExercices: _n, duJour: _d, ...reste } = x;
+      return reste;
+    },
+    async lireSeancesDuJour() {
+      return seancesClient
+        .filter((x) => x.duJour)
+        .map((x) => ({
+          id: x.id,
+          titre: x.titre,
+          dureeMinutes: x.dureeMinutes,
+          nombreExercices: x.nombreExercices,
+          coachPrenom: x.coachPrenom,
+          coachNom: x.coachNom,
+          statut: x.statut,
+        }));
+    },
+    async lireSeanceProgrammee(id) {
+      const x = seanceClient(id);
+      if (!x) throw new Error('seance_introuvable');
+      const {
+        exercices: _e,
+        nombreExercices: _n,
+        duJour: _d,
+        series: _s,
+        ressentiEffort: _r,
+        commentaire: _c,
+        ...detail
+      } = x;
+      return detail;
+    },
+    async lireExercicesDeMaSeance(id) {
+      const x = seanceClient(id);
+      if (!x) throw new Error('seance_introuvable');
+      return x.exercices;
+    },
+    async lireSeriesDeMaSeance(id) {
+      return seanceClient(id)?.series ?? [];
+    },
+    async demarrerSeance(id) {
+      const force = refusForce();
+      if (force) return force;
+      const x = seanceClient(id);
+      if (!x) return refus('seance_introuvable');
+      if (x.statut === 'a_faire') {
+        Object.assign(x, { statut: 'en_cours', demarreeLe: new Date().toISOString() });
+      } else if (x.statut === 'manquee' || x.statut === 'partielle') {
+        Object.assign(x, {
+          statut: 'en_cours',
+          demarreeLe: new Date().toISOString(),
+          rattrapee: true,
+        });
+      } else return refus('transition_interdite');
+      return ok(null);
+    },
+    async enregistrerSerie(id, serie) {
+      const force = refusForce();
+      if (force) return force;
+      const x = seanceClient(id);
+      if (!x) return refus('seance_introuvable');
+      if (x.statut !== 'en_cours') return refus('transition_interdite');
+      x.series = [
+        ...x.series.filter(
+          (y) => !(y.exerciceId === serie.exerciceId && y.numero === serie.numero),
+        ),
+        serie,
+      ];
+      return ok(null);
+    },
+    async terminerSeance(id, ressentiEffort, commentaire) {
+      const force = refusForce();
+      if (force) return force;
+      const x = seanceClient(id);
+      if (!x) return refus('seance_introuvable');
+      if (x.statut !== 'en_cours') return refus('transition_interdite');
+      if (ressentiEffort !== null && !consentementSante.accorde) {
+        return refus('consentement_sante_absent');
+      }
+      Object.assign(x, { statut: 'faite', ressentiEffort, commentaire });
+      return ok(null);
     },
     lireProgrammesPourTest() {
       return programmes.map(resume);

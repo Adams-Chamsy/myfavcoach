@@ -601,6 +601,50 @@ export type MediaBibliotheque = MediaJoint & { poidsOctets: number };
 
 export type AbonneAffectable = { profilClientId: string; prenom: string; initialeNom: string };
 
+// L6 — la séance du jour du client (docs/ecrans/L6-05-seance-du-jour.md), en espace client.
+export type StatutSeanceProgrammee = 'a_faire' | 'en_cours' | 'faite' | 'partielle' | 'manquee';
+
+export type SeanceDuJour = {
+  id: string;
+  titre: string;
+  dureeMinutes: number;
+  nombreExercices: number;
+  coachPrenom: string;
+  coachNom: string;
+  statut: StatutSeanceProgrammee;
+};
+
+export type SeanceProgrammeeDetail = {
+  id: string;
+  titre: string;
+  dureeMinutes: number;
+  datePrevue: string;
+  statut: StatutSeanceProgrammee;
+  demarreeLe: string | null;
+  rattrapee: boolean;
+  coachPrenom: string;
+  coachNom: string;
+};
+
+export type ExerciceDeSeance = {
+  id: string;
+  ordre: number;
+  nom: string;
+  series: number | null;
+  repetitions: number | null;
+  chargeGrammes: number | null;
+  consigne: string;
+  mediaChemin: string | null;
+  mediaTypeMime: string | null;
+};
+
+export type SerieSaisie = {
+  exerciceId: string;
+  numero: number;
+  repetitions: number | null;
+  chargeGrammes: number | null;
+};
+
 export type PortDonnees = {
   lireEtatProfils(): Promise<EtatProfils>;
 
@@ -904,6 +948,21 @@ export type PortDonnees = {
     profilClientId: string,
     debut: string,
   ): Promise<ResultatStudio<number>>;
+
+  // L6, séance du jour (écran 05), en espace client. Une séance d'un autre, ou sans accès :
+  // la lecture lève (seance_introuvable, abonnement_sans_acces), l'écriture rend son refus.
+  lireSeancesDuJour(): Promise<SeanceDuJour[]>;
+  lireSeanceProgrammee(id: string): Promise<SeanceProgrammeeDetail>;
+  lireExercicesDeMaSeance(id: string): Promise<ExerciceDeSeance[]>;
+  lireSeriesDeMaSeance(id: string): Promise<SerieSaisie[]>;
+  demarrerSeance(id: string): Promise<ResultatStudio>;
+  enregistrerSerie(id: string, serie: SerieSaisie): Promise<ResultatStudio>;
+  // Le ressenti est une donnée de santé : jamais journalisé, refusé sans consentement.
+  terminerSeance(
+    id: string,
+    ressentiEffort: number | null,
+    commentaire: string | null,
+  ): Promise<ResultatStudio>;
 };
 
 // Les trois écritures qui changent EtatProfils. Elles ne sont JAMAIS appelées sur un `port`

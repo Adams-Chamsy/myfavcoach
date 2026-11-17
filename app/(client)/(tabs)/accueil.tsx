@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import { Marque } from '@/composants/marque';
 import { Squelette } from '@/composants/squelette';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FeuilleBascule } from '@/fonctionnalites/identite/feuille-bascule';
+import { CarteSeanceDuJour } from '@/fonctionnalites/seance/carte-seance-du-jour';
 import type { Discipline, ResultatCoachRecherche } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
 import { font, themes } from '@/theme/tokens';
@@ -180,6 +181,11 @@ export default function Accueil() {
               </Text>
             </View>
           ) : null}
+          {/* L6 (docs/ecrans/L6-05-seance-du-jour.md) : la séance du jour, rendue par le
+              serveur ; aucune carte quand il n'y en a pas. */}
+          <CarteSeanceDuJour
+            onOuvrir={(id) => router.push(`/(client)/seance/${encodeURIComponent(id)}` as Href)}
+          />
           <View
             style={{
               borderRadius: theme.rayon.panneau,

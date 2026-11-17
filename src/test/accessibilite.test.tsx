@@ -49,6 +49,7 @@ import { EcranDepotAvis } from '@/fonctionnalites/avis/ecran-depot-avis';
 import { EcranFacture } from '@/fonctionnalites/factures/ecran-facture';
 import { EcranFactures } from '@/fonctionnalites/factures/ecran-factures';
 import { EcranFacturation } from '@/fonctionnalites/revenus/ecran-facturation';
+import { EcranSeanceDuJour } from '@/fonctionnalites/seance/ecran-seance-du-jour';
 import { EcranBibliotheque } from '@/fonctionnalites/studio/ecran-bibliotheque';
 import { EcranProgramme } from '@/fonctionnalites/studio/ecran-programme';
 import { EcranProgrammes } from '@/fonctionnalites/studio/ecran-programmes';
@@ -59,6 +60,7 @@ import {
   detailAbonnementDemonstration,
   factureDemonstration,
   rappelCommissionDemonstration,
+  seancesDemonstration,
   revenusDemonstration,
   soldeDemonstration,
   versementsDemonstration,
@@ -494,6 +496,42 @@ function portDonneesStudio() {
   return p;
 }
 
+// L6 : une séance du jour en cours (seancesDemonstration[0], exercice de la maquette 05).
+function portDonneesSeanceDuJour() {
+  const p = creerFauxPortDonnees();
+  p.definirEtatProfilsPourTest(etatProfilsParDefaut({ profilActif: 'client', clientExiste: true }));
+  const demo = seancesDemonstration[0]!;
+  p.definirSeanceClientPourTest(
+    {
+      id: 'sp-1',
+      titre: demo.titre,
+      dureeMinutes: demo.dureeMinutes,
+      datePrevue: '2026-11-17',
+      statut: 'en_cours',
+      demarreeLe: new Date().toISOString(),
+      rattrapee: false,
+      coachPrenom: 'Yannick',
+      coachNom: 'Berthaud',
+      nombreExercices: 1,
+      duJour: true,
+    },
+    [
+      {
+        id: 'ex-squat',
+        ordre: 1,
+        nom: 'Squat gobelet',
+        series: 3,
+        repetitions: 12,
+        chargeGrammes: 12000,
+        consigne: '',
+        mediaChemin: 'coach/squat.mp4',
+        mediaTypeMime: 'video/mp4',
+      },
+    ],
+  );
+  return p;
+}
+
 function portDonneesRevenus() {
   const p = creerFauxPortDonnees();
   p.definirEtatProfilsPourTest(
@@ -873,6 +911,21 @@ const CORPUS: EntreeCorpus[] = [
       <FournisseurSession key="studio-bibliotheque" port={portAuthOnboarding}>
         <FournisseurDonnees port={portDonneesStudio()}>
           <EcranBibliotheque onRetour={() => {}} />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(client)/seance/[seanceProgrammeeId].tsx',
+    creerElement: () => (
+      <FournisseurSession key="seance-du-jour" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesSeanceDuJour()}>
+          <EcranSeanceDuJour
+            seanceProgrammeeId="sp-1"
+            onRetour={() => {}}
+            onTerminee={() => {}}
+            ouvrirPage={async () => {}}
+          />
         </FournisseurDonnees>
       </FournisseurSession>
     ),
