@@ -4041,6 +4041,54 @@ describe('invitations — L3bis (0026/0027)', () => {
           ?.statut,
       ).toBe('abonnee');
     });
+
+    // L5, P5.6b (0077/0078) — le rappel de commission de I-01, critère 6 : « n'apparaît que s'il
+    // existe un abonnement réel amené par ce lien ». Suite du test précédent, dont il reprend
+    // l'état : l'invité est abonné ACTIF chez son inviteur (49 €, SEPA confirmé) et chez coachB
+    // (49 €, carte), où il n'est arrivé par aucun lien. Les deux sens, chacun nommé.
+    it('[P5.6b] le rappel de commission : l’inviteur lit son abonnement amené par le lien ; l’autre coach, rien ; en espace client, refus', async () => {
+      const enEspaceCoach = async (session: Session) => {
+        const bascule = await appelRest('/rest/v1/rpc/basculer_profil', {
+          methode: 'POST',
+          session,
+          corps: { profil: 'coach' },
+        });
+        expect(bascule.statut).toBeLessThan(300);
+      };
+      const lireRappel = (session: Session) =>
+        appelRest('/rest/v1/rpc/mon_rappel_commission', { methode: 'POST', session });
+
+      // Sens illégitime d'abord : depuis l'espace client, le refus du serveur.
+      const depuisClient = await lireRappel(invite);
+      expect(depuisClient.statut).toBeGreaterThanOrEqual(400);
+      expect(JSON.stringify(depuisClient.corps)).toContain('profil_coach_requis');
+
+      // Sens légitime : l'inviteur lit une ligne, aux montants de la formule de 0076.
+      await enEspaceCoach(coach.session);
+      const { corps: profilCoach } = await appelRest(
+        `/rest/v1/profils_coach?id=eq.${coach.profilId}&select=commission_offerte_jusqu_le`,
+        { session: 'admin' },
+      );
+      const jusquLe = (profilCoach as { commission_offerte_jusqu_le: string }[])[0]
+        .commission_offerte_jusqu_le;
+      expect(jusquLe).not.toBeNull();
+      const legitime = await lireRappel(coach.session);
+      expect(legitime.statut).toBe(200);
+      expect(legitime.corps).toEqual([
+        {
+          commission_offerte_jusqu_le: jusquLe,
+          nombre_abonnements: 1,
+          total_centimes: 4900,
+          total_apres_commission_centimes: 4410,
+        },
+      ]);
+
+      // Sens illégitime : coachB a un abonné actif, mais venu sans lien — aucune ligne.
+      await enEspaceCoach(coachB.session);
+      const autre = await lireRappel(coachB.session);
+      expect(autre.statut).toBe(200);
+      expect(autre.corps).toEqual([]);
+    });
   });
 
   describe('la liaison compte -> invitation, à l’inscription (0027, creer_compte_depuis_auth)', () => {

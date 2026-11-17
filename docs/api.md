@@ -439,6 +439,14 @@ Deux refus s'ajoutent à la publication d'une offre (§5) : 409 `identite_fiscal
 409 `compte_versement_non_operationnel` (`docs/domaine.md` §3.3). À l'intention de souscription
 (§7), un seul, neutre pour le client : 409 `coach_indisponible` (migration 0072).
 
+**Rappel de commission de l'écran I-01** (P5.6b, migrations 0077/0078) : `mon_rappel_commission()`,
+fonction de base lue directement, en espace coach (403 `profil_coach_requis` sinon). Une ligne au
+plus — `commission_offerte_jusqu_le`, `nombre_abonnements`, `total_centimes`,
+`total_apres_commission_centimes` — tant que la commission du coach est offerte et qu'au moins un
+abonnement ACTIF lui vient de ses liens d'invitation ; aucune ligne sinon. Le montant « avec
+commission » suit la formule de la facture (10 %, arrondi au centime le plus proche) : l'écran
+n'en calcule aucun.
+
 ---
 
 ## 9. Contenu et séances (L6)

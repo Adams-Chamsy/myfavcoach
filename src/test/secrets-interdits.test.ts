@@ -315,6 +315,9 @@ describe('secrets interdits côté application', () => {
       // de commission (convention de 0031).
       'supabase/migrations/0075_preparer_factures_completes.sql',
       'supabase/migrations/0076_factures_completes_regles.sql',
+      // 0077/0078 : revoke de service_role sur le rappel de commission (convention de 0031).
+      'supabase/migrations/0077_preparer_rappel_commission.sql',
+      'supabase/migrations/0078_rappel_commission_regles.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',
