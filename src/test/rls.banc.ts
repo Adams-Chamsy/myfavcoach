@@ -9127,6 +9127,11 @@ describe('programmes, séances, exercices — L6 (0080, 0081)', () => {
         repetitions: 12,
         charge_grammes: 12000,
         consigne: 'Dos droit.',
+        // P6.3 (0083) : le média joint, aucun ici.
+        media_id: null,
+        media_chemin: null,
+        media_type_mime: null,
+        media_nom_fichier: null,
       },
     ]);
   });
@@ -9281,6 +9286,195 @@ describe('programmes, séances, exercices — L6 (0080, 0081)', () => {
 
     expect((await rpc('supprimer_exercice', { p_exercice_id: premier }, coachP)).statut).toBe(204);
     expect(await noms(seance)).toEqual(['Gainage']);
+  });
+
+  // P6.3 (0082, 0083) — la bibliothèque de médias. Le corps envoyé n'a rien d'une vraie image
+  // (CLAUDE.md §4) : seuls l'existence de l'objet, son dossier et qui peut le lire sont sous test.
+  // Envoi par l'API Storage, comme l'application, avec le type déclaré du fichier.
+  const deposer = async (chemin: string, session: Session, typeMime = 'image/png') => {
+    const reponse = await fetch(`${API_URL}/storage/v1/object/medias-programmes/${chemin}`, {
+      method: 'POST',
+      headers: {
+        apikey: ANON_KEY,
+        Authorization: `Bearer ${session.jwt}`,
+        'Content-Type': typeMime,
+      },
+      body: 'media de test, jamais un vrai fichier',
+    });
+    return reponse.status;
+  };
+  const signer = (chemin: string, session: Session) =>
+    appelRest(`/storage/v1/object/sign/medias-programmes/${chemin}`, {
+      methode: 'POST',
+      session,
+      corps: { expiresIn: 900 },
+    });
+
+  it('médias : le coach dépose dans son dossier, enregistre, joint à un exercice, et signe une URL', async () => {
+    const chemin = `${profilCoachP}/${SUFFIXE_COMPTE}-demo.png`;
+    expect(await deposer(chemin, coachP)).toBeLessThan(300);
+    const media = await rpc(
+      'enregistrer_media',
+      { p_chemin: chemin, p_nom_fichier: 'demo.png', p_type_mime: 'image/png', p_poids_octets: 37 },
+      coachP,
+    );
+    expect(media.statut).toBe(200);
+    const { corps: medias } = await rpc('mes_medias', {}, coachP);
+    expect(
+      (medias as { id: string; chemin: string }[]).find((m) => m.id === media.corps)?.chemin,
+    ).toBe(chemin);
+
+    const programme = await creerProgramme();
+    const seance = (
+      await rpc('ajouter_seance', { p_programme_id: programme, p_jour_relatif: 1 }, coachP)
+    ).corps as string;
+    const exercice = (
+      await rpc(
+        'ajouter_exercice',
+        {
+          p_seance_id: seance,
+          p_nom: 'Démo',
+          p_series: null,
+          p_repetitions: null,
+          p_charge_grammes: null,
+          p_consigne: null,
+        },
+        coachP,
+      )
+    ).corps as string;
+    expect(
+      (await rpc('joindre_media', { p_exercice_id: exercice, p_media_id: media.corps }, coachP))
+        .statut,
+    ).toBe(204);
+    const { corps: exercices } = await rpc(
+      'exercices_de_la_seance',
+      { p_seance_id: seance },
+      coachP,
+    );
+    expect((exercices as { media_chemin: string | null }[])[0].media_chemin).toBe(chemin);
+
+    const signee = await signer(chemin, coachP);
+    expect(signee.statut).toBeLessThan(300);
+    expect((signee.corps as { signedURL?: string }).signedURL).toBeDefined();
+  });
+
+  it('médias : un autre coach ne dépose pas dans ce dossier, ne signe pas, n’enregistre ni ne joint ce qui n’est pas à lui ; un type refusé ne se dépose pas', async () => {
+    const chemin = `${profilCoachP}/${SUFFIXE_COMPTE}-prive.png`;
+    expect(await deposer(chemin, coachP)).toBeLessThan(300);
+    const media = (
+      await rpc(
+        'enregistrer_media',
+        {
+          p_chemin: chemin,
+          p_nom_fichier: 'prive.png',
+          p_type_mime: 'image/png',
+          p_poids_octets: 37,
+        },
+        coachP,
+      )
+    ).corps as string;
+
+    expect(await deposer(`${profilCoachP}/${SUFFIXE_COMPTE}-intrus.png`, B)).toBeGreaterThanOrEqual(
+      400,
+    );
+    expect((await signer(chemin, B)).statut).toBeGreaterThanOrEqual(400);
+    expect((await signer(chemin, A)).statut).toBeGreaterThanOrEqual(400);
+    expect(
+      messageDe(
+        (
+          await rpc(
+            'enregistrer_media',
+            {
+              p_chemin: chemin,
+              p_nom_fichier: 'vol.png',
+              p_type_mime: 'image/png',
+              p_poids_octets: 37,
+            },
+            B,
+          )
+        ).corps,
+      ),
+    ).toBe('media_invalide');
+    const { corps: chezB } = await rpc('mes_medias', {}, B);
+    expect((chezB as { id: string }[]).map((m) => m.id)).not.toContain(media);
+    expect(messageDe((await rpc('supprimer_media', { p_media_id: media }, B)).corps)).toBe(
+      'media_introuvable',
+    );
+
+    expect(
+      await deposer(`${profilCoachP}/${SUFFIXE_COMPTE}-script.html`, coachP, 'text/html'),
+    ).toBeGreaterThanOrEqual(400);
+    expect(
+      messageDe(
+        (
+          await rpc(
+            'enregistrer_media',
+            {
+              p_chemin: `${profilCoachP}/${SUFFIXE_COMPTE}-absent.png`,
+              p_nom_fichier: 'absent.png',
+              p_type_mime: 'image/png',
+              p_poids_octets: 37,
+            },
+            coachP,
+          )
+        ).corps,
+      ),
+    ).toBe('media_invalide');
+  });
+
+  it('médias : un média utilisé par un programme publié ne se supprime pas ; sinon, oui, et rend son chemin', async () => {
+    const chemin = `${profilCoachP}/${SUFFIXE_COMPTE}-utilise.png`;
+    expect(await deposer(chemin, coachP)).toBeLessThan(300);
+    const media = (
+      await rpc(
+        'enregistrer_media',
+        {
+          p_chemin: chemin,
+          p_nom_fichier: 'utilise.png',
+          p_type_mime: 'image/png',
+          p_poids_octets: 37,
+        },
+        coachP,
+      )
+    ).corps as string;
+    const programme = await creerProgramme();
+    const seance = (
+      await rpc('ajouter_seance', { p_programme_id: programme, p_jour_relatif: 1 }, coachP)
+    ).corps as string;
+    const exercice = (
+      await rpc(
+        'ajouter_exercice',
+        {
+          p_seance_id: seance,
+          p_nom: 'Avec média',
+          p_series: null,
+          p_repetitions: null,
+          p_charge_grammes: null,
+          p_consigne: null,
+        },
+        coachP,
+      )
+    ).corps as string;
+    await rpc('joindre_media', { p_exercice_id: exercice, p_media_id: media }, coachP);
+    expect((await rpc('publier_programme', { p_programme_id: programme }, coachP)).statut).toBe(
+      204,
+    );
+    expect(messageDe((await rpc('supprimer_media', { p_media_id: media }, coachP)).corps)).toBe(
+      'media_utilise',
+    );
+
+    expect((await rpc('revenir_en_edition', { p_programme_id: programme }, coachP)).statut).toBe(
+      204,
+    );
+    const suppression = await rpc('supprimer_media', { p_media_id: media }, coachP);
+    expect(suppression.statut).toBe(200);
+    expect(suppression.corps).toBe(chemin);
+    const { corps: exercices } = await rpc(
+      'exercices_de_la_seance',
+      { p_seance_id: seance },
+      coachP,
+    );
+    expect((exercices as { media_id: string | null }[])[0].media_id).toBeNull();
   });
 
   it('§4.6 : publier exige un coach vérifié et une séance ; publié, plus rien ne se modifie ; archiver ; revenir en édition', async () => {
