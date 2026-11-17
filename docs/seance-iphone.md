@@ -117,3 +117,14 @@ essayer tant que le domaine n'existe pas (`docs/dette.md`).
       clients ») : sous « Qui a répondu », la carte beige « Commission offerte jusqu’au 1er
       février. Sur cet abonnement, tu touches 49 € au lieu de 44,10 €. » ; à 200 %, la phrase
       passe à la ligne sans être tronquée, l'icône reste en haut à gauche.
+
+## L6 — studio, séance du jour
+
+- [ ] **Studio** (`scenario-coach-offre`, « Créer » → « Nouveau programme ») : le titre, une
+      durée, « Ajouter une séance », la séance (titre, durée, jour), « Ajouter un exercice » :
+      le clavier numérique pour séries et répétitions, décimal pour la charge ; la feuille
+      d'exercice tient au-dessus du clavier.
+- [ ] **Bibliothèque** : « Ajouter un média » ouvre le sélecteur de fichiers de l'iPhone
+      (photo, vidéo, PDF) ; un fichier de plus de 50 Mo est refusé avant l'envoi.
+- [ ] **Affecter** : la feuille liste les abonnés ; à 200 %, les puces passent à la ligne.
+

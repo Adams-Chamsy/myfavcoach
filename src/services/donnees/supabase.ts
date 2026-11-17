@@ -35,6 +35,8 @@ import type {
   StatutAbonnement,
   FactureCommission,
   RappelCommission,
+  ResultatStudio,
+  StatutProgramme,
   FactureDetail,
   FactureResume,
   Identification,
@@ -333,6 +335,60 @@ function echec(erreur: unknown): ResultatEcriture {
 // compte_id, la colonne n'est pas lisible par authenticated sur profils_coach depuis 0008
 // (42501) ; par select('id').limit(1), la lecture rend aussi les coachs vérifiés, donc parfois
 // le profil d'un autre. Trouvé sur iPhone le 1er novembre 2026. null : aucun profil coach.
+// L6, studio : une fonction du serveur, et son refus. Le serveur lève un code en snake_case
+// (programme_vide, …) ; tout autre message (réseau, panne) n'est pas un refus : sans_reponse.
+async function rpcStudio<T>(
+  fonction: string,
+  args: Record<string, unknown>,
+  lire: (data: unknown) => T,
+): Promise<ResultatStudio<T>> {
+  const { data, error } = await supabase.rpc(fonction, args);
+  if (error) {
+    return /^[a-z_]+$/.test(error.message)
+      ? { issue: 'refusee', code: error.message }
+      : { issue: 'sans_reponse' };
+  }
+  return { issue: 'ok', valeur: lire(data) };
+}
+const sansValeur = (): null => null;
+
+type LigneProgramme = {
+  id: string;
+  titre: string;
+  duree_semaines: number;
+  statut: StatutProgramme;
+  nombre_seances: number;
+  abonnes_en_cours: number;
+};
+type LigneSeance = {
+  id: string;
+  titre: string;
+  duree_minutes: number;
+  jour_relatif: number;
+  nombre_exercices: number;
+};
+type LigneExercice = {
+  id: string;
+  ordre: number;
+  nom: string;
+  series: number | null;
+  repetitions: number | null;
+  charge_grammes: number | null;
+  consigne: string;
+  media_id: string | null;
+  media_chemin: string | null;
+  media_type_mime: string | null;
+  media_nom_fichier: string | null;
+};
+type LigneMedia = {
+  id: string;
+  chemin: string;
+  nom_fichier: string;
+  type_mime: string;
+  poids_octets: number;
+};
+const COMPARTIMENT_MEDIAS = 'medias-programmes';
+
 async function monProfilCoachId(): Promise<{ id: string | null; erreur: unknown }> {
   const { data, error } = await supabase.rpc('mon_profil_coach_id');
   return { id: (data as string | null) ?? null, erreur: error };
@@ -1515,6 +1571,223 @@ export const portDonneesSupabase: PortDonnees = {
       nombreLignes: l.nombre_lignes,
       emiseLe: l.emise_le,
     }));
+  },
+
+  async lireMesProgrammes() {
+    const { data, error } = await supabase.rpc('mes_programmes');
+    if (error) throw error;
+    return (data as LigneProgramme[]).map((l) => ({
+      id: l.id,
+      titre: l.titre,
+      dureeSemaines: l.duree_semaines,
+      statut: l.statut,
+      nombreSeances: l.nombre_seances,
+      abonnesEnCours: l.abonnes_en_cours,
+    }));
+  },
+
+  creerProgramme() {
+    return rpcStudio('creer_programme', {}, (d) => d as string);
+  },
+
+  modifierProgramme(id, titre, dureeSemaines) {
+    return rpcStudio(
+      'modifier_programme',
+      { p_programme_id: id, p_titre: titre, p_duree_semaines: dureeSemaines },
+      sansValeur,
+    );
+  },
+
+  async lireSeancesDuProgramme(programmeId) {
+    const { data, error } = await supabase.rpc('seances_du_programme', {
+      p_programme_id: programmeId,
+    });
+    if (error) throw error;
+    return (data as LigneSeance[]).map((l) => ({
+      id: l.id,
+      titre: l.titre,
+      dureeMinutes: l.duree_minutes,
+      jourRelatif: l.jour_relatif,
+      nombreExercices: l.nombre_exercices,
+    }));
+  },
+
+  ajouterSeance(programmeId, jourRelatif) {
+    return rpcStudio(
+      'ajouter_seance',
+      { p_programme_id: programmeId, p_jour_relatif: jourRelatif },
+      (d) => d as string,
+    );
+  },
+
+  modifierSeance(seanceId, modifs) {
+    return rpcStudio(
+      'modifier_seance',
+      {
+        p_seance_id: seanceId,
+        p_titre: modifs.titre,
+        p_duree_minutes: modifs.dureeMinutes,
+        p_jour_relatif: modifs.jourRelatif,
+      },
+      sansValeur,
+    );
+  },
+
+  supprimerSeance(seanceId) {
+    return rpcStudio('supprimer_seance', { p_seance_id: seanceId }, sansValeur);
+  },
+
+  dupliquerSemaine(programmeId, semaine) {
+    return rpcStudio(
+      'dupliquer_semaine',
+      { p_programme_id: programmeId, p_semaine: semaine },
+      (d) => d as number,
+    );
+  },
+
+  async lireExercices(seanceId) {
+    const { data, error } = await supabase.rpc('exercices_de_la_seance', {
+      p_seance_id: seanceId,
+    });
+    if (error) throw error;
+    return (data as LigneExercice[]).map((l) => ({
+      id: l.id,
+      ordre: l.ordre,
+      nom: l.nom,
+      series: l.series,
+      repetitions: l.repetitions,
+      chargeGrammes: l.charge_grammes,
+      consigne: l.consigne,
+      media:
+        l.media_id && l.media_chemin && l.media_type_mime
+          ? {
+              id: l.media_id,
+              chemin: l.media_chemin,
+              typeMime: l.media_type_mime,
+              nomFichier: l.media_nom_fichier ?? '',
+            }
+          : null,
+    }));
+  },
+
+  ajouterExercice(seanceId, saisie) {
+    return rpcStudio(
+      'ajouter_exercice',
+      {
+        p_seance_id: seanceId,
+        p_nom: saisie.nom,
+        p_series: saisie.series,
+        p_repetitions: saisie.repetitions,
+        p_charge_grammes: saisie.chargeGrammes,
+        p_consigne: saisie.consigne,
+      },
+      (d) => d as string,
+    );
+  },
+
+  supprimerExercice(exerciceId) {
+    return rpcStudio('supprimer_exercice', { p_exercice_id: exerciceId }, sansValeur);
+  },
+
+  deplacerExercice(exerciceId, sens) {
+    return rpcStudio('deplacer_exercice', { p_exercice_id: exerciceId, p_sens: sens }, sansValeur);
+  },
+
+  joindreMedia(exerciceId, mediaId) {
+    return rpcStudio(
+      'joindre_media',
+      { p_exercice_id: exerciceId, p_media_id: mediaId },
+      sansValeur,
+    );
+  },
+
+  publierProgramme(id) {
+    return rpcStudio('publier_programme', { p_programme_id: id }, sansValeur);
+  },
+
+  archiverProgramme(id) {
+    return rpcStudio('archiver_programme', { p_programme_id: id }, sansValeur);
+  },
+
+  revenirEnEdition(id) {
+    return rpcStudio('revenir_en_edition', { p_programme_id: id }, sansValeur);
+  },
+
+  async lireMesMedias() {
+    const { data, error } = await supabase.rpc('mes_medias');
+    if (error) throw error;
+    return (data as LigneMedia[]).map((l) => ({
+      id: l.id,
+      chemin: l.chemin,
+      nomFichier: l.nom_fichier,
+      typeMime: l.type_mime,
+      poidsOctets: l.poids_octets,
+    }));
+  },
+
+  async deposerMedia(fichier) {
+    const coach = await monProfilCoachId();
+    if (coach.erreur || !coach.id) return { issue: 'sans_reponse' };
+    const extension = fichier.nom.includes('.') ? fichier.nom.split('.').pop() : '';
+    const chemin = `${coach.id}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}${
+      extension ? `.${extension.toLowerCase()}` : ''
+    }`;
+    const contenu = await (await fetch(fichier.uri)).blob();
+    const { error: erreurEnvoi } = await supabase.storage
+      .from(COMPARTIMENT_MEDIAS)
+      .upload(chemin, contenu, { contentType: fichier.typeMime });
+    // Le dossier refuse lui-même un type ou un poids hors limites (0082) : refus, pas panne.
+    if (erreurEnvoi) return { issue: 'refusee', code: 'media_invalide' };
+    return rpcStudio(
+      'enregistrer_media',
+      {
+        p_chemin: chemin,
+        p_nom_fichier: fichier.nom,
+        p_type_mime: fichier.typeMime,
+        p_poids_octets: fichier.poidsOctets,
+      },
+      (d) => d as string,
+    );
+  },
+
+  async supprimerMedia(mediaId) {
+    const resultat = await rpcStudio(
+      'supprimer_media',
+      { p_media_id: mediaId },
+      (d) => d as string,
+    );
+    if (resultat.issue !== 'ok') return resultat;
+    // La ligne est partie : le fichier suit. Un échec ici laisse un fichier orphelin dans le
+    // dossier du coach, jamais lisible par un autre.
+    await supabase.storage.from(COMPARTIMENT_MEDIAS).remove([resultat.valeur]);
+    return { issue: 'ok', valeur: null };
+  },
+
+  async urlMedia(chemin) {
+    const { data, error } = await supabase.storage
+      .from(COMPARTIMENT_MEDIAS)
+      .createSignedUrl(chemin, 900);
+    return error || !data ? null : data.signedUrl;
+  },
+
+  async lireAbonnesAffectables() {
+    const { data, error } = await supabase.rpc('abonnes_affectables');
+    if (error) throw error;
+    return (data as { profil_client_id: string; prenom: string; initiale_nom: string }[]).map(
+      (l) => ({
+        profilClientId: l.profil_client_id,
+        prenom: l.prenom,
+        initialeNom: l.initiale_nom,
+      }),
+    );
+  },
+
+  affecterProgramme(programmeId, profilClientId, debut) {
+    return rpcStudio(
+      'affecter_programme',
+      { p_programme_id: programmeId, p_profil_client_id: profilClientId, p_debut: debut },
+      (d) => d as number,
+    );
   },
 
   async lireFactures(): Promise<FactureResume[]> {

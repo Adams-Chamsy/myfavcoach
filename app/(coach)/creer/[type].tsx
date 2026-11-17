@@ -1,4 +1,4 @@
-import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
+import { type Href, Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 
 import { EcranProvisoire } from '@/composants/ecran-provisoire';
 import { EcranCreationOffre } from '@/fonctionnalites/offres/ecran-creation-offre';
@@ -10,8 +10,6 @@ import { EcranCreationOffre } from '@/fonctionnalites/offres/ecran-creation-offr
 // traitement vient de docs/perimetre.md (écrans 11 « Studio de contenu » et 03 « Profil coach —
 // offres »).
 const CONFIGURATION: Record<string, { titre: string; lot: string }> = {
-  programme: { titre: 'Nouveau programme', lot: 'L6' },
-  seance: { titre: 'Nouvelle séance', lot: 'L6' },
   offre: { titre: 'Nouvelle offre', lot: 'L2' },
 };
 
@@ -31,6 +29,12 @@ export default function Creer() {
         }
       />
     );
+
+  // L6 (docs/ecrans/L6-11-studio.md, « Entrées ») : « Nouveau programme » ouvre le studio, qui
+  // le crée ; « Nouvelle séance » ouvre la liste des programmes, une séance s'ajoutant dans l'un
+  // d'eux. Remplacement, pas empilement : la feuille Créer ne reste pas derrière.
+  if (type === 'programme') return <Redirect href={'/(coach)/studio?nouveau=1' as Href} />;
+  if (type === 'seance') return <Redirect href={'/(coach)/studio?pour=seance' as Href} />;
 
   const configuration = CONFIGURATION[type ?? ''];
   return (

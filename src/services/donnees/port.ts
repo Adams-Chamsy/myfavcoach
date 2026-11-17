@@ -550,6 +550,57 @@ export type FactureCommission = {
 export type ResultatServeur<T> =
   ({ issue: 'ok' } & T) | { issue: 'refusee'; refus: RefusServeur } | { issue: 'sans_reponse' };
 
+// L6 — le studio du coach (docs/ecrans/L6-11-studio.md ; docs/prompts/L6.md). Toute écriture
+// passe par une fonction du serveur ; un refus rend son code (programme_vide, …), que l'écran
+// traduit (src/fonctionnalites/studio/textes.ts). « sans_reponse » : pas de réponse du tout.
+export type ResultatStudio<T = null> =
+  { issue: 'ok'; valeur: T } | { issue: 'refusee'; code: string } | { issue: 'sans_reponse' };
+
+export type StatutProgramme = 'brouillon' | 'publie' | 'archive';
+
+export type ProgrammeResume = {
+  id: string;
+  titre: string;
+  dureeSemaines: number;
+  statut: StatutProgramme;
+  nombreSeances: number;
+  abonnesEnCours: number;
+};
+
+export type SeanceResume = {
+  id: string;
+  titre: string;
+  dureeMinutes: number;
+  // Le jour dans le programme, à partir de 1 (docs/domaine.md §3.6).
+  jourRelatif: number;
+  nombreExercices: number;
+};
+
+export type MediaJoint = { id: string; chemin: string; typeMime: string; nomFichier: string };
+
+export type ExerciceProgramme = {
+  id: string;
+  ordre: number;
+  nom: string;
+  series: number | null;
+  repetitions: number | null;
+  chargeGrammes: number | null;
+  consigne: string;
+  media: MediaJoint | null;
+};
+
+export type SaisieExercice = {
+  nom: string;
+  series: number | null;
+  repetitions: number | null;
+  chargeGrammes: number | null;
+  consigne: string;
+};
+
+export type MediaBibliotheque = MediaJoint & { poidsOctets: number };
+
+export type AbonneAffectable = { profilClientId: string; prenom: string; initialeNom: string };
+
 export type PortDonnees = {
   lireEtatProfils(): Promise<EtatProfils>;
 
@@ -815,6 +866,44 @@ export type PortDonnees = {
   // facture qui n'existe pas, ou qui n'est pas la sienne — même réponse.
   lireFactures(): Promise<FactureResume[]>;
   lireFacture(factureId: string): Promise<FactureDetail | null>;
+
+  // L6, studio (écran 11), en espace coach.
+  lireMesProgrammes(): Promise<ProgrammeResume[]>;
+  creerProgramme(): Promise<ResultatStudio<string>>;
+  modifierProgramme(id: string, titre: string, dureeSemaines: number): Promise<ResultatStudio>;
+  lireSeancesDuProgramme(programmeId: string): Promise<SeanceResume[]>;
+  ajouterSeance(programmeId: string, jourRelatif: number): Promise<ResultatStudio<string>>;
+  modifierSeance(
+    seanceId: string,
+    modifs: { titre: string; dureeMinutes: number; jourRelatif: number },
+  ): Promise<ResultatStudio>;
+  supprimerSeance(seanceId: string): Promise<ResultatStudio>;
+  dupliquerSemaine(programmeId: string, semaine: number): Promise<ResultatStudio<number>>;
+  lireExercices(seanceId: string): Promise<ExerciceProgramme[]>;
+  ajouterExercice(seanceId: string, saisie: SaisieExercice): Promise<ResultatStudio<string>>;
+  supprimerExercice(exerciceId: string): Promise<ResultatStudio>;
+  deplacerExercice(exerciceId: string, sens: 'haut' | 'bas'): Promise<ResultatStudio>;
+  joindreMedia(exerciceId: string, mediaId: string | null): Promise<ResultatStudio>;
+  publierProgramme(id: string): Promise<ResultatStudio>;
+  archiverProgramme(id: string): Promise<ResultatStudio>;
+  revenirEnEdition(id: string): Promise<ResultatStudio>;
+  lireMesMedias(): Promise<MediaBibliotheque[]>;
+  // Envoi dans le dossier privé du coach, puis enregistrement par le serveur (0083).
+  deposerMedia(fichier: {
+    uri: string;
+    nom: string;
+    typeMime: string;
+    poidsOctets: number;
+  }): Promise<ResultatStudio<string>>;
+  supprimerMedia(mediaId: string): Promise<ResultatStudio>;
+  // URL signée de 15 minutes ; null si le compte n'a pas le droit de lire ce média.
+  urlMedia(chemin: string): Promise<string | null>;
+  lireAbonnesAffectables(): Promise<AbonneAffectable[]>;
+  affecterProgramme(
+    programmeId: string,
+    profilClientId: string,
+    debut: string,
+  ): Promise<ResultatStudio<number>>;
 };
 
 // Les trois écritures qui changent EtatProfils. Elles ne sont JAMAIS appelées sur un `port`

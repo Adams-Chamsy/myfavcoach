@@ -24,6 +24,12 @@ import type {
   ResultatAvis,
   FactureCommission,
   RappelCommission,
+  AbonneAffectable,
+  ExerciceProgramme,
+  MediaBibliotheque,
+  ProgrammeResume,
+  ResultatStudio,
+  StatutProgramme,
   FactureDetail,
   FactureResume,
   Identification,
@@ -215,6 +221,12 @@ export type FauxPortDonnees = PortDonnees & {
   definirFacturesPourTest(factures: FactureResume[], details: Record<string, FactureDetail>): void;
   definirFacturesCommissionPourTest(factures: FactureCommission[]): void;
   definirRappelCommissionPourTest(rappel: RappelCommission | null): void;
+  // L6, studio. Le faux applique les règles du serveur (0081, 0083, 0085) en mémoire.
+  definirCoachVerifiePourTest(verifie: boolean): void;
+  definirAbonnesAffectablesPourTest(abonnes: AbonneAffectable[]): void;
+  // Le prochain appel d'écriture du studio est refusé avec ce code.
+  definirRefusStudioPourTest(code: string | null): void;
+  lireProgrammesPourTest(): ProgrammeResume[];
 };
 
 // docs/api.md §3 : un compte neuf a toujours profilActif = 'client' (colonne NOT NULL, défaut
@@ -365,6 +377,58 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
   let detailsFactures: Record<string, FactureDetail> = {};
   let facturesCommission: FactureCommission[] = [];
   let rappelCommission: RappelCommission | null = null;
+  // L6, studio, en mémoire.
+  type FauxProgramme = {
+    id: string;
+    titre: string;
+    dureeSemaines: number;
+    statut: StatutProgramme;
+  };
+  type FauxSeance = {
+    id: string;
+    programmeId: string;
+    titre: string;
+    dureeMinutes: number;
+    jourRelatif: number;
+  };
+  type FauxExercice = ExerciceProgramme & { seanceId: string };
+  const programmes: FauxProgramme[] = [];
+  const seancesStudio: FauxSeance[] = [];
+  const exercicesStudio: FauxExercice[] = [];
+  const mediasStudio: MediaBibliotheque[] = [];
+  // programmeId → profils clients affectés (« abonnés en cours »).
+  const affectations = new Map<string, Set<string>>();
+  let abonnesAffectables: AbonneAffectable[] = [];
+  let coachVerifie = true;
+  let refusStudio: string | null = null;
+  let compteurStudio = 0;
+  const nouvelId = (prefixe: string) => `${prefixe}-${++compteurStudio}`;
+  const ok = <T>(valeur: T): ResultatStudio<T> => ({ issue: 'ok', valeur });
+  const refus = (code: string): { issue: 'refusee'; code: string } => ({ issue: 'refusee', code });
+  // Le refus forcé d'un test passe avant toute règle, une seule fois.
+  const refusForce = (): { issue: 'refusee'; code: string } | null => {
+    if (refusStudio === null) return null;
+    const code = refusStudio;
+    refusStudio = null;
+    return refus(code);
+  };
+  const brouillon = (id: string): FauxProgramme | { issue: 'refusee'; code: string } => {
+    const programme = programmes.find((x) => x.id === id);
+    if (!programme) return refus('programme_introuvable');
+    if (programme.statut !== 'brouillon') return refus('programme_non_modifiable');
+    return programme;
+  };
+  const seanceEnBrouillon = (id: string): FauxSeance | { issue: 'refusee'; code: string } => {
+    const seance = seancesStudio.find((x) => x.id === id);
+    if (!seance) return refus('seance_introuvable');
+    const programme = brouillon(seance.programmeId);
+    return 'issue' in programme ? programme : seance;
+  };
+  const resume = (x: FauxProgramme): ProgrammeResume => ({
+    ...x,
+    nombreSeances: seancesStudio.filter((y) => y.programmeId === x.id).length,
+    abonnesEnCours: affectations.get(x.id)?.size ?? 0,
+  });
   let ecrituresAvis: {
     operation: 'depot' | 'modification';
     coachId: string;
@@ -1046,6 +1110,243 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     },
     definirRappelCommissionPourTest(valeur) {
       rappelCommission = valeur;
+    },
+
+    // L6, studio.
+    definirCoachVerifiePourTest(valeur) {
+      coachVerifie = valeur;
+    },
+    definirAbonnesAffectablesPourTest(valeur) {
+      abonnesAffectables = valeur;
+    },
+    definirRefusStudioPourTest(code) {
+      refusStudio = code;
+    },
+    lireProgrammesPourTest() {
+      return programmes.map(resume);
+    },
+    async lireMesProgrammes() {
+      return programmes.map(resume).reverse();
+    },
+    async creerProgramme() {
+      const force = refusForce();
+      if (force) return force;
+      const id = nouvelId('programme');
+      programmes.push({ id, titre: '', dureeSemaines: 4, statut: 'brouillon' });
+      return ok(id);
+    },
+    async modifierProgramme(id, titre, dureeSemaines) {
+      const force = refusForce();
+      if (force) return force;
+      const programme = brouillon(id);
+      if ('issue' in programme) return programme;
+      if (dureeSemaines < 1 || dureeSemaines > 12 || titre.length > 80) {
+        return refus('programme_invalide');
+      }
+      if (seancesStudio.some((x) => x.programmeId === id && x.jourRelatif > dureeSemaines * 7)) {
+        return refus('duree_trop_courte');
+      }
+      programme.titre = titre.trim();
+      programme.dureeSemaines = dureeSemaines;
+      return ok(null);
+    },
+    async lireSeancesDuProgramme(programmeId) {
+      return seancesStudio
+        .filter((x) => x.programmeId === programmeId)
+        .sort((a, b) => a.jourRelatif - b.jourRelatif)
+        .map((x) => ({
+          id: x.id,
+          titre: x.titre,
+          dureeMinutes: x.dureeMinutes,
+          jourRelatif: x.jourRelatif,
+          nombreExercices: exercicesStudio.filter((e) => e.seanceId === x.id).length,
+        }));
+    },
+    async ajouterSeance(programmeId, jourRelatif) {
+      const force = refusForce();
+      if (force) return force;
+      const programme = brouillon(programmeId);
+      if ('issue' in programme) return programme;
+      if (jourRelatif < 1 || jourRelatif > programme.dureeSemaines * 7) {
+        return refus('jour_hors_programme');
+      }
+      const id = nouvelId('seance');
+      seancesStudio.push({ id, programmeId, titre: '', dureeMinutes: 30, jourRelatif });
+      return ok(id);
+    },
+    async modifierSeance(seanceId, modifs) {
+      const force = refusForce();
+      if (force) return force;
+      const seance = seanceEnBrouillon(seanceId);
+      if ('issue' in seance) return seance;
+      Object.assign(seance, { ...modifs, titre: modifs.titre.trim() });
+      return ok(null);
+    },
+    async supprimerSeance(seanceId) {
+      const force = refusForce();
+      if (force) return force;
+      const seance = seanceEnBrouillon(seanceId);
+      if ('issue' in seance) return seance;
+      seancesStudio.splice(seancesStudio.indexOf(seance), 1);
+      return ok(null);
+    },
+    async dupliquerSemaine(programmeId, semaine) {
+      const force = refusForce();
+      if (force) return force;
+      const programme = brouillon(programmeId);
+      if ('issue' in programme) return programme;
+      if (semaine < 1 || semaine >= programme.dureeSemaines) return refus('jour_hors_programme');
+      const sources = seancesStudio.filter(
+        (x) =>
+          x.programmeId === programmeId &&
+          x.jourRelatif > (semaine - 1) * 7 &&
+          x.jourRelatif <= semaine * 7,
+      );
+      for (const source of sources) {
+        const id = nouvelId('seance');
+        seancesStudio.push({ ...source, id, jourRelatif: source.jourRelatif + 7 });
+        for (const e of exercicesStudio.filter((y) => y.seanceId === source.id)) {
+          exercicesStudio.push({ ...e, id: nouvelId('exercice'), seanceId: id });
+        }
+      }
+      return ok(sources.length);
+    },
+    async lireExercices(seanceId) {
+      return exercicesStudio
+        .filter((x) => x.seanceId === seanceId)
+        .sort((a, b) => a.ordre - b.ordre)
+        .map(({ seanceId: _seance, ...exercice }) => exercice);
+    },
+    async ajouterExercice(seanceId, saisie) {
+      const force = refusForce();
+      if (force) return force;
+      const seance = seanceEnBrouillon(seanceId);
+      if ('issue' in seance) return seance;
+      if (saisie.nom.trim() === '') return refus('exercice_invalide');
+      const id = nouvelId('exercice');
+      const ordre =
+        Math.max(0, ...exercicesStudio.filter((x) => x.seanceId === seanceId).map((x) => x.ordre)) +
+        1;
+      exercicesStudio.push({ ...saisie, nom: saisie.nom.trim(), id, ordre, seanceId, media: null });
+      return ok(id);
+    },
+    async supprimerExercice(exerciceId) {
+      const force = refusForce();
+      if (force) return force;
+      const exercice = exercicesStudio.find((x) => x.id === exerciceId);
+      if (!exercice) return refus('exercice_introuvable');
+      const seance = seanceEnBrouillon(exercice.seanceId);
+      if ('issue' in seance) return seance;
+      exercicesStudio.splice(exercicesStudio.indexOf(exercice), 1);
+      return ok(null);
+    },
+    async deplacerExercice(exerciceId, sens) {
+      const force = refusForce();
+      if (force) return force;
+      const exercice = exercicesStudio.find((x) => x.id === exerciceId);
+      if (!exercice) return refus('exercice_introuvable');
+      const seance = seanceEnBrouillon(exercice.seanceId);
+      if ('issue' in seance) return seance;
+      const voisins = exercicesStudio
+        .filter((x) => x.seanceId === exercice.seanceId)
+        .sort((a, b) => a.ordre - b.ordre);
+      const i = voisins.indexOf(exercice);
+      const voisin = voisins[sens === 'haut' ? i - 1 : i + 1];
+      if (voisin) [exercice.ordre, voisin.ordre] = [voisin.ordre, exercice.ordre];
+      return ok(null);
+    },
+    async joindreMedia(exerciceId, mediaId) {
+      const force = refusForce();
+      if (force) return force;
+      const exercice = exercicesStudio.find((x) => x.id === exerciceId);
+      if (!exercice) return refus('exercice_introuvable');
+      const seance = seanceEnBrouillon(exercice.seanceId);
+      if ('issue' in seance) return seance;
+      const media = mediaId ? mediasStudio.find((x) => x.id === mediaId) : null;
+      if (mediaId && !media) return refus('media_introuvable');
+      exercice.media = media
+        ? {
+            id: media.id,
+            chemin: media.chemin,
+            typeMime: media.typeMime,
+            nomFichier: media.nomFichier,
+          }
+        : null;
+      return ok(null);
+    },
+    async publierProgramme(id) {
+      const force = refusForce();
+      if (force) return force;
+      const programme = brouillon(id);
+      if ('issue' in programme) return programme;
+      if (!coachVerifie) return refus('identite_non_verifiee');
+      if (!seancesStudio.some((x) => x.programmeId === id)) return refus('programme_vide');
+      programme.statut = 'publie';
+      return ok(null);
+    },
+    async archiverProgramme(id) {
+      const force = refusForce();
+      if (force) return force;
+      const programme = programmes.find((x) => x.id === id);
+      if (!programme) return refus('programme_introuvable');
+      if (programme.statut !== 'publie') return refus('transition_interdite');
+      programme.statut = 'archive';
+      return ok(null);
+    },
+    async revenirEnEdition(id) {
+      const force = refusForce();
+      if (force) return force;
+      const programme = programmes.find((x) => x.id === id);
+      if (!programme) return refus('programme_introuvable');
+      if (programme.statut !== 'publie') return refus('transition_interdite');
+      if ((affectations.get(id)?.size ?? 0) > 0) return refus('retour_edition_interdit');
+      programme.statut = 'brouillon';
+      return ok(null);
+    },
+    async lireMesMedias() {
+      return [...mediasStudio];
+    },
+    async deposerMedia(fichier) {
+      const force = refusForce();
+      if (force) return force;
+      const id = nouvelId('media');
+      mediasStudio.unshift({
+        id,
+        chemin: `coach/${id}`,
+        nomFichier: fichier.nom,
+        typeMime: fichier.typeMime,
+        poidsOctets: fichier.poidsOctets,
+      });
+      return ok(id);
+    },
+    async supprimerMedia(mediaId) {
+      const force = refusForce();
+      if (force) return force;
+      const i = mediasStudio.findIndex((x) => x.id === mediaId);
+      if (i < 0) return refus('media_introuvable');
+      mediasStudio.splice(i, 1);
+      return ok(null);
+    },
+    async urlMedia(chemin) {
+      return `https://medias.exemple/${chemin}`;
+    },
+    async lireAbonnesAffectables() {
+      return abonnesAffectables;
+    },
+    async affecterProgramme(programmeId, profilClientId) {
+      const force = refusForce();
+      if (force) return force;
+      const programme = programmes.find((x) => x.id === programmeId);
+      if (!programme) return refus('programme_introuvable');
+      if (programme.statut !== 'publie') return refus('transition_interdite');
+      if ([...affectations.values()].some((clients) => clients.has(profilClientId))) {
+        return refus('programme_deja_en_cours');
+      }
+      affectations.set(
+        programmeId,
+        (affectations.get(programmeId) ?? new Set()).add(profilClientId),
+      );
+      return ok(seancesStudio.filter((x) => x.programmeId === programmeId).length);
     },
     async lireFactures() {
       return factures;

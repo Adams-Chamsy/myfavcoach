@@ -86,6 +86,10 @@ import { EcranFacture } from '@/fonctionnalites/factures/ecran-facture';
 import { EcranFactures } from '@/fonctionnalites/factures/ecran-factures';
 import { EcranFacturation } from '@/fonctionnalites/revenus/ecran-facturation';
 import { EcranRevenus } from '@/fonctionnalites/revenus/ecran-revenus';
+import { EcranBibliotheque } from '@/fonctionnalites/studio/ecran-bibliotheque';
+import { EcranProgramme } from '@/fonctionnalites/studio/ecran-programme';
+import { EcranProgrammes } from '@/fonctionnalites/studio/ecran-programmes';
+import { EcranSeance } from '@/fonctionnalites/studio/ecran-seance';
 import { OngletAvis } from '@/fonctionnalites/avis/onglet-avis';
 import Accueil from './(client)/(tabs)/accueil';
 import { CorpsExplorer } from './(client)/(tabs)/explorer';
@@ -164,6 +168,7 @@ function Corps({
       <SectionEcransL3bis />
       <SectionEcransLot titre="18 · Écrans du lot L4" ecrans={ECRANS_L4} />
       <SectionEcransLot titre="19 · Écrans du lot L5" ecrans={ECRANS_L5} />
+      <SectionEcransLot titre="20 · Écrans du lot L6" ecrans={ECRANS_L6} />
       <PiedGalerie
         themeClair={themeClair}
         onChangeThemeClair={onChangeThemeClair}
@@ -2179,6 +2184,66 @@ const ECRANS_L5: { titre: string; rendu: () => ReactNode }[] = [
   { titre: 'L5-13 · Informations de facturation', rendu: () => <FacturationAvecFixture /> },
   { titre: 'L5-C05 · Mes factures', rendu: () => <FacturesAvecFixture detail={false} /> },
   { titre: 'L5-C05 · Une facture', rendu: () => <FacturesAvecFixture detail /> },
+];
+
+// L6 : le studio d'un coach — un programme (une séance, un exercice avec sa vidéo), un média.
+function StudioAvecFixture({
+  ecran,
+}: {
+  ecran: 'liste' | 'programme' | 'seance' | 'bibliotheque';
+}) {
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    p.definirEtatProfilsPourTest(
+      etatProfilsParDefaut({ profilActif: 'coach', coachExiste: true, clientExiste: false }),
+    );
+    void (async () => {
+      await p.creerProgramme();
+      await p.modifierProgramme('programme-1', 'Remise en route', 2);
+      await p.ajouterSeance('programme-1', 3);
+      await p.modifierSeance('seance-2', {
+        titre: 'Bas du corps',
+        dureeMinutes: 42,
+        jourRelatif: 3,
+      });
+      await p.deposerMedia({
+        uri: 'file://squat.mp4',
+        nom: 'squat.mp4',
+        typeMime: 'video/mp4',
+        poidsOctets: 2_000_000,
+      });
+      await p.ajouterExercice('seance-2', {
+        nom: 'Squat gobelet',
+        series: 3,
+        repetitions: 12,
+        chargeGrammes: 12000,
+        consigne: 'Dos droit.',
+      });
+      await p.joindreMedia('exercice-4', 'media-3');
+    })();
+    return p;
+  });
+  const rien = () => {};
+  return (
+    <FournisseurDonnees port={port}>
+      {ecran === 'liste' ? (
+        <EcranProgrammes onRetour={rien} onOuvrirProgramme={rien} onOuvrirBibliotheque={rien} />
+      ) : ecran === 'programme' ? (
+        <EcranProgramme programmeId="programme-1" onRetour={rien} onOuvrirSeance={rien} />
+      ) : ecran === 'seance' ? (
+        <EcranSeance programmeId="programme-1" seanceId="seance-2" onRetour={rien} />
+      ) : (
+        <EcranBibliotheque onRetour={rien} />
+      )}
+    </FournisseurDonnees>
+  );
+}
+
+const ECRANS_L6: { titre: string; rendu: () => ReactNode }[] = [
+  { titre: 'L6-11 · Studio, mes programmes', rendu: () => <StudioAvecFixture ecran="liste" /> },
+  { titre: 'L6-11 · Un programme', rendu: () => <StudioAvecFixture ecran="programme" /> },
+  { titre: 'L6-11 · Une séance', rendu: () => <StudioAvecFixture ecran="seance" /> },
+  { titre: 'L6-11 · Bibliothèque', rendu: () => <StudioAvecFixture ecran="bibliotheque" /> },
 ];
 
 const ECRANS_L4: { titre: string; rendu: () => ReactNode }[] = [

@@ -859,6 +859,31 @@ describe('portDonneesSupabase', () => {
       });
     });
 
+    // L6, docs/api.md §9 : un refus du serveur est un code en snake_case ; une panne n'en est pas un.
+    it('studio : le code du refus tel quel ; une panne réseau : sans_reponse ; un succès rend sa valeur', async () => {
+      supabaseMock.rpc.mockResolvedValueOnce({ data: null, error: { message: 'programme_vide' } });
+      expect(await portDonneesSupabase.publierProgramme('p1')).toEqual({
+        issue: 'refusee',
+        code: 'programme_vide',
+      });
+      expect(supabaseMock.rpc).toHaveBeenCalledWith('publier_programme', { p_programme_id: 'p1' });
+      supabaseMock.rpc.mockResolvedValueOnce({
+        data: null,
+        error: { message: 'TypeError: Failed to fetch' },
+      });
+      expect(await portDonneesSupabase.publierProgramme('p1')).toEqual({ issue: 'sans_reponse' });
+      supabaseMock.rpc.mockResolvedValueOnce({ data: 2, error: null });
+      expect(await portDonneesSupabase.affecterProgramme('p1', 'c1', '2026-11-18')).toEqual({
+        issue: 'ok',
+        valeur: 2,
+      });
+      expect(supabaseMock.rpc).toHaveBeenCalledWith('affecter_programme', {
+        p_programme_id: 'p1',
+        p_profil_client_id: 'c1',
+        p_debut: '2026-11-18',
+      });
+    });
+
     // P5.6b, docs/api.md §8 : une ligne au plus ; zéro ligne, pas de rappel (null).
     it('lireRappelCommission : la ligne de mon_rappel_commission, ou null quand le serveur n’en rend aucune', async () => {
       supabaseMock.rpc.mockResolvedValueOnce({ data: [], error: null });

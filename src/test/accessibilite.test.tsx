@@ -49,6 +49,10 @@ import { EcranDepotAvis } from '@/fonctionnalites/avis/ecran-depot-avis';
 import { EcranFacture } from '@/fonctionnalites/factures/ecran-facture';
 import { EcranFactures } from '@/fonctionnalites/factures/ecran-factures';
 import { EcranFacturation } from '@/fonctionnalites/revenus/ecran-facturation';
+import { EcranBibliotheque } from '@/fonctionnalites/studio/ecran-bibliotheque';
+import { EcranProgramme } from '@/fonctionnalites/studio/ecran-programme';
+import { EcranProgrammes } from '@/fonctionnalites/studio/ecran-programmes';
+import { EcranSeance } from '@/fonctionnalites/studio/ecran-seance';
 import { EcranPaiement } from '@/fonctionnalites/abonnement/ecran-paiement';
 import {
   recapitulatifPaiementDemonstration,
@@ -460,6 +464,36 @@ function portDonneesInvitations() {
   return p;
 }
 
+// L6 : le studio d'un coach, avec un programme (une séance, un exercice avec média) et un média.
+// Les identifiants suivent l'ordre de création du faux : programme-1, seance-2, media-3.
+function portDonneesStudio() {
+  const p = creerFauxPortDonnees();
+  p.definirEtatProfilsPourTest(
+    etatProfilsParDefaut({ profilActif: 'coach', coachExiste: true, clientExiste: false }),
+  );
+  void (async () => {
+    await p.creerProgramme();
+    await p.modifierProgramme('programme-1', 'Remise en route', 2);
+    await p.ajouterSeance('programme-1', 3);
+    await p.modifierSeance('seance-2', { titre: 'Bas du corps', dureeMinutes: 42, jourRelatif: 3 });
+    await p.deposerMedia({
+      uri: 'file://squat.mp4',
+      nom: 'squat.mp4',
+      typeMime: 'video/mp4',
+      poidsOctets: 2_000_000,
+    });
+    await p.ajouterExercice('seance-2', {
+      nom: 'Squat gobelet',
+      series: 3,
+      repetitions: 12,
+      chargeGrammes: 12000,
+      consigne: 'Dos droit.',
+    });
+    await p.joindreMedia('exercice-4', 'media-3');
+  })();
+  return p;
+}
+
 function portDonneesRevenus() {
   const p = creerFauxPortDonnees();
   p.definirEtatProfilsPourTest(
@@ -795,6 +829,50 @@ const CORPUS: EntreeCorpus[] = [
       <FournisseurSession key="facturation" port={portAuthOnboarding}>
         <FournisseurDonnees port={portDonneesRevenus()}>
           <EcranFacturation onRetour={() => {}} onEnregistre={() => {}} />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(coach)/studio/index.tsx',
+    creerElement: () => (
+      <FournisseurSession key="studio-index" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesStudio()}>
+          <EcranProgrammes
+            onRetour={() => {}}
+            onOuvrirProgramme={() => {}}
+            onOuvrirBibliotheque={() => {}}
+          />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(coach)/studio/[programmeId].tsx',
+    creerElement: () => (
+      <FournisseurSession key="studio-programmeId" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesStudio()}>
+          <EcranProgramme programmeId="programme-1" onRetour={() => {}} onOuvrirSeance={() => {}} />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(coach)/studio/seance/[seanceId].tsx',
+    creerElement: () => (
+      <FournisseurSession key="studio-seanceId" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesStudio()}>
+          <EcranSeance programmeId="programme-1" seanceId="seance-2" onRetour={() => {}} />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(coach)/studio/bibliotheque.tsx',
+    creerElement: () => (
+      <FournisseurSession key="studio-bibliotheque" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesStudio()}>
+          <EcranBibliotheque onRetour={() => {}} />
         </FournisseurDonnees>
       </FournisseurSession>
     ),
