@@ -329,6 +329,9 @@ describe('secrets interdits côté application', () => {
       // 0084/0085 : grants et revokes de service_role sur l'affectation (convention de 0031).
       'supabase/migrations/0084_preparer_affectation.sql',
       'supabase/migrations/0085_affectation_regles.sql',
+      // 0086/0087 : grants et revokes de service_role sur l'exécution (convention de 0031).
+      'supabase/migrations/0086_preparer_execution.sql',
+      'supabase/migrations/0087_execution_regles.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

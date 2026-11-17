@@ -9778,5 +9778,197 @@ describe('programmes, séances, exercices — L6 (0080, 0081)', () => {
       const { corps: apres } = await rpc('mes_seances_du_jour', {}, A);
       expect((apres as { titre: string }[]).map((s) => s.titre)).toContain('Bas du corps');
     });
+
+    // P6.5 (0086, 0087) — l'exécution, transition par transition (docs/domaine.md §4.5). Suite
+    // des tests précédents : A a accès, sa séance « Bas du corps » est aujourd'hui.
+    const seanceDuJour = async (): Promise<string> => {
+      const { corps } = await rpc('mes_seances_du_jour', {}, A);
+      return (corps as { id: string; titre: string }[]).find((x) => x.titre === 'Bas du corps')!.id;
+    };
+    const statutDe = async (id: string) => {
+      const { corps } = await appelRest(
+        `/rest/v1/seances_programmees?id=eq.${id}&select=statut,rattrapee,ressenti_effort,commentaire`,
+        { session: 'admin' },
+      );
+      return (
+        corps as {
+          statut: string;
+          rattrapee: boolean;
+          ressenti_effort: number | null;
+          commentaire: string | null;
+        }[]
+      )[0];
+    };
+    const consentement = (accorde: boolean) =>
+      appelRest('/rest/v1/consentements', {
+        methode: 'POST',
+        session: 'admin',
+        corps: {
+          compte_id: A.compteId,
+          type: 'donneesSante',
+          accorde,
+          version: 'banc',
+          origine: 'banc',
+        },
+      });
+
+    it('§4.5 : A démarre sa séance, saisit une série, et un autre ne touche à rien ; fin sans consentement : le ressenti est refusé, la séance se termine sans', async () => {
+      const id = await seanceDuJour();
+      expect((await rpc('demarrer_seance', { p_seance_programmee_id: id }, A)).statut).toBe(204);
+      expect((await statutDe(id)).statut).toBe('en_cours');
+      expect(
+        messageDe((await rpc('demarrer_seance', { p_seance_programmee_id: id }, A)).corps),
+      ).toBe('transition_interdite');
+      const { corps: exercices } = await rpc(
+        'exercices_de_ma_seance',
+        { p_seance_programmee_id: id },
+        A,
+      );
+      const exercice = (exercices as { id: string }[])[0].id;
+      expect(
+        (
+          await rpc(
+            'enregistrer_serie',
+            {
+              p_seance_programmee_id: id,
+              p_exercice_id: exercice,
+              p_numero: 1,
+              p_repetitions: 10,
+              p_charge_grammes: 12000,
+            },
+            A,
+          )
+        ).statut,
+      ).toBe(204);
+      const { corps: series } = await rpc('series_de_ma_seance', { p_seance_programmee_id: id }, A);
+      expect(series).toEqual([
+        { exercice_id: exercice, numero: 1, repetitions: 10, charge_grammes: 12000 },
+      ]);
+      expect(
+        messageDe(
+          (
+            await rpc(
+              'enregistrer_serie',
+              {
+                p_seance_programmee_id: id,
+                p_exercice_id: '00000000-0000-0000-0000-000000000000',
+                p_numero: 1,
+                p_repetitions: 1,
+                p_charge_grammes: null,
+              },
+              A,
+            )
+          ).corps,
+        ),
+      ).toBe('exercice_introuvable');
+      expect(
+        messageDe((await rpc('demarrer_seance', { p_seance_programmee_id: id }, coachP)).corps),
+      ).toBe('profil_client_requis');
+
+      expect((await consentement(false)).statut).toBeLessThan(300);
+      expect(
+        messageDe(
+          (
+            await rpc(
+              'terminer_seance',
+              { p_seance_programmee_id: id, p_ressenti_effort: 7, p_commentaire: null },
+              A,
+            )
+          ).corps,
+        ),
+      ).toBe('consentement_sante_absent');
+      expect((await statutDe(id)).statut).toBe('en_cours');
+      expect(
+        (
+          await rpc(
+            'terminer_seance',
+            {
+              p_seance_programmee_id: id,
+              p_ressenti_effort: null,
+              p_commentaire: 'Dur mais fait.',
+            },
+            A,
+          )
+        ).statut,
+      ).toBe(204);
+      expect(await statutDe(id)).toMatchObject({
+        statut: 'faite',
+        ressenti_effort: null,
+        commentaire: 'Dur mais fait.',
+      });
+      expect(
+        messageDe(
+          (
+            await rpc(
+              'terminer_seance',
+              { p_seance_programmee_id: id, p_ressenti_effort: null, p_commentaire: null },
+              A,
+            )
+          ).corps,
+        ),
+      ).toBe('transition_interdite');
+    });
+
+    it('§4.5 : la séance du jour 3 ne démarre pas avant son jour ; passée, la tâche du matin la marque manquée ; rattrapée dans les 7 jours avec le consentement et un ressenti ; au-delà, refus', async () => {
+      const { corps: toutes } = await appelRest(
+        `/rest/v1/seances_programmees?programme_id=eq.${programmeAffecte}&profil_client_id=eq.${profilClientA}&select=id,date_prevue&order=date_prevue`,
+        { session: 'admin' },
+      );
+      const jour3 = (toutes as { id: string }[])[1].id;
+      expect(
+        messageDe((await rpc('demarrer_seance', { p_seance_programmee_id: jour3 }, A)).corps),
+      ).toBe('seance_pas_encore');
+      const decaler = (jours: number) =>
+        appelRest(`/rest/v1/seances_programmees?id=eq.${jour3}`, {
+          methode: 'PATCH',
+          session: 'admin',
+          corps: {
+            date_prevue: new Date(Date.now() - jours * 86_400_000).toISOString().slice(0, 10),
+          },
+        });
+      await decaler(2);
+      const matin = await rpc('appliquer_echeances', { p_jour: aujourdhuiParis() }, 'admin');
+      expect(matin.statut).toBe(200);
+      expect((matin.corps as { seances_echues: number }).seances_echues).toBeGreaterThanOrEqual(1);
+      expect((await statutDe(jour3)).statut).toBe('manquee');
+
+      await decaler(9);
+      expect(
+        messageDe((await rpc('demarrer_seance', { p_seance_programmee_id: jour3 }, A)).corps),
+      ).toBe('rattrapage_expire');
+      await decaler(2);
+      expect((await rpc('demarrer_seance', { p_seance_programmee_id: jour3 }, A)).statut).toBe(204);
+      expect((await consentement(true)).statut).toBeLessThan(300);
+      expect(
+        (
+          await rpc(
+            'terminer_seance',
+            { p_seance_programmee_id: jour3, p_ressenti_effort: 7, p_commentaire: null },
+            A,
+          )
+        ).statut,
+      ).toBe(204);
+      expect(await statutDe(jour3)).toMatchObject({
+        statut: 'faite',
+        rattrapee: true,
+        ressenti_effort: 7,
+      });
+    });
+
+    it('§4.5 : démarrée depuis plus de 24 h, la tâche du matin la marque partielle', async () => {
+      const id = await seanceDuJour();
+      await appelRest(`/rest/v1/seances_programmees?id=eq.${id}`, {
+        methode: 'PATCH',
+        session: 'admin',
+        corps: {
+          statut: 'en_cours',
+          demarree_le: new Date(Date.now() - 25 * 3_600_000).toISOString(),
+        },
+      });
+      expect(
+        (await rpc('appliquer_echeances', { p_jour: aujourdhuiParis() }, 'admin')).statut,
+      ).toBe(200);
+      expect((await statutDe(id)).statut).toBe('partielle');
+    });
   });
 });
