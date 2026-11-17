@@ -458,3 +458,122 @@ export const detailAbonnementSuspenduDemonstration: DetailAbonnement = {
   regularisationAvantLe: '2027-01-24',
   prochaineTentativeLe: null,
 };
+
+// L5 — écran 13 Revenus (maquettes/MyFavCoach-Coach_dc.html, « 13 Revenus »). La maquette donne
+// le mois d'août 2026 : 28 abonnements pour 3 020 €, une commission de 324 €, et deux virements
+// (« 31 juillet, versé, 2 604 € » ; « 30 juin, en cours, 2 380 € »). La ligne « 4 séances à
+// l'unité · 220 € » est retirée (hors périmètre) : le net d'août est donc 3 020 − 324 = 2 696 €.
+// Les nets des cinq mois précédents ne figurent pas dans la maquette : ils sont CHOISIS ici, en
+// proportion des hauteurs de ses barres (42, 56, 48, 70, 64 et 100 %), arrondis à l'euro. Le
+// solde et la date du prochain virement (le 5 du mois suivant, docs/domaine.md §4.8) sont choisis
+// aussi (docs/decisions-en-attente.md, P5.6).
+export const revenusDemonstration = [
+  {
+    mois: '2026-08-01',
+    encaissementsCentimes: 302000,
+    nombrePaiements: 28,
+    commissionCentimes: 32400,
+    netCentimes: 269600,
+  },
+  {
+    mois: '2026-07-01',
+    encaissementsCentimes: 191500,
+    nombrePaiements: 18,
+    commissionCentimes: 19000,
+    netCentimes: 172500,
+  },
+  {
+    mois: '2026-06-01',
+    encaissementsCentimes: 209200,
+    nombrePaiements: 20,
+    commissionCentimes: 20500,
+    netCentimes: 188700,
+  },
+  {
+    mois: '2026-05-01',
+    encaissementsCentimes: 143400,
+    nombrePaiements: 14,
+    commissionCentimes: 14000,
+    netCentimes: 129400,
+  },
+  {
+    mois: '2026-04-01',
+    encaissementsCentimes: 167300,
+    nombrePaiements: 16,
+    commissionCentimes: 16300,
+    netCentimes: 151000,
+  },
+  {
+    mois: '2026-03-01',
+    encaissementsCentimes: 125500,
+    nombrePaiements: 12,
+    commissionCentimes: 12300,
+    netCentimes: 113200,
+  },
+] as const;
+
+export const soldeDemonstration = {
+  soldeCentimes: 269600,
+  versementEnCours: false,
+  prochainVersementLe: '2026-09-05',
+  compteOperationnel: true,
+} as const;
+
+export const versementsDemonstration = [
+  {
+    id: 'versement-juillet',
+    montantCentimes: 260400,
+    fraisCentimes: 0,
+    mode: 'mensuel',
+    statut: 'verse',
+    emisLe: '2026-07-31T06:00:00.000Z',
+    verseLe: '2026-07-31T06:00:05.000Z',
+  },
+  {
+    id: 'versement-juin',
+    montantCentimes: 238000,
+    fraisCentimes: 0,
+    mode: 'mensuel',
+    statut: 'en_cours',
+    emisLe: '2026-06-30T06:00:00.000Z',
+    verseLe: null,
+  },
+] as const;
+
+// L5 — C-05 : une facture de l'abonnement de démonstration (Sophie Lambert chez Yannick
+// Berthaud, « Suivi complet », 49 €). Le SIREN (clé de contrôle juste, sans existence réelle) et
+// l'adresse sont CHOISIS ici : aucune maquette n'en donne. Yannick est en franchise en base de
+// TVA (choisi aussi), d'où HT = TTC et TVA nulle.
+export const factureDemonstration = {
+  resume: {
+    id: 'facture-demonstration',
+    numero: '2026-000001',
+    libelle: 'Suivi complet',
+    autrePartie: 'Yannick Berthaud',
+    periodeDu: '2026-11-18',
+    periodeAu: '2026-12-17',
+    montantTtcCentimes: 4900,
+    commissionCentimes: null,
+    payeeLe: '2026-11-18T10:00:00.000Z',
+  },
+  detail: {
+    numero: '2026-000001',
+    emiseLe: '2026-11-18T10:00:00.000Z',
+    payeeLe: '2026-11-18T10:00:00.000Z',
+    vendeurPrenom: 'Yannick',
+    vendeurNom: 'Berthaud',
+    vendeurSiren: '732829320',
+    vendeurAdresse: '12 rue des Lilas, 69003 Lyon',
+    vendeurRegimeTva: 'franchise_en_base',
+    vendeurTauxTvaPourMille: null,
+    clientPrenom: 'Sophie',
+    clientNom: 'Lambert',
+    libelle: 'Suivi complet',
+    periodeDu: '2026-11-18',
+    periodeAu: '2026-12-17',
+    montantTtcCentimes: 4900,
+    montantHtCentimes: 4900,
+    tvaCentimes: 0,
+    commissionCentimes: null,
+  },
+} as const;

@@ -46,16 +46,23 @@ import { EcranChoixOffre } from '@/fonctionnalites/abonnement/ecran-choix-offre'
 import { EcranConfirmation } from '@/fonctionnalites/abonnement/ecran-confirmation';
 import { EcranPaiementRefuse } from '@/fonctionnalites/abonnement/ecran-paiement-refuse';
 import { EcranDepotAvis } from '@/fonctionnalites/avis/ecran-depot-avis';
+import { EcranFacture } from '@/fonctionnalites/factures/ecran-facture';
+import { EcranFactures } from '@/fonctionnalites/factures/ecran-factures';
+import { EcranFacturation } from '@/fonctionnalites/revenus/ecran-facturation';
 import { EcranPaiement } from '@/fonctionnalites/abonnement/ecran-paiement';
 import {
   recapitulatifPaiementDemonstration,
   detailAbonnementDemonstration,
+  factureDemonstration,
+  revenusDemonstration,
+  soldeDemonstration,
+  versementsDemonstration,
   detailAbonnementImpayeDemonstration,
   saisieAvisDemonstration,
 } from '@/fixtures/demonstration';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { creerFauxPortAuth } from '@/services/auth/faux';
-import { creerFauxPortDonnees } from '@/services/donnees/faux';
+import { creerFauxPortDonnees, etatProfilsParDefaut } from '@/services/donnees/faux';
 import { FournisseurTheme } from '@/theme/fournisseur';
 import { execFileSync } from 'child_process';
 import { join } from 'path';
@@ -440,6 +447,27 @@ type EntreeCorpus = {
   fondReference?: (theme: ThemeAVerifier) => string;
 };
 
+// L5 : un coach, avec les revenus, le solde, les virements et la facture du jeu de
+// démonstration ; identité fiscale et compte de versement à compléter.
+function portDonneesRevenus() {
+  const p = creerFauxPortDonnees();
+  p.definirEtatProfilsPourTest(
+    etatProfilsParDefaut({ profilActif: 'coach', coachExiste: true, clientExiste: false }),
+  );
+  p.definirIdentificationPourTest({
+    compteVersement: 'a_completer',
+    identiteFiscaleComplete: false,
+    peutPublier: false,
+  });
+  p.definirRevenusPourTest(revenusDemonstration.map((r) => ({ ...r })));
+  p.definirSoldePourTest({ ...soldeDemonstration });
+  p.definirVersementsPourTest(versementsDemonstration.map((v) => ({ ...v })));
+  p.definirFacturesPourTest([{ ...factureDemonstration.resume, commissionCentimes: 0 }], {
+    [factureDemonstration.resume.id]: { ...factureDemonstration.detail, commissionCentimes: 0 },
+  });
+  return p;
+}
+
 function portDonneesChoixOffre() {
   const p = creerFauxPortDonnees();
   p.definirProfilsCoachPublicsPourTest({
@@ -738,7 +766,48 @@ const CORPUS: EntreeCorpus[] = [
   },
   { nom: 'app/(coach)/(tabs)/clients.tsx', creerElement: () => <Clients key="clients" /> },
   { nom: 'app/(coach)/(tabs)/agenda.tsx', creerElement: () => <Agenda key="agenda" /> },
-  { nom: 'app/(coach)/(tabs)/revenus.tsx', creerElement: () => <Revenus key="revenus" /> },
+  {
+    // L5 : rendu avec les données de la maquette 13 (src/fixtures/demonstration.ts), coach pas
+    // encore en règle pour que la partie « Ce qu'il te reste à faire » soit mesurée aussi.
+    nom: 'app/(coach)/(tabs)/revenus.tsx',
+    creerElement: () => (
+      <FournisseurSession key="revenus" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesRevenus()}>
+          <Revenus />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(coach)/facturation.tsx',
+    creerElement: () => (
+      <FournisseurSession key="facturation" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesRevenus()}>
+          <EcranFacturation onRetour={() => {}} onEnregistre={() => {}} />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(compte)/factures/index.tsx',
+    creerElement: () => (
+      <FournisseurSession key="factures" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesRevenus()}>
+          <EcranFactures onRetour={() => {}} onOuvrirFacture={() => {}} />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(compte)/factures/[id].tsx',
+    creerElement: () => (
+      <FournisseurSession key="facture" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesRevenus()}>
+          <EcranFacture factureId={factureDemonstration.resume.id} onRetour={() => {}} />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
   {
     // Écran L1-09 « Mes informations » : lit le profil actif via useDonnees(). Le faux partagé
     // n'a pas d'informations posées → variante client, champs vides — suffisant pour vérifier

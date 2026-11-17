@@ -707,6 +707,158 @@ describe('portDonneesSupabase', () => {
 
     // docs/api.md §5 (P4.11) : la publication passe par la fonction offre-publication, qui rend
     // ses refus avec leur texte ; une erreur sans corps lisible n'est pas un refus.
+    // L5 (docs/api.md §8, docs/ecrans/L5-13-revenus.md, L5-C05-factures-recus.md).
+    it('lireSolde et lireVersements : les lignes du serveur, renommées, sans calcul', async () => {
+      supabaseMock.rpc.mockResolvedValueOnce({
+        data: [
+          {
+            solde_centimes: 9310,
+            versement_en_cours: false,
+            prochain_versement_le: '2026-12-05',
+            compte_operationnel: true,
+          },
+        ],
+        error: null,
+      });
+      expect(await portDonneesSupabase.lireSolde()).toEqual({
+        soldeCentimes: 9310,
+        versementEnCours: false,
+        prochainVersementLe: '2026-12-05',
+        compteOperationnel: true,
+      });
+      expect(supabaseMock.rpc).toHaveBeenCalledWith('mon_solde');
+      supabaseMock.rpc.mockResolvedValueOnce({
+        data: [
+          {
+            id: 'v1',
+            montant_centimes: 9210,
+            frais_centimes: 100,
+            mode: 'immediat',
+            statut: 'verse',
+            emis_le: '2026-11-16T10:00:00Z',
+            verse_le: '2026-11-16T10:00:05Z',
+          },
+        ],
+        error: null,
+      });
+      expect(await portDonneesSupabase.lireVersements()).toEqual([
+        {
+          id: 'v1',
+          montantCentimes: 9210,
+          fraisCentimes: 100,
+          mode: 'immediat',
+          statut: 'verse',
+          emisLe: '2026-11-16T10:00:00Z',
+          verseLe: '2026-11-16T10:00:05Z',
+        },
+      ]);
+    });
+
+    it('demanderVersement appelle coach-versements : l’état rendu, le refus avec son texte, ou sans réponse', async () => {
+      supabaseMock.functions.invoke.mockResolvedValue({
+        data: { versementId: 'v1', statut: 'prevu' },
+        error: null,
+      });
+      expect(await portDonneesSupabase.demanderVersement()).toEqual({
+        issue: 'ok',
+        statut: 'prevu',
+      });
+      expect(supabaseMock.functions.invoke).toHaveBeenCalledWith('coach-versements', {
+        method: 'POST',
+      });
+      supabaseMock.functions.invoke.mockResolvedValue(
+        refusHttp(409, {
+          code: 'solde_insuffisant',
+          title: 'Pas encore assez pour un versement',
+          detail: 'Un versement part à partir de 20 € de solde.',
+          status: 409,
+        }),
+      );
+      expect(await portDonneesSupabase.demanderVersement()).toEqual({
+        issue: 'refusee',
+        refus: {
+          code: 'solde_insuffisant',
+          title: 'Pas encore assez pour un versement',
+          detail: 'Un versement part à partir de 20 € de solde.',
+        },
+      });
+      supabaseMock.functions.invoke.mockResolvedValue({ data: { statut: 'autre' }, error: null });
+      expect(await portDonneesSupabase.demanderVersement()).toEqual({ issue: 'sans_reponse' });
+    });
+
+    it('lireIdentification : l’état relu par coach-identification ; sans réponse, une erreur, jamais un état inventé', async () => {
+      supabaseMock.functions.invoke.mockResolvedValue({
+        data: {
+          compteVersement: 'en_verification',
+          identiteFiscaleComplete: true,
+          peutPublier: false,
+        },
+        error: null,
+      });
+      expect(await portDonneesSupabase.lireIdentification()).toEqual({
+        compteVersement: 'en_verification',
+        identiteFiscaleComplete: true,
+        peutPublier: false,
+      });
+      supabaseMock.functions.invoke.mockResolvedValue({ data: null, error: new Error('réseau') });
+      await expect(portDonneesSupabase.lireIdentification()).rejects.toBeTruthy();
+    });
+
+    it('enregistrerIdentiteFiscale envoie la saisie à coach-identification/identite-fiscale', async () => {
+      supabaseMock.functions.invoke.mockResolvedValue({ data: { enregistree: true }, error: null });
+      const saisie = {
+        siren: '732829320',
+        adresseLigne: '12 rue des Lilas',
+        codePostal: '69003',
+        commune: 'Lyon',
+        regimeTva: 'franchise_en_base' as const,
+        tauxTvaPourMille: null,
+      };
+      expect(await portDonneesSupabase.enregistrerIdentiteFiscale(saisie)).toEqual({ issue: 'ok' });
+      expect(supabaseMock.functions.invoke).toHaveBeenCalledWith(
+        'coach-identification/identite-fiscale',
+        { method: 'POST', body: saisie },
+      );
+    });
+
+    it('lireFacture : la facture avec ses mentions ; zéro ligne (la sienne n’est pas), null', async () => {
+      supabaseMock.rpc.mockResolvedValueOnce({ data: [], error: null });
+      expect(await portDonneesSupabase.lireFacture('f-autre')).toBeNull();
+      expect(supabaseMock.rpc).toHaveBeenCalledWith('ma_facture', { p_facture_id: 'f-autre' });
+      supabaseMock.rpc.mockResolvedValueOnce({
+        data: [
+          {
+            numero: '2026-000003',
+            emise_le: '2026-11-16T10:00:00Z',
+            payee_le: '2026-11-16T10:00:00Z',
+            vendeur_prenom: 'Yannick',
+            vendeur_nom: 'Berthaud',
+            vendeur_siren: '732829320',
+            vendeur_adresse: '12 rue des Lilas, 69003 Lyon',
+            vendeur_regime_tva: 'assujetti',
+            vendeur_taux_tva_pour_mille: 200,
+            client_prenom: 'Camille',
+            client_nom: 'Martin',
+            libelle: 'Suivi complet',
+            periode_du: '2026-11-16',
+            periode_au: '2026-12-15',
+            montant_ttc_centimes: 4900,
+            montant_ht_centimes: 4083,
+            tva_centimes: 817,
+            commission_centimes: null,
+          },
+        ],
+        error: null,
+      });
+      expect(await portDonneesSupabase.lireFacture('f1')).toMatchObject({
+        numero: '2026-000003',
+        vendeurRegimeTva: 'assujetti',
+        montantHtCentimes: 4083,
+        tvaCentimes: 817,
+        commissionCentimes: null,
+      });
+    });
+
     it('publierOffre appelle offre-publication/{id} : publiée, refus avec son texte, ou sans réponse', async () => {
       supabaseMock.functions.invoke.mockResolvedValue({ data: { publiee: true }, error: null });
       expect(await portDonneesSupabase.publierOffre('offre-1')).toEqual({ issue: 'publiee' });

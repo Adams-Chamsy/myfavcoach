@@ -34,6 +34,10 @@ import {
   detailAbonnementDemonstration,
   detailAbonnementImpayeDemonstration,
   detailAbonnementSuspenduDemonstration,
+  factureDemonstration,
+  revenusDemonstration,
+  soldeDemonstration,
+  versementsDemonstration,
   saisieAvisDemonstration,
 } from '@/fixtures/demonstration';
 import { EcranCompte } from '@/fonctionnalites/compte/ecran-compte';
@@ -77,6 +81,10 @@ import { EcranConfirmation } from '@/fonctionnalites/abonnement/ecran-confirmati
 import { EcranPaiementRefuse } from '@/fonctionnalites/abonnement/ecran-paiement-refuse';
 import { EcranPaiement } from '@/fonctionnalites/abonnement/ecran-paiement';
 import { EcranDepotAvis } from '@/fonctionnalites/avis/ecran-depot-avis';
+import { EcranFacture } from '@/fonctionnalites/factures/ecran-facture';
+import { EcranFactures } from '@/fonctionnalites/factures/ecran-factures';
+import { EcranFacturation } from '@/fonctionnalites/revenus/ecran-facturation';
+import { EcranRevenus } from '@/fonctionnalites/revenus/ecran-revenus';
 import { OngletAvis } from '@/fonctionnalites/avis/onglet-avis';
 import Accueil from './(client)/(tabs)/accueil';
 import { CorpsExplorer } from './(client)/(tabs)/explorer';
@@ -153,7 +161,8 @@ function Corps({
       <SectionEcransL2 />
       <SectionEcransL3 />
       <SectionEcransL3bis />
-      <SectionEcransL4 />
+      <SectionEcransLot titre="18 · Écrans du lot L4" ecrans={ECRANS_L4} />
+      <SectionEcransLot titre="19 · Écrans du lot L5" ecrans={ECRANS_L5} />
       <PiedGalerie
         themeClair={themeClair}
         onChangeThemeClair={onChangeThemeClair}
@@ -2108,6 +2117,68 @@ function DepotAvisAvecFixture({ modification }: { modification: boolean }) {
   );
 }
 
+// L5 : Revenus (en règle, et pas en règle), le formulaire de facturation, les factures (jeu de
+// démonstration : maquette 13 et factureDemonstration).
+function RevenusAvecFixture({ enRegle }: { enRegle: boolean }) {
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    p.definirIdentificationPourTest(
+      enRegle
+        ? { compteVersement: 'operationnel', identiteFiscaleComplete: true, peutPublier: true }
+        : { compteVersement: 'a_completer', identiteFiscaleComplete: false, peutPublier: false },
+    );
+    p.definirRevenusPourTest(revenusDemonstration.map((r) => ({ ...r })));
+    p.definirSoldePourTest({ ...soldeDemonstration, compteOperationnel: enRegle });
+    p.definirVersementsPourTest(versementsDemonstration.map((v) => ({ ...v })));
+    return p;
+  });
+  return (
+    <FournisseurDonnees port={port}>
+      <EcranRevenus
+        onOuvrirFacturation={() => {}}
+        onOuvrirFactures={() => {}}
+        ouvrirPage={async () => {}}
+      />
+    </FournisseurDonnees>
+  );
+}
+
+function FacturesAvecFixture({ detail }: { detail: boolean }) {
+  const [port] = useState(() => {
+    const p = creerFauxPortDonnees();
+    p.definirFacturesPourTest([{ ...factureDemonstration.resume }], {
+      [factureDemonstration.resume.id]: { ...factureDemonstration.detail },
+    });
+    return p;
+  });
+  return (
+    <FournisseurDonnees port={port}>
+      {detail ? (
+        <EcranFacture factureId={factureDemonstration.resume.id} onRetour={() => {}} />
+      ) : (
+        <EcranFactures onRetour={() => {}} onOuvrirFacture={() => {}} />
+      )}
+    </FournisseurDonnees>
+  );
+}
+
+function FacturationAvecFixture() {
+  const [port] = useState(() => creerFauxPortDonnees());
+  return (
+    <FournisseurDonnees port={port}>
+      <EcranFacturation onRetour={() => {}} onEnregistre={() => {}} />
+    </FournisseurDonnees>
+  );
+}
+
+const ECRANS_L5: { titre: string; rendu: () => ReactNode }[] = [
+  { titre: 'L5-13 · Revenus, coach en règle', rendu: () => <RevenusAvecFixture enRegle /> },
+  { titre: 'L5-13 · Revenus, pas en règle', rendu: () => <RevenusAvecFixture enRegle={false} /> },
+  { titre: 'L5-13 · Informations de facturation', rendu: () => <FacturationAvecFixture /> },
+  { titre: 'L5-C05 · Mes factures', rendu: () => <FacturesAvecFixture detail={false} /> },
+  { titre: 'L5-C05 · Une facture', rendu: () => <FacturesAvecFixture detail /> },
+];
+
 const ECRANS_L4: { titre: string; rendu: () => ReactNode }[] = [
   { titre: 'L4-04a · Choix de l’offre', rendu: () => <ChoixOffreAvecFixture avecOffre /> },
   {
@@ -2141,7 +2212,13 @@ const ECRANS_L4: { titre: string; rendu: () => ReactNode }[] = [
   },
 ];
 
-function SectionEcransL4() {
+function SectionEcransLot({
+  titre: titreSection,
+  ecrans,
+}: {
+  titre: string;
+  ecrans: { titre: string; rendu: () => ReactNode }[];
+}) {
   const theme = useTheme();
   const [session, setSession] = useState<Awaited<
     ReturnType<typeof creerSessionDemonstration>
@@ -2160,8 +2237,8 @@ function SectionEcransL4() {
   if (!session) return null;
 
   return (
-    <Section titre="18 · Écrans du lot L4">
-      {ECRANS_L4.map(({ titre, rendu }) => (
+    <Section titre={titreSection}>
+      {ecrans.map(({ titre, rendu }) => (
         <View key={titre} style={{ gap: theme.espace[2] }}>
           <SousTitre texte={titre} />
           <View

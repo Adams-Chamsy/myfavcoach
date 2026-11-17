@@ -33,6 +33,15 @@ import type {
   TypePiece,
   AbonnementClient,
   StatutAbonnement,
+  FactureCommission,
+  FactureDetail,
+  FactureResume,
+  Identification,
+  IdentiteFiscale,
+  RevenusMois,
+  Solde,
+  StatutVersement,
+  Versement,
 } from './port';
 
 // L4 : ce que supabase-js rend pour l'appel d'une Edge Function. Une réponse non 2xx arrive en
@@ -340,6 +349,95 @@ type LigneAbonnementClient = {
   offres: { titre: string } | null;
   profils_coach: { prenom: string; nom: string } | null;
 };
+
+// L5 : les lignes rendues par les fonctions de base (0069 à 0076), en snake_case.
+type LigneIdentiteFiscale = {
+  siren: string;
+  adresse_ligne: string;
+  code_postal: string;
+  commune: string;
+  regime_tva: 'franchise_en_base' | 'assujetti';
+  taux_tva_pour_mille: number | null;
+};
+type LigneSolde = {
+  solde_centimes: number;
+  versement_en_cours: boolean;
+  prochain_versement_le: string;
+  compte_operationnel: boolean;
+};
+type LigneVersement = {
+  id: string;
+  montant_centimes: number;
+  frais_centimes: number;
+  mode: 'mensuel' | 'immediat';
+  statut: StatutVersement;
+  emis_le: string;
+  verse_le: string | null;
+};
+type LigneRevenus = {
+  mois: string;
+  encaissements_centimes: number;
+  nombre_paiements: number;
+  commission_centimes: number;
+  net_centimes: number;
+};
+type LigneFactureResume = {
+  id: string;
+  numero: string;
+  libelle: string;
+  autre_partie: string;
+  periode_du: string;
+  periode_au: string;
+  montant_ttc_centimes: number;
+  commission_centimes: number | null;
+  payee_le: string;
+};
+type LigneFactureDetail = {
+  numero: string;
+  emise_le: string;
+  payee_le: string;
+  vendeur_prenom: string;
+  vendeur_nom: string;
+  vendeur_siren: string | null;
+  vendeur_adresse: string | null;
+  vendeur_regime_tva: string | null;
+  vendeur_taux_tva_pour_mille: number | null;
+  client_prenom: string;
+  client_nom: string | null;
+  libelle: string;
+  periode_du: string;
+  periode_au: string;
+  montant_ttc_centimes: number;
+  montant_ht_centimes: number | null;
+  tva_centimes: number | null;
+  commission_centimes: number | null;
+};
+type LigneFactureCommission = {
+  id: string;
+  numero: string;
+  mois: string;
+  montant_ttc_centimes: number;
+  nombre_lignes: number;
+  emise_le: string;
+};
+
+// Une fonction serveur appelée en POST : sa réponse, son refus avec son texte, ou rien.
+async function appelerFonction(
+  chemin: string,
+  corps?: Record<string, unknown>,
+): Promise<
+  | { issue: 'ok'; data: unknown }
+  | { issue: 'refusee'; refus: RefusServeur }
+  | { issue: 'sans_reponse' }
+> {
+  const { data, error } = (await supabase.functions.invoke(chemin, {
+    method: 'POST',
+    ...(corps === undefined ? {} : { body: corps }),
+  })) as AppelFonction;
+  if (!error) return { issue: 'ok', data };
+  const refus = await refusDe(error);
+  return refus ? { issue: 'refusee', refus } : { issue: 'sans_reponse' };
+}
 
 export const portDonneesSupabase: PortDonnees = {
   async lireEtatProfils() {
@@ -1295,5 +1393,151 @@ export const portDonneesSupabase: PortDonnees = {
 
   modifierAvis(coachId: string, saisie: SaisieAvis): Promise<ResultatAvis> {
     return ecrireAvis('PATCH', coachId, saisie);
+  },
+
+  async lireIdentification(): Promise<Identification> {
+    const r = await appelerFonction('coach-identification');
+    if (r.issue !== 'ok') throw new Error('identification_illisible');
+    const d = r.data as Partial<Identification> | null;
+    if (!d || typeof d.compteVersement !== 'string') throw new Error('identification_illisible');
+    return {
+      compteVersement: d.compteVersement,
+      identiteFiscaleComplete: d.identiteFiscaleComplete === true,
+      peutPublier: d.peutPublier === true,
+    };
+  },
+
+  async demanderLienIdentification() {
+    const r = await appelerFonction('coach-identification/lien');
+    if (r.issue !== 'ok') return r;
+    const url = (r.data as { url?: unknown } | null)?.url;
+    return estTexte(url) ? { issue: 'ok' as const, url } : { issue: 'sans_reponse' as const };
+  },
+
+  async lireMonIdentiteFiscale(): Promise<IdentiteFiscale | null> {
+    const { data, error } = await supabase.rpc('mon_identite_fiscale');
+    if (error) throw error;
+    const l = (data as LigneIdentiteFiscale[])[0];
+    if (!l) return null;
+    return {
+      siren: l.siren,
+      adresseLigne: l.adresse_ligne,
+      codePostal: l.code_postal,
+      commune: l.commune,
+      regimeTva: l.regime_tva,
+      tauxTvaPourMille: l.taux_tva_pour_mille,
+    };
+  },
+
+  async enregistrerIdentiteFiscale(saisie: IdentiteFiscale) {
+    const r = await appelerFonction('coach-identification/identite-fiscale', { ...saisie });
+    return r.issue === 'ok' ? { issue: 'ok' as const } : r;
+  },
+
+  async lireSolde(): Promise<Solde> {
+    const { data, error } = await supabase.rpc('mon_solde');
+    if (error) throw error;
+    const l = (data as LigneSolde[])[0];
+    if (!l) throw new Error('solde_illisible');
+    return {
+      soldeCentimes: l.solde_centimes,
+      versementEnCours: l.versement_en_cours,
+      prochainVersementLe: l.prochain_versement_le,
+      compteOperationnel: l.compte_operationnel,
+    };
+  },
+
+  async lireVersements(): Promise<Versement[]> {
+    const { data, error } = await supabase.rpc('mes_versements');
+    if (error) throw error;
+    return (data as LigneVersement[]).map((l) => ({
+      id: l.id,
+      montantCentimes: l.montant_centimes,
+      fraisCentimes: l.frais_centimes,
+      mode: l.mode,
+      statut: l.statut,
+      emisLe: l.emis_le,
+      verseLe: l.verse_le,
+    }));
+  },
+
+  async demanderVersement() {
+    const r = await appelerFonction('coach-versements');
+    if (r.issue !== 'ok') return r;
+    const statut = (r.data as { statut?: unknown } | null)?.statut;
+    return statut === 'verse' || statut === 'echoue' || statut === 'prevu' || statut === 'en_cours'
+      ? { issue: 'ok' as const, statut }
+      : { issue: 'sans_reponse' as const };
+  },
+
+  async lireRevenus(mois: string): Promise<RevenusMois[]> {
+    const { data, error } = await supabase.rpc('mes_revenus', { p_mois: mois });
+    if (error) throw error;
+    return (data as LigneRevenus[]).map((l) => ({
+      mois: l.mois,
+      encaissementsCentimes: l.encaissements_centimes,
+      nombrePaiements: l.nombre_paiements,
+      commissionCentimes: l.commission_centimes,
+      netCentimes: l.net_centimes,
+    }));
+  },
+
+  async lireFacturesCommission(): Promise<FactureCommission[]> {
+    const { data, error } = await supabase.rpc('mes_factures_commission');
+    if (error) throw error;
+    return (data as LigneFactureCommission[]).map((l) => ({
+      id: l.id,
+      numero: l.numero,
+      mois: l.mois,
+      montantTtcCentimes: l.montant_ttc_centimes,
+      nombreLignes: l.nombre_lignes,
+      emiseLe: l.emise_le,
+    }));
+  },
+
+  async lireFactures(): Promise<FactureResume[]> {
+    const { data, error } = await supabase.rpc('mes_factures');
+    if (error) throw error;
+    return (data as LigneFactureResume[]).map((l) => ({
+      id: l.id,
+      numero: l.numero,
+      libelle: l.libelle,
+      autrePartie: l.autre_partie,
+      periodeDu: l.periode_du,
+      periodeAu: l.periode_au,
+      montantTtcCentimes: l.montant_ttc_centimes,
+      commissionCentimes: l.commission_centimes,
+      payeeLe: l.payee_le,
+    }));
+  },
+
+  async lireFacture(factureId: string): Promise<FactureDetail | null> {
+    const { data, error } = await supabase.rpc('ma_facture', { p_facture_id: factureId });
+    if (error) throw error;
+    const l = (data as LigneFactureDetail[])[0];
+    if (!l) return null;
+    return {
+      numero: l.numero,
+      emiseLe: l.emise_le,
+      payeeLe: l.payee_le,
+      vendeurPrenom: l.vendeur_prenom,
+      vendeurNom: l.vendeur_nom,
+      vendeurSiren: l.vendeur_siren,
+      vendeurAdresse: l.vendeur_adresse,
+      vendeurRegimeTva:
+        l.vendeur_regime_tva === 'franchise_en_base' || l.vendeur_regime_tva === 'assujetti'
+          ? l.vendeur_regime_tva
+          : null,
+      vendeurTauxTvaPourMille: l.vendeur_taux_tva_pour_mille,
+      clientPrenom: l.client_prenom,
+      clientNom: l.client_nom,
+      libelle: l.libelle,
+      periodeDu: l.periode_du,
+      periodeAu: l.periode_au,
+      montantTtcCentimes: l.montant_ttc_centimes,
+      montantHtCentimes: l.montant_ht_centimes,
+      tvaCentimes: l.tva_centimes,
+      commissionCentimes: l.commission_centimes,
+    };
   },
 } satisfies PortDonnees;

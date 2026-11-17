@@ -90,3 +90,26 @@ essayer tant que le domaine n'existe pas (`docs/dette.md`).
       200 %, les huit étiquettes passent à la ligne sans être tronquées. Il faut un client
       dont le suivi a 30 jours : Claude en prépare un juste avant la séance (même préparation
       que la clôture de 27a, `docs/decisions-en-attente.md`).
+
+## L5 — revenus, versements, factures
+
+- [ ] **Revenus (13), coach en règle** (`scenario-coach-offre`) : le net du mois en grand, les
+      six barres sous lui, le détail, le solde et « Prochain virement le 5 {mois} » ; en
+      VoiceOver, l'histogramme se lit en une seule phrase (« Net des six derniers mois : … »).
+      À 200 %, les montants ne sont pas tronqués ; le bas de l'écran passe au-dessus de la barre
+      d'onglets.
+- [ ] **Revenus, coach pas en règle** (`scenario-coach-verifie`) : la partie « Ce qu’il te
+      reste à faire » en haut ; « Virement immédiat · 1 € » inactif, et VoiceOver lit sa raison.
+- [ ] **Inscription chez Stripe, sur le téléphone** — seulement quand la clé Stripe aura accès
+      aux comptes connectés (`docs/decisions-en-attente.md`, « En attente du développeur ») :
+      « Continuer mon inscription » ouvre la page de Stripe dans le navigateur intégré ; la
+      fermer ramène sur Revenus, qui relit l'état du compte sans relancer l'application.
+- [ ] **Informations de facturation** : le clavier numérique pour le SIREN et le code postal,
+      le clavier décimal (avec virgule) pour le taux ; le clavier ne cache ni le champ actif ni
+      « Enregistrer ». Après « Enregistrer », retour à Revenus sans la carte.
+- [ ] **Factures** : depuis « Moi » d'une cliente abonnée (`scenario-client-actif`),
+      « Paiements et factures », la liste, une facture ; l'en-tête ne passe pas sous l'heure ;
+      la mention « TVA non applicable, art. 293 B du CGI » ou le détail HT / TVA tient à 200 %.
+- [ ] **Virement immédiat réel** — seulement avec la clé Stripe et un compte connecté
+      opérationnel : la modale « Virer {montant} maintenant ? », puis « Virement envoyé. » et le
+      virement en tête de « Derniers virements ».

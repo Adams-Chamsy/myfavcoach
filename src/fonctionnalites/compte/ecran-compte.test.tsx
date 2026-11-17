@@ -3,6 +3,7 @@ import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 
 import { FournisseurDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
+import { factureDemonstration } from '@/fixtures/demonstration';
 import { creerFauxPortAuth } from '@/services/auth/faux';
 import { creerFauxPortDonnees, etatProfilsParDefaut } from '@/services/donnees/faux';
 import type { AbonnementClient, EtatProfils } from '@/services/donnees/port';
@@ -54,6 +55,7 @@ const ABONNEMENT_ACTIF: AbonnementClient = {
 async function rendreEcran(
   surcharges: Partial<EtatProfils> = {},
   abonnements: AbonnementClient[] = [],
+  avecFacture = false,
 ) {
   const portAuth = creerFauxPortAuth();
   await portAuth.inscrire('camille@exemple.fr', 'bon-mot-de-passe', '2000-01-01');
@@ -71,6 +73,9 @@ async function rendreEcran(
     }),
   );
   portDonnees.definirAbonnementsPourTest(abonnements);
+  if (avecFacture) {
+    portDonnees.definirFacturesPourTest([{ ...factureDemonstration.resume }], {});
+  }
 
   render(
     <SafeAreaProvider initialMetrics={METRIQUES_ZONES_SURES}>
@@ -198,6 +203,22 @@ describe('EcranCompte (docs/ecrans/L1-07-compte-reglages.md)', () => {
   // Critère 9 de L1-07, INVERSÉ pour « abonnement » au lot L4 comme sa fiche l'annonçait
   // (docs/ecrans/L4-24b-mes-abonnements.md, critère 6 ; règle 8 de docs/prompts/L4.md : inversé,
   // jamais retiré). « notification » (L10) reste interdit dans tous les cas.
+  // docs/ecrans/L5-C05-factures-recus.md, Règles : la ligne « Paiements et factures », écartée en
+  // L1-07 parce qu'elle n'ouvrait rien, apparaît côté client dès qu'une facture existe.
+  it('client avec une facture : la ligne « Paiements et factures » ouvre les factures ; sans facture, pas de ligne', async () => {
+    await rendreEcran({}, [], true);
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Paiements et factures' })).toBeTruthy(),
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Paiements et factures' }));
+    expect(mockPousser).toHaveBeenCalledWith('/(compte)/factures');
+    screen.unmount();
+
+    await rendreEcran();
+    await waitFor(() => expect(screen.queryByText('Mes informations')).toBeTruthy());
+    expect(screen.queryByText('Paiements et factures')).toBeNull();
+  });
+
   it('sans abonnement : ni « abonnement » ni « notification »', async () => {
     await rendreEcran();
     await waitFor(() => expect(screen.queryByText('Mes informations')).toBeTruthy());

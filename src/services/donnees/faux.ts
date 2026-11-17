@@ -22,6 +22,16 @@ import type {
   ProfilOnboarding,
   RefusServeur,
   ResultatAvis,
+  FactureCommission,
+  FactureDetail,
+  FactureResume,
+  Identification,
+  IdentiteFiscale,
+  ResultatServeur,
+  RevenusMois,
+  Solde,
+  StatutVersement,
+  Versement,
   ResultatPublicationOffre,
   ResultatConstat,
   ResultatEcriture,
@@ -189,6 +199,20 @@ export type FauxPortDonnees = PortDonnees & {
     coachId: string;
     saisie: SaisieAvis;
   }[];
+  // L5. Sans réglage : compte de versement absent, identité fiscale vide, solde nul, rien
+  // d'autre.
+  definirIdentificationPourTest(identification: Identification): void;
+  definirIdentiteFiscalePourTest(identite: IdentiteFiscale | null): void;
+  definirReponseIdentiteFiscalePourTest(reponse: ResultatServeur<object>): void;
+  lireIdentitesFiscalesEnregistreesPourTest(): IdentiteFiscale[];
+  definirLienIdentificationPourTest(reponse: ResultatServeur<{ url: string }>): void;
+  definirSoldePourTest(solde: Solde): void;
+  definirVersementsPourTest(versements: Versement[]): void;
+  definirReponseVersementPourTest(reponse: ResultatServeur<{ statut: StatutVersement }>): void;
+  lireDemandesVersementPourTest(): number;
+  definirRevenusPourTest(revenus: RevenusMois[]): void;
+  definirFacturesPourTest(factures: FactureResume[], details: Record<string, FactureDetail>): void;
+  definirFacturesCommissionPourTest(factures: FactureCommission[]): void;
 };
 
 // docs/api.md §3 : un compte neuf a toujours profilActif = 'client' (colonne NOT NULL, défaut
@@ -316,6 +340,28 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
   let avisDuCoach: Record<string, AvisDuCoach> = {};
   let monAvis: Record<string, EtatMonAvis> = {};
   let reponseAvis: ResultatAvis = { issue: 'sans_reponse' };
+  let identification: Identification = {
+    compteVersement: 'absent',
+    identiteFiscaleComplete: false,
+    peutPublier: false,
+  };
+  let identiteFiscale: IdentiteFiscale | null = null;
+  let reponseIdentiteFiscale: ResultatServeur<object> = { issue: 'ok' };
+  let identitesEnregistrees: IdentiteFiscale[] = [];
+  let reponseLien: ResultatServeur<{ url: string }> = { issue: 'sans_reponse' };
+  let solde: Solde = {
+    soldeCentimes: 0,
+    versementEnCours: false,
+    prochainVersementLe: '2026-12-05',
+    compteOperationnel: false,
+  };
+  let versements: Versement[] = [];
+  let reponseVersement: ResultatServeur<{ statut: StatutVersement }> = { issue: 'sans_reponse' };
+  let demandesVersement = 0;
+  let revenus: RevenusMois[] = [];
+  let factures: FactureResume[] = [];
+  let detailsFactures: Record<string, FactureDetail> = {};
+  let facturesCommission: FactureCommission[] = [];
   let ecrituresAvis: {
     operation: 'depot' | 'modification';
     coachId: string;
@@ -928,6 +974,79 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     },
     lireEcrituresAvisPourTest() {
       return ecrituresAvis;
+    },
+
+    async lireIdentification() {
+      return identification;
+    },
+    definirIdentificationPourTest(valeur) {
+      identification = valeur;
+    },
+    async demanderLienIdentification() {
+      return reponseLien;
+    },
+    definirLienIdentificationPourTest(reponse) {
+      reponseLien = reponse;
+    },
+    async lireMonIdentiteFiscale() {
+      return identiteFiscale;
+    },
+    definirIdentiteFiscalePourTest(valeur) {
+      identiteFiscale = valeur;
+    },
+    async enregistrerIdentiteFiscale(saisie) {
+      identitesEnregistrees = [...identitesEnregistrees, saisie];
+      return reponseIdentiteFiscale;
+    },
+    definirReponseIdentiteFiscalePourTest(reponse) {
+      reponseIdentiteFiscale = reponse;
+    },
+    lireIdentitesFiscalesEnregistreesPourTest() {
+      return identitesEnregistrees;
+    },
+    async lireSolde() {
+      return solde;
+    },
+    definirSoldePourTest(valeur) {
+      solde = valeur;
+    },
+    async lireVersements() {
+      return versements;
+    },
+    definirVersementsPourTest(valeur) {
+      versements = valeur;
+    },
+    async demanderVersement() {
+      demandesVersement += 1;
+      return reponseVersement;
+    },
+    definirReponseVersementPourTest(reponse) {
+      reponseVersement = reponse;
+    },
+    lireDemandesVersementPourTest() {
+      return demandesVersement;
+    },
+    async lireRevenus() {
+      return revenus;
+    },
+    definirRevenusPourTest(valeur) {
+      revenus = valeur;
+    },
+    async lireFacturesCommission() {
+      return facturesCommission;
+    },
+    definirFacturesCommissionPourTest(valeur) {
+      facturesCommission = valeur;
+    },
+    async lireFactures() {
+      return factures;
+    },
+    async lireFacture(factureId) {
+      return detailsFactures[factureId] ?? null;
+    },
+    definirFacturesPourTest(liste, details) {
+      factures = liste;
+      detailsFactures = details;
     },
   } satisfies FauxPortDonnees;
 }

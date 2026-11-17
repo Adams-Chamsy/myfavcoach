@@ -1,7 +1,7 @@
 import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import Constants from 'expo-constants';
 import { useRouter, type Href } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -97,6 +97,24 @@ export function EcranCompte() {
 
   const [feuilleOuverte, setFeuilleOuverte] = useState(false);
   const [confirmationDeconnexion, setConfirmationDeconnexion] = useState(false);
+  // C-05 (docs/ecrans/L5-C05-factures-recus.md) : la ligne « Paiements et factures », écartée en
+  // L1-07 parce qu'elle n'ouvrait rien, apparaît côté client dès qu'une facture existe. Côté
+  // coach, les factures s'ouvrent depuis Revenus. Une lecture en échec : pas de ligne.
+  const [aDesFactures, setADesFactures] = useState(false);
+  const { port } = useDonnees();
+  useEffect(() => {
+    if (profils?.profilActif !== 'client') return;
+    let monte = true;
+    void port
+      .lireFactures()
+      .then((factures) => {
+        if (monte) setADesFactures(factures.length > 0);
+      })
+      .catch(() => {});
+    return () => {
+      monte = false;
+    };
+  }, [port, profils?.profilActif]);
 
   const nom = profils ? nomComplet(profils.identiteActive.prenom, profils.identiteActive.nom) : '';
   const coachExiste = profils?.coachExiste ?? false;
@@ -204,7 +222,19 @@ export function EcranCompte() {
                 ) : null}
 
                 <Carte>
-                  {LIGNES_REGLAGES.map((ligne, index) => (
+                  {(aDesFactures && profils?.profilActif === 'client'
+                    ? [
+                        ...LIGNES_REGLAGES.slice(0, 2),
+                        {
+                          cle: 'factures',
+                          libelle: 'Paiements et factures',
+                          icone: 'document' as NomIcone,
+                          route: '/(compte)/factures' as Href,
+                        },
+                        ...LIGNES_REGLAGES.slice(2),
+                      ]
+                    : LIGNES_REGLAGES
+                  ).map((ligne, index) => (
                     <View key={ligne.cle}>
                       {index > 0 ? (
                         <View

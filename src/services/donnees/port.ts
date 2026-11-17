@@ -444,6 +444,103 @@ export type ResultatAvis =
   | { issue: 'refusee'; refus: RefusServeur }
   | { issue: 'sans_reponse' };
 
+// L5 (docs/api.md §8, docs/ecrans/L5-13-revenus.md, L5-C05-factures-recus.md). Tout vient du
+// serveur : nets, solde, dates, HT et TVA. L'écran ne calcule rien.
+export type EtatCompteVersement =
+  'absent' | 'a_completer' | 'en_verification' | 'operationnel' | 'restreint';
+
+export type Identification = {
+  compteVersement: EtatCompteVersement;
+  identiteFiscaleComplete: boolean;
+  peutPublier: boolean;
+};
+
+export type IdentiteFiscale = {
+  siren: string;
+  adresseLigne: string;
+  codePostal: string;
+  commune: string;
+  regimeTva: 'franchise_en_base' | 'assujetti';
+  tauxTvaPourMille: number | null;
+};
+
+export type Solde = {
+  soldeCentimes: number;
+  versementEnCours: boolean;
+  prochainVersementLe: string;
+  compteOperationnel: boolean;
+};
+
+export type StatutVersement = 'prevu' | 'en_cours' | 'verse' | 'echoue';
+
+export type Versement = {
+  id: string;
+  montantCentimes: number;
+  fraisCentimes: number;
+  mode: 'mensuel' | 'immediat';
+  statut: StatutVersement;
+  emisLe: string;
+  verseLe: string | null;
+};
+
+export type RevenusMois = {
+  // Premier jour du mois, AAAA-MM-JJ.
+  mois: string;
+  encaissementsCentimes: number;
+  nombrePaiements: number;
+  commissionCentimes: number;
+  netCentimes: number;
+};
+
+export type FactureResume = {
+  id: string;
+  numero: string;
+  libelle: string;
+  // Le coach (lu par le client) ou le client (lu par le coach).
+  autrePartie: string;
+  periodeDu: string;
+  periodeAu: string;
+  montantTtcCentimes: number;
+  // null pour le client : la commission ne le regarde pas.
+  commissionCentimes: number | null;
+  payeeLe: string;
+};
+
+export type FactureDetail = {
+  numero: string;
+  emiseLe: string;
+  payeeLe: string;
+  vendeurPrenom: string;
+  vendeurNom: string;
+  vendeurSiren: string | null;
+  vendeurAdresse: string | null;
+  vendeurRegimeTva: 'franchise_en_base' | 'assujetti' | null;
+  vendeurTauxTvaPourMille: number | null;
+  clientPrenom: string;
+  clientNom: string | null;
+  libelle: string;
+  periodeDu: string;
+  periodeAu: string;
+  montantTtcCentimes: number;
+  montantHtCentimes: number | null;
+  tvaCentimes: number | null;
+  commissionCentimes: number | null;
+};
+
+export type FactureCommission = {
+  id: string;
+  numero: string;
+  mois: string;
+  montantTtcCentimes: number;
+  nombreLignes: number;
+  emiseLe: string;
+};
+
+// Mêmes trois issues que ResultatIntention : le refus porte son texte, l'absence de réponse est
+// le seul cas où l'écran écrit le sien.
+export type ResultatServeur<T> =
+  ({ issue: 'ok' } & T) | { issue: 'refusee'; refus: RefusServeur } | { issue: 'sans_reponse' };
+
 export type PortDonnees = {
   lireEtatProfils(): Promise<EtatProfils>;
 
@@ -686,6 +783,28 @@ export type PortDonnees = {
   // l'éligibilité, la forme et le délai de 14 jours ; l'écran affiche son refus tel quel.
   deposerAvis(coachId: string, saisie: SaisieAvis): Promise<ResultatAvis>;
   modifierAvis(coachId: string, saisie: SaisieAvis): Promise<ResultatAvis>;
+
+  // L5, espace coach. L'état du compte de versement est relu chez le prestataire par la
+  // fonction coach-identification ; une absence de réponse lève.
+  lireIdentification(): Promise<Identification>;
+  // La page d'inscription hébergée par le prestataire : à usage unique, jamais gardée.
+  demanderLienIdentification(): Promise<ResultatServeur<{ url: string }>>;
+  // null : rien d'enregistré.
+  lireMonIdentiteFiscale(): Promise<IdentiteFiscale | null>;
+  enregistrerIdentiteFiscale(saisie: IdentiteFiscale): Promise<ResultatServeur<object>>;
+  lireSolde(): Promise<Solde>;
+  lireVersements(): Promise<Versement[]>;
+  // Le versement immédiat ; `statut` est l'état réel après la tentative de virement.
+  demanderVersement(): Promise<ResultatServeur<{ statut: StatutVersement }>>;
+  // Le mois de `mois` (AAAA-MM-JJ, n'importe quel jour) et les cinq précédents, du plus récent au
+  // plus ancien.
+  lireRevenus(mois: string): Promise<RevenusMois[]>;
+  lireFacturesCommission(): Promise<FactureCommission[]>;
+
+  // L5, C-05 : selon l'espace actif (client : ses achats ; coach : ses ventes). null : une
+  // facture qui n'existe pas, ou qui n'est pas la sienne — même réponse.
+  lireFactures(): Promise<FactureResume[]>;
+  lireFacture(factureId: string): Promise<FactureDetail | null>;
 };
 
 // Les trois écritures qui changent EtatProfils. Elles ne sont JAMAIS appelées sur un `port`

@@ -135,6 +135,17 @@ function creerPortDonneesEnAttente(promesse: Promise<EtatProfils>): PortDonnees 
     lireDetailAbonnement: jest.fn(),
     demanderNouveauMoyen: jest.fn(),
     constaterNouveauMoyen: jest.fn(),
+    lireIdentification: jest.fn(),
+    demanderLienIdentification: jest.fn(),
+    lireMonIdentiteFiscale: jest.fn(),
+    enregistrerIdentiteFiscale: jest.fn(),
+    lireSolde: jest.fn(),
+    lireVersements: jest.fn(),
+    demanderVersement: jest.fn(),
+    lireRevenus: jest.fn(),
+    lireFacturesCommission: jest.fn(),
+    lireFactures: jest.fn(),
+    lireFacture: jest.fn(),
   };
 }
 
@@ -353,6 +364,17 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       lireDetailAbonnement: jest.fn(),
       demanderNouveauMoyen: jest.fn(),
       constaterNouveauMoyen: jest.fn(),
+      lireIdentification: jest.fn(),
+      demanderLienIdentification: jest.fn(),
+      lireMonIdentiteFiscale: jest.fn(),
+      enregistrerIdentiteFiscale: jest.fn(),
+      lireSolde: jest.fn(),
+      lireVersements: jest.fn(),
+      demanderVersement: jest.fn(),
+      lireRevenus: jest.fn(),
+      lireFacturesCommission: jest.fn(),
+      lireFactures: jest.fn(),
+      lireFacture: jest.fn(),
     };
 
     await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);

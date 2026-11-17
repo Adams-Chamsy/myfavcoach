@@ -91,7 +91,14 @@ export default function Index() {
   // pas au compte connecté).
   // Écran 20 (P4.7) : même mécanisme pour le retour de la page où enregistrer un nouveau moyen de
   // paiement, `/?moyen={abonnementId}` (abonnement-moyen-paiement). L'écran 20 demande le constat.
-  const { intention, moyen } = useLocalSearchParams<{ intention?: string; moyen?: string }>();
+  // L5 (docs/ecrans/L5-13-revenus.md) : retour de la page d'inscription du prestataire,
+  // `/?identification=retour|reprise`. Revenus relit l'état du compte ; « reprise » (lien expiré)
+  // y mène aussi, le coach redemande un lien.
+  const { intention, moyen, identification } = useLocalSearchParams<{
+    intention?: string;
+    moyen?: string;
+    identification?: string;
+  }>();
   // P1.10 : le profil actif vient du serveur (src/services/donnees/), pas seulement la session
   // — determinerDestination attend les DEUX avant de trancher. FournisseurDonnees ne lit
   // jamais le port tant qu'aucune session vérifiée n'existe, donc chargementDonnees se résout
@@ -170,6 +177,9 @@ export default function Index() {
           href={`/(client)/abonnement/${encodeURIComponent(moyen)}/refus?retour=1` as Href}
         />
       );
+    }
+    if (identification && session?.emailVerifie && profils?.coachExiste) {
+      return <Redirect href={'/(coach)/(tabs)/revenus' as Href} />;
     }
     const destination = determinerDestination(session, profils, parcours.retourCoach);
     if (
