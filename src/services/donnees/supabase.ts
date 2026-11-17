@@ -34,6 +34,7 @@ import type {
   AbonnementClient,
   StatutAbonnement,
   FactureCommission,
+  RappelCommission,
   FactureDetail,
   FactureResume,
   Identification,
@@ -412,6 +413,13 @@ type LigneFactureDetail = {
   tva_centimes: number | null;
   commission_centimes: number | null;
 };
+type LigneRappelCommission = {
+  commission_offerte_jusqu_le: string;
+  nombre_abonnements: number;
+  total_centimes: number;
+  total_apres_commission_centimes: number;
+};
+
 type LigneFactureCommission = {
   id: string;
   numero: string;
@@ -1480,6 +1488,20 @@ export const portDonneesSupabase: PortDonnees = {
       commissionCentimes: l.commission_centimes,
       netCentimes: l.net_centimes,
     }));
+  },
+
+  async lireRappelCommission(): Promise<RappelCommission | null> {
+    const { data, error } = await supabase.rpc('mon_rappel_commission');
+    if (error) throw error;
+    const ligne = (data as LigneRappelCommission[])[0];
+    return ligne
+      ? {
+          commissionOfferteJusquLe: ligne.commission_offerte_jusqu_le,
+          nombreAbonnements: ligne.nombre_abonnements,
+          totalCentimes: ligne.total_centimes,
+          totalApresCommissionCentimes: ligne.total_apres_commission_centimes,
+        }
+      : null;
   },
 
   async lireFacturesCommission(): Promise<FactureCommission[]> {

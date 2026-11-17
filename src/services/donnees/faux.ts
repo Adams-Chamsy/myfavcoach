@@ -23,6 +23,7 @@ import type {
   RefusServeur,
   ResultatAvis,
   FactureCommission,
+  RappelCommission,
   FactureDetail,
   FactureResume,
   Identification,
@@ -213,6 +214,7 @@ export type FauxPortDonnees = PortDonnees & {
   definirRevenusPourTest(revenus: RevenusMois[]): void;
   definirFacturesPourTest(factures: FactureResume[], details: Record<string, FactureDetail>): void;
   definirFacturesCommissionPourTest(factures: FactureCommission[]): void;
+  definirRappelCommissionPourTest(rappel: RappelCommission | null): void;
 };
 
 // docs/api.md §3 : un compte neuf a toujours profilActif = 'client' (colonne NOT NULL, défaut
@@ -362,6 +364,7 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
   let factures: FactureResume[] = [];
   let detailsFactures: Record<string, FactureDetail> = {};
   let facturesCommission: FactureCommission[] = [];
+  let rappelCommission: RappelCommission | null = null;
   let ecrituresAvis: {
     operation: 'depot' | 'modification';
     coachId: string;
@@ -1037,6 +1040,12 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     },
     definirFacturesCommissionPourTest(valeur) {
       facturesCommission = valeur;
+    },
+    async lireRappelCommission() {
+      return rappelCommission;
+    },
+    definirRappelCommissionPourTest(valeur) {
+      rappelCommission = valeur;
     },
     async lireFactures() {
       return factures;

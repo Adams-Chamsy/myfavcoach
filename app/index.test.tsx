@@ -144,6 +144,7 @@ function creerPortDonneesEnAttente(promesse: Promise<EtatProfils>): PortDonnees 
     demanderVersement: jest.fn(),
     lireRevenus: jest.fn(),
     lireFacturesCommission: jest.fn(),
+    lireRappelCommission: jest.fn(),
     lireFactures: jest.fn(),
     lireFacture: jest.fn(),
   };
@@ -373,6 +374,7 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       demanderVersement: jest.fn(),
       lireRevenus: jest.fn(),
       lireFacturesCommission: jest.fn(),
+      lireRappelCommission: jest.fn(),
       lireFactures: jest.fn(),
       lireFacture: jest.fn(),
     };

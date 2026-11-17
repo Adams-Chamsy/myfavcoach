@@ -527,6 +527,15 @@ export type FactureDetail = {
   commissionCentimes: number | null;
 };
 
+// L5, P5.6b — le rappel de commission de I-01 (mon_rappel_commission, 0078). null : pas de
+// rappel (commission plus offerte, ou aucun abonnement actif venu d'un lien du coach).
+export type RappelCommission = {
+  commissionOfferteJusquLe: string;
+  nombreAbonnements: number;
+  totalCentimes: number;
+  totalApresCommissionCentimes: number;
+};
+
 export type FactureCommission = {
   id: string;
   numero: string;
@@ -800,6 +809,7 @@ export type PortDonnees = {
   // plus ancien.
   lireRevenus(mois: string): Promise<RevenusMois[]>;
   lireFacturesCommission(): Promise<FactureCommission[]>;
+  lireRappelCommission(): Promise<RappelCommission | null>;
 
   // L5, C-05 : selon l'espace actif (client : ses achats ; coach : ses ventes). null : une
   // facture qui n'existe pas, ou qui n'est pas la sienne — même réponse.

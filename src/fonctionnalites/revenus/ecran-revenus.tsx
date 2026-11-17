@@ -18,7 +18,7 @@ import type {
   StatutVersement,
   Versement,
 } from '@/services/donnees/port';
-import { euros } from '@/fonctionnalites/factures/format';
+import { dateCourte, euros } from '@/fonctionnalites/factures/format';
 import { useTheme } from '@/theme/fournisseur';
 import { ecouterFacturationEnregistree } from './facturation-enregistree';
 
@@ -343,7 +343,7 @@ export function EcranRevenus({
           <View style={{ padding: theme.espace[4], gap: theme.espace[3] }}>
             <Ligne libelle="Solde disponible" valeur={euros(solde.soldeCentimes)} fort />
             {texte(
-              `Prochain virement le ${dateDe(solde.prochainVersementLe, { day: 'numeric', month: 'long' })}`,
+              `Prochain virement le ${dateCourte(solde.prochainVersementLe)}`,
               'petit',
               theme.couleur.texte.secondaire,
             )}
@@ -379,7 +379,7 @@ export function EcranRevenus({
                   }}
                 >
                   <View style={{ flex: 1, gap: theme.espace[1] }}>
-                    {texte(dateDe(v.verseLe ?? v.emisLe, { day: 'numeric', month: 'long' }))}
+                    {texte(dateCourte(v.verseLe ?? v.emisLe))}
                     {texte(
                       v.mode === 'immediat'
                         ? `${LIBELLES_STATUT_VERSEMENT[v.statut]} · virement immédiat`

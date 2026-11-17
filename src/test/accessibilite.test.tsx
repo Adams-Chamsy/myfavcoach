@@ -54,6 +54,7 @@ import {
   recapitulatifPaiementDemonstration,
   detailAbonnementDemonstration,
   factureDemonstration,
+  rappelCommissionDemonstration,
   revenusDemonstration,
   soldeDemonstration,
   versementsDemonstration,
@@ -449,6 +450,16 @@ type EntreeCorpus = {
 
 // L5 : un coach, avec les revenus, le solde, les virements et la facture du jeu de
 // démonstration ; identité fiscale et compte de versement à compléter.
+// P5.6b : I-01 avec le rappel de commission de la maquette, pour que sa carte soit mesurée.
+function portDonneesInvitations() {
+  const p = creerFauxPortDonnees();
+  p.definirEtatProfilsPourTest(
+    etatProfilsParDefaut({ profilActif: 'coach', coachExiste: true, clientExiste: false }),
+  );
+  p.definirRappelCommissionPourTest({ ...rappelCommissionDemonstration });
+  return p;
+}
+
 function portDonneesRevenus() {
   const p = creerFauxPortDonnees();
   p.definirEtatProfilsPourTest(
@@ -740,7 +751,7 @@ const CORPUS: EntreeCorpus[] = [
     nom: 'app/(coach)/invitations.tsx',
     creerElement: () => (
       <FournisseurSession key="invitations" port={portAuthOnboarding}>
-        <FournisseurDonnees port={portDonneesOnboarding}>
+        <FournisseurDonnees port={portDonneesInvitations()}>
           <Invitations />
         </FournisseurDonnees>
       </FournisseurSession>

@@ -202,6 +202,16 @@ describe('L5-13 · Revenus', () => {
     expect(screen.getByText('Détail du serveur.')).toBeTruthy();
   });
 
+  // Contenu 6 : la date d'un virement en français — « 1er » le premier du mois.
+  it('un virement versé le 1er du mois : « 1er octobre »', async () => {
+    await rendre((p) =>
+      p.definirVersementsPourTest([
+        { ...versementsDemonstration[0], verseLe: '2026-10-01T06:00:05.000Z' },
+      ]),
+    );
+    await waitFor(() => expect(screen.queryByText('1er octobre')).toBeTruthy());
+  });
+
   it('aucun virement : « Aucun virement pour l’instant. » ; « Mes factures » ouvre les factures', async () => {
     const { onOuvrirFactures } = await rendre((p) => p.definirVersementsPourTest([]));
     await waitFor(() => expect(screen.queryByText('Aucun virement pour l’instant.')).toBeTruthy());

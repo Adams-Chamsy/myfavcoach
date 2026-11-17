@@ -113,3 +113,7 @@ essayer tant que le domaine n'existe pas (`docs/dette.md`).
 - [ ] **Virement immédiat réel** — seulement avec la clé Stripe et un compte connecté
       opérationnel : la modale « Virer {montant} maintenant ? », puis « Virement envoyé. » et le
       virement en tête de « Derniers virements ».
+- [ ] **Rappel de commission sur I-01** (`scenario-coach-offre`, Pilotage → « Importer mes
+      clients ») : sous « Qui a répondu », la carte beige « Commission offerte jusqu’au 1er
+      février. Sur cet abonnement, tu touches 49 € au lieu de 44,10 €. » ; à 200 %, la phrase
+      passe à la ligne sans être tronquée, l'icône reste en haut à gauche.

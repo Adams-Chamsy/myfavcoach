@@ -95,6 +95,61 @@ describe('Invitations (docs/ecrans/L3bis-I01-inviter-mes-clients.md)', () => {
     expect(screen.getByText("Sans réponse pour l'instant")).toBeTruthy();
   });
 
+  // Contenu 4 et critère 6 (P5.6b) : le rappel n'existe que si le serveur le rend. Valeurs de la
+  // maquette (MyFavCoach-Import_dc.html) : trois abonnements, 147 € au lieu de 132,30 €.
+  it('rappel de commission : la phrase de la maquette, avec ce que rend le serveur', async () => {
+    const port = creerFauxPortDonnees();
+    port.definirJetonInvitationPourTest('jeton-rappel');
+    port.definirRappelCommissionPourTest({
+      commissionOfferteJusquLe: '2026-12-11',
+      nombreAbonnements: 3,
+      totalCentimes: 14700,
+      totalApresCommissionCentimes: 13230,
+    });
+    await rendre(port);
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          'Commission offerte jusqu’au 11 décembre. Sur ces 3 abonnements, tu touches 147 € au lieu de 132,30 €.',
+        ),
+      ).toBeTruthy(),
+    );
+  });
+
+  it('rappel de commission, un seul abonnement : « Sur cet abonnement »', async () => {
+    const port = creerFauxPortDonnees();
+    port.definirJetonInvitationPourTest('jeton-rappel-un');
+    port.definirRappelCommissionPourTest({
+      commissionOfferteJusquLe: '2026-12-11',
+      nombreAbonnements: 1,
+      totalCentimes: 4900,
+      totalApresCommissionCentimes: 4410,
+    });
+    await rendre(port);
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          'Commission offerte jusqu’au 11 décembre. Sur cet abonnement, tu touches 49 € au lieu de 44,10 €.',
+        ),
+      ).toBeTruthy(),
+    );
+  });
+
+  it('critère 6 : sans rappel rendu par le serveur, aucune carte — et une lecture en échec ne casse pas l’écran', async () => {
+    const port = creerFauxPortDonnees();
+    port.definirJetonInvitationPourTest('jeton-sans-rappel');
+    await rendre(port);
+    expect(screen.queryByText(/Commission offerte/)).toBeNull();
+    screen.unmount();
+
+    const enPanne = creerFauxPortDonnees();
+    enPanne.definirJetonInvitationPourTest('jeton-panne');
+    jest.spyOn(enPanne, 'lireRappelCommission').mockRejectedValue(new Error('panne'));
+    await rendre(enPanne);
+    expect(screen.queryByText(/Commission offerte/)).toBeNull();
+    expect(screen.getByText(/jeton-panne/)).toBeTruthy();
+  });
+
   it("n'affiche pas la section « Qui a répondu » quand il n'y a rien à montrer", async () => {
     const port = creerFauxPortDonnees();
     port.definirJetonInvitationPourTest('jeton-vide');

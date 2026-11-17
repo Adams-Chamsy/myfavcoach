@@ -577,3 +577,13 @@ export const factureDemonstration = {
     commissionCentimes: null,
   },
 } as const;
+
+// L5, P5.6b — rappel de commission de I-01 (maquettes/MyFavCoach-Import_dc.html) : « Commission
+// offerte jusqu'au 11 décembre. Sur ces trois abonnements, tu touches 147 € au lieu de
+// 132,30 €. » L'année (2026) est celle du jeu de démonstration.
+export const rappelCommissionDemonstration = {
+  commissionOfferteJusquLe: '2026-12-11',
+  nombreAbonnements: 3,
+  totalCentimes: 14700,
+  totalApresCommissionCentimes: 13230,
+} as const;

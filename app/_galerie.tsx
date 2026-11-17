@@ -35,6 +35,7 @@ import {
   detailAbonnementImpayeDemonstration,
   detailAbonnementSuspenduDemonstration,
   factureDemonstration,
+  rappelCommissionDemonstration,
   revenusDemonstration,
   soldeDemonstration,
   versementsDemonstration,
@@ -1550,6 +1551,7 @@ function InvitationsAvecFixture() {
       },
     ]);
     p.definirNombreInvitationsEnAttentePourTest(6);
+    p.definirRappelCommissionPourTest({ ...rappelCommissionDemonstration });
     return p;
   });
   return (

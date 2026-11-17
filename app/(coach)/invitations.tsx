@@ -14,7 +14,8 @@ import { Icone } from '@/composants/icones';
 import { Modale } from '@/composants/modale';
 import { Squelette } from '@/composants/squelette';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
-import type { Invitation } from '@/services/donnees/port';
+import { dateCourte, eurosCourts } from '@/fonctionnalites/factures/format';
+import type { Invitation, RappelCommission } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
 import { themes } from '@/theme/tokens';
 
@@ -109,6 +110,23 @@ export default function Invitations() {
       })
       .finally(() => {
         if (monte) setChargement(false);
+      });
+    return () => {
+      monte = false;
+    };
+  }, [port, tentative]);
+
+  // Lu à part : un échec n'empêche pas l'écran, il retire seulement la carte (critère 6).
+  const [rappel, setRappel] = useState<RappelCommission | null>(null);
+  useEffect(() => {
+    let monte = true;
+    port
+      .lireRappelCommission()
+      .then((lu) => {
+        if (monte) setRappel(lu);
+      })
+      .catch(() => {
+        if (monte) setRappel(null);
       });
     return () => {
       monte = false;
@@ -480,9 +498,37 @@ export default function Invitations() {
                 </View>
               ) : null}
 
-              {/* Rappel de commission : absent tant qu'aucun abonnement réel n'existe (voir
-                  Règles de la fiche) — l'absence de cette carte EST l'état honnête à ce lot,
-                  pas une carte construite puis masquée. */}
+              {/* Rappel de commission (contenu 4, critère 6 ; P5.6b) : rendu par le serveur
+                  seulement s'il existe un abonnement actif venu de ce lien, tant que la
+                  commission est offerte. Sinon, aucune carte : l'absence EST l'état honnête. */}
+              {rappel ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    gap: theme.espace[2],
+                    padding: theme.espace[4],
+                    borderRadius: theme.rayon.media,
+                    backgroundColor: theme.couleur.marque.secondaire,
+                  }}
+                >
+                  <Icone nom="information" couleur={theme.couleur.marque.secondaireEncre2} />
+                  <Text
+                    style={{
+                      ...theme.texte.petit,
+                      flex: 1,
+                      color: theme.couleur.marque.secondaireEncre,
+                    }}
+                  >
+                    {`Commission offerte jusqu’au ${dateCourte(rappel.commissionOfferteJusquLe)}. ${
+                      rappel.nombreAbonnements > 1
+                        ? `Sur ces ${rappel.nombreAbonnements} abonnements`
+                        : 'Sur cet abonnement'
+                    }, tu touches ${eurosCourts(rappel.totalCentimes)} au lieu de ${eurosCourts(
+                      rappel.totalApresCommissionCentimes,
+                    )}.`}
+                  </Text>
+                </View>
+              ) : null}
             </DefilementEcran>
           )}
         </CanevasEcran>

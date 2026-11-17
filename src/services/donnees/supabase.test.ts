@@ -859,6 +859,32 @@ describe('portDonneesSupabase', () => {
       });
     });
 
+    // P5.6b, docs/api.md §8 : une ligne au plus ; zéro ligne, pas de rappel (null).
+    it('lireRappelCommission : la ligne de mon_rappel_commission, ou null quand le serveur n’en rend aucune', async () => {
+      supabaseMock.rpc.mockResolvedValueOnce({ data: [], error: null });
+      expect(await portDonneesSupabase.lireRappelCommission()).toBeNull();
+      expect(supabaseMock.rpc).toHaveBeenCalledWith('mon_rappel_commission');
+      supabaseMock.rpc.mockResolvedValueOnce({
+        data: [
+          {
+            commission_offerte_jusqu_le: '2026-12-11',
+            nombre_abonnements: 3,
+            total_centimes: 14700,
+            total_apres_commission_centimes: 13230,
+          },
+        ],
+        error: null,
+      });
+      expect(await portDonneesSupabase.lireRappelCommission()).toEqual({
+        commissionOfferteJusquLe: '2026-12-11',
+        nombreAbonnements: 3,
+        totalCentimes: 14700,
+        totalApresCommissionCentimes: 13230,
+      });
+      supabaseMock.rpc.mockResolvedValueOnce({ data: null, error: { message: 'panne' } });
+      await expect(portDonneesSupabase.lireRappelCommission()).rejects.toBeTruthy();
+    });
+
     it('publierOffre appelle offre-publication/{id} : publiée, refus avec son texte, ou sans réponse', async () => {
       supabaseMock.functions.invoke.mockResolvedValue({ data: { publiee: true }, error: null });
       expect(await portDonneesSupabase.publierOffre('offre-1')).toEqual({ issue: 'publiee' });
