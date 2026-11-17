@@ -468,6 +468,18 @@ affectation (`POST /coach/programmes/{id}/affectation`) : fonctions de base.
 
 `ressentiEffort` est une **donnée de santé** : jamais dans une URL, jamais dans un journal.
 
+**Précisé le 17 novembre 2026 (L6, `docs/prompts/L6.md`).** Comme pour les lots précédents,
+les écritures passent par des fonctions de base (`security definer`), jamais par une écriture
+directe dans une table : créer et modifier un programme, une séance, un exercice ; publier,
+archiver, revenir en édition ; affecter ; démarrer, saisir, valider, rattraper. Les médias
+s'envoient dans le dossier privé `medias-programmes` (Supabase Storage), sous
+`{profil_coach_id}/…`, et se lisent par URL signée (15 minutes). Refus nommés :
+`programme_introuvable`, `programme_non_modifiable` (publié ou archivé), `identite_non_verifiee`
+(publication), `programme_vide` (publication sans séance), `retour_edition_interdit` (§4.6),
+`programme_deja_en_cours` (affectation), `abonnement_sans_acces`, `seance_introuvable`,
+`transition_interdite` (§4.5), `rattrapage_expire` (plus de 7 jours),
+`consentement_sante_absent`.
+
 ---
 
 ## 10. Suivi (L7)

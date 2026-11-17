@@ -81,7 +81,7 @@ Numérotation du dossier de design. « Fiche » = fiche d'écran à rédiger dan
 | 04c | Tunnel — confirmation | L4 | Maquette : `maquettes/MyFavCoach-L2_dc.html`, `data-screen-label="04c Confirmation abonnement"` (malgré le nom du fichier). Corrigé le 28 septembre 2026 : cette ligne la disait « à concevoir, absent du dossier », à tort. Détail : `docs/ecrans/L4-04c-confirmation-abonnement.md` |
 | 20 | Paiement refusé | L4 | Détail : `docs/ecrans/L4-20-paiement-refuse.md` |
 | 05 | Séance du jour | L6 | |
-| 05a | Questionnaire santé avant la première séance | L6 | **à concevoir.** Contre-indications, blessures, traitements. Portée verrouillée au coach, consentement explicite. Dépend de C-04 |
+| 05a | Questionnaire santé avant la première séance | L6 | **à concevoir.** Contre-indications, blessures, traitements. Portée verrouillée au coach, consentement explicite. Dépend de C-04. **Non construit en L6** (décidé seul le 17 novembre 2026, à relire : `docs/prompts/L6.md`, décision 1) : à concevoir avec le juriste, à construire avant L12 |
 | 06 | Suivi chiffré | L7 | sans photos corporelles |
 | 07 | Messagerie client | L8 | texte seul |
 | 14 | Recherche — aucun résultat | L3 | bouton « Me prévenir » retiré ; pas de filtre « note » (n'existe pas dans l'écran 02). Détail : `docs/ecrans/L3-03-recherche-aucun-resultat.md` |

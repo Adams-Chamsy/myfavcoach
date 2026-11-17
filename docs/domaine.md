@@ -447,6 +447,21 @@ distincte au coach. C'est la conséquence directe du statut d'intermédiaire.
 Une `SeanceProgrammee` non démarrée passe automatiquement à `manquee` à 23:59 Europe/Paris le
 jour prévu. Une exécution démarrée mais non terminée dans les 24 h passe à `partielle`.
 
+**Précisé le 17 novembre 2026 (L6, `docs/prompts/L6.md`, décidé seul, à relire)** :
+- `jourRelatif` est le jour de la séance dans le programme, à partir de 1 (1 = le jour du
+  début). Affecter un programme à un abonné à partir d'une date crée une `SeanceProgrammee` par
+  séance, datée `début + jourRelatif − 1`. Un seul programme en cours par abonné et par coach.
+- Le passage à `manquee` et à `partielle` est fait par la tâche du matin, pour la veille et
+  avant : une séance d'hier reste « à faire » jusqu'au matin.
+- Le client lit les séances d'un coach tant que son abonnement chez lui est `actif`,
+  `resiliation_programmee` ou `impaye` (§4.3).
+- `ressentiEffort` n'est accepté qu'avec le consentement `donneesSante` (§3.12) ; les
+  répétitions et charges saisies (`valeursSaisies`) ne sont pas des données de santé.
+- Un exercice peut porter un média de la bibliothèque du coach (image, vidéo, PDF), privé, lu
+  par une URL signée de 15 minutes.
+- **Le questionnaire santé (écran 05a) n'est pas construit en L6** : aucune donnée médicale n'est
+  collectée tant que le développeur et le juriste ne l'ont pas conçu.
+
 ### 3.7 MesureCorporelle
 
 `profilClient`, `type` ∈ {poids, tourDeTaille}, `valeur`, `mesureeLe`. **Donnée de santé** :
@@ -871,6 +886,10 @@ brouillon --(publication)--> publie      [coach vérifié requis]
 publie --(archivage)--> archive          [clients en cours terminent leur cycle]
 publie --(retour en édition)--> brouillon [interdit s'il a ≥ 1 client actif]
 ```
+
+« Client actif » (précisé le 17 novembre 2026) : un abonné qui a au moins une séance programmée
+à venir de ce programme. Un programme archivé ne s'affecte plus ; ses séances déjà programmées
+restent.
 
 ### 4.7 Reservation
 
