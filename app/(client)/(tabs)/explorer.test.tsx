@@ -164,9 +164,29 @@ describe('Explorer (docs/ecrans/L3-02-recherche-filtres.md)', () => {
   // Sans résultat relâché disponible (totalRelaches à 0), aucune invention de bouton ni de total.
   it('état vide sans relâchement possible : ni bouton, ni total inventés', async () => {
     await rendre(() => ({ resultats: [], totalResultats: 0 }));
-    await waitFor(() => expect(screen.queryByText(/Personne en/)).toBeTruthy());
+    await waitFor(() => expect(screen.queryByText('Aucun coach trouvé')).toBeTruthy());
     expect(screen.queryByText(/Ouvrir aux coachs en visio/)).toBeNull();
     expect(screen.queryByText('Proches de ta recherche')).toBeNull();
+  });
+
+  it('garde la recherche vide et permet de modifier les filtres si les suggestions échouent', async () => {
+    const rechercher = jest.fn((parametres: ParametresRecherche) => {
+      if (parametres.limite === 3) throw new Error('Réseau indisponible');
+      return { resultats: [], totalResultats: 0 };
+    });
+    await rendre(rechercher);
+    await fireEvent.press(screen.getByLabelText('Filtres'));
+    await fireEvent.press(screen.getByText('En présentiel'));
+    await fireEvent.changeText(screen.getByLabelText('Prix max (€)'), '45');
+    await fireEvent.press(screen.getByText('Appliquer'));
+
+    await waitFor(() =>
+      expect(rechercher).toHaveBeenCalledWith(expect.objectContaining({ limite: 3 })),
+    );
+    await waitFor(() => expect(screen.getByText('Aucun coach trouvé')).toBeTruthy());
+    expect(screen.queryByText(/Ouvrir aux coachs en visio/)).toBeNull();
+    await fireEvent.press(screen.getByText('Modifier les filtres'));
+    await waitFor(() => expect(screen.getByLabelText('Prix max (€)').props.value).toBe('45'));
   });
 
   // Plafond/pagination : « Voir plus » apparaît seulement tant que resultats.length < total,
