@@ -215,6 +215,8 @@ export function CorpsExplorer({
       })
       .then((r) => {
         if (!monte) return;
+        setResultatsRelaches([]);
+        setTotalRelaches(null);
         setResultats(r.resultats);
         setTotalResultats(r.totalResultats);
         setDecalage(r.resultats.length);
@@ -222,6 +224,8 @@ export function CorpsExplorer({
       })
       .catch(() => {
         if (monte) {
+          setResultatsRelaches([]);
+          setTotalRelaches(null);
           setErreur(true);
           setChargement(false);
         }
@@ -231,14 +235,10 @@ export function CorpsExplorer({
     };
   }, [port, filtres, texteApplique, tentative]);
 
-  // L3-03 : second appel réel avec le format relâché, seulement quand utile (Règles de
-  // L3-03) — jamais un nombre inventé ou mis en cache au-delà de cet écran. Aucun setState dans
-  // la branche « rien à faire » (react-hooks/set-state-in-effect) : le JSX plus bas ne rend
-  // resultatsRelaches/totalRelaches que sous la MÊME condition (filtres.format === 'presentiel'
-  // et resultats vide), donc une valeur obsolète d'un filtre précédent ne peut jamais s'afficher.
+  // L3-03 : les suggestions complètent une recherche vide ayant réussi.
   useEffect(() => {
     let monte = true;
-    if (chargement || resultats.length > 0 || filtres.format !== 'presentiel') {
+    if (chargement || erreur || resultats.length > 0 || filtres.format !== 'presentiel') {
       return;
     }
     void port
@@ -257,12 +257,12 @@ export function CorpsExplorer({
         setTotalRelaches(r.totalResultats);
       })
       .catch(() => {
-        if (monte) setErreur(true);
+        // L'action « Modifier les filtres » reste disponible.
       });
     return () => {
       monte = false;
     };
-  }, [port, chargement, resultats.length, filtres, texteApplique, tentative]);
+  }, [port, chargement, erreur, resultats.length, filtres, texteApplique, tentative]);
 
   async function chargerPlus() {
     setChargementPlus(true);
@@ -635,17 +635,21 @@ export function CorpsExplorer({
             </>
           ) : (
             <EtatVide
-              titre={`Personne en ${libelleDiscipline ?? (texteApplique || 'ce moment')}${
-                nomCommune ? ` près de ${nomCommune}` : ''
-              }`}
-              explication="Tes filtres sont peut-être un peu serrés."
+              titre="Aucun coach trouvé"
+              explication={
+                nombreFiltresActifs > 0
+                  ? 'Essaie de modifier tes filtres pour élargir la recherche.'
+                  : 'Essaie un autre nom ou une autre discipline.'
+              }
               actionPrincipale={
                 filtres.format === 'presentiel' && totalRelaches != null && totalRelaches > 0
                   ? {
                       libelle: `Ouvrir aux coachs en visio · ${totalRelaches} résultat${totalRelaches > 1 ? 's' : ''}`,
                       onPress: () => retirerFiltre('format'),
                     }
-                  : undefined
+                  : nombreFiltresActifs > 0
+                    ? { libelle: 'Modifier les filtres', onPress: ouvrirFeuilleFiltres }
+                    : undefined
               }
               contenuSecondaire={
                 filtres.format === 'presentiel' && resultatsRelaches.length > 0 ? (

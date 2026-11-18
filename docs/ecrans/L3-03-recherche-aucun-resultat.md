@@ -19,8 +19,8 @@ recherche »).
 
 ## Contenu
 
-`EtatVide` : titre (« Personne en {discipline} près de {commune} »), explication, une action
-principale optionnelle (voir Règles), et en `contenuSecondaire` une courte liste de coachs
+`EtatVide` : titre « Aucun coach trouvé », explication, une action principale selon les
+filtres actifs (voir Règles), et en `contenuSecondaire` une courte liste de coachs
 proches de la recherche mais hors filtre strict — même fonction de recherche que `L3-02`, appelée
 une seconde fois avec un filtre relâché (voir Règles).
 
@@ -45,6 +45,10 @@ une seconde fois avec un filtre relâché (voir Règles).
   bouton qui annonce un nombre faux est pire qu'un bouton absent. N'apparaît pas du tout si le
   format « présentiel » n'est pas le filtre actif (rien à relâcher), ou si le second appel rend
   lui aussi un ensemble vide.
+- **« Modifier les filtres »** : si des filtres sont actifs et que l'ouverture à la visio ne
+  donne aucune suggestion, cette action rouvre la feuille avec les filtres en place. Un échec
+  du second appel conserve l'état vide et cette action. Sans filtre actif, le texte invite à
+  essayer un autre nom ou une autre discipline.
 - **Pas une route séparée.** Contrairement à `L2-13`/`L2-14` (routes distinctes pour une même
   fiche visuelle), cet écran est un état de `L3-02` — la fonction de recherche a déjà été
   appelée, il n'y a rien à réinterroger au montage d'une route dédiée.
