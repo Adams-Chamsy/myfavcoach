@@ -1,7 +1,14 @@
 import * as Clipboard from 'expo-clipboard';
 import { useRouter, type Href } from 'expo-router';
-import { useEffect, useState, type ReactElement } from 'react';
-import { Platform, Share, Text, View } from 'react-native';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentRef,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
+import { Platform, Share, type ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Badge } from '@/composants/badge';
@@ -28,9 +35,17 @@ import { useTheme } from '@/theme/fournisseur';
 
 type Onglet = 'offres' | 'avis' | 'parcours';
 
-export function CorpsProfilCoachPublic({ id }: { id: string | undefined }): ReactElement {
+export function CorpsProfilCoachPublic({
+  id,
+  presentation,
+}: {
+  id: string | undefined;
+  presentation?: ReactNode;
+}): ReactElement {
   const theme = useTheme();
   const { large } = useDispositionEcran();
+  const defilement = useRef<ComponentRef<typeof ScrollView>>(null);
+  const positionOffres = useRef(0);
   const insets = useSafeAreaInsets();
   const { port, profils, chargement: donneesEnChargement } = useDonnees();
   const { retenirCoach } = useParcoursVisiteur();
@@ -177,6 +192,7 @@ export function CorpsProfilCoachPublic({ id }: { id: string | undefined }): Reac
   return (
     <CanevasEcran ample style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
       <DefilementEcran
+        ref={defilement}
         ample
         contentContainerStyle={{
           paddingTop: insets.top + theme.espace[4],
@@ -257,7 +273,25 @@ export function CorpsProfilCoachPublic({ id }: { id: string | undefined }): Reac
             </View>
           </View>
         </View>
+        {presentation ? (
+          <View style={{ gap: theme.espace[3] }}>
+            {presentation}
+            <View style={{ alignItems: 'flex-start' }}>
+              <Bouton
+                libelle="Voir les offres"
+                variante="secondaire"
+                onPress={() => {
+                  setOnglet('offres');
+                  defilement.current?.scrollTo({ y: positionOffres.current });
+                }}
+              />
+            </View>
+          </View>
+        ) : null}
         <View
+          onLayout={(evenement) => {
+            positionOffres.current = evenement.nativeEvent.layout.y;
+          }}
           style={{
             flexDirection: large ? 'row' : 'column',
             alignItems: 'flex-start',

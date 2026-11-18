@@ -76,6 +76,7 @@ import Documents from './(compte)/documents';
 import Export from './(compte)/export';
 import { CorpsDocumentLegal } from './(public)/documents/[type]';
 import { CorpsProfilCoachPublic } from './(client)/coach/[id]';
+import { VitrineVideoDemo } from '@/fonctionnalites/decouverte/vitrine-video-demo';
 import { EcranChoixOffre } from '@/fonctionnalites/abonnement/ecran-choix-offre';
 import { BlocMesAbonnements } from '@/fonctionnalites/abonnement/bloc-mes-abonnements';
 import { EcranConfirmation } from '@/fonctionnalites/abonnement/ecran-confirmation';
@@ -1264,7 +1265,7 @@ function ExportAvecFixture({ etat }: { etat: 'en_preparation' | 'pret' }) {
 // démonstration partagée — un compte anonyme la lit tout autant. Trouvé absent de la galerie à
 // P2.13 (le paramètre de route [id] en était la seule raison, résolue par CorpsProfilCoachPublic
 // ci-dessus, docs/dette.md avant correction).
-function ProfilCoachPublicAvecFixture() {
+function ProfilCoachPublicAvecFixture({ vitrine = false }: { vitrine?: boolean }) {
   const [port] = useState(() => {
     const p = creerFauxPortDonnees();
     p.definirProfilsCoachPublicsPourTest({
@@ -1301,7 +1302,10 @@ function ProfilCoachPublicAvecFixture() {
   });
   return (
     <FournisseurDonnees port={port}>
-      <CorpsProfilCoachPublic id="coach-galerie" />
+      <CorpsProfilCoachPublic
+        id="coach-galerie"
+        presentation={vitrine ? <VitrineVideoDemo /> : undefined}
+      />
     </FournisseurDonnees>
   );
 }
@@ -1410,6 +1414,10 @@ const ECRANS_L2: { titre: string; rendu: () => ReactNode }[] = [
   {
     titre: 'L2-12/13/14 · Profil coach public (offres, avis, parcours)',
     rendu: () => <ProfilCoachPublicAvecFixture />,
+  },
+  {
+    titre: 'Profil coach public · Vitrine vidéo de démonstration',
+    rendu: () => <ProfilCoachPublicAvecFixture vitrine />,
   },
 ];
 

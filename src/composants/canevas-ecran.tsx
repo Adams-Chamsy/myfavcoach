@@ -1,3 +1,4 @@
+import type { ComponentRef, Ref } from 'react';
 import {
   Platform,
   ScrollView,
@@ -40,13 +41,15 @@ export function CanevasEcran({ style, ample = false, ...props }: ViewProps & { a
 export function DefilementEcran({
   contentContainerStyle,
   ample = false,
+  ref,
   ...props
-}: ScrollViewProps & { ample?: boolean }) {
+}: ScrollViewProps & { ample?: boolean; ref?: Ref<ComponentRef<typeof ScrollView>> }) {
   const theme = useTheme();
   const { large } = useDispositionEcran();
   return (
     <ScrollView
       {...props}
+      ref={ref}
       keyboardShouldPersistTaps={props.keyboardShouldPersistTaps ?? 'handled'}
       contentContainerStyle={[
         contentContainerStyle,
