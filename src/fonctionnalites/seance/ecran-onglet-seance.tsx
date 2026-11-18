@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,7 +10,13 @@ import { PlanningSeances } from './planning-seances';
 // L'onglet « Séance » du client (écran 05, docs/ecrans/L6-05-seance-du-jour.md) : la séance du
 // jour, ou une phrase quand il n'y en a pas. Resté « Lot L6 » à la porte de L6 : trouvé à
 // l'ouverture de L7, le 18 novembre 2026.
-export function EcranOngletSeance({ onOuvrir }: { onOuvrir: (id: string) => void }) {
+export function EcranOngletSeance({
+  onOuvrir,
+  progression,
+}: {
+  onOuvrir: (id: string) => void;
+  progression?: ReactNode;
+}) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   return (
@@ -36,6 +43,7 @@ export function EcranOngletSeance({ onOuvrir }: { onOuvrir: (id: string) => void
             </Text>
           }
         />
+        {progression}
         <PlanningSeances onOuvrir={onOuvrir} />
       </DefilementEcran>
     </CanevasEcran>
