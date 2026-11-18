@@ -1009,3 +1009,36 @@ d'exécution par le grant (corrigé en P4.3 : ce corps annonçait `non_authentif
 seconde barrière, inatteignable par un appel PostgREST) ; le compte B ne voit ni ne reprend jamais la clé du compte A (la clé primaire
 inclut `compte_id`).
 
+
+## Connexion Google et Apple sur mobile
+
+Les boutons sont masqués par défaut. Appliquer la migration 0097 avant
+d'activer un fournisseur. Le déclencheur de création du compte e-mail continue
+d'enregistrer la date de naissance, la version des CGU et l'invitation.
+La première connexion Google ou Apple passe par `completer_compte_social` pour
+enregistrer la date de naissance et la version des CGU avant l'onboarding.
+
+- **Google**. Créer un identifiant OAuth de type application Web dans Google
+  Cloud, y inscrire l'adresse de callback affichée par Supabase Auth
+  (`https://<projet>.supabase.co/auth/v1/callback`), puis configurer le
+  fournisseur dans Supabase avec cet identifiant et son secret. Ajouter
+  `myfavcoach://auth/social` à la liste de redirections Supabase.
+- **Apple**. Activer Sign in with Apple sur l'App ID iOS `fr.myfavcoach.app`
+  dans Apple Developer, puis déclarer cet identifiant dans le fournisseur Apple
+  de Supabase. L'application iOS échange le jeton d'identité natif avec un nonce.
+- **Compte existant**. Activer la liaison manuelle d'identités dans Supabase pour
+  permettre l'association depuis « Adresse e-mail et mot de passe ». Un client
+  qui utilisera le relais privé Apple peut faire cette association depuis son
+  compte MyFavCoach existant. Les invitations et la porte coach conservent leur
+  inscription par e-mail.
+- **Recette mobile**. Construire une version Expo de développement avec les
+  variables `EXPO_PUBLIC_CONNEXION_GOOGLE` et `EXPO_PUBLIC_CONNEXION_APPLE`,
+  documentées dans `.env.exemple`. Sur iOS, Google apparaît si Apple est
+  disponible. Vérifier la connexion, le retour après annulation, la reprise de
+  l'onboarding, l'association à un compte existant et ses données, ainsi que les
+  liens e-mail. L'activation de Google utilise PKCE pour les retours Supabase.
+- **Avant publication iOS**. Raccorder la révocation des jetons Apple à la
+  suppression du compte. Voir [les exigences Apple de suppression de compte](https://developer.apple.com/news/?id=12m75xbj).
+
+Consulter les guides Supabase pour [Google](https://supabase.com/docs/guides/auth/social-sign-in/auth-google)
+et [Apple](https://supabase.com/docs/guides/auth/social-sign-in/auth-apple).

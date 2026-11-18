@@ -1,3 +1,6 @@
+import { AppleAuthenticationScope, signInAsync } from 'expo-apple-authentication';
+import { CryptoDigestAlgorithm, digestStringAsync, randomUUID } from 'expo-crypto';
+import { openAuthSessionAsync } from 'expo-web-browser';
 import {
   isAuthApiError,
   isAuthRetryableFetchError,
@@ -6,7 +9,9 @@ import {
 } from '@supabase/supabase-js';
 
 import { supabase } from '@/services/supabase/client';
-import type { ErreurAuth, PortAuth, SessionAuth } from './port';
+import { optionsSociales } from './options-sociales';
+import { RETOUR_CONNEXION_SOCIALE } from './retour-social';
+import type { ErreurAuth, PortAuth, ResultatConnexionSociale, SessionAuth } from './port';
 
 // Liens profonds déclarés dans supabase/config.toml (additional_redirect_urls) : une entrée
 // dans cette liste AUTORISE la cible, elle ne la CHOISIT pas — sans `emailRedirectTo`/
@@ -124,6 +129,9 @@ function versSessionAuth(session: SessionSupabaseJs): SessionAuth {
     jetonAcces: session.access_token,
     jetonRafraichissement: session.refresh_token,
     intentionCoach: session.user.user_metadata?.intention_coach === true,
+    ...(session.user.identities
+      ? { fournisseurs: session.user.identities.map((identite) => identite.provider) }
+      : {}),
   };
 }
 
@@ -165,7 +173,87 @@ function traduireErreur(erreurBrute: unknown): ErreurAuth {
   return { code: 'serveur', message: 'On a un souci de notre côté. Ce n’est pas toi.' };
 }
 
+async function memeSession(compte: string | undefined) {
+  const { data, error } = await supabase.auth.getSession();
+  return !error && data.session?.user.id === compte;
+}
+
+async function verifierConnexionSociale(
+  session: SessionSupabaseJs | null,
+  compte: string | undefined,
+): Promise<ResultatConnexionSociale> {
+  if (!session) return 'echec';
+  if (compte && session.user.id !== compte) {
+    await supabase.auth.signOut({ scope: 'local' });
+    return 'echec';
+  }
+  return 'reussie';
+}
+
+async function continuerAvecApple(compte: string | undefined): Promise<ResultatConnexionSociale> {
+  const nonce = randomUUID();
+  const reponse = await signInAsync({
+    nonce: await digestStringAsync(CryptoDigestAlgorithm.SHA256, nonce),
+    requestedScopes: [AppleAuthenticationScope.EMAIL],
+  });
+  if (!reponse.identityToken || !(await memeSession(compte))) return 'echec';
+
+  const identite = { provider: 'apple' as const, token: reponse.identityToken, nonce };
+  const { data, error } = compte
+    ? await supabase.auth.linkIdentity(identite)
+    : await supabase.auth.signInWithIdToken(identite);
+  return error || !('session' in data) ? 'echec' : verifierConnexionSociale(data.session, compte);
+}
+
+async function continuerAvecGoogle(compte: string | undefined): Promise<ResultatConnexionSociale> {
+  if (!globalThis.crypto?.subtle || typeof TextEncoder === 'undefined') return 'echec';
+  const demande = {
+    provider: 'google' as const,
+    options: { redirectTo: RETOUR_CONNEXION_SOCIALE, skipBrowserRedirect: true },
+  };
+  const { data, error } = compte
+    ? await supabase.auth.linkIdentity(demande)
+    : await supabase.auth.signInWithOAuth(demande);
+  if (error || !data.url) return 'echec';
+
+  const retour = await openAuthSessionAsync(data.url, RETOUR_CONNEXION_SOCIALE);
+  if (retour.type !== 'success') return 'annulee';
+  if (retour.url.split(/[?#]/, 1)[0] !== RETOUR_CONNEXION_SOCIALE) return 'echec';
+  const code = new URL(retour.url).searchParams.get('code');
+  if (!code || !(await memeSession(compte))) return 'echec';
+
+  const echange = await supabase.auth.exchangeCodeForSession(
+    code,
+    data.flowId ? { flowId: data.flowId } : undefined,
+  );
+  return echange.error ? 'echec' : verifierConnexionSociale(echange.data.session, compte);
+}
+
+let connexionEnCours = false;
+
 export const portAuthSupabase: PortAuth = {
+  async connexionSociale(fournisseur, mode) {
+    if (!optionsSociales[fournisseur] || connexionEnCours) return 'echec';
+    connexionEnCours = true;
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      const compte = data.session?.user.id;
+      if (error || (mode === 'liaison' ? !compte : compte)) return 'echec';
+      return await (fournisseur === 'apple'
+        ? continuerAvecApple(compte)
+        : continuerAvecGoogle(compte));
+    } catch (erreur) {
+      return typeof erreur === 'object' &&
+        erreur !== null &&
+        'code' in erreur &&
+        erreur.code === 'ERR_REQUEST_CANCELED'
+        ? 'annulee'
+        : 'echec';
+    } finally {
+      connexionEnCours = false;
+    }
+  },
+
   async inscrire(email, motDePasse, dateNaissance, jetonInvitation, intentionCoach) {
     const { error } = await envoyerCourrielInscription(
       email,
@@ -288,13 +376,8 @@ export const portAuthSupabase: PortAuth = {
     return () => subscription.unsubscribe();
   },
 
-  // Zone NON VÉRIFIÉE sur un vrai appareil (docs/ecrans/L1-03-verification-email.md, critère 2 :
-  // "deux essais manuels sur appareil" — la fiche elle-même prévoit qu'aucun autre moyen ne
-  // prouve ceci). @supabase/supabase-js v2 utilise le flux PKCE par défaut (aucun `flowType`
-  // n'est fixé dans src/services/supabase/client.ts) : le lien de confirmation devrait donc
-  // porter `?code=...`, échangé ici contre une session. Si le projet utilise en réalité le flux
-  // implicite (jetons dans le FRAGMENT `#access_token=...&refresh_token=...`), ce code échouera
-  // silencieusement — voir docs/dette.md.
+  // Supabase renvoie un code PKCE lorsque le flux est activé. Le cas des courriels
+  // reste à vérifier avec un vrai lien sur appareil (docs/dette.md).
   async etablirSessionDepuisLien(url) {
     const lien = new URL(url);
     const code = lien.searchParams.get('code');
@@ -309,7 +392,10 @@ export const portAuthSupabase: PortAuth = {
         erreur: { code: 'serveur', message: 'On a un souci de notre côté. Ce n’est pas toi.' },
       };
     }
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const flowId = lien.searchParams.get('sb_flow_id');
+    const { error } = flowId
+      ? await supabase.auth.exchangeCodeForSession(code, { flowId })
+      : await supabase.auth.exchangeCodeForSession(code);
     if (error) return { succes: false, erreur: traduireErreur(error) };
     return { succes: true };
   },

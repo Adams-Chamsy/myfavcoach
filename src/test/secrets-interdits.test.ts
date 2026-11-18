@@ -351,6 +351,8 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0095_planning_seances_client.sql',
       // 0096 utilise le nom du rôle dans les droits SQL du téléchargement.
       'supabase/migrations/0096_generer_exports.sql',
+      // 0097 nomme le rôle serveur dans les révocations du déclencheur et de la RPC.
+      'supabase/migrations/0097_completer_compte_social.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

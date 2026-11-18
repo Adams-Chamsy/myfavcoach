@@ -26,6 +26,7 @@ export type SessionAuth = {
   // mémorisée à l'inscription, lue dans les métadonnées du compte. Elle décide de L1-08 à la
   // première connexion tant qu'aucun profil n'existe (garde.ts), jamais une autorisation.
   intentionCoach: boolean;
+  fournisseurs?: readonly string[];
 };
 
 // Codes reconnus par les écrans (docs/ecrans/L1-02-creation-compte.md, tableau des messages
@@ -56,7 +57,14 @@ export type ResultatConnexion =
   | { type: 'email_non_verifie' }
   | { type: 'echec'; erreur: ErreurAuth };
 
+export type FournisseurConnexion = 'google' | 'apple';
+export type ResultatConnexionSociale = 'reussie' | 'annulee' | 'echec';
+
 export type PortAuth = {
+  connexionSociale(
+    fournisseur: FournisseurConnexion,
+    mode: 'connexion' | 'liaison',
+  ): Promise<ResultatConnexionSociale>;
   // jetonInvitation (L3bis) : facultatif, transmis tel quel jusqu'aux métadonnées d'inscription
   // (creer_compte_depuis_auth, 0027) — absent pour la grande majorité des inscriptions, jamais
   // une exigence de ce port. Voir docs/prompts/L3bis.md, P3bis.3.

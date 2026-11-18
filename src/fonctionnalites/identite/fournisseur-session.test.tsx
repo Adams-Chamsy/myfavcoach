@@ -77,6 +77,7 @@ describe('useSession', () => {
   it('se désabonne du port au démontage', async () => {
     const desabonner = jest.fn();
     const portControle: PortAuth = {
+      connexionSociale: jest.fn(),
       inscrire: jest.fn(),
       connecter: jest.fn(),
       deconnecter: jest.fn(),
@@ -105,6 +106,7 @@ describe('useSession', () => {
   // froid (app/index.tsx) sur l'écran d'attente : chargement doit se résoudre quand même.
   it('un sessionCourante() qui rejette résout quand même chargement, avec session null', async () => {
     const portControle: PortAuth = {
+      connexionSociale: jest.fn(),
       inscrire: jest.fn(),
       connecter: jest.fn(),
       deconnecter: jest.fn(),

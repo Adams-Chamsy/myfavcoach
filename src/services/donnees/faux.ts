@@ -523,6 +523,10 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
   }
 
   return {
+    async completerCompteSocial() {
+      return { succes: false, erreur: 'serveur' };
+    },
+
     async lireEtatProfils() {
       return etat;
     },

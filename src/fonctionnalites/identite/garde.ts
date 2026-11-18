@@ -31,6 +31,7 @@ export function determinerDestination(
 ): Href {
   if (!session) return '/(public)' as Href;
   if (!session.emailVerifie) return '/(public)/verification' as Href;
+  if (profils?.compteACompleter) return '/(onboarding)/completer-compte-social' as Href;
 
   // D — L1-01, Règles : la porte coach « mémorise une intention (viaCoach) qui déclenchera
   // l'écran L1-08 après la création du compte ». Seulement tant qu'aucun profil n'existe : une

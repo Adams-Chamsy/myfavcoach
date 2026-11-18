@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useParcoursVisiteur } from '@/fonctionnalites/accueil/fournisseur-parcours-visiteur';
 import { Bouton } from '@/composants/bouton';
 import { Champ } from '@/composants/champ';
+import { BoutonsConnexionSociale } from '@/fonctionnalites/identite/boutons-connexion-sociale';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import { useTheme } from '@/theme/fournisseur';
 
@@ -34,6 +35,7 @@ export default function Connexion() {
   const [messageEchec, setMessageEchec] = useState<string | undefined>();
   const [nombreEchecs, setNombreEchecs] = useState(0);
   const [chargement, setChargement] = useState(false);
+  const [connexionSociale, setConnexionSociale] = useState(false);
 
   // docs/ecrans/L1-04, États : "le focus va au mot de passe" — geste clavier réel, distinct de
   // l'annonce lecteur d'écran ci-dessous (critère 6, "sans voler le focus").
@@ -170,12 +172,17 @@ export default function Connexion() {
           libelle="Se connecter"
           variante="primaire"
           onPress={surConnecter}
-          desactive={!formulaireRempli || chargement}
+          desactive={!formulaireRempli || chargement || connexionSociale}
+        />
+        <BoutonsConnexionSociale
+          mode="connexion"
+          desactive={chargement}
+          surOccupation={setConnexionSociale}
         />
         <View style={{ alignItems: 'center' }}>
           <Pressable
             onPress={() => router.push('/(public)/inscription' as Href)}
-            disabled={chargement}
+            disabled={chargement || connexionSociale}
             accessibilityRole="link"
             style={{
               minHeight: theme.taille.tapMin,

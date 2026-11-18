@@ -41,7 +41,8 @@ export default function LayoutPublic() {
   const routeExemptee =
     segments[segments.length - 1] === DERNIER_SEGMENT_EXEMPTE ||
     segments[segments.length - 1] === 'decouvrir' ||
-    segments[1] === 'profil';
+    segments[1] === 'profil' ||
+    (segments[1] === 'documents' && profils?.compteACompleter);
   const sessionValide = Boolean(session && session.emailVerifie);
   let redirection: ReactElement | null = null;
 

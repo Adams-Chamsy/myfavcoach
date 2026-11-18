@@ -30,6 +30,7 @@ function creerPortControle(
   sessionCourante: PortAuth['sessionCourante'] = jest.fn().mockResolvedValue(null),
 ): PortAuth {
   return {
+    connexionSociale: jest.fn(),
     inscrire: jest.fn(),
     connecter: jest.fn(),
     deconnecter: jest.fn(),
@@ -82,6 +83,7 @@ function sessionNonVerifiee(): SessionAuth {
 // ne redirige.
 function creerPortDonneesEnAttente(promesse: Promise<EtatProfils>): PortDonnees {
   return {
+    completerCompteSocial: jest.fn(),
     lireEtatProfils: jest.fn().mockReturnValue(promesse),
     lireProfilOnboarding: jest.fn(),
     creerProfilClient: jest.fn(),
@@ -331,6 +333,19 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       });
     });
 
+    it('demande la date de naissance et les CGU avant l’onboarding d’un compte social incomplet', async () => {
+      const session: SessionAuth = { ...sessionNonVerifiee(), emailVerifie: true };
+      const portDonnees = creerFauxPortDonnees();
+      portDonnees.definirEtatProfilsPourTest(etatProfilsParDefaut({ compteACompleter: true }));
+      await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('redirection').props.children).toBe(
+          '/(onboarding)/completer-compte-social',
+        );
+      });
+    });
+
     it("renvoie vers l'étape 1 de l'onboarding avec une session vérifiée mais aucun profil réel", async () => {
       const session: SessionAuth = { ...sessionNonVerifiee(), emailVerifie: true };
       await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)));
@@ -352,6 +367,7 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       resoudreProfils = resolve;
     });
     const portDonnees: PortDonnees = {
+      completerCompteSocial: jest.fn(),
       lireEtatProfils: jest.fn().mockReturnValue(enAttente),
       lireProfilOnboarding: jest.fn(),
       creerProfilClient: jest.fn(),

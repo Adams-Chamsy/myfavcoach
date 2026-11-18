@@ -1,6 +1,8 @@
 import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 
+import { optionsSociales } from '../auth/options-sociales';
+import { preparerCryptoPkce } from '../auth/pkce-natif';
 import { avecRelectureJeton } from './relecture-jeton';
 import { stockageSecurise } from './stockage-securise';
 
@@ -26,6 +28,8 @@ const cleAnonyme = exigerVariable(
 
 // La clé anonyme est publique par conception (docs/backend.md §5, .env.exemple) : sa
 // protection vient des politiques RLS posées sur chaque table, jamais de sa confidentialité.
+if (optionsSociales.google) preparerCryptoPkce();
+
 export const supabase = createClient(url, cleAnonyme, {
   // Un jeton refusé « émis dans le futur » est relu une fois (relecture-jeton.ts).
   global: { fetch: avecRelectureJeton((...args) => fetch(...args)) },
@@ -35,5 +39,6 @@ export const supabase = createClient(url, cleAnonyme, {
     persistSession: true,
     // L'application ne reçoit jamais de lien de redirection dans une URL web classique.
     detectSessionInUrl: false,
+    ...(optionsSociales.google ? { flowType: 'pkce' as const } : {}),
   },
 });

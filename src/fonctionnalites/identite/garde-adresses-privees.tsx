@@ -51,15 +51,20 @@ export function GardeAdressesPrivees(): null {
   const groupePrive = GROUPES_PRIVES.has(segments[0] ?? '') && !estExceptionPublique(segments);
   const sansSessionVerifiee = !session?.emailVerifie;
 
+  const dejaSurCompletion =
+    segments[0] === '(onboarding)' && segments[1] === 'completer-compte-social';
+  const compteIncomplet = Boolean(profils?.compteACompleter) && !dejaSurCompletion;
+
   useEffect(() => {
     if (chargementSession || chargementDonnees) return;
-    if (!groupePrive || !sansSessionVerifiee) return;
+    if (!groupePrive || (!sansSessionVerifiee && !compteIncomplet)) return;
     router.replace(determinerDestination(session, profils));
   }, [
     chargementSession,
     chargementDonnees,
     groupePrive,
     sansSessionVerifiee,
+    compteIncomplet,
     session,
     profils,
     router,

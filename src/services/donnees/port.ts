@@ -27,6 +27,7 @@ export type ProfilActif = 'client' | 'coach';
 // attentesCoach vaut toujours 0 à ce lot (docs/ecrans/L1-06-bascule-espace.md : "il n'y a ni
 // message ni demande") — voir docs/dette.md pour le lot qui le calculera réellement (L8).
 export type EtatProfils = {
+  compteACompleter?: true;
   profilActif: ProfilActif;
   clientExiste: boolean;
   clientOnboardingEtape: number | null;
@@ -774,6 +775,7 @@ export type SerieSaisie = {
 };
 
 export type PortDonnees = {
+  completerCompteSocial(dateNaissance: string, versionCgu: string): Promise<ResultatEcriture>;
   lireEtatProfils(): Promise<EtatProfils>;
 
   // N'a de sens qu'une fois clientExiste=true (EtatProfils) — avant, rend les valeurs par

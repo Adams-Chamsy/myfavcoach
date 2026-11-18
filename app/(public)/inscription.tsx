@@ -12,6 +12,7 @@ import { Bouton } from '@/composants/bouton';
 import { BoutonIcone } from '@/composants/bouton-icone';
 import { Champ } from '@/composants/champ';
 import { EtatErreur } from '@/composants/etats/etat-erreur';
+import { BoutonsConnexionSociale } from '@/fonctionnalites/identite/boutons-connexion-sociale';
 import { estMajeur, formatDateISO } from '@/fonctionnalites/identite/age';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import type { ErreurAuth } from '@/services/auth/port';
@@ -142,6 +143,7 @@ export default function Inscription() {
   const [erreurGlobale, setErreurGlobale] = useState<ErreurAuth | undefined>();
   const [nombreEchecs, setNombreEchecs] = useState(0);
   const [chargement, setChargement] = useState(false);
+  const [connexionSociale, setConnexionSociale] = useState(false);
 
   // "Bouton actif dès que les trois champs sont remplis, jamais avant" (États) : remplis, pas
   // nécessairement valides — un champ rempli mais invalide affiche son erreur à l'appui, voir
@@ -302,6 +304,13 @@ export default function Inscription() {
           On commence par ton compte.
         </Text>
 
+        {!params.jeton && params.viaCoach !== '1' ? (
+          <BoutonsConnexionSociale
+            mode="connexion"
+            desactive={chargement}
+            surOccupation={setConnexionSociale}
+          />
+        ) : null}
         <Champ
           libelle="Adresse e-mail"
           type="email"
@@ -456,7 +465,7 @@ export default function Inscription() {
           libelle="Créer mon compte"
           variante="primaire"
           onPress={surCreerCompte}
-          desactive={!formulaireRempli || chargement}
+          desactive={!formulaireRempli || chargement || connexionSociale}
         />
       </View>
     </CanevasEcran>

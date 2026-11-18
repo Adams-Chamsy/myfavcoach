@@ -1,3 +1,7 @@
+import { signInAsync } from 'expo-apple-authentication';
+import { openAuthSessionAsync, WebBrowserResultType } from 'expo-web-browser';
+import { TextEncoder as Encodeur } from 'node:util';
+import { webcrypto } from 'node:crypto';
 import { AuthApiError, AuthRetryableFetchError } from '@supabase/supabase-js';
 
 import { supabase } from '@/services/supabase/client';
@@ -12,6 +16,9 @@ jest.mock('@/services/supabase/client', () => ({
     auth: {
       signUp: jest.fn(),
       signInWithPassword: jest.fn(),
+      signInWithOAuth: jest.fn(),
+      signInWithIdToken: jest.fn(),
+      linkIdentity: jest.fn(),
       signOut: jest.fn(),
       resend: jest.fn(),
       resetPasswordForEmail: jest.fn(),
@@ -22,6 +29,21 @@ jest.mock('@/services/supabase/client', () => ({
     },
   },
 }));
+
+jest.mock('expo-web-browser', () => ({
+  openAuthSessionAsync: jest.fn(),
+  WebBrowserResultType: { CANCEL: 'cancel' },
+}));
+jest.mock('expo-apple-authentication', () => ({
+  AppleAuthenticationScope: { EMAIL: 1 },
+  signInAsync: jest.fn(),
+}));
+jest.mock('expo-crypto', () => ({
+  CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
+  digestStringAsync: jest.fn().mockResolvedValue('nonce-hache'),
+  randomUUID: jest.fn().mockReturnValue('nonce-brut'),
+}));
+jest.mock('./options-sociales', () => ({ optionsSociales: { google: true, apple: true } }));
 
 const auth = supabase.auth as unknown as Record<string, jest.Mock>;
 
@@ -40,6 +62,97 @@ function sessionSupabaseFausse(compteId = 'compte-1', emailConfirme = true) {
 describe('portAuthSupabase', () => {
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe('connexion sociale', () => {
+    const ouvrir = jest.mocked(openAuthSessionAsync);
+    const retour = 'myfavcoach://auth/social';
+    const autorisation = {
+      data: { url: 'https://connexion.example.test', flowId: 'flux-1' },
+      error: null,
+    };
+
+    beforeEach(() => {
+      const restauration: (() => void)[] = [];
+      for (const [nom, valeur] of [
+        ['crypto', webcrypto],
+        ['TextEncoder', Encodeur],
+      ] as const) {
+        const avant = Object.getOwnPropertyDescriptor(globalThis, nom);
+        Object.defineProperty(globalThis, nom, { configurable: true, value: valeur });
+        restauration.push(() => {
+          if (avant) Object.defineProperty(globalThis, nom, avant);
+          else Reflect.deleteProperty(globalThis, nom);
+        });
+      }
+      restaurerGlobals = () => restauration.forEach((restaurer) => restaurer());
+      auth.getSession.mockResolvedValue({ data: { session: null }, error: null });
+      auth.signInWithOAuth.mockResolvedValue(autorisation);
+      auth.linkIdentity.mockResolvedValue(autorisation);
+      auth.exchangeCodeForSession.mockResolvedValue({
+        data: { session: sessionSupabaseFausse() },
+        error: null,
+      });
+    });
+
+    let restaurerGlobals: () => void;
+    afterEach(() => restaurerGlobals());
+
+    it('ouvre Google puis échange seulement le code reçu sur le retour prévu et dans le flux ouvert', async () => {
+      ouvrir.mockResolvedValue({ type: 'success', url: retour + '?code=code-google' });
+      await expect(portAuthSupabase.connexionSociale('google', 'connexion')).resolves.toBe(
+        'reussie',
+      );
+      expect(auth.signInWithOAuth).toHaveBeenCalledWith({
+        provider: 'google',
+        options: { redirectTo: retour, skipBrowserRedirect: true },
+      });
+      expect(auth.exchangeCodeForSession).toHaveBeenCalledWith('code-google', { flowId: 'flux-1' });
+    });
+
+    it('une annulation ou un autre retour n’établit aucune session', async () => {
+      ouvrir.mockResolvedValueOnce({ type: WebBrowserResultType.CANCEL });
+      await expect(portAuthSupabase.connexionSociale('google', 'connexion')).resolves.toBe(
+        'annulee',
+      );
+      ouvrir.mockResolvedValueOnce({ type: 'success', url: 'myfavcoach://auth/autre?code=code' });
+      await expect(portAuthSupabase.connexionSociale('google', 'connexion')).resolves.toBe('echec');
+      expect(auth.exchangeCodeForSession).not.toHaveBeenCalled();
+    });
+
+    it('associe Apple à la session ouverte avec un nonce et refuse si le compte a changé', async () => {
+      const ouvrirApple = jest.mocked(signInAsync);
+      ouvrirApple.mockResolvedValue({ identityToken: 'jeton-apple' } as Awaited<
+        ReturnType<typeof signInAsync>
+      >);
+      auth.linkIdentity.mockResolvedValue({
+        data: { session: sessionSupabaseFausse() },
+        error: null,
+      });
+      auth.getSession.mockResolvedValue({
+        data: { session: sessionSupabaseFausse() },
+        error: null,
+      });
+      await expect(portAuthSupabase.connexionSociale('apple', 'liaison')).resolves.toBe('reussie');
+      expect(ouvrirApple).toHaveBeenCalledWith({ nonce: 'nonce-hache', requestedScopes: [1] });
+      expect(auth.linkIdentity).toHaveBeenCalledWith({
+        provider: 'apple',
+        token: 'jeton-apple',
+        nonce: 'nonce-brut',
+      });
+      expect(auth.signInWithIdToken).not.toHaveBeenCalled();
+      auth.linkIdentity.mockClear();
+      auth.getSession.mockResolvedValueOnce({
+        data: { session: sessionSupabaseFausse() },
+        error: null,
+      });
+      auth.getSession.mockResolvedValueOnce({
+        data: { session: sessionSupabaseFausse('autre-compte') },
+        error: null,
+      });
+      await expect(portAuthSupabase.connexionSociale('apple', 'liaison')).resolves.toBe('echec');
+      expect(auth.linkIdentity).not.toHaveBeenCalled();
+    });
   });
 
   describe('inscrire', () => {

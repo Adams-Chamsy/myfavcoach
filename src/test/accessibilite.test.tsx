@@ -31,6 +31,7 @@ import Identifiants from '../../app/(compte)/identifiants';
 import Informations from '../../app/(compte)/informations';
 import Suppression from '../../app/(compte)/suppression';
 import DevenirCoach from '../../app/(onboarding)/devenir-coach';
+import CompleterCompteSocial from '../../app/(onboarding)/completer-compte-social';
 import OnboardingIdentite from '../../app/(onboarding)/1-identite';
 import OnboardingObjectifs from '../../app/(onboarding)/2-objectifs';
 import OnboardingPoids from '../../app/(onboarding)/3-poids';
@@ -1175,6 +1176,7 @@ const CORPUS: EntreeCorpus[] = [
 // appelé à chaque passe de thème).
 let portAuthOnboarding: ReturnType<typeof creerFauxPortAuth>;
 let portDonneesOnboarding: ReturnType<typeof creerFauxPortDonnees>;
+let portDonneesOnboardingSocial: ReturnType<typeof creerFauxPortDonnees>;
 
 async function preparerSessionOnboarding() {
   // Même mise en scène que la section « Écrans du lot L1 » de la galerie : un profil client
@@ -1184,9 +1186,22 @@ async function preparerSessionOnboarding() {
   const session = await creerSessionDemonstration();
   portAuthOnboarding = session.portAuth;
   portDonneesOnboarding = session.portDonnees;
+  portDonneesOnboardingSocial = creerFauxPortDonnees();
+  const profils = await portDonneesOnboardingSocial.lireEtatProfils();
+  portDonneesOnboardingSocial.definirEtatProfilsPourTest({ ...profils, compteACompleter: true });
 }
 
 CORPUS.push(
+  {
+    nom: 'app/(onboarding)/completer-compte-social.tsx',
+    creerElement: () => (
+      <FournisseurSession key="onboarding-social" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboardingSocial}>
+          <CompleterCompteSocial />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
   {
     nom: 'app/(onboarding)/1-identite.tsx',
     creerElement: () => (
@@ -1313,6 +1328,7 @@ describe('accessibilité automatisée (npm run test:a11y)', () => {
 // exception NOMMÉE avec sa raison. Sans ce test, le contrôle de zone sûre « tous les écrans »
 // redevenait « les écrans qu'on a pensé à ajouter » : le profil coach n'était pas dans le corpus.
 const EXCEPTIONS_CORPUS = new Map<string, string>([
+  ['app/+native-intent.tsx', 'traitement des liens du système, sans interface'],
   [
     'app/index.tsx',
     'démarrage : polices, écran de démarrage, stockage sécurisé, hors corpus (voir plus haut)',

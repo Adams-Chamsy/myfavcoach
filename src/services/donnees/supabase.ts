@@ -19,7 +19,6 @@ import type {
   ParametresRecherche,
   PieceDeposee,
   PortDonnees,
-  ProfilActif,
   ProfilCoachPublic,
   ProfilOnboarding,
   RefusServeur,
@@ -516,6 +515,18 @@ async function appelerFonction(
 }
 
 export const portDonneesSupabase: PortDonnees = {
+  async completerCompteSocial(dateNaissance, versionCgu) {
+    const { error } = await supabase.rpc('completer_compte_social', {
+      p_date_naissance: dateNaissance,
+      p_version_cgu: versionCgu,
+    });
+    if (!error) return { succes: true };
+    return {
+      succes: false,
+      erreur: error.message === 'age_insuffisant' ? 'age_insuffisant' : 'serveur',
+    };
+  },
+
   async lireEtatProfils() {
     // profil_actif_courant() est la fonction SECURITY DEFINER posée par 0002_politiques.sql pour
     // cet usage exact (« Seule source du profil actif... jamais un en-tête falsifiable »).
@@ -555,7 +566,8 @@ export const portDonneesSupabase: PortDonnees = {
     const ligneIdentite = profilActif === 'coach' ? ligneCoach : ligneClient;
 
     return {
-      profilActif: profilActif as ProfilActif,
+      ...(profilActif === null ? { compteACompleter: true as const } : {}),
+      profilActif: profilActif === 'coach' ? 'coach' : 'client',
       clientExiste: ligneClient != null,
       clientOnboardingEtape: ligneClient?.onboarding_etape ?? null,
       coachExiste: ligneCoach != null,

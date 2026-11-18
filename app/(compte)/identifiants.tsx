@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bouton } from '@/composants/bouton';
 import { BoutonIcone } from '@/composants/bouton-icone';
 import { Champ } from '@/composants/champ';
+import { BoutonsConnexionSociale } from '@/fonctionnalites/identite/boutons-connexion-sociale';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import type { ErreurAuth } from '@/services/auth/port';
 import { useTheme } from '@/theme/fournisseur';
@@ -270,6 +271,10 @@ export default function Identifiants() {
             desactive={motDePasseActuel === '' || !nouveauMotDePasseValide || changementEnCours}
           />
         </View>
+        <BoutonsConnexionSociale
+          mode="liaison"
+          desactive={!session || envoiAdresse || changementEnCours}
+        />
       </DefilementEcran>
     </CanevasEcran>
   );

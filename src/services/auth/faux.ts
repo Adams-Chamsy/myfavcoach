@@ -90,6 +90,10 @@ export function creerFauxPortAuth(): FauxPortAuth {
   }
 
   return {
+    async connexionSociale() {
+      return 'annulee';
+    },
+
     async inscrire(email, motDePasse, dateNaissance, _jetonInvitation, intentionCoach) {
       // Pas parce que ce port applique la règle des 18 ans (elle est portée par le
       // déclencheur de 0001_creer_identite.sql, jamais dupliquée ici) : parce que l'écran

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { VERSION_CGU_ACCEPTEE as versionEcriteAInscription } from '@/services/auth/supabase';
 import { VERSION_CGU_ACCEPTEE as versionAffichee } from '@/fonctionnalites/identite/documents-legaux';
 
@@ -23,5 +25,10 @@ jest.mock('@/services/supabase/client', () => ({
 describe('VERSION_CGU_ACCEPTEE reste identique dans ses deux copies', () => {
   it('la version écrite à l’inscription est la même que celle affichée aux écrans', () => {
     expect(versionEcriteAInscription).toBe(versionAffichee);
+    const migration = readFileSync(
+      join(__dirname, '../../supabase/migrations/0097_completer_compte_social.sql'),
+      'utf8',
+    );
+    expect(migration).toContain(`p_version_cgu is distinct from '${versionAffichee}'`);
   });
 });
