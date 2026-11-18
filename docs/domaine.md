@@ -470,11 +470,19 @@ Pas de photo corporelle au jalon 1.
 
 **Précisé le 18 novembre 2026 (L7, décidé seul, à relire).** Le poids s'enregistre en grammes,
 le tour de taille en millimètres ; l'un et l'autre se saisissent avec une décimale (kg, cm).
-Refus `mesure_invalide` seulement pour une saisie invalide (nulle, négative, pas un nombre).
+Refus `mesure_invalide` seulement pour une saisie invalide : absente, non finie, nulle,
+négative, plus d'une décimale, ou au-delà du plafond technique de 1 000 kg ou 1 000 cm, borne
+incluse (validé le 18 novembre ; une limite de stockage, pas de vraisemblance).
 Seuils de confirmation, rendus par le serveur et non bloquants : poids de 20 à 300 kg, tour de
 taille de 40 à 200 cm — au-delà, l'écran demande confirmation de la valeur et de l'unité (revue du
 18 novembre). `mesureeLe` est la date du jour Europe/Paris, posée par le serveur ; plusieurs
-mesures d'un même type le même jour sont gardées, la dernière fait foi. Lues par le client seul,
+mesures d'un même type le même jour sont gardées. La première et la dernière se choisissent par
+date, puis par ordre d'enregistrement ; l'écart va de la première à la dernière. Le poids de
+départ de l'onboarding (sans date) n'en fait pas partie. Chaque écriture porte une clé de réessai
+tirée par l'application : la même clé rend la même mesure, sans doublon (requêtes concurrentes
+comprises) ; avec un autre type ou une autre valeur, ou après l'effacement de la mesure, elle est
+refusée (`cle_idempotence_reutilisee`). Les clés sont gardées après effacement, sans valeur
+(`supabase/migrations/0088_preparer_mesures.sql`, `0089_mesures_regles.sql`). Lues par le client seul,
 **jamais par un coach** (décision 1 de L7) ; après retrait du consentement, elles restent en base
 jusqu'à leur effacement mais ne sont plus affichées.
 

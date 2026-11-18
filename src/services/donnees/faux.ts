@@ -30,6 +30,9 @@ import type {
   MediaBibliotheque,
   ProgrammeResume,
   ResultatStudio,
+  MesMesures,
+  SerieMesures,
+  TypeMesure,
   SeanceProgrammeeDetail,
   SerieSaisie,
   StatutProgramme,
@@ -425,6 +428,26 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     commentaire: string | null;
   };
   const seancesClient: FauxSeanceClient[] = [];
+  // L7 : mêmes règles que 0089 — valeur en grammes / millimètres, date posée « par le
+  // serveur », clés gardées après effacement.
+  type FauxMesure = { id: string; type: TypeMesure; valeur: number; le: string; cle: string };
+  let mesures: FauxMesure[] = [];
+  const clesMesures = new Set<string>();
+  const facteurMesure: Record<TypeMesure, number> = { poids: 1000, tour_de_taille: 10 };
+  const serieDe = (type: TypeMesure): SerieMesures | null => {
+    // Tri stable : par date, puis par ordre d'enregistrement (l'ordre du tableau).
+    const liste = mesures.filter((m) => m.type === type).sort((a, b) => a.le.localeCompare(b.le));
+    const premiere = liste[0];
+    const derniere = liste[liste.length - 1];
+    if (!premiere || !derniere) return null;
+    const point = (m: FauxMesure) => ({ valeur: m.valeur / facteurMesure[type], le: m.le });
+    return {
+      premiere: point(premiere),
+      derniere: point(derniere),
+      ecart: (derniere.valeur - premiere.valeur) / facteurMesure[type],
+      nombre: liste.length,
+    };
+  };
   const seanceClient = (id: string) => seancesClient.find((x) => x.id === id);
   let compteurStudio = 0;
   const nouvelId = (prefixe: string) => `${prefixe}-${++compteurStudio}`;
@@ -639,6 +662,7 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
         poidsDepartGrammes: null,
         poidsCibleGrammes: null,
       };
+      mesures = [];
       return { succes: true };
     },
 
@@ -1238,6 +1262,40 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
       }
       Object.assign(x, { statut: 'faite', ressentiEffort, commentaire });
       return ok(null);
+    },
+    async lireMesMesures(): Promise<MesMesures> {
+      if (!consentementSante.accorde) throw new Error('consentement_sante_absent');
+      return {
+        poids: serieDe('poids'),
+        tourDeTaille: serieDe('tour_de_taille'),
+        seuils: { poids: { min: 20, max: 300 }, tour_de_taille: { min: 40, max: 200 } },
+      };
+    },
+    async enregistrerMesure(type, valeur, cle) {
+      const force = refusForce();
+      if (force) return force;
+      if (!consentementSante.accorde) return refus('consentement_sante_absent');
+      if (
+        !Number.isFinite(valeur) ||
+        valeur <= 0 ||
+        valeur > 1000 ||
+        Math.round(valeur * 10) !== valeur * 10
+      ) {
+        return refus('mesure_invalide');
+      }
+      const enUnite = Math.round(valeur * facteurMesure[type]);
+      if (clesMesures.has(cle)) {
+        const deja = mesures.find((m) => m.cle === cle);
+        return deja && deja.type === type && deja.valeur === enUnite
+          ? ok(deja.id)
+          : refus('cle_idempotence_reutilisee');
+      }
+      clesMesures.add(cle);
+      const id = nouvelId('mesure');
+      // Le jour à Paris, comme le serveur (et comme la pause plus haut dans ce fichier).
+      const le = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+      mesures.push({ id, type, valeur: enUnite, le, cle });
+      return ok(id);
     },
     lireProgrammesPourTest() {
       return programmes.map(resume);

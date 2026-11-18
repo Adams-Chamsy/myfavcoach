@@ -36,6 +36,8 @@ import type {
   FactureCommission,
   RappelCommission,
   ResultatStudio,
+  MesMesures,
+  SerieMesures,
   StatutSeanceProgrammee,
   StatutProgramme,
   FactureDetail,
@@ -822,14 +824,9 @@ export const portDonneesSupabase: PortDonnees = {
   },
 
   async effacerMesuresCorporelles() {
-    // Remettre les colonnes de poids à NULL : autorisé même consentement retiré — le
-    // déclencheur de 0004_proteger_donnees_sante.sql ne bloque que l'écriture d'une valeur NON
-    // nulle. Filtre `.eq('compte_id', ...)` explicite obligatoire (safeupdate, voir l'en-tête).
-    const compteId = await compteIdCourant();
-    const { error } = await supabase
-      .from('profils_client')
-      .update({ poids_depart_grammes: null, poids_cible_grammes: null })
-      .eq('compte_id', compteId);
+    // effacer_mes_mesures (0089) : poids de départ et visé remis à vide, mesures datées
+    // supprimées, le profil désigné par auth.uid() côté serveur (docs/backend.md §7).
+    const { error } = await supabase.rpc('effacer_mes_mesures');
     if (error) return echec(error);
     return { succes: true };
   },
@@ -1924,6 +1921,26 @@ export const portDonneesSupabase: PortDonnees = {
         p_commentaire: commentaire,
       },
       sansValeur,
+    );
+  },
+
+  // Donnée de santé : ni la valeur ni la réponse ne passent par un journal.
+  async lireMesMesures(): Promise<MesMesures> {
+    const { data, error } = await supabase.rpc('mes_mesures');
+    if (error) throw error;
+    const lu = data as {
+      poids: SerieMesures | null;
+      tour_de_taille: SerieMesures | null;
+      seuils: MesMesures['seuils'];
+    };
+    return { poids: lu.poids, tourDeTaille: lu.tour_de_taille, seuils: lu.seuils };
+  },
+
+  enregistrerMesure(type, valeur, cle) {
+    return rpcStudio(
+      'enregistrer_mesure',
+      { p_type: type, p_valeur: valeur, p_cle: cle },
+      (data) => data as string,
     );
   },
 

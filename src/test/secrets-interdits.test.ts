@@ -332,6 +332,11 @@ describe('secrets interdits côté application', () => {
       // 0086/0087 : grants et revokes de service_role sur l'exécution (convention de 0031).
       'supabase/migrations/0086_preparer_execution.sql',
       'supabase/migrations/0087_execution_regles.sql',
+      // 0088 : revokes de service_role et grants pour le banc sur les mesures corporelles et les
+      // clés de réessai (convention de 0031) ; aucun droit pour authenticated.
+      'supabase/migrations/0088_preparer_mesures.sql',
+      // 0089 : réaffirmation des droits des trois fonctions remplacées (convention de 0031).
+      'supabase/migrations/0089_mesures_regles.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

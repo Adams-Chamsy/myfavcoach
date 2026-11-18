@@ -9972,3 +9972,409 @@ describe('programmes, séances, exercices — L6 (0080, 0081)', () => {
     });
   });
 });
+
+// L7, P7.2 — mesures corporelles (0088, 0089 ; docs/domaine.md §3.7 ; docs/ecrans/L7-06-suivi.md).
+// Donnée de santé : chaque refus est prouvé avec son pendant légitime, nommé (CLAUDE.md §8).
+// Comptes propres à ce bloc : M (le client mesuré), N (un autre client), K (le coach de M, qui a
+// aussi un profil client à lui — le cas d'un compte à deux profils).
+describe('mesures corporelles — L7 (0088, 0089)', () => {
+  const rpc = (fonction: string, corps: Record<string, unknown>, session: Appelant) =>
+    appelRest(`/rest/v1/rpc/${fonction}`, { methode: 'POST', session, corps });
+  const basculer = async (session: Session, profil: 'coach' | 'client') => {
+    const bascule = await rpc('basculer_profil', { profil }, session);
+    if (bascule.statut >= 400) {
+      throw new Error(`Préparation du banc : bascule en ${profil} refusée (${bascule.statut})`);
+    }
+  };
+  // Le chemin de l'application (enregistrerConsentementSante) : un INSERT dans le journal.
+  const consentir = async (session: Session, accorde: boolean) => {
+    const { statut } = await appelRest('/rest/v1/consentements', {
+      methode: 'POST',
+      session,
+      corps: {
+        compte_id: session.compteId,
+        type: 'donneesSante',
+        accorde,
+        version: '2026-08-01',
+        origine: 'banc',
+      },
+    });
+    if (statut >= 400) throw new Error(`Préparation du banc : consentement refusé (${statut})`);
+  };
+  const enregistrer = (session: Session, type: string, valeur: unknown, cle = randomUUID()) =>
+    rpc('enregistrer_mesure', { p_type: type, p_valeur: valeur, p_cle: cle }, session);
+  type Point = { valeur: number; le: string };
+  type Serie = { premiere: Point; derniere: Point; ecart: number; nombre: number } | null;
+  type Mesures = {
+    poids: Serie;
+    tour_de_taille: Serie;
+    seuils: Record<'poids' | 'tour_de_taille', { min: number; max: number }>;
+  };
+  const lire = async (session: Session): Promise<Mesures> => {
+    const { statut, corps } = await rpc('mes_mesures', {}, session);
+    if (statut !== 200) throw new Error(`mes_mesures refusée (${statut}) : ${messageDe(corps)}`);
+    return corps as Mesures;
+  };
+  const lignesDe = async (profilClientId: string) =>
+    (
+      await appelRest(
+        `/rest/v1/mesures_corporelles?profil_client_id=eq.${profilClientId}&select=id,type,valeur,mesuree_le&order=id`,
+        { session: 'admin' },
+      )
+    ).corps as { id: string; type: string; valeur: number; mesuree_le: string }[];
+
+  let M: Session;
+  let N: Session;
+  let K: Session;
+  let profilM: string;
+  let profilN: string;
+  // La clé du premier poids de M : sert, après l'effacement, à rejouer un « ancien réessai ».
+  const clePremierPoids = randomUUID();
+
+  beforeAll(async () => {
+    const meta = { date_naissance: '1990-01-01', cgu_version_acceptee: '2026-08-01' };
+    M = await creerCompteReel(`${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-l7-m@${DOMAINE_EMAIL}`, meta);
+    N = await creerCompteReel(`${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-l7-n@${DOMAINE_EMAIL}`, meta);
+    K = await creerCompteReel(`${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-l7-k@${DOMAINE_EMAIL}`, meta);
+    profilM = await creerProfilClientParLeServeur(M, 'Mesuré', 'Client');
+    profilN = await creerProfilClientParLeServeur(N, 'Autre', 'Client');
+    await creerProfilClientParLeServeur(K, 'Coach', 'Aussi client');
+    await consentir(M, true);
+    await consentir(N, true);
+    await consentir(K, true);
+
+    // K : coach vérifié, vendeur, une offre publiée ; M s'y abonne (décor, par le rôle serveur).
+    const profilCoach = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { compte_id: K.compteId, prenom: 'Coach', nom: 'De M', discipline: 'yoga' },
+    });
+    const profilCoachK = (profilCoach.corps as { id: string }[])[0].id;
+    await appelRest(`/rest/v1/profils_coach?id=eq.${profilCoachK}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { statut_verification: 'verifiee' },
+    });
+    await preparerVendeur(profilCoachK);
+    const offre = await appelRest('/rest/v1/offres', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        coach_id: profilCoachK,
+        titre: 'Suivi',
+        prix_centimes: 4900,
+        benefices: ['a', 'b', 'c'],
+        engagement_humain: ['ajustement_hebdomadaire'],
+        publiee_le: new Date(Date.now() - 86_400_000).toISOString(),
+      },
+    });
+    const souscription = await rpc(
+      'souscrire_abonnement',
+      {
+        p_profil_client_id: profilM,
+        p_offre_id: (offre.corps as { id: string }[])[0].id,
+        p_moyen: 'carte',
+        p_reference_paiement: `banc-${SUFFIXE_COMPTE}-l7-m`,
+        p_prix_fige_centimes: 4900,
+        p_intention_creee_le: new Date().toISOString(),
+      },
+      'admin',
+    );
+    if (souscription.statut !== 200) {
+      throw new Error(`Préparation du banc : abonnement de M refusé (${souscription.statut})`);
+    }
+    await basculer(K, 'coach');
+  }, 90_000);
+
+  afterAll(async () => {
+    for (const s of [M, N, K]) if (s) await supprimerCompteReel(s.compteId);
+  }, 30_000);
+
+  it('M, avec consentement, enregistre un poids : la date est celle du jour à Paris, posée par le serveur, et M le relit', async () => {
+    const { statut, corps } = await enregistrer(M, 'poids', 68.4, clePremierPoids);
+    expect(statut).toBe(200);
+    expect(typeof corps).toBe('string');
+    const lignes = await lignesDe(profilM);
+    expect(lignes).toEqual([
+      { id: corps, type: 'poids', valeur: 68400, mesuree_le: aujourdhuiParis() },
+    ]);
+    const lu = await lire(M);
+    expect(lu.poids).toEqual({
+      premiere: { valeur: 68.4, le: aujourdhuiParis() },
+      derniere: { valeur: 68.4, le: aujourdhuiParis() },
+      ecart: 0,
+      nombre: 1,
+    });
+    expect(lu.tour_de_taille).toBeNull();
+    expect(lu.seuils).toEqual({
+      poids: { min: 20, max: 300 },
+      tour_de_taille: { min: 40, max: 200 },
+    });
+  });
+
+  it('deux poids le même jour : les deux sont gardés, le second est la dernière valeur, l’écart part du premier', async () => {
+    expect((await enregistrer(M, 'poids', 67.9)).statut).toBe(200);
+    const lu = await lire(M);
+    expect(lu.poids).toEqual({
+      premiere: { valeur: 68.4, le: aujourdhuiParis() },
+      derniere: { valeur: 67.9, le: aujourdhuiParis() },
+      ecart: -0.5,
+      nombre: 2,
+    });
+  });
+
+  it('trois tours de taille sur trois jours : la première est la plus ancienne par date, pas par ordre d’enregistrement', async () => {
+    const a = (await enregistrer(M, 'tour_de_taille', 80)).corps as string;
+    const b = (await enregistrer(M, 'tour_de_taille', 78.5)).corps as string;
+    expect((await enregistrer(M, 'tour_de_taille', 76)).statut).toBe(200);
+    // Décor : les dates passées ne se saisissent pas (le serveur date du jour) ; le rôle serveur
+    // les recule pour figurer trois jours. b, enregistrée APRÈS a, est datée AVANT elle.
+    for (const [id, jours] of [
+      [a, -5],
+      [b, -10],
+    ] as const) {
+      await appelRest(`/rest/v1/mesures_corporelles?id=eq.${id}`, {
+        methode: 'PATCH',
+        session: 'admin',
+        corps: { mesuree_le: plusJours(aujourdhuiParis(), jours) },
+      });
+    }
+    expect((await lire(M)).tour_de_taille).toEqual({
+      premiere: { valeur: 78.5, le: plusJours(aujourdhuiParis(), -10) },
+      derniere: { valeur: 76, le: aujourdhuiParis() },
+      ecart: -2.5,
+      nombre: 3,
+    });
+  });
+
+  it('valeurs invalides refusées (mesure_invalide) : absente, non finie, nulle, négative, deux décimales, au-delà du plafond, type inconnu', async () => {
+    const avant = (await lignesDe(profilN)).length;
+    const cas: [string, unknown][] = [
+      ['poids', null],
+      ['poids', 'NaN'],
+      ['poids', 'Infinity'],
+      ['poids', '-Infinity'],
+      ['poids', 0],
+      ['poids', -3],
+      ['poids', 68.45],
+      ['poids', 1000.1],
+      ['tour_de_taille', 1000.1],
+      ['taille', 70],
+      [null as unknown as string, 70],
+    ];
+    for (const [type, valeur] of cas) {
+      const { statut, corps } = await enregistrer(N, type, valeur);
+      expect([type, valeur, statut]).toEqual([type, valeur, 400]);
+      expect(messageDe(corps)).toBe('mesure_invalide');
+    }
+    expect(await lignesDe(profilN)).toHaveLength(avant);
+  });
+
+  it('hors des seuils de confirmation, une valeur positive s’enregistre ; le plafond de 1 000 est inclus', async () => {
+    for (const [type, valeur] of [
+      ['poids', 15],
+      ['tour_de_taille', 310],
+      ['poids', 1000],
+      ['tour_de_taille', 1000],
+    ] as const) {
+      const { statut } = await enregistrer(N, type, valeur);
+      expect([type, valeur, statut]).toEqual([type, valeur, 200]);
+    }
+    const valeurs = (await lignesDe(profilN)).map((l) => [l.type, l.valeur]);
+    expect(valeurs).toEqual(
+      expect.arrayContaining([
+        ['poids', 15000],
+        ['tour_de_taille', 3100],
+        ['poids', 1000000],
+        ['tour_de_taille', 10000],
+      ]),
+    );
+  });
+
+  describe('réessai : la clé', () => {
+    it('même clé, même mesure : la mesure déjà enregistrée est rendue, aucune seconde ligne', async () => {
+      const cle = randomUUID();
+      const premier = await enregistrer(M, 'poids', 67.5, cle);
+      const avant = (await lignesDe(profilM)).length;
+      const second = await enregistrer(M, 'poids', 67.5, cle);
+      expect(second.statut).toBe(200);
+      expect(second.corps).toBe(premier.corps);
+      expect(await lignesDe(profilM)).toHaveLength(avant);
+    });
+
+    it('même clé, autre valeur ou autre type : cle_idempotence_reutilisee, rien d’écrit', async () => {
+      const cle = randomUUID();
+      expect((await enregistrer(M, 'poids', 67.2, cle)).statut).toBe(200);
+      const avant = (await lignesDe(profilM)).length;
+      for (const [type, valeur] of [
+        ['poids', 67.3],
+        ['tour_de_taille', 67.2],
+      ] as const) {
+        const { statut, corps } = await enregistrer(M, type, valeur, cle);
+        expect(statut).toBe(400);
+        expect(messageDe(corps)).toBe('cle_idempotence_reutilisee');
+      }
+      expect(await lignesDe(profilM)).toHaveLength(avant);
+    });
+
+    it('deux requêtes concurrentes avec la même clé : une seule ligne, la même mesure rendue aux deux', async () => {
+      const cle = randomUUID();
+      const avant = (await lignesDe(profilM)).length;
+      const [r1, r2] = await Promise.all([
+        enregistrer(M, 'poids', 67, cle),
+        enregistrer(M, 'poids', 67, cle),
+      ]);
+      expect([r1.statut, r2.statut]).toEqual([200, 200]);
+      expect(r1.corps).toBe(r2.corps);
+      expect(await lignesDe(profilM)).toHaveLength(avant + 1);
+    });
+  });
+
+  describe('consentement : lecture et écriture', () => {
+    it('après retrait, M ne lit plus ses mesures et n’en enregistre plus (consentement_sante_absent) ; rien n’est effacé', async () => {
+      const avant = (await lignesDe(profilM)).length;
+      await consentir(M, false);
+      const lecture = await rpc('mes_mesures', {}, M);
+      expect(lecture.statut).toBe(400);
+      expect(messageDe(lecture.corps)).toBe('consentement_sante_absent');
+      const ecriture = await enregistrer(M, 'poids', 66);
+      expect(ecriture.statut).toBe(400);
+      expect(messageDe(ecriture.corps)).toBe('consentement_sante_absent');
+      expect(await lignesDe(profilM)).toHaveLength(avant);
+    });
+
+    it('consentement accordé de nouveau : M relit ses anciennes mesures, intactes', async () => {
+      await consentir(M, true);
+      const lu = await lire(M);
+      expect(lu.poids?.premiere).toEqual({ valeur: 68.4, le: aujourdhuiParis() });
+      expect(lu.tour_de_taille?.nombre).toBe(3);
+    });
+  });
+
+  describe('cloisonnement', () => {
+    it('chaque client ne lit que les siennes : M et N ont chacun leurs nombres, aucune valeur de l’autre', async () => {
+      const luM = await lire(M);
+      const luN = await lire(N);
+      const lignesM = await lignesDe(profilM);
+      const lignesN = await lignesDe(profilN);
+      expect(luM.poids?.nombre).toBe(lignesM.filter((l) => l.type === 'poids').length);
+      expect(luN.poids?.nombre).toBe(lignesN.filter((l) => l.type === 'poids').length);
+      expect(luN.poids?.premiere.valeur).toBe(15);
+      expect(luM.poids?.premiere.valeur).toBe(68.4);
+    });
+
+    it('aucune fonction ne désigne un autre client : un paramètre de plus est refusé, pas interprété', async () => {
+      const { statut } = await rpc('mes_mesures', { p_profil_client_id: profilM }, N);
+      expect(statut).toBeGreaterThanOrEqual(400);
+    });
+
+    it('K, le coach de M, en espace coach : ni lecture ni écriture (profil_client_requis)', async () => {
+      const lecture = await rpc('mes_mesures', {}, K);
+      expect(lecture.statut).toBe(400);
+      expect(messageDe(lecture.corps)).toBe('profil_client_requis');
+      const ecriture = await enregistrer(K, 'poids', 80);
+      expect(messageDe(ecriture.corps)).toBe('profil_client_requis');
+    });
+
+    it('K en espace client lit SES mesures (aucune), jamais celles de M', async () => {
+      await basculer(K, 'client');
+      try {
+        const lu = await lire(K);
+        expect(lu.poids).toBeNull();
+        expect(lu.tour_de_taille).toBeNull();
+      } finally {
+        await basculer(K, 'coach');
+      }
+    });
+
+    it('accès direct aux tables, pour M (propriétaire) comme pour K (son coach) : refusé (42501), lignes intactes', async () => {
+      // Décor : une ligne posée par le rôle serveur, pour que le test ne dépende ni des
+      // fonctions ni de l'ordre des tests — il ne prouve que les droits de la table.
+      const decor = await appelRest('/rest/v1/mesures_corporelles', {
+        methode: 'POST',
+        session: 'admin',
+        corps: {
+          profil_client_id: profilM,
+          type: 'poids',
+          valeur: 60000,
+          mesuree_le: aujourdhuiParis(),
+          cle: randomUUID(),
+        },
+      });
+      const id = (decor.corps as { id: string }[])[0].id;
+      const avant = await lignesDe(profilM);
+      for (const session of [M, K]) {
+        const essais = [
+          appelRest(`/rest/v1/mesures_corporelles?profil_client_id=eq.${profilM}`, { session }),
+          appelRest('/rest/v1/mesures_corporelles', {
+            methode: 'POST',
+            session,
+            corps: {
+              profil_client_id: profilM,
+              type: 'poids',
+              valeur: 50000,
+              mesuree_le: aujourdhuiParis(),
+              cle: randomUUID(),
+            },
+          }),
+          appelRest(`/rest/v1/mesures_corporelles?id=eq.${id}`, {
+            methode: 'PATCH',
+            session,
+            corps: { valeur: 1 },
+          }),
+          appelRest(`/rest/v1/mesures_corporelles?id=eq.${id}`, { methode: 'DELETE', session }),
+          appelRest(`/rest/v1/cles_mesures?profil_client_id=eq.${profilM}`, { session }),
+        ];
+        for (const { statut, corps } of await Promise.all(essais)) {
+          expect(statut).toBe(403);
+          expect((corps as { code?: string }).code).toBe('42501');
+        }
+      }
+      expect(await lignesDe(profilM)).toEqual(avant);
+    });
+  });
+
+  describe('poids de départ et effacement', () => {
+    it('le poids de départ de l’onboarding n’entre pas dans les mesures : l’écart part de la première mesure datée', async () => {
+      // Le chemin de l'application à l'onboarding (L1-05) : une écriture de profils_client.
+      const ecriture = await appelRest(`/rest/v1/profils_client?compte_id=eq.${M.compteId}`, {
+        methode: 'PATCH',
+        session: M,
+        corps: { poids_depart_grammes: 72000, poids_cible_grammes: 65000 },
+      });
+      expect(ecriture.statut).toBeLessThan(300);
+      const lu = await lire(M);
+      expect(lu.poids?.premiere.valeur).toBe(68.4);
+    });
+
+    it('K, coach de M, n’efface rien de M : en espace coach, refusé (profil_client_requis), mesures de M intactes', async () => {
+      const lignesM = await lignesDe(profilM);
+      expect(lignesM.length).toBeGreaterThan(0);
+      const { corps } = await rpc('effacer_mes_mesures', {}, K);
+      expect(messageDe(corps)).toBe('profil_client_requis');
+      expect(await lignesDe(profilM)).toEqual(lignesM);
+    });
+
+    it('effacement après retrait : mesures de M supprimées, poids de départ et visé remis à vide, mesures de N intactes', async () => {
+      const lignesN = await lignesDe(profilN);
+      await consentir(M, false);
+      const { statut } = await rpc('effacer_mes_mesures', {}, M);
+      expect(statut).toBe(204);
+      expect(await lignesDe(profilM)).toEqual([]);
+      const { corps } = await appelRest(
+        `/rest/v1/profils_client?id=eq.${profilM}&select=poids_depart_grammes,poids_cible_grammes`,
+        { session: 'admin' },
+      );
+      expect(corps).toEqual([{ poids_depart_grammes: null, poids_cible_grammes: null }]);
+      expect(await lignesDe(profilN)).toEqual(lignesN);
+    });
+
+    it('un ancien réessai arrivé après l’effacement ne recrée pas la mesure supprimée', async () => {
+      await consentir(M, true);
+      const { statut, corps } = await enregistrer(M, 'poids', 68.4, clePremierPoids);
+      expect(statut).toBe(400);
+      expect(messageDe(corps)).toBe('cle_idempotence_reutilisee');
+      expect(await lignesDe(profilM)).toEqual([]);
+    });
+  });
+});

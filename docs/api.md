@@ -508,8 +508,12 @@ passent par des fonctions de base, jamais par une table : `enregistrer_mesure` (
 en lecture seule ; `enregistrer_notes_client` le refuse. Badges : `a_jour` « À jour »,
 `inactive` « {n} séance(s) non rattrapée(s) » (règle révisée à la revue du 18 novembre, décision
 2 ; la clé reste `inactive`), `nouveau` « Nouveau », `paiement_ko` « Paiement en échec ».
-`enregistrer_mesure` ne refuse que les saisies invalides ; les seuils de confirmation sont rendus
-par `mes_mesures`. **Aucune lecture du coach ne rend de donnée de
+`enregistrer_mesure(p_type, p_valeur, p_cle)` (kg ou cm, une décimale ; `p_cle` : UUID de
+réessai) rend l'identifiant de la mesure et ne refuse que les saisies invalides ; refus
+`profil_client_requis`, `consentement_sante_absent`, `mesure_invalide`,
+`cle_idempotence_reutilisee`. `mes_mesures()` rend `{ poids, tour_de_taille, seuils }`, chaque
+série `{ premiere, derniere, ecart, nombre }` ou `null`, et lève sans consentement ;
+`effacer_mes_mesures()` est permise consentement retiré. Toutes trois exigent l'espace client. **Aucune lecture du coach ne rend de donnée de
 santé** (poids, tour de taille, ressenti) : décision 1 de L7.
 
 ---

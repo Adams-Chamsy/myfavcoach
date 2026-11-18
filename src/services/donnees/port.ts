@@ -601,6 +601,25 @@ export type MediaBibliotheque = MediaJoint & { poidsOctets: number };
 
 export type AbonneAffectable = { profilClientId: string; prenom: string; initialeNom: string };
 
+// L7 — les mesures corporelles du client (docs/domaine.md §3.7 ; docs/ecrans/L7-06-suivi.md).
+// Donnée de santé : jamais journalisée, jamais gardée au-delà de l'écran qui la lit. Valeurs en
+// kg et en cm, une décimale ; `le` : AAAA-MM-JJ, Europe/Paris, posé par le serveur. `ecart` :
+// dernière moins première, calculé par le serveur. `seuils` : seuils de CONFIRMATION, rendus
+// par le serveur ; ils ne refusent rien (le serveur n'en refuse que les saisies invalides).
+export type TypeMesure = 'poids' | 'tour_de_taille';
+export type PointMesure = { valeur: number; le: string };
+export type SerieMesures = {
+  premiere: PointMesure;
+  derniere: PointMesure;
+  ecart: number;
+  nombre: number;
+};
+export type MesMesures = {
+  poids: SerieMesures | null;
+  tourDeTaille: SerieMesures | null;
+  seuils: Record<TypeMesure, { min: number; max: number }>;
+};
+
 // L6 — la séance du jour du client (docs/ecrans/L6-05-seance-du-jour.md), en espace client.
 export type StatutSeanceProgrammee = 'a_faire' | 'en_cours' | 'faite' | 'partielle' | 'manquee';
 
@@ -722,11 +741,11 @@ export type PortDonnees = {
   lireConsentementSante(): Promise<{ accorde: boolean; version: string | null }>;
   enregistrerConsentementSante(accorde: boolean, version: string): Promise<ResultatEcriture>;
 
-  // Efface les mesures corporelles enregistrées — à ce lot, poids_depart_grammes et
-  // poids_cible_grammes (profils_client), les seules données de santé écrites (voir
-  // 0004_proteger_donnees_sante.sql). Les remettre à NULL est autorisé même consentement
-  // retiré : le déclencheur ne bloque que l'écriture d'une valeur NON nulle. Irréversible,
-  // offert seulement après un retrait de consentement.
+  // Efface les mesures corporelles enregistrées : poids de départ et poids visé
+  // (profils_client, L1) ET les mesures datées (mesures_corporelles, L7), par la fonction du
+  // serveur effacer_mes_mesures (0089), permise consentement retiré. Irréversible, offert
+  // seulement après un retrait de consentement. Les clés de réessai restent (sans valeur) :
+  // un réessai arrivé après l'effacement ne recrée rien.
   effacerMesuresCorporelles(): Promise<ResultatEcriture>;
 
   // L2-09 : statut du dossier + motif de la dernière décision, pour l'écran d'attente.
@@ -963,6 +982,14 @@ export type PortDonnees = {
     ressentiEffort: number | null,
     commentaire: string | null,
   ): Promise<ResultatStudio>;
+
+  // L7, mesures corporelles (écran 06), en espace client. La lecture lève sans consentement
+  // santé (consentement_sante_absent) ou hors espace client (profil_client_requis).
+  // L'écriture rend son refus : mesure_invalide, consentement_sante_absent,
+  // cle_idempotence_reutilisee. `cle` : un UUID tiré à l'appui sur « Enregistrer » et RENVOYÉ
+  // tel quel en cas de réessai — c'est lui qui empêche un doublon après une coupure réseau.
+  lireMesMesures(): Promise<MesMesures>;
+  enregistrerMesure(type: TypeMesure, valeur: number, cle: string): Promise<ResultatStudio<string>>;
 };
 
 // Les trois écritures qui changent EtatProfils. Elles ne sont JAMAIS appelées sur un `port`

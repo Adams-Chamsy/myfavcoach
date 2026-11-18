@@ -176,6 +176,8 @@ function creerPortDonneesEnAttente(promesse: Promise<EtatProfils>): PortDonnees 
     demarrerSeance: jest.fn(),
     enregistrerSerie: jest.fn(),
     terminerSeance: jest.fn(),
+    lireMesMesures: jest.fn(),
+    enregistrerMesure: jest.fn(),
   };
 }
 
@@ -435,6 +437,8 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       demarrerSeance: jest.fn(),
       enregistrerSerie: jest.fn(),
       terminerSeance: jest.fn(),
+      lireMesMesures: jest.fn(),
+      enregistrerMesure: jest.fn(),
     };
 
     await rendreIndex(creerPortControle(jest.fn().mockResolvedValue(session)), portDonnees);
