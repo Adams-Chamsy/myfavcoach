@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { Badge, type StatutBadge } from '@/composants/badge';
@@ -34,7 +34,7 @@ import { dateLongue } from '@/fonctionnalites/factures/format';
 // `impaye` et `suspendu` (P4.7) : la ligne datée vient du détail de l'abonnement
 // (detail_abonnement, 0060 : fin de la période de grâce, date limite de régularisation), lu pour
 // ces seuls abonnements ; « Régler » mène à l'écran 20. Si ce détail ne se lit pas, la carte garde
-// son étiquette et « Régler », sans ligne datée : jamais une date calculée ici.
+// son étiquette, « Régler » et une indication sans date.
 
 const DUREES_PAUSE_SEMAINES = [2, 4, 6, 8] as const;
 
@@ -61,7 +61,7 @@ function ligneInformation(a: AbonnementClient, dates: DatesDefaut | undefined): 
         ? `Prochain prélèvement le ${dateLongue(a.prochainPrelevementLe)}. Résiliation effective en fin de période, sans frais.`
         : null;
     case 'en_attente_confirmation':
-      return 'Ta banque n’a pas encore confirmé le premier prélèvement.';
+      return 'Ta banque n’a pas encore confirmé le premier prélèvement. Ton suivi commencera après sa confirmation.';
     case 'en_pause':
       return a.pauseJusquLe ? `En pause jusqu’au ${dateLongue(a.pauseJusquLe)}.` : null;
     case 'resiliation_programmee':
@@ -69,7 +69,7 @@ function ligneInformation(a: AbonnementClient, dates: DatesDefaut | undefined): 
     case 'impaye':
       return dates?.graceJusquAu
         ? `Ton suivi continue jusqu’au ${dateLongue(dates.graceJusquAu)}.`
-        : null;
+        : 'Tu peux choisir « Régler » pour voir comment régulariser ton paiement.';
     case 'suspendu':
       return dates?.regularisationAvantLe
         ? `Suivi interrompu. Règle le paiement avant le ${dateLongue(dates.regularisationAvantLe)} pour le reprendre.`
@@ -89,6 +89,10 @@ export function BlocMesAbonnements({ onRegler }: ProprietesBlocMesAbonnements) {
   const { port } = useDonnees();
   const [abonnements, setAbonnements] = useState<AbonnementClient[] | null>(null);
   const [erreurLecture, setErreurLecture] = useState(false);
+  const [actualisation, setActualisation] = useState<'en_cours' | 'reussie' | 'echouee' | null>(
+    null,
+  );
+  const actualisationEnCours = useRef(false);
   const [enCours, setEnCours] = useState<string | null>(null);
   const [refus, setRefus] = useState<string | null>(null);
   const [accuse, setAccuse] = useState<string | null>(null);
@@ -134,10 +138,20 @@ export function BlocMesAbonnements({ onRegler }: ProprietesBlocMesAbonnements) {
       setDatesDefaut(dates);
       setAbonnements(lus);
       setErreurLecture(false);
+      return true;
     } catch {
-      setErreurLecture(true);
+      return false;
     }
   }, [port, lireDatesDefaut]);
+
+  async function actualiserStatut() {
+    if (actualisationEnCours.current) return;
+    actualisationEnCours.current = true;
+    setActualisation('en_cours');
+    const reussie = await relire();
+    actualisationEnCours.current = false;
+    setActualisation(reussie ? 'reussie' : 'echouee');
+  }
 
   useEffect(() => {
     let monte = true;
@@ -165,7 +179,7 @@ export function BlocMesAbonnements({ onRegler }: ProprietesBlocMesAbonnements) {
       const resultat = await port.transitionAbonnement(a.id, transition);
       if (!resultat.succes) setRefus(a.id);
       else if (transition === 'resilier') setAccuse(a.id);
-      await relire();
+      if (!(await relire())) setErreurLecture(true);
     } finally {
       setEnCours(null);
     }
@@ -183,7 +197,7 @@ export function BlocMesAbonnements({ onRegler }: ProprietesBlocMesAbonnements) {
           setPauseRefusee({ id: a.id, possibleLe: resultat.possibleLe });
         } else setRefus(a.id);
       }
-      await relire();
+      if (!(await relire())) setErreurLecture(true);
     } finally {
       setEnCours(null);
     }
@@ -202,7 +216,9 @@ export function BlocMesAbonnements({ onRegler }: ProprietesBlocMesAbonnements) {
         titre={textesRepliErreur.serveur.titre}
         explication={textesRepliErreur.serveur.explication}
         nombreEchecs={0}
-        onReessayer={() => void relire()}
+        onReessayer={() => {
+          void relire();
+        }}
       />
     );
   }
@@ -272,10 +288,20 @@ export function BlocMesAbonnements({ onRegler }: ProprietesBlocMesAbonnements) {
           <Text style={{ ...theme.texte.label, color: theme.couleur.texte.secondaire }}>
             {`Mes abonnements · ${visibles.length}`}
           </Text>
+          {actualisation === 'echouee' || actualisation === 'reussie' ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}
+            >
+              {actualisation === 'reussie'
+                ? 'Statut actualisé.'
+                : 'Impossible d’actualiser le statut. Réessaie dans un instant.'}
+            </Text>
+          ) : null}
           {visibles.map((a) => {
             const etat = ETATS[a.statut]!;
             const ligne = ligneInformation(a, datesDefaut[a.id]);
-            const occupe = enCours === a.id;
+            const occupe = enCours === a.id || actualisation === 'en_cours';
             return (
               <Carte key={a.id}>
                 <View style={{ padding: theme.espace[4], gap: theme.espace[2] }}>
@@ -356,6 +382,16 @@ export function BlocMesAbonnements({ onRegler }: ProprietesBlocMesAbonnements) {
                       variante="secondaire"
                       onPress={() => void agir(a, 'reprendre')}
                       desactive={occupe}
+                    />
+                  ) : null}
+                  {a.statut === 'en_attente_confirmation' ? (
+                    <Bouton
+                      libelle={
+                        actualisation === 'en_cours' ? 'Actualisation…' : 'Actualiser le statut'
+                      }
+                      variante="secondaire"
+                      onPress={actualiserStatut}
+                      desactive={actualisation === 'en_cours' || enCours !== null}
                     />
                   ) : null}
                   {a.statut === 'impaye' || a.statut === 'suspendu' ? (

@@ -107,6 +107,9 @@ describe('L4-24b · Mes abonnements', () => {
     await rendre([abonnement('impaye')]);
     await waitFor(() => expect(screen.queryByText('PAIEMENT REFUSÉ')).toBeTruthy());
     expect(screen.queryByText(/Ton suivi continue/)).toBeNull();
+    expect(
+      screen.getByText('Tu peux choisir « Régler » pour voir comment régulariser ton paiement.'),
+    ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Régler' })).toBeTruthy();
   });
 
@@ -182,13 +185,30 @@ describe('L4-24b · Mes abonnements', () => {
     ]);
   });
 
-  it('en attente de confirmation : EN ATTENTE, la ligne de la fiche, aucune action', async () => {
-    await rendre([abonnement('en_attente_confirmation')]);
+  it('actualise le statut bancaire et affiche l’état confirmé par le serveur', async () => {
+    const { portDonnees } = await rendre([abonnement('en_attente_confirmation')]);
     await waitFor(() => expect(screen.queryByText('EN ATTENTE')).toBeTruthy());
-    expect(
-      screen.getByText('Ta banque n’a pas encore confirmé le premier prélèvement.'),
-    ).toBeTruthy();
-    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getByText(/Ton suivi commencera après sa confirmation/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Régler' })).toBeNull();
+    portDonnees.definirAbonnementsPourTest([abonnement('actif')]);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Actualiser le statut' }));
+    expect(await screen.findByText('ACTIF')).toBeTruthy();
+    expect(screen.getByText('Statut actualisé.')).toBeTruthy();
+    expect(portDonnees.lireTransitionsPourTest()).toEqual([]);
+  });
+
+  it('conserve la carte et permet de réessayer si l’actualisation échoue', async () => {
+    const { portDonnees } = await rendre([abonnement('en_attente_confirmation')]);
+    await screen.findByText('EN ATTENTE');
+    jest.spyOn(portDonnees, 'lireMesAbonnements').mockRejectedValueOnce(new Error('Réseau'));
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Actualiser le statut' }));
+    expect(await screen.findByText(/Impossible d’actualiser le statut/)).toBeTruthy();
+    expect(screen.getByText('EN ATTENTE')).toBeTruthy();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Actualiser le statut' }));
+    expect(await screen.findByText('Statut actualisé.')).toBeTruthy();
   });
 
   // `resilie` et `annule` n'apparaissent pas (l'historique relève de C-05, L5).
