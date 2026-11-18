@@ -47,8 +47,8 @@ En-tête de l'espace coach, titre « Revenus ».
 5. **Ton solde** — « Solde disponible » et le montant (`mon_solde`) ; « Prochain transfert prévu le
    {date} » ; bouton « Virement immédiat · 1 € ».
 6. **Derniers transferts** — une ligne par versement (`mes_versements`) : date, état en texte
-   (« Transféré à Stripe », « En cours », « Prévu », « Échoué »), montant. Le virement
-   vers la banque se suit dans l'espace Stripe.
+   (« Transféré au prestataire », « En cours », « Prévu », « Échoué »), montant. Le virement
+   vers la banque se suit dans l'espace du prestataire de paiement.
 7. **Mes factures** — une ligne qui ouvre les factures du coach (`docs/ecrans/L5-C05-factures-recus.md`).
 
 ## Formulaire — informations de facturation
@@ -67,7 +67,7 @@ serveur (`identite_fiscale_invalide`) s'affiche avec son titre et son détail, a
 
 1. **« 4 séances à l'unité · 220 € » retiré** : la séance à l'unité est hors périmètre
    (`docs/perimetre.md` §3).
-2. **« Versé · CIC ••8841 » → « Transféré à Stripe »** : l'application ne connaît pas la banque du coach (son
+2. **« Versé · CIC ••8841 » → « Transféré au prestataire »** : l'application ne connaît pas la banque du coach (son
    compte bancaire est chez le prestataire, `docs/prompts/L5.md`).
 3. **« Commission plateforme · 10 % » → « Commission plateforme »** : le taux peut différer d'une
    facture à l'autre dans un même mois (0 % pendant les 90 jours offerts, puis 10 %) ; le montant
@@ -82,7 +82,7 @@ serveur (`identite_fiscale_invalide`) s'affiche avec son titre et son détail, a
   inscription. », « Un virement est déjà en route. »). Avant de le faire partir, une
   confirmation : « Virer {montant} maintenant ? 1 € de frais est retenu. » ; « Virer » ; « Annuler ».
   Après, l'écran affiche l'état rendu par le serveur puis relit les données. « Montant transféré
-  sur ton compte Stripe. » confirme un transfert accepté. « Transfert vers Stripe en cours. »
+  sur ton compte de versement. » confirme un transfert accepté. « Transfert vers ton compte de versement en cours. »
   indique une demande en traitement. « Ton virement partira demain. » indique un report.
 - **Le retour de la page d'inscription** du prestataire ramène sur Revenus, qui relit l'état.
 - **Le montant net négatif** n'existe pas (une commission ne dépasse jamais l'encaissement).
