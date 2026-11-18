@@ -169,3 +169,14 @@ notifications), et la purge réelle des comptes à J+30 n'existe toujours pas (l
   d'abonnement (L4) qui écrivaient le jour et le mois en lettres passent par
   `src/fonctionnalites/factures/format.ts`. Les dates écrites en chiffres (« 01/02/2027 ») ne sont
   pas concernées et restent telles quelles.
+
+### Après la porte de L6 — trouvé le 18 novembre 2026
+
+- **L'onglet « Séance » du client montrait encore « Lot L6 »** après la porte de L6 : la porte
+  ne l'avait pas vu (elle regardait les routes des fiches, pas les onglets qui y mènent). Corrigé
+  le 18 novembre 2026 (`fix(L6)`), clos dans le navigateur. Leçon pour les portes suivantes :
+  chercher « EcranProvisoire » avec le lot de la porte.
+- **L'export des données personnelles (L1-10) ne contient ni les abonnements et paiements (L4,
+  L5), ni les séances et le ressenti d'effort (L6)** : son commentaire disait « aucune table avant
+  L6/L8/L4 », devenu faux. Un droit à la portabilité incomplet. Échéance : porte de sortie de L7,
+  avec les mesures corporelles de L7.

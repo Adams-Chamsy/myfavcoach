@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { Bouton } from '@/composants/bouton';
@@ -12,10 +12,17 @@ import { ecouterSeanceModifiee } from './seance-modifiee';
 // docs/ecrans/L6-05-seance-du-jour.md, « Le bloc de l'accueil ». Une carte par séance du jour,
 // rendue par le serveur ; aucune : aucune carte (l'absence est l'état honnête), une lecture en
 // échec non plus. Présentation : la « Carte séance » de la galerie (maquettes, System 01).
-export function CarteSeanceDuJour({ onOuvrir }: { onOuvrir: (id: string) => void }) {
+export function CarteSeanceDuJour({
+  onOuvrir,
+  siAucune = null,
+}: {
+  onOuvrir: (id: string) => void;
+  // Rendu une fois la lecture faite, s'il n'y a aucune séance aujourd'hui (onglet Séance).
+  siAucune?: ReactNode;
+}) {
   const theme = useTheme();
   const { port } = useDonnees();
-  const [seances, setSeances] = useState<SeanceDuJour[]>([]);
+  const [seances, setSeances] = useState<SeanceDuJour[] | null>(null);
 
   const [cleTentative, setCleTentative] = useState(0);
   // Retour d'une séance commencée ou terminée : la carte, restée dessous, relit.
@@ -34,7 +41,8 @@ export function CarteSeanceDuJour({ onOuvrir }: { onOuvrir: (id: string) => void
     };
   }, [port, cleTentative]);
 
-  if (seances.length === 0) return null;
+  if (seances === null) return null;
+  if (seances.length === 0) return <>{siAucune}</>;
   return (
     <View style={{ gap: theme.espace[2] }}>
       <Text

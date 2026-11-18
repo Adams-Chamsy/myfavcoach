@@ -10,6 +10,7 @@ import { creerFauxPortDonnees, etatProfilsParDefaut } from '@/services/donnees/f
 import type { ExerciceDeSeance, StatutSeanceProgrammee } from '@/services/donnees/port';
 import { FournisseurTheme } from '@/theme/fournisseur';
 import { CarteSeanceDuJour } from './carte-seance-du-jour';
+import { EcranOngletSeance } from './ecran-onglet-seance';
 import { EcranSeanceDuJour } from './ecran-seance-du-jour';
 
 // docs/ecrans/L6-05-seance-du-jour.md. La séance : seancesDemonstration[0] (maquettes, System 01) ;
@@ -92,6 +93,20 @@ describe('L6-05 · Séance du jour', () => {
     await rendre(<CarteSeanceDuJour onOuvrir={jest.fn()} />, port);
     await waitFor(() => expect(lecture).toHaveBeenCalled());
     expect(screen.queryByText('Ta séance du jour')).toBeNull();
+  });
+
+  it('l’onglet Séance : la séance du jour ; sans séance, « Aucune séance prévue aujourd’hui. »', async () => {
+    const port = creerFauxPortDonnees();
+    seance(port);
+    await rendre(<EcranOngletSeance onOuvrir={jest.fn()} />, port);
+    await waitFor(() => expect(screen.queryByText(DEMO.titre)).toBeTruthy());
+    expect(screen.queryByText('Aucune séance prévue aujourd’hui.')).toBeNull();
+    screen.unmount();
+
+    await rendre(<EcranOngletSeance onOuvrir={jest.fn()} />, creerFauxPortDonnees());
+    await waitFor(() =>
+      expect(screen.queryByText('Aucune séance prévue aujourd’hui.')).toBeTruthy(),
+    );
   });
 
   it('critère 1 : commencer, valider une série pré-remplie, terminer avec le ressenti (consentement accordé)', async () => {

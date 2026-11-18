@@ -1,6 +1,13 @@
-import { EcranProvisoire } from '@/composants/ecran-provisoire';
+import { type Href, useRouter } from 'expo-router';
 
-// Écran 05, docs/perimetre.md.
+import { EcranOngletSeance } from '@/fonctionnalites/seance/ecran-onglet-seance';
+
+// Écran 05 (docs/ecrans/L6-05-seance-du-jour.md), l'onglet. Aucune logique ici (CLAUDE.md §5).
 export default function Seance() {
-  return <EcranProvisoire titre="Séance" lot="L6" />;
+  const router = useRouter();
+  return (
+    <EcranOngletSeance
+      onOuvrir={(id) => router.push(`/(client)/seance/${encodeURIComponent(id)}` as Href)}
+    />
+  );
 }

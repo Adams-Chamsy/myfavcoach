@@ -752,7 +752,17 @@ const CORPUS: EntreeCorpus[] = [
       </FournisseurSession>
     ),
   },
-  { nom: 'app/(client)/(tabs)/seance.tsx', creerElement: () => <Seance key="seance" /> },
+  {
+    // L6 : l'onglet lit la séance du jour (useDonnees), avec une séance en cours.
+    nom: 'app/(client)/(tabs)/seance.tsx',
+    creerElement: () => (
+      <FournisseurSession key="seance" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesSeanceDuJour()}>
+          <Seance />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
   { nom: 'app/(client)/(tabs)/messages.tsx', creerElement: () => <Messages key="messages" /> },
   {
     // Même besoin que accueil.tsx ci-dessus : EcranCompte appelle useDonnees() et useSession().
