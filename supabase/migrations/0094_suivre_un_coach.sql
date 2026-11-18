@@ -101,7 +101,9 @@ execute function public.supprimer_suivis_du_compte();
 
 revoke execute on function public.supprimer_suivis_du_compte()
 from public, anon, authenticated, service_role;
-revoke execute on function public.mes_coachs_suivis(), public.definir_suivi_coach(uuid, boolean)
+revoke execute on function public.mes_coachs_suivis()
+from public, anon, authenticated, service_role;
+revoke execute on function public.definir_suivi_coach(uuid, boolean)
 from public, anon, authenticated, service_role;
 grant execute on function public.mes_coachs_suivis(), public.definir_suivi_coach(uuid, boolean)
 to authenticated;

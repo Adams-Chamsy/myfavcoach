@@ -32,7 +32,7 @@ export function VitrineVideoDemo() {
             width: '100%',
             aspectRatio: 16 / 9,
             borderRadius: theme.rayon.carte,
-            background: theme.couleur.fond.inverse,
+            background: theme.couleur.fond.surface,
           }}
         >
           <source src={CHEMIN_VIDEO} type="video/mp4" />
@@ -77,7 +77,7 @@ function LecteurVideoNatif({ onErreur }: { onErreur: (erreur: boolean) => void }
         width: '100%',
         aspectRatio: 16 / 9,
         borderRadius: theme.rayon.carte,
-        backgroundColor: theme.couleur.fond.inverse,
+        backgroundColor: theme.couleur.fond.surface,
       }}
     />
   );

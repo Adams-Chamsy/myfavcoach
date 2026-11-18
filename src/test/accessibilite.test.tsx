@@ -8,6 +8,7 @@ import Galerie from '../../app/_galerie';
 import Accueil from '../../app/(client)/(tabs)/accueil';
 import { CorpsExplorer } from '../../app/(client)/(tabs)/explorer';
 import Seance from '../../app/(client)/(tabs)/seance';
+import CoachsSuivis from '../../app/(client)/coachs-suivis';
 import Messages from '../../app/(client)/(tabs)/messages';
 import Moi from '../../app/(client)/(tabs)/moi';
 import MoiCoach from '../../app/(coach)/(tabs)/moi';
@@ -92,6 +93,11 @@ jest.mock('expo-router', () => {
     // outside the Expo Router root »), et ce corpus rend les écrans isolés. `replace` est appelé
     // au montage par app/(public)/verification.tsx : stub inerte, on vérifie seulement le rendu.
     useRouter: () => ({ ...reel.useRouter(), canGoBack: () => false, replace: () => {} }),
+    // Le corpus monte les écrans comme s’ils étaient au premier plan.
+    useFocusEffect: (effet: () => void | (() => void)) => {
+      const { useEffect } = jest.requireActual<typeof import('react')>('react');
+      useEffect(effet, [effet]);
+    },
   };
 });
 // useGardeSortie (app/(compte)/informations.tsx) appelle usePreventRemove, qui lève hors d'un
@@ -759,6 +765,16 @@ const CORPUS: EntreeCorpus[] = [
       <FournisseurSession key="seance" port={portAuthOnboarding}>
         <FournisseurDonnees port={portDonneesSeanceDuJour()}>
           <Seance />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(client)/coachs-suivis.tsx',
+    creerElement: () => (
+      <FournisseurSession key="coachs-suivis" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <CoachsSuivis />
         </FournisseurDonnees>
       </FournisseurSession>
     ),
