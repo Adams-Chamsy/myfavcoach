@@ -94,6 +94,10 @@ import { EcranBibliotheque } from '@/fonctionnalites/studio/ecran-bibliotheque';
 import { EcranProgramme } from '@/fonctionnalites/studio/ecran-programme';
 import { EcranProgrammes } from '@/fonctionnalites/studio/ecran-programmes';
 import { EcranSeance } from '@/fonctionnalites/studio/ecran-seance';
+import { AnciensClientsCoach, ClientsCoach } from '@/fonctionnalites/suivi/clients-coach';
+import { EcranFicheClient } from '@/fonctionnalites/suivi/fiche-client';
+import { PilotageCoach } from '@/fonctionnalites/suivi/pilotage-coach';
+import { ProgressionClient } from '@/fonctionnalites/suivi/progression-client';
 import { OngletAvis } from '@/fonctionnalites/avis/onglet-avis';
 import Accueil from './(client)/(tabs)/accueil';
 import { CorpsExplorer } from './(client)/(tabs)/explorer';
@@ -173,6 +177,7 @@ function Corps({
       <SectionEcransLot titre="18 · Écrans du lot L4" ecrans={ECRANS_L4} />
       <SectionEcransLot titre="19 · Écrans du lot L5" ecrans={ECRANS_L5} />
       <SectionEcransLot titre="20 · Écrans du lot L6" ecrans={ECRANS_L6} />
+      <SectionEcransLot titre="21 · Écrans du lot L7" ecrans={ECRANS_L7} />
       <PiedGalerie
         themeClair={themeClair}
         onChangeThemeClair={onChangeThemeClair}
@@ -2308,6 +2313,154 @@ const ECRANS_L6: { titre: string; rendu: () => ReactNode }[] = [
   { titre: 'L6-11 · Une séance', rendu: () => <StudioAvecFixture ecran="seance" /> },
   { titre: 'L6-11 · Bibliothèque', rendu: () => <StudioAvecFixture ecran="bibliotheque" /> },
   { titre: 'L6-05 · Séance du jour', rendu: () => <SeanceDuJourAvecFixture /> },
+];
+
+type VueSuiviDemo = 'progression' | 'pilotage' | 'clients' | 'anciens' | 'fiche' | 'archive';
+
+function SuiviAvecFixture({ vue }: { vue: VueSuiviDemo }) {
+  const [session, setSession] = useState<Awaited<
+    ReturnType<typeof creerSessionDemonstration>
+  > | null>(null);
+
+  useEffect(() => {
+    let monte = true;
+    void creerSessionDemonstration().then(async (s) => {
+      if (!monte) return;
+      const p = s.portDonnees;
+      const coach = coachsDemonstration[0]!;
+      const client = clientsDemonstration[0]!;
+      const ancien = clientsDemonstration[1]!;
+      const demo = seancesDemonstration[0]!;
+      const semaines = Array.from({ length: 8 }, (_, i) => ({
+        lundi: new Date(Date.UTC(2026, 8, 28 + i * 7)).toISOString().slice(0, 10),
+        faites: i % 3,
+        prevues: i < 2 ? 0 : 2,
+      })).map((semaine) => ({ ...semaine, faites: Math.min(semaine.faites, semaine.prevues) }));
+      const base = { offre: 'Suivi complet', debuteLe: '2026-10-01', seancesFaites: 8 };
+      const historique = [
+        {
+          id: 'galerie-l7-seance',
+          titre: demo.titre,
+          datePrevue: '2026-11-16',
+          dureeMinutes: demo.dureeMinutes,
+          statut: 'faite' as const,
+          rattrapee: false,
+          commentaire: null,
+        },
+      ];
+      const clientActuel = {
+        profilClientId: 'galerie-l7-client',
+        prenom: client.prenom,
+        nom: client.nom ?? null,
+        badge: 'inactive' as const,
+        badgeN: 2,
+      };
+      const ancienClient = {
+        profilClientId: 'galerie-l7-ancien',
+        prenom: ancien.prenom,
+        nom: ancien.nom ?? null,
+        offre: base.offre,
+        debuteLe: base.debuteLe,
+        finAccesLe: '2026-11-17',
+      };
+
+      p.definirEtatProfilsPourTest(
+        etatProfilsParDefaut({
+          profilActif: vue === 'progression' ? 'client' : 'coach',
+          clientExiste: true,
+          clientOnboardingEtape: 5,
+          coachExiste: vue !== 'progression',
+          identiteActive:
+            vue === 'progression' ? { prenom: client.prenom, nom: client.nom ?? null } : coach,
+        }),
+      );
+      p.definirMesClientsPourTest({
+        clients: [
+          {
+            ...clientActuel,
+            offre: base.offre,
+            statut: 'actif',
+            semaine: 3,
+            semaineEnCours: { lundi: '2026-11-16', faites: 3, prevues: 5 },
+            programmeEnCours: true,
+            pauseJusquLe: null,
+            finAccesLe: null,
+          },
+        ],
+        compteurs: { tous: 1, nouveaux: 0, aRelancer: 1, anciens: 1 },
+      });
+      p.definirAnciensClientsPourTest([ancienClient]);
+      p.definirFicheClientPourTest({
+        ...base,
+        ...clientActuel,
+        mode: 'actuel',
+        statut: 'actif',
+        prixCentimes: 4900,
+        derniereSeanceLe: '2026-11-16',
+        assiduite: 80,
+        semaines,
+        programme: null,
+        historique,
+        notes: null,
+      });
+      p.definirFicheClientPourTest({
+        ...ancienClient,
+        mode: 'ancien',
+        seancesFaites: 1,
+        historique,
+      });
+      p.definirPilotagePourTest({
+        aucunClient: false,
+        clientsAvecAcces: 1,
+        assiduiteMoyenne: 80,
+        aTraiterTotal: 1,
+        aTraiter: [clientActuel],
+      });
+      if (vue === 'progression') {
+        p.definirConsentementSantePourTest({ accorde: true, version: VERSION_CGU_ACCEPTEE });
+        p.definirSeanceClientPourTest(
+          {
+            ...historique[0]!,
+            demarreeLe: null,
+            nombreExercices: demo.nombreExercices,
+            coachPrenom: coach.prenom,
+            coachNom: coach.nom,
+            duJour: false,
+          },
+          [],
+        );
+        await p.enregistrerMesure('poids', 70.5, '7f73ea5a-9f58-490a-a9f8-3695f431a2bf');
+      }
+      if (monte) setSession(s);
+    });
+    return () => {
+      monte = false;
+    };
+  }, [vue]);
+
+  if (!session) return <Squelette forme="carte" />;
+  const ecrans: Record<VueSuiviDemo, ReactNode> = {
+    progression: <ProgressionClient />,
+    pilotage: <PilotageCoach prenom={coachsDemonstration[0]!.prenom} />,
+    clients: <ClientsCoach />,
+    anciens: <AnciensClientsCoach />,
+    fiche: <EcranFicheClient clientId="galerie-l7-client" />,
+    archive: <EcranFicheClient clientId="galerie-l7-ancien" />,
+  };
+  return (
+    <FournisseurSession port={session.portAuth}>
+      <FournisseurDonnees port={session.portDonnees}>{ecrans[vue]}</FournisseurDonnees>
+    </FournisseurSession>
+  );
+}
+
+const ECRANS_L7: { titre: string; rendu: () => ReactNode }[] = [
+  { titre: 'L7-06 · Progression client', rendu: () => <SuiviAvecFixture vue="progression" /> },
+  { titre: 'L7-08 · Pilotage coach', rendu: () => <SuiviAvecFixture vue="pilotage" /> },
+  { titre: 'L7-09 · Mes clients', rendu: () => <SuiviAvecFixture vue="clients" /> },
+  { titre: 'L7-09 · Anciens clients', rendu: () => <SuiviAvecFixture vue="anciens" /> },
+  { titre: 'L7-10 · Fiche client', rendu: () => <SuiviAvecFixture vue="fiche" /> },
+  { titre: 'L7-10 · Fiche en lecture seule', rendu: () => <SuiviAvecFixture vue="archive" /> },
 ];
 
 const ECRANS_L4: { titre: string; rendu: () => ReactNode }[] = [
