@@ -3,6 +3,7 @@ import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, AppState, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
 import { Champ } from '@/composants/champ';
@@ -38,6 +39,7 @@ function formaterDecompte(secondes: number): string {
 export default function Verification() {
   const theme = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ email?: string; lienExpire?: string }>();
   const recuperation = params.lienExpire === '1';
   const [adresseRenvoi, setAdresseRenvoi] = useState('');
@@ -176,6 +178,10 @@ export default function Verification() {
           flexGrow: 1,
           justifyContent: 'center',
           padding: theme.espace.gouttiere,
+          // Le contenu défile depuis d9daf8e : plus haut que l'écran, il n'est plus centré et
+          // commencerait sous la barre d'état. Mêmes retraits que les autres écrans défilants.
+          paddingTop: insets.top + theme.espace.gouttiere,
+          paddingBottom: insets.bottom + theme.espace.gouttiere,
           gap: theme.espace[6],
         }}
       >
