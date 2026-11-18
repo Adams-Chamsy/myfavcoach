@@ -67,7 +67,8 @@ Refus : « Ce fichier est trop lourd (50 Mo au plus). », « Ce type de fichier 
 ## Affecter à un abonné
 
 Une feuille : la liste des abonnés qui ont accès (`docs/prompts/L6.md`, décision 2), prénom et
-initiale du nom ; une date de début (aujourd'hui par défaut, sélecteur de date) ; « Affecter ».
+nom complet (prénom et initiale jusqu'à la revue de L7 du 18 novembre 2026, décision 7 de
+`docs/prompts/L7.md`, livré en P7.5) ; une date de début (aujourd'hui par défaut, sélecteur de date) ; « Affecter ».
 Succès : « Programme affecté. Ses séances apparaissent dans son application. ». Refus
 `programme_deja_en_cours` : son texte. Aucun abonné : « Aucun abonné ne peut recevoir ce
 programme pour l'instant. ».

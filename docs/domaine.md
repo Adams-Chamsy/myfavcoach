@@ -468,6 +468,16 @@ jour prévu. Une exécution démarrée mais non terminée dans les 24 h passe à
 soumise à consentement explicite, jamais journalisée, jamais mise en cache sur l'appareil.
 Pas de photo corporelle au jalon 1.
 
+**Précisé le 18 novembre 2026 (L7, décidé seul, à relire).** Le poids s'enregistre en grammes,
+le tour de taille en millimètres ; l'un et l'autre se saisissent avec une décimale (kg, cm).
+Refus `mesure_invalide` seulement pour une saisie invalide (nulle, négative, pas un nombre).
+Seuils de confirmation, rendus par le serveur et non bloquants : poids de 20 à 300 kg, tour de
+taille de 40 à 200 cm — au-delà, l'écran demande confirmation de la valeur et de l'unité (revue du
+18 novembre). `mesureeLe` est la date du jour Europe/Paris, posée par le serveur ; plusieurs
+mesures d'un même type le même jour sont gardées, la dernière fait foi. Lues par le client seul,
+**jamais par un coach** (décision 1 de L7) ; après retrait du consentement, elles restent en base
+jusqu'à leur effacement mais ne sont plus affichées.
+
 ### 3.8 Conversation / Message
 
 Une conversation est liée à un couple (`profilClient`, `profilCoach`) et existe dès qu'un
@@ -979,10 +989,31 @@ Sur les 28 derniers jours :
 `assiduite = seances_faites / seances_programmees`, arrondi à l'entier.
 Une séance `partielle` compte pour 0,5. Une séance rattrapée compte pour 1.
 Non affichée si moins de 4 séances programmées sur la période — affiche « — ».
+Précisé le 18 novembre 2026 (L7, à relire) : « les 28 derniers jours » = les 28 jours qui
+finissent hier, Europe/Paris (la séance d'aujourd'hui n'est pas encore manquée) ; seules les
+séances programmées chez des coachs auxquels le client a encore accès comptent pour le client,
+celles de ce coach seul pour le coach.
 
 ### 5.3 Progression hebdomadaire (« Semaine 3 · 3/5 faites »)
 Semaine = lundi 00:00 à dimanche 23:59, Europe/Paris. Numéro de semaine = rang depuis
 `debuteLe` de l'abonnement.
+Précisé le 18 novembre 2026 (L7, décidé seul, à relire) :
+- **Huit semaines** : les huit semaines qui finissent avec la semaine en cours ; pour chacune, les
+  séances faites (partielle 0,5, rattrapée 1, comptée dans la semaine où elle était programmée)
+  et les séances programmées. Mêmes séances comptées que l'assiduité (§5.2).
+- **Série en cours** : le nombre de semaines consécutives avec au moins une séance faite, en
+  remontant depuis la semaine dernière. Une semaine sans séance programmée conserve la série sans
+  l'allonger ; une semaine terminée avec au moins une séance programmée et aucune faite
+  l'interrompt. La semaine en cours l'allonge si elle compte déjà une séance faite, ne
+  l'interrompt jamais (revue du 18 novembre).
+- **Séance non rattrapée** (badge du coach, `docs/prompts/L7.md` décision 2, validée par le
+  développeur le 18 novembre) : une séance de ce coach au statut `manquee` ou `partielle` dont
+  l'échéance réelle de rattrapage de L6 est passée, soit `date_prevue < aujourd'hui − 7`
+  (Europe/Paris), la règle même de `demarrer_seance` (`0087_execution_regles.sql`). Le badge
+  compte celles dont le jour prévu suit le jour (Europe/Paris) où le client a terminé sa dernière
+  séance faite chez ce coach ; s'il n'en a fait aucune, toutes depuis sa première séance
+  programmée. Dès qu'il termine une séance, le compte repart de zéro et le badge disparaît. Une
+  semaine sans séance programmée et une séance encore rattrapable ne déclenchent rien.
 
 ### 5.4 Délai de réponse d'un coach
 Médiane, sur 30 jours, du temps entre un message client et la première réponse du coach dans la

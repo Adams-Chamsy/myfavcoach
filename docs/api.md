@@ -500,6 +500,18 @@ mesures (`POST /moi/mesures`) passe par PostgREST, avec contrôle du consentemen
 français et du nombre de jours quand il y en a un. **Le libellé vient du serveur**, pour que la
 règle « aucun statut porté par la seule couleur » tienne d'un bout à l'autre.
 
+**Précisé le 18 novembre 2026 (L7, `docs/prompts/L7.md`).** Comme depuis L5, lectures et écritures
+passent par des fonctions de base, jamais par une table : `enregistrer_mesure` (refus
+`consentement_sante_absent`, `mesure_invalide`), `mes_mesures`, `mon_suivi`, `mes_clients`,
+`fiche_client` (refus `client_introuvable` : pas un abonné de ce coach), `enregistrer_notes_client`,
+`mon_pilotage`, `mes_anciens_clients` (décision 6). `fiche_client` rend aussi un ancien client,
+en lecture seule ; `enregistrer_notes_client` le refuse. Badges : `a_jour` « À jour »,
+`inactive` « {n} séance(s) non rattrapée(s) » (règle révisée à la revue du 18 novembre, décision
+2 ; la clé reste `inactive`), `nouveau` « Nouveau », `paiement_ko` « Paiement en échec ».
+`enregistrer_mesure` ne refuse que les saisies invalides ; les seuils de confirmation sont rendus
+par `mes_mesures`. **Aucune lecture du coach ne rend de donnée de
+santé** (poids, tour de taille, ressenti) : décision 1 de L7.
+
 ---
 
 ## 11. Messagerie (L8)

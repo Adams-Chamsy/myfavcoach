@@ -42,7 +42,8 @@ Avant le premier exercice, si la séance n'est pas démarrée : « Commencer la 
 
 Une feuille : « Comment s'est passée ta séance ? » — avec le consentement santé, le ressenti
 d'effort de 1 à 10 (« 1 · très facile » … « 10 · maximal ») ; sans lui, pas de question. Un
-commentaire facultatif (« Un mot pour {prénom du coach} ? »). « Enregistrer » : la séance passe à
+commentaire facultatif (« Un mot pour {prénom du coach} ? »), avec dessous « Ton coach pourra
+lire ce message. » (ajouté à la revue de L7 le 18 novembre 2026, livré en P7.5). « Enregistrer » : la séance passe à
 « faite ». Retour à l'accueil.
 
 ## Règles
