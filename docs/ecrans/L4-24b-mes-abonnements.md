@@ -41,7 +41,7 @@ réglages de L1-07.
 | `statut` (`docs/domaine.md` §4.3) | Étiquette | Ligne d'information | Actions |
 |---|---|---|---|
 | `actif` | ACTIF | prochain prélèvement, rappel de résiliation | « Mettre en pause », « Résilier » |
-| `en_attente_confirmation` | EN ATTENTE | « Ta banque n'a pas encore confirmé le premier prélèvement. » | aucune |
+| `en_attente_confirmation` | EN ATTENTE | « Ta banque n'a pas encore confirmé le premier prélèvement. Ton suivi commencera après sa confirmation. » | « Actualiser le statut » |
 | `en_pause` | EN PAUSE | « En pause jusqu'au {pauseJusquLe}. » | « Reprendre » |
 | `impaye` | PAIEMENT REFUSÉ | « Ton suivi continue jusqu'au {fin de la période de grâce}. » | « Régler » → écran 20, contexte échéance |
 | `suspendu` | SUSPENDU | « Suivi interrompu. Règle le paiement avant le {date} pour le reprendre. » | « Régler » → écran 20, contexte échéance |
@@ -50,7 +50,10 @@ réglages de L1-07.
 Pour `impaye` et `suspendu`, les deux dates viennent du détail de l'abonnement
 (`detail_abonnement` : `graceJusquAu`, `regularisationAvantLe`), lu pour ces seuls abonnements
 (15 novembre 2026). Si ce détail ne se lit pas, la carte garde son étiquette et « Régler », sans
-ligne datée.
+ligne datée. Pour un impayé, une indication renvoie vers « Régler ».
+
+**Actualiser le statut** relit les abonnements auprès du serveur. En cas d'échec, la dernière
+carte connue reste visible et un message invite à réessayer.
 
 `resilie` et `annule` n'apparaissent pas : l'historique relève des factures et reçus (C-05, L5).
 Toutes les dates viennent du serveur (`GET /abonnements`, `GET /abonnements/{id}` — « période de
