@@ -44,7 +44,8 @@ type Donnees = {
 };
 
 type RetourVersement =
-  | { type: 'envoye' }
+  | { type: 'transfere' }
+  | { type: 'en_cours' }
   | { type: 'demain' }
   | { type: 'echoue' }
   | { type: 'refus'; refus: RefusServeur }
@@ -69,7 +70,7 @@ function aujourdhuiParis(): string {
 export const LIBELLES_STATUT_VERSEMENT: Record<StatutVersement, string> = {
   prevu: 'Prévu',
   en_cours: 'En cours',
-  verse: 'Versé',
+  verse: 'Transféré à Stripe',
   echoue: 'Échoué',
 };
 
@@ -157,11 +158,11 @@ export function EcranRevenus({
       const resultat = await port.demanderVersement();
       if (resultat.issue === 'ok') {
         setRetour(
-          resultat.statut === 'verse' || resultat.statut === 'en_cours'
-            ? { type: 'envoye' }
-            : resultat.statut === 'prevu'
-              ? { type: 'demain' }
-              : { type: 'echoue' },
+          resultat.statut === 'prevu'
+            ? { type: 'demain' }
+            : resultat.statut === 'verse'
+              ? { type: 'transfere' }
+              : { type: resultat.statut },
         );
       } else {
         setRetour(
@@ -304,7 +305,7 @@ export function EcranRevenus({
               'label',
               theme.couleur.texte.secondaire,
             )}
-            {texte('Net à percevoir', 'corps', theme.couleur.texte.secondaire)}
+            {texte('Net des ventes du mois', 'corps', theme.couleur.texte.secondaire)}
             <Text
               accessibilityRole="header"
               style={{ ...theme.texte.display, color: theme.couleur.texte.principal }}
@@ -334,7 +335,7 @@ export function EcranRevenus({
                   backgroundColor: theme.couleur.bordure.discrete,
                 }}
               />
-              <Ligne libelle="Total net" valeur={euros(mois.netCentimes)} fort />
+              <Ligne libelle="Net après commission" valeur={euros(mois.netCentimes)} fort />
             </View>
           </Carte>
         ) : null}
@@ -343,7 +344,7 @@ export function EcranRevenus({
           <View style={{ padding: theme.espace[4], gap: theme.espace[3] }}>
             <Ligne libelle="Solde disponible" valeur={euros(solde.soldeCentimes)} fort />
             {texte(
-              `Prochain virement le ${dateCourte(solde.prochainVersementLe)}`,
+              `Prochain transfert prévu le ${dateCourte(solde.prochainVersementLe)}`,
               'petit',
               theme.couleur.texte.secondaire,
             )}
@@ -362,7 +363,14 @@ export function EcranRevenus({
         </Carte>
 
         <View style={{ gap: theme.espace[2] }}>
-          {texte('Derniers virements', 'titre3')}
+          {texte('Derniers transferts', 'titre3')}
+          {versements.some((v) => v.statut === 'verse')
+            ? texte(
+                'Consulte ton espace Stripe pour suivre le virement vers ta banque.',
+                'petit',
+                theme.couleur.texte.secondaire,
+              )
+            : null}
           {versements.length === 0
             ? texte('Aucun virement pour l’instant.', 'petit', theme.couleur.texte.secondaire)
             : versements.map((v) => (
@@ -448,7 +456,7 @@ function Histogramme({ revenus }: { revenus: RevenusMois[] }) {
   return (
     <View
       accessible
-      accessibilityLabel={`Net des six derniers mois : ${resume}`}
+      accessibilityLabel={`Net des ventes des six derniers mois : ${resume}`}
       style={{ flexDirection: 'row', alignItems: 'flex-end', gap: theme.espace[2] }}
     >
       {chronologiques.map((r, i) => (
@@ -481,8 +489,10 @@ function MessageVersement({ retour }: { retour: RetourVersement }) {
     </Text>
   );
   switch (retour.type) {
-    case 'envoye':
-      return phrase('Virement envoyé.', theme.couleur.etat.succesEncre);
+    case 'transfere':
+      return phrase('Montant transféré sur ton compte Stripe.', theme.couleur.etat.succesEncre);
+    case 'en_cours':
+      return phrase('Transfert vers Stripe en cours.', theme.couleur.texte.principal);
     case 'demain':
       return phrase('Ton virement partira demain.', theme.couleur.texte.principal);
     case 'echoue':
