@@ -25,7 +25,8 @@ publiée) restent telles quelles. La carte « Importer mes clients » (L3bis) re
 
 Titre « Bonjour {prénom} ».
 
-1. **Revenus du mois** — « Revenus de {mois} » et le net du mois (`mes_revenus`, L5) en grand.
+1. **Revenus du mois** — « Revenus de {mois} » et le net des ventes du mois (`mes_revenus`, L5)
+   en grand. C'est le montant encaissé sur le mois moins la commission correspondante.
    Presser la carte ouvre l'onglet « Revenus ».
 2. **Deux tuiles** :
    - « Clients » et, dessous, « avec accès au suivi » : le nombre de clients dont l'abonnement

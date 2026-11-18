@@ -71,15 +71,15 @@ describe('L5-13 · Revenus', () => {
   // Contenu 2 à 6 ; critère 1 (tout du serveur) ; corrections 1 à 3 (critère 5).
   it('le mois, le net, le détail, le solde et les virements, tels que le serveur les rend', async () => {
     await rendre();
-    await waitFor(() => expect(screen.queryByText('Net à percevoir')).toBeTruthy());
+    await waitFor(() => expect(screen.queryByText('Net des ventes du mois')).toBeTruthy());
     expect(screen.getByText('Août 2026')).toBeTruthy();
     expect(screen.getAllByText('2 696,00 €').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('28 abonnements')).toBeTruthy();
     expect(screen.getByText('3 020,00 €')).toBeTruthy();
     expect(screen.getByText('Commission plateforme')).toBeTruthy();
     expect(screen.getByText('−324,00 €')).toBeTruthy();
-    expect(screen.getByText('Prochain virement le 5 septembre')).toBeTruthy();
-    expect(screen.getByText('Versé')).toBeTruthy();
+    expect(screen.getByText('Prochain transfert prévu le 5 septembre')).toBeTruthy();
+    expect(screen.getByText('Transféré à Stripe')).toBeTruthy();
     expect(screen.getByText('En cours')).toBeTruthy();
     const tout = textesLisibles(screen.container as unknown as NoeudHote).join(' ');
     expect(tout).not.toMatch(/séance|à l’unité|CIC|••|10 %/i);
@@ -90,7 +90,9 @@ describe('L5-13 · Revenus', () => {
   it('l’histogramme se lit en une phrase, du plus ancien au plus récent', async () => {
     await rendre();
     await waitFor(() =>
-      expect(screen.queryByLabelText(/^Net des six derniers mois : mars 1 132,00 €/)).toBeTruthy(),
+      expect(
+        screen.queryByLabelText(/^Net des ventes des six derniers mois : mars 1 132,00 €/),
+      ).toBeTruthy(),
     );
     expect(screen.getByLabelText(/août 2 696,00 €$/)).toBeTruthy();
   });
@@ -156,21 +158,27 @@ describe('L5-13 · Revenus', () => {
   });
 
   // Règles : la confirmation dit le montant, puis l'état rendu, et l'écran relit.
-  it('virement immédiat : confirmation avec le montant, puis « Virement envoyé. », et l’écran relit', async () => {
-    const { port } = await rendre((p) =>
-      p.definirReponseVersementPourTest({ issue: 'ok', statut: 'verse' }),
-    );
-    await waitFor(() =>
-      expect(screen.queryByRole('button', { name: 'Virement immédiat · 1 €' })).toBeTruthy(),
-    );
-    await fireEvent.press(screen.getByRole('button', { name: 'Virement immédiat · 1 €' }));
-    await waitFor(() => expect(screen.queryByText('Virer 2 695,00 € maintenant ?')).toBeTruthy());
-    const lectures = jest.spyOn(port, 'lireSolde');
-    await fireEvent.press(screen.getByRole('button', { name: 'Virer' }));
-    await waitFor(() => expect(screen.queryByText('Virement envoyé.')).toBeTruthy());
-    expect(port.lireDemandesVersementPourTest()).toBe(1);
-    expect(lectures).toHaveBeenCalled();
-  });
+  it.each([
+    ['verse', 'Montant transféré sur ton compte Stripe.'],
+    ['en_cours', 'Transfert vers Stripe en cours.'],
+  ] as const)(
+    'virement immédiat : affiche le montant, puis l’état %s et relit le solde',
+    async (statut, message) => {
+      const { port } = await rendre((p) =>
+        p.definirReponseVersementPourTest({ issue: 'ok', statut }),
+      );
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: 'Virement immédiat · 1 €' })).toBeTruthy(),
+      );
+      await fireEvent.press(screen.getByRole('button', { name: 'Virement immédiat · 1 €' }));
+      await waitFor(() => expect(screen.queryByText('Virer 2 695,00 € maintenant ?')).toBeTruthy());
+      const lectures = jest.spyOn(port, 'lireSolde');
+      await fireEvent.press(screen.getByRole('button', { name: 'Virer' }));
+      expect(await screen.findByText(message)).toBeTruthy();
+      expect(port.lireDemandesVersementPourTest()).toBe(1);
+      expect(lectures).toHaveBeenCalled();
+    },
+  );
 
   it('virement reporté (fonds pas encore disponibles) : « Ton virement partira demain. »', async () => {
     await rendre((p) => p.definirReponseVersementPourTest({ issue: 'ok', statut: 'prevu' }));
@@ -225,6 +233,6 @@ describe('L5-13 · Revenus', () => {
     });
     await waitFor(() => expect(screen.queryByText('On a un souci de notre côté')).toBeTruthy());
     await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
-    await waitFor(() => expect(screen.queryByText('Net à percevoir')).toBeTruthy());
+    await waitFor(() => expect(screen.queryByText('Net des ventes du mois')).toBeTruthy());
   });
 });

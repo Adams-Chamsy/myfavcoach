@@ -1076,9 +1076,12 @@ Aucune géolocalisation précise de l'utilisateur au jalon 1. Un coach « visio 
 que soit la commune.
 
 ### 5.8 Revenus du coach (écran 13)
-`net = encaissements du mois − commissions − versements déjà émis`.
-Les trois lignes sont affichées séparément, la commission en rouge, avec son taux. La variation
-mensuelle (« +12 % ») compare au même mois précédent, masquée si moins de 2 mois d'historique.
+
+Le **net des ventes du mois** est la somme des encaissements du mois civil à Paris diminuée
+des commissions correspondantes (`mes_revenus`). Revenus et Pilotage utilisent ce montant.
+Le détail affiche les encaissements, la commission totale en euros et le net. Le **solde
+disponible** vient de `mon_solde` et tient compte des transferts en cours ou acceptés (§3.10).
+Les transferts acceptés sont indiqués « Transféré à Stripe » dans l'historique.
 
 ---
 
