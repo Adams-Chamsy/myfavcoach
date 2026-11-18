@@ -101,3 +101,12 @@ changement de session ; un rejet de lecture affiche l’erreur existante avec «
 Un profil absent propose un retour à la découverte. L’abonnement demande un client ayant
 terminé son onboarding ; un espace coach actif propose de rejoindre son espace pour
 basculer volontairement, sans changement de profil silencieux.
+
+
+## Partage du profil
+
+« Partager le profil » ouvre le partage système sur mobile. Sur le web, « Copier le lien du
+profil » copie l’adresse et confirme le geste. L’adresse canonique désigne la route publique
+`https://myfavcoach.fr/profil/{id}`, accessible sans compte, avec les offres publiées.
+Un profil indisponible propose de revenir à la découverte. Depuis un profil partagé,
+« S’abonner » reprend le parcours visiteur existant après connexion ou inscription.
