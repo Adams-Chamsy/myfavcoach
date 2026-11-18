@@ -77,6 +77,7 @@ import Export from './(compte)/export';
 import { CorpsDocumentLegal } from './(public)/documents/[type]';
 import { CorpsProfilCoachPublic } from './(client)/coach/[id]';
 import { VitrineVideoDemo } from '@/fonctionnalites/decouverte/vitrine-video-demo';
+import { ModerationVideoDemo } from '@/fonctionnalites/decouverte/moderation-video-demo';
 import { EcranChoixOffre } from '@/fonctionnalites/abonnement/ecran-choix-offre';
 import { BlocMesAbonnements } from '@/fonctionnalites/abonnement/bloc-mes-abonnements';
 import { EcranConfirmation } from '@/fonctionnalites/abonnement/ecran-confirmation';
@@ -1418,6 +1419,10 @@ const ECRANS_L2: { titre: string; rendu: () => ReactNode }[] = [
   {
     titre: 'Profil coach public · Vitrine vidéo de démonstration',
     rendu: () => <ProfilCoachPublicAvecFixture vitrine />,
+  },
+  {
+    titre: 'Vitrine vidéo · Publication et modération simulées',
+    rendu: () => <ModerationVideoDemo />,
   },
 ];
 
