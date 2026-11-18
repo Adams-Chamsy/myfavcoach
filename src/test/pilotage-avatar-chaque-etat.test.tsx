@@ -17,6 +17,10 @@ import { FournisseurTheme } from '@/theme/fournisseur';
 // ferait : il ne construit jamais le geste (CLAUDE.md §8, doublures et chemins).
 
 jest.mock('expo-router', () => ({
+  useFocusEffect: (effet: () => void | (() => void)) => {
+    const { useEffect } = jest.requireActual<typeof import('react')>('react');
+    useEffect(effet, [effet]);
+  },
   useRouter: () => ({
     push: jest.fn(),
     replace: jest.fn(),

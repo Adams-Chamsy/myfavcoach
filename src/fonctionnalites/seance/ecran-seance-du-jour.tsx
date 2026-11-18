@@ -511,6 +511,9 @@ function FeuilleFin({
         multiligne
         longueurMax={500}
       />
+      <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+        Ton coach pourra lire ce message.
+      </Text>
       {refus ? <BandeauRefus refus={refus} /> : null}
       <Bouton
         libelle={envoi ? 'Envoi en cours…' : 'Enregistrer'}

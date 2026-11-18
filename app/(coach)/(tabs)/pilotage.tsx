@@ -1,30 +1,25 @@
 import { CanevasEcran } from '@/composants/canevas-ecran';
-import { useRouter } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
 import { View } from 'react-native';
 
-import { EcranProvisoire } from '@/composants/ecran-provisoire';
 import { EtatErreur } from '@/composants/etats/etat-erreur';
 import { textesRepliErreur } from '@/composants/etats/textes';
 import { AttenteVerification } from '@/fonctionnalites/coach/attente-verification';
-import { CarteImporterClients } from '@/fonctionnalites/coach/carte-importer-clients';
 import { EnTeteEspaceCoach } from '@/fonctionnalites/coach/en-tete-espace-coach';
 import { PremierLancement, type LigneMiseEnRoute } from '@/fonctionnalites/coach/premier-lancement';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { FeuilleBascule } from '@/fonctionnalites/identite/feuille-bascule';
 import type { DossierVerification, Offre } from '@/services/donnees/port';
+import { PilotageCoach } from '@/fonctionnalites/suivi/pilotage-coach';
 import { useTheme } from '@/theme/fournisseur';
 
 // Écran 08 (docs/perimetre.md). L2-09 et L2-11 (docs/prompts/L2.md P2.9) : tant que le dossier
 // n'est pas `verifiee`, cette route rend L2-09 EN ENTIER (pas une carte ajoutée) ; une fois
 // vérifié, L2-11 tant qu'aucune offre n'est publiée (proxy le plus honnête disponible à ce lot
 // pour "aucun abonné actif" — Abonnement n'existe pas encore, L4/L7). Au-delà, l'écran de
-// pilotage (L7) reste provisoire, à une exception près : la carte d'entrée L3bis vers
-// « Importer mes clients » (docs/ecrans/L3bis-I01-inviter-mes-clients.md, Règles), seul chemin
-// qui rend I-01 atteignable à ce lot.
+// pilotage L7 assemble le suivi des clients, les revenus du mois et l’entrée vers les invitations.
 export default function Pilotage() {
   const theme = useTheme();
-  const router = useRouter();
   const { profils, port } = useDonnees();
   const [feuilleOuverte, setFeuilleOuverte] = useState(false);
   const [dossier, setDossier] = useState<DossierVerification | null>(null);
@@ -104,12 +99,7 @@ export default function Pilotage() {
     titre = `Bienvenue ${profils.identiteActive.prenom}`;
     contenu = <PremierLancement lignes={lignes} />;
   } else {
-    contenu = (
-      <>
-        <CarteImporterClients onPress={() => router.push('/(coach)/invitations')} />
-        <EcranProvisoire titre="Pilotage" lot="L7" />
-      </>
-    );
+    contenu = <PilotageCoach prenom={profils.identiteActive.prenom} />;
   }
 
   return (

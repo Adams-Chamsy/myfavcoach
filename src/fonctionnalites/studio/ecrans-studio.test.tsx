@@ -154,6 +154,25 @@ describe('L6-11 · Studio', () => {
     port.definirAbonnesAffectablesPourTest([
       { profilClientId: 'client-sophie', prenom: 'Sophie', initialeNom: 'L' },
     ]);
+    port.definirMesClientsPourTest({
+      clients: [
+        {
+          profilClientId: 'client-sophie',
+          prenom: 'Sophie',
+          nom: 'Lambert',
+          offre: 'Suivi complet',
+          statut: 'actif',
+          badge: 'a_jour',
+          badgeN: null,
+          semaine: 1,
+          semaineEnCours: { lundi: '2026-11-16', faites: 0, prevues: 0 },
+          programmeEnCours: false,
+          pauseJusquLe: null,
+          finAccesLe: null,
+        },
+      ],
+      compteurs: { tous: 1, aRelancer: 0, nouveaux: 0, anciens: 0 },
+    });
     await rendre(
       <EcranProgramme programmeId={programme} onRetour={jest.fn()} onOuvrirSeance={jest.fn()} />,
       port,
@@ -164,8 +183,8 @@ describe('L6-11 · Studio', () => {
     await waitFor(() => expect(screen.queryByText('PUBLIÉ')).toBeTruthy());
 
     await fireEvent.press(screen.getByRole('button', { name: 'Affecter à un abonné' }));
-    await waitFor(() => expect(screen.queryByText('Sophie L.')).toBeTruthy());
-    await fireEvent.press(screen.getByText('Sophie L.'));
+    await waitFor(() => expect(screen.queryByText('Sophie Lambert')).toBeTruthy());
+    await fireEvent.press(screen.getByText('Sophie Lambert'));
     await fireEvent.press(screen.getByRole('button', { name: 'Affecter' }));
     await waitFor(() =>
       expect(

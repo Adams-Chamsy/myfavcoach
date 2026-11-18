@@ -393,6 +393,7 @@ function FeuilleAffectation({
   const theme = useTheme();
   const { port } = useDonnees();
   const [abonnes, setAbonnes] = useState<AbonneAffectable[] | null>(null);
+  const [noms, setNoms] = useState<Record<string, string | null>>({});
   const [choisi, setChoisi] = useState<string | null>(null);
   const [debut, setDebut] = useState(0);
   const [envoi, setEnvoi] = useState(false);
@@ -401,10 +402,17 @@ function FeuilleAffectation({
 
   useEffect(() => {
     let monte = true;
-    port
-      .lireAbonnesAffectables()
-      .then((lus) => {
-        if (monte) setAbonnes(lus);
+    Promise.all([
+      port.lireAbonnesAffectables(),
+      port
+        .lireMesClients()
+        .then((r) => r.clients)
+        .catch(() => []),
+    ])
+      .then(([lus, clients]) => {
+        if (!monte) return;
+        setNoms(Object.fromEntries(clients.map((c) => [c.profilClientId, c.nom])));
+        setAbonnes(lus);
       })
       .catch(() => {
         if (monte) setAbonnes([]);
@@ -450,7 +458,16 @@ function FeuilleAffectation({
               <Chip
                 key={a.profilClientId}
                 variante="selection"
-                libelle={`${a.prenom} ${a.initialeNom}.`}
+                libelle={[
+                  a.prenom,
+                  a.profilClientId in noms
+                    ? noms[a.profilClientId]
+                    : a.initialeNom
+                      ? a.initialeNom + '.'
+                      : null,
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
                 selectionne={choisi === a.profilClientId}
                 onPress={() => setChoisi(a.profilClientId)}
               />

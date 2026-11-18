@@ -14,6 +14,8 @@ import Moi from '../../app/(client)/(tabs)/moi';
 import MoiCoach from '../../app/(coach)/(tabs)/moi';
 import Pilotage from '../../app/(coach)/(tabs)/pilotage';
 import Clients from '../../app/(coach)/(tabs)/clients';
+import AnciensClients from '../../app/(coach)/anciens-clients';
+import FicheClient from '../../app/(coach)/client/[clientId]';
 import Agenda from '../../app/(coach)/(tabs)/agenda';
 import Revenus from '../../app/(coach)/(tabs)/revenus';
 import Bienvenue from '../../app/(public)/index';
@@ -594,6 +596,26 @@ function portDonneesChoixOffre() {
 
 const CORPUS: EntreeCorpus[] = [
   {
+    nom: 'app/(coach)/anciens-clients.tsx',
+    creerElement: () => (
+      <FournisseurSession key="anciens-clients" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <AnciensClients />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
+    nom: 'app/(coach)/client/[clientId].tsx',
+    creerElement: () => (
+      <FournisseurSession key="fiche-client" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <FicheClient />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
+  {
     nom: 'app/_galerie.tsx',
     creerElement: () => <Galerie key="galerie" />,
     dejaEnveloppe: true,
@@ -873,7 +895,16 @@ const CORPUS: EntreeCorpus[] = [
       );
     },
   },
-  { nom: 'app/(coach)/(tabs)/clients.tsx', creerElement: () => <Clients key="clients" /> },
+  {
+    nom: 'app/(coach)/(tabs)/clients.tsx',
+    creerElement: () => (
+      <FournisseurSession key="clients" port={portAuthOnboarding}>
+        <FournisseurDonnees port={portDonneesOnboarding}>
+          <Clients />
+        </FournisseurDonnees>
+      </FournisseurSession>
+    ),
+  },
   { nom: 'app/(coach)/(tabs)/agenda.tsx', creerElement: () => <Agenda key="agenda" /> },
   {
     // L5 : rendu avec les données de la maquette 13 (src/fixtures/demonstration.ts), coach pas
