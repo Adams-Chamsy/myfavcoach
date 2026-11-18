@@ -982,6 +982,20 @@ export const portDonneesSupabase: PortDonnees = {
     return { succes: true };
   },
 
+  async lireMesCoachsSuivis() {
+    const { data, error } = await supabase.rpc('mes_coachs_suivis');
+    if (error) throw error;
+    return data;
+  },
+
+  async definirSuiviCoach(coachId, suivre) {
+    const { error } = await supabase.rpc('definir_suivi_coach', {
+      p_coach_id: coachId,
+      p_suivre: suivre,
+    });
+    if (error) throw error;
+  },
+
   async lireProfilCoachPublic(coachId) {
     const { data, error } = await supabase
       .from('profils_coach')

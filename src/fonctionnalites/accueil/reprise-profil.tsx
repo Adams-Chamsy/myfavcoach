@@ -38,7 +38,10 @@ export function ConsommationRetourCoach(): null {
     // derrière la connexion et consommer l'intention avant que la navigation ait eu lieu.
     if (
       retourCoach &&
-      (deconnexion || annulation || (compte && (profilAtteint || segments[0] === '(coach)')))
+      (deconnexion ||
+        annulation ||
+        (compte &&
+          (segments[0] === '(coach)' || (profilAtteint && retourCoach.intention !== 'suivre'))))
     )
       oublierRetour();
   }, [segments, id, session, retourCoach, oublierRetour]);

@@ -307,6 +307,7 @@ function profilOnboardingVide(): ProfilOnboarding {
 // une restauration globale entre tests).
 export function creerFauxPortDonnees(): FauxPortDonnees {
   let etat: EtatProfils = etatProfilsParDefaut();
+  const coachsSuivis = new Set<string>();
   let profilOnboarding: ProfilOnboarding = profilOnboardingVide();
   let informations: InformationsCompte = informationsCompteParDefaut();
   // État courant du consentement santé (journal réduit à son dernier état, suffisant ici).
@@ -812,6 +813,28 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     definirProfilsCoachPublicsPourTest(profils) {
       profilsCoachPublics = profils;
     },
+    async lireMesCoachsSuivis() {
+      if (etat.profilActif !== 'client' || !etat.clientExiste)
+        throw new Error('profil_client_requis');
+      return [...coachsSuivis].reverse().flatMap((id) => {
+        const coach = profilsCoachPublics[id];
+        if (!coach?.verifiee) return [];
+        const { prenom, nom, discipline } = coach;
+        return [{ id, prenom, nom, discipline }];
+      });
+    },
+
+    async definirSuiviCoach(coachId, suivre) {
+      if (etat.profilActif !== 'client' || !etat.clientExiste)
+        throw new Error('profil_client_requis');
+      if (!suivre) {
+        coachsSuivis.delete(coachId);
+        return;
+      }
+      if (!profilsCoachPublics[coachId]?.verifiee) throw new Error('coach_indisponible');
+      coachsSuivis.add(coachId);
+    },
+
     async lireProfilCoachPublic(coachId: string) {
       return profilsCoachPublics[coachId] ?? null;
     },

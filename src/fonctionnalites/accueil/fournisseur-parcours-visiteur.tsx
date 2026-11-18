@@ -21,7 +21,7 @@ type ParcoursVisiteur = {
   marqueVue: boolean;
   retourCoach: RetourCoach | null;
   terminerOuverture(): void;
-  retenirCoach(coachId: string): void;
+  retenirCoach(coachId: string, intention?: RetourCoach['intention']): void;
   oublierRetour(): void;
 };
 
@@ -90,10 +90,10 @@ export function FournisseurParcoursVisiteur({
     ecrire(() => port.marquerOuvertureVue());
   }, [port, ecrire]);
   const retenirCoach = useCallback(
-    (coachId: string) => {
+    (coachId: string, intention?: RetourCoach['intention']) => {
       if (!estIdentifiantCoach(coachId)) return;
       revision.current += 1;
-      const retourCoach = { coachId, creeLe: Date.now() };
+      const retourCoach = { coachId, creeLe: Date.now(), ...(intention ? { intention } : {}) };
       setEtat((e) => ({ ...e, chargement: false, retourCoach }));
       ecrire(() => port.enregistrerRetour(retourCoach));
     },

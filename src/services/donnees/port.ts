@@ -882,6 +882,8 @@ export type PortDonnees = {
   // n'existe pas ou si son compte est supprimé.
   lireProfilCoachPublic(coachId: string): Promise<ProfilCoachPublic | null>;
   lireOffresPublieesDeCoach(coachId: string): Promise<Offre[]>;
+  lireMesCoachsSuivis(): Promise<Pick<ProfilCoachPublic, 'id' | 'prenom' | 'nom' | 'discipline'>[]>;
+  definirSuiviCoach(coachId: string, suivre: boolean): Promise<void>;
 
   // L1-08/L3 : le catalogue de disciplines (voir `Discipline`). Lecture publique (anon compris,
   // comme les communes de L3-02) — actives seulement, triées par ordre_affichage. Remplace

@@ -345,6 +345,8 @@ describe('secrets interdits côté application', () => {
       // réaffirmation des droits des fonctions du coach (convention de 0031).
       'supabase/migrations/0092_preparer_clients_coach.sql',
       'supabase/migrations/0093_clients_coach_regles.sql',
+      // 0094 nomme le rôle serveur uniquement pour révoquer ses accès au suivi.
+      'supabase/migrations/0094_suivre_un_coach.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

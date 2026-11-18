@@ -1,6 +1,6 @@
 // Préférences d'interface et destination publique uniquement. Aucun jeton de session,
 // identifiant de paiement ou contenu d'onboarding n'entre dans ce stockage.
-export type RetourCoach = { coachId: string; creeLe: number };
+export type RetourCoach = { coachId: string; creeLe: number; intention?: 'suivre' };
 export type PreferencesAccueil = { marqueVue: boolean; retourCoach: RetourCoach | null };
 export type PortAccueil = {
   lire(): Promise<PreferencesAccueil>;
@@ -25,7 +25,13 @@ export function lireRetourCoach(brut: string | null, maintenant = Date.now()): R
     if (!('creeLe' in valeur) || typeof valeur.creeLe !== 'number') return null;
     const age = maintenant - valeur.creeLe;
     return Number.isFinite(age) && age >= 0 && age < DUREE_REPRISE_MS
-      ? { coachId: valeur.coachId, creeLe: valeur.creeLe }
+      ? {
+          coachId: valeur.coachId,
+          creeLe: valeur.creeLe,
+          ...('intention' in valeur && valeur.intention === 'suivre'
+            ? { intention: 'suivre' }
+            : {}),
+        }
       : null;
   } catch {
     return null;

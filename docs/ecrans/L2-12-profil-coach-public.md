@@ -110,3 +110,14 @@ profil » copie l’adresse et confirme le geste. L’adresse canonique désigne
 `https://myfavcoach.fr/profil/{id}`, accessible sans compte, avec les offres publiées.
 Un profil indisponible propose de revenir à la découverte. Depuis un profil partagé,
 « S’abonner » reprend le parcours visiteur existant après connexion ou inscription.
+
+
+## Suivre un coach
+
+Un client peut suivre gratuitement un coach vérifié depuis son profil public. Le bouton
+« Suivre » mène à la connexion pour un visiteur, conserve l'intention pendant l'inscription
+et active le suivi au retour d'un client dont le profil est prêt. « Suivi » permet de le retirer.
+
+« Coachs suivis » est accessible depuis l'onglet « Moi » côté client. Cette liste se relit
+au retour d'un profil et ne contient que les suivis du client connecté. Les coachs n'ont
+pas accès aux noms de leurs suiveurs. Ce parcours ne déclenche aucune notification.

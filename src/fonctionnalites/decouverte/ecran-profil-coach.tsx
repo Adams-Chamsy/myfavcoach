@@ -31,6 +31,8 @@ import { OngletAvis } from '@/fonctionnalites/avis/onglet-avis';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import type { Offre, ProfilCoachPublic } from '@/services/donnees/port';
+import { estIdentifiantCoach } from '@/services/accueil/port';
+import { BoutonSuivreCoach } from './bouton-suivre-coach';
 import { useTheme } from '@/theme/fournisseur';
 
 type Onglet = 'offres' | 'avis' | 'parcours';
@@ -262,6 +264,16 @@ export function CorpsProfilCoachPublic({
                 variante="secondaire"
                 onPress={partagerProfil}
               />
+              {profil.verifiee && estIdentifiantCoach(coachId) && !espaceCoach ? (
+                <BoutonSuivreCoach
+                  key={`${coachId}:${session?.compteId ?? 'visiteur'}`}
+                  coachId={coachId}
+                  clientPret={clientPret}
+                  chargement={
+                    sessionEnChargement || Boolean(session?.emailVerifie && donneesEnChargement)
+                  }
+                />
+              ) : null}
               {retourPartage?.coachId === coachId ? (
                 <Text
                   accessibilityLiveRegion="polite"

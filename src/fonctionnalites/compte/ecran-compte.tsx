@@ -221,6 +221,18 @@ export function EcranCompte() {
                   />
                 ) : null}
 
+                {profils?.profilActif === 'client' ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => router.push('/(client)/coachs-suivis' as Href)}
+                    style={{ minHeight: theme.taille.tapMin, justifyContent: 'center' }}
+                  >
+                    <Text style={{ ...theme.texte.label, color: theme.couleur.marque.primaire }}>
+                      Coachs suivis
+                    </Text>
+                  </Pressable>
+                ) : null}
+
                 <Carte>
                   {(aDesFactures && profils?.profilActif === 'client'
                     ? [

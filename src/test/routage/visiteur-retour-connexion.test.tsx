@@ -1,6 +1,6 @@
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { Share } from 'react-native';
-import { Stack } from 'expo-router';
+import { router, Stack, type Href } from 'expo-router';
 import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 import { FournisseurTheme } from '@/theme/fournisseur';
 import { FournisseurSession } from '@/fonctionnalites/identite/fournisseur-session';
@@ -21,7 +21,7 @@ afterEach(() => jest.useRealTimers());
 
 // Fiche L1-01a : ce que l’on retrouve derrière la connexion ne peut pas se prouver en
 // montant les écrans seuls. Le test appuie sur les vrais boutons, garde et pile comprises.
-it.each(['recherche', 'lien', 'lien indisponible'] as const)(
+it.each(['recherche', 'lien', 'lien indisponible', 'suivre'] as const)(
   'parcours visiteur depuis %s : accès au profil ou retour à la découverte',
   async (entree) => {
     const auth = creerFauxPortAuth();
@@ -107,6 +107,7 @@ it.each(['recherche', 'lien', 'lien indisponible'] as const)(
     const urlInitiale = {
       recherche: '/(public)',
       lien: `/profil/${COACH}`,
+      suivre: `/profil/${COACH}`,
       'lien indisponible': '/profil/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
     }[entree];
     const rendu = await renderRouter(
@@ -144,7 +145,11 @@ it.each(['recherche', 'lien', 'lien indisponible'] as const)(
     } finally {
       partager.mockRestore();
     }
-    await fireEvent.press(screen.getByText('S’abonner · 49 €/mois'));
+    await fireEvent.press(
+      entree === 'suivre'
+        ? screen.getByRole('button', { name: 'Suivre' })
+        : screen.getByText('S’abonner · 49 €/mois'),
+    );
     await act(() => jest.runAllTimersAsync());
     await waitFor(() => expect(screen.queryByText('Content de te revoir.')).toBeTruthy());
     await fireEvent.changeText(screen.getByLabelText('Adresse e-mail'), 'camille@exemple.fr');
@@ -154,6 +159,33 @@ it.each(['recherche', 'lien', 'lien indisponible'] as const)(
     await waitFor(() => expect(rendu.getPathname()).toBe(`/profil/${COACH}`));
     expect(screen.queryByText('Suivi complet')).toBeTruthy();
     expect(lireOffres).toHaveBeenCalledTimes(2);
+    if (entree === 'suivre') {
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: 'Ne plus suivre ce coach' })).toBeTruthy(),
+      );
+      expect(await donnees.lireMesCoachsSuivis()).toHaveLength(1);
+      expect(preferences.enregistrerRetour).toHaveBeenCalledWith(null);
+      await act(async () => router.push('/(client)/coachs-suivis' as Href));
+      await act(() => jest.runAllTimersAsync());
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('button', { name: 'Nadia Belkacem · Cybersécurité' }),
+        ).toBeTruthy(),
+      );
+      await fireEvent.press(screen.getByRole('button', { name: 'Nadia Belkacem · Cybersécurité' }));
+      await act(() => jest.runAllTimersAsync());
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: 'Ne plus suivre ce coach' })).toBeTruthy(),
+      );
+      await fireEvent.press(screen.getByRole('button', { name: 'Ne plus suivre ce coach' }));
+      await act(() => jest.runAllTimersAsync());
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Suivre' })).toBeTruthy());
+      expect(await donnees.lireMesCoachsSuivis()).toEqual([]);
+      await act(async () => router.back());
+      await act(() => jest.runAllTimersAsync());
+      await waitFor(() => expect(screen.queryByText('Tu ne suis encore aucun coach')).toBeTruthy());
+      return;
+    }
     expect(preferences.enregistrerRetour).toHaveBeenCalledWith(null);
     await fireEvent.press(screen.getByLabelText('Retour aux résultats'));
     await act(() => jest.runAllTimersAsync());
