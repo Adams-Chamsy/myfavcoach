@@ -98,6 +98,27 @@ describe('LayoutRacine (docs/ecrans/L0-04-demarrage.md)', () => {
       );
     });
 
+    it('ouvre la récupération sans transmettre le code quand le lien a expiré', async () => {
+      useFontsMock.mockReturnValue([true, null]);
+      getInitialURLMock.mockResolvedValueOnce('myfavcoach://auth/rappel?code=expire');
+      jest.mocked(portAuthSupabase.etablirSessionDepuisLien).mockResolvedValueOnce({
+        succes: false,
+        erreur: { code: 'lien_expire', message: 'Ce lien a expiré.' },
+      });
+      const remplacer = jest.spyOn(router, 'replace').mockImplementation(() => {});
+      try {
+        await act(async () => {
+          await render(<LayoutRacine />);
+        });
+        expect(remplacer).toHaveBeenCalledWith({
+          pathname: '/(public)/verification',
+          params: { lienExpire: '1' },
+        });
+      } finally {
+        remplacer.mockRestore();
+      }
+    });
+
     // Différent du cas ci-dessus, exprès : échanger le code ICI enverrait une session de
     // récupération toute fraîche droit vers garde.ts, qui la confondrait avec une session
     // normale et sauterait l'écran de changement de mot de passe.

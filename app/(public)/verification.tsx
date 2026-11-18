@@ -1,10 +1,11 @@
-import { CanevasEcran } from '@/composants/canevas-ecran';
+import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, AppState, Text, View } from 'react-native';
 
 import { Bouton } from '@/composants/bouton';
+import { Champ } from '@/composants/champ';
 import { Icone } from '@/composants/icones';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
 import type { ErreurAuth } from '@/services/auth/port';
@@ -37,21 +38,29 @@ function formaterDecompte(secondes: number): string {
 export default function Verification() {
   const theme = useTheme();
   const router = useRouter();
-  const params = useLocalSearchParams<{ email?: string }>();
-  const email = params.email ?? '';
+  const params = useLocalSearchParams<{ email?: string; lienExpire?: string }>();
+  const recuperation = params.lienExpire === '1';
+  const [adresseRenvoi, setAdresseRenvoi] = useState('');
+  const email = recuperation ? adresseRenvoi.trim() : (params.email ?? '');
   const { port, session } = useSession();
 
-  const [etat, setEtat] = useState<EtatEcran>({ type: 'attente' });
-  const [secondesRestantes, setSecondesRestantes] = useState(SECONDES_AVANT_RENVOI);
+  const [etat, setEtat] = useState<EtatEcran>({ type: recuperation ? 'lien_expire' : 'attente' });
+  const [secondesRestantes, setSecondesRestantes] = useState(
+    recuperation ? 0 : SECONDES_AVANT_RENVOI,
+  );
   const [chargementRenvoi, setChargementRenvoi] = useState(false);
+  const renvoiEnCours = useRef(false);
   const [nombreEchecs, setNombreEchecs] = useState(0);
+  const adresseValide = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   // Annonce le titre à l'arrivée (critère 6) — même mécanisme que EtatErreur
   // (src/composants/etats/etat-erreur.tsx) : announceForAccessibility, pas un déplacement de
   // focus.
   useEffect(() => {
-    AccessibilityInfo.announceForAccessibility('Regarde tes e-mails.');
-  }, []);
+    AccessibilityInfo.announceForAccessibility(
+      recuperation ? 'Ce lien a expiré' : 'Regarde tes e-mails.',
+    );
+  }, [recuperation]);
 
   // Décompte de renvoi (critère 1) : un intervalle réel, une seconde à la fois, jamais un
   // minuteur unique de 60 s — un test à minuteurs simulés doit pouvoir observer chaque palier.
@@ -124,9 +133,13 @@ export default function Verification() {
   }, [port, router]);
 
   async function surRenvoyer() {
+    if (!adresseValide || renvoiEnCours.current) return;
+    renvoiEnCours.current = true;
     setChargementRenvoi(true);
-    const resultat = await port.renvoyerVerification(email);
-    setChargementRenvoi(false);
+    const resultat = await port.renvoyerVerification(email).finally(() => {
+      renvoiEnCours.current = false;
+      setChargementRenvoi(false);
+    });
 
     if (!resultat.succes) {
       if (resultat.erreur.code === 'limite_debit') {
@@ -158,9 +171,9 @@ export default function Verification() {
 
   return (
     <CanevasEcran style={{ flex: 1, backgroundColor: theme.couleur.fond.canevas }}>
-      <View
-        style={{
-          flex: 1,
+      <DefilementEcran
+        contentContainerStyle={{
+          flexGrow: 1,
           justifyContent: 'center',
           padding: theme.espace.gouttiere,
           gap: theme.espace[6],
@@ -195,7 +208,9 @@ export default function Verification() {
               textAlign: 'center',
             }}
           >
-            Regarde tes e-mails.
+            {recuperation && etat.type === 'lien_expire'
+              ? 'Ce lien a expiré'
+              : 'Regarde tes e-mails.'}
           </Text>
 
           <Text
@@ -205,13 +220,21 @@ export default function Verification() {
               textAlign: 'center',
             }}
           >
-            On a envoyé un lien à{' '}
-            <Text style={{ fontWeight: '700', color: theme.couleur.texte.principal }}>{email}</Text>
-            . Clique dessus et on continue.
+            {recuperation ? (
+              'Saisis ton adresse pour demander un nouveau lien de vérification.'
+            ) : (
+              <>
+                On a envoyé un lien à{' '}
+                <Text style={{ fontWeight: '700', color: theme.couleur.texte.principal }}>
+                  {email}
+                </Text>
+                . Clique dessus et on continue.
+              </>
+            )}
           </Text>
         </View>
 
-        {etat.type === 'lien_expire' ? (
+        {!recuperation && etat.type === 'lien_expire' ? (
           <View
             style={{
               gap: theme.espace[3],
@@ -225,18 +248,36 @@ export default function Verification() {
             <Text style={{ ...theme.texte.actionAccent, color: theme.couleur.etat.erreurEncre }}>
               Ce lien a expiré
             </Text>
-            <Bouton variante="primaire" libelle="M’en renvoyer un" onPress={surRenvoyer} />
+            <Bouton
+              variante="primaire"
+              libelle="M’en renvoyer un"
+              onPress={surRenvoyer}
+              desactive={!adresseValide || chargementRenvoi}
+            />
           </View>
         ) : null}
 
         <View style={{ gap: theme.espace[3] }}>
+          {recuperation ? (
+            <Champ
+              libelle="Adresse e-mail"
+              type="email"
+              valeur={adresseRenvoi}
+              onChangeTexte={setAdresseRenvoi}
+              desactive={chargementRenvoi}
+            />
+          ) : null}
           <Bouton
             variante="secondaire"
             libelle={
-              secondesRestantes > 0 ? formaterDecompte(secondesRestantes) : "Renvoyer l'e-mail"
+              secondesRestantes > 0
+                ? formaterDecompte(secondesRestantes)
+                : recuperation && etat.type === 'lien_expire'
+                  ? 'M’en renvoyer un'
+                  : "Renvoyer l'e-mail"
             }
             onPress={surRenvoyer}
-            desactive={secondesRestantes > 0 || chargementRenvoi}
+            desactive={!adresseValide || secondesRestantes > 0 || chargementRenvoi}
           />
 
           {etat.type === 'renvoye' ? (
@@ -265,11 +306,13 @@ export default function Verification() {
             </Text>
           ) : null}
 
-          <Bouton
-            variante="discret"
-            libelle="Ce n’est pas la bonne adresse"
-            onPress={surAdresseIncorrecte}
-          />
+          {!recuperation ? (
+            <Bouton
+              variante="discret"
+              libelle="Ce n’est pas la bonne adresse"
+              onPress={surAdresseIncorrecte}
+            />
+          ) : null}
         </View>
 
         <View
@@ -301,7 +344,7 @@ export default function Verification() {
           </Text>
           <Bouton variante="discret" libelle="Se connecter" onPress={surSeConnecter} />
         </View>
-      </View>
+      </DefilementEcran>
     </CanevasEcran>
   );
 }
