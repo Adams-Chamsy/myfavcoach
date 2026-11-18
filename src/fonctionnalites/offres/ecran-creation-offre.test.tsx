@@ -89,6 +89,36 @@ async function remplirBrouillonComplet() {
 }
 
 describe('L2-15 · Créer et publier une offre', () => {
+  it('prévisualise les saisies et les centimes sans enregistrer le brouillon', async () => {
+    const { portDonnees } = await rendre();
+    portDonnees.definirInformationsPourTest({
+      profil: 'coach',
+      prenom: 'Nadia',
+      nom: 'Martin',
+      discipline: 'musculation',
+      titreCourt: null,
+      bio: null,
+      communeBaseInsee: null,
+      formats: ['visio', 'presentiel'],
+      parcoursTexte: null,
+      langues: [],
+      dateNaissance: '1990-01-01',
+    });
+    await remplirBrouillonComplet();
+    await fireEvent.press(screen.getByRole('button', { name: 'ajustement hebdomadaire' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Aperçu client' }));
+
+    expect(await screen.findByText('Suivi complet')).toBeTruthy();
+    expect(screen.getByText(/49,90/)).toBeTruthy();
+    expect(screen.getByText('Programme personnalisé')).toBeTruthy();
+    expect(screen.getByText('ajustement hebdomadaire')).toBeTruthy();
+    expect(await screen.findByText('En visio et en présentiel')).toBeTruthy();
+    expect(await portDonnees.lireMesOffres()).toHaveLength(0);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Revenir à l’édition' }));
+    expect((await screen.findByLabelText('Titre')).props.value).toBe('Suivi complet');
+  });
+
   // Réécrit le 2 novembre 2026 (décision validée la veille, critère 1 révisé de la fiche) :
   // « Publier » est INACTIF pour un coach non vérifié, avec une ligne qui le dit avant tout appui.
   // Avant : le bouton restait actif et menait au refus coach_non_verifie, affiché hors de vue.

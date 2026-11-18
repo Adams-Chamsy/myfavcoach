@@ -1,12 +1,13 @@
 import { CanevasEcran, DefilementEcran } from '@/composants/canevas-ecran';
 import { useEffect, useState } from 'react';
-import { Switch, Text, TextInput, View } from 'react-native';
+import { Keyboard, Switch, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bouton } from '@/composants/bouton';
 import { BoutonIcone } from '@/composants/bouton-icone';
 import { Champ } from '@/composants/champ';
 import { Chip } from '@/composants/chip';
+import { FeuilleBasse } from '@/composants/feuille-basse';
 import { Modale } from '@/composants/modale';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { useGardeSortie } from '@/fonctionnalites/navigation/garde-sortie';
@@ -14,6 +15,7 @@ import { textesRepliErreur } from '@/composants/etats/textes';
 import type { Offre, ResultatPublicationOffre, StatutVerification } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
 import { centimesDepuisSaisieEuros, saisieEurosDepuisCentimes } from './prix';
+import { CarteOffrePublique } from './carte-offre-publique';
 
 // L2-15 : réconciliation entre docs/domaine.md §3.3 (trois catégories) et la maquette (quatre
 // jetons au libellé différent) — non tranchée par la fiche elle-même ("à réconcilier en une
@@ -67,6 +69,7 @@ export function EcranCreationOffre({
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const { port } = useDonnees();
 
   const [id, setId] = useState<string | undefined>(offreExistante?.id);
@@ -82,6 +85,8 @@ export function EcranCreationOffre({
   const [publieeLe, setPublieeLe] = useState<string | null>(offreExistante?.publieeLe ?? null);
   const [retireeLe, setRetireeLe] = useState<string | null>(offreExistante?.retireeLe ?? null);
   const [chargement, setChargement] = useState(false);
+  const [apercuOuvert, setApercuOuvert] = useState(false);
+  const [formats, setFormats] = useState<string[]>([]);
   // Le retour de la dernière action, toujours affiché HORS de la zone de défilement : près
   // d'« Enregistrer » pour l'enregistrement, près de « Publier » pour la publication.
   const [retour, setRetour] = useState<Retour | null>(null);
@@ -132,6 +137,15 @@ export function EcranCreationOffre({
       engagementHumain: engagements,
       estMiseEnAvant: miseEnAvant,
     };
+  }
+
+  function ouvrirApercu() {
+    Keyboard.dismiss();
+    setApercuOuvert(true);
+    void port.lireInformations().then(
+      (info) => setFormats(info.profil === 'coach' ? info.formats : []),
+      () => setFormats([]),
+    );
   }
 
   async function surEnregistrer() {
@@ -213,7 +227,7 @@ export function EcranCreationOffre({
     if (resultat.succes) setRetireeLe(new Date().toISOString());
   }
 
-  return (
+  const formulaire = (
     // Mêmes textes que « Mes informations » (app/(compte)/informations.tsx), validés en L1.
     <Modale
       ouverte={sortieEnAttente !== null}
@@ -419,6 +433,12 @@ export function EcranCreationOffre({
               {raisonInactif}
             </Text>
           ) : null}
+          <Bouton
+            libelle="Aperçu client"
+            variante="secondaire"
+            onPress={ouvrirApercu}
+            desactive={chargement}
+          />
           {publieeLe && !retireeLe ? (
             <Bouton
               libelle="Retirer"
@@ -437,5 +457,44 @@ export function EcranCreationOffre({
         </View>
       </CanevasEcran>
     </Modale>
+  );
+
+  return (
+    <FeuilleBasse
+      ouverte={apercuOuvert}
+      onFermer={() => setApercuOuvert(false)}
+      enfants={
+        <View style={{ gap: theme.espace[4], maxHeight: height * 0.7 }}>
+          <Text
+            accessibilityRole="header"
+            style={{ ...theme.texte.titre3, color: theme.couleur.texte.principal }}
+          >
+            Aperçu client
+          </Text>
+          {formats.includes('visio') || formats.includes('presentiel') ? (
+            <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
+              {formats.includes('visio') && formats.includes('presentiel')
+                ? 'En visio et en présentiel'
+                : formats.includes('visio')
+                  ? 'En visio'
+                  : 'En présentiel'}
+            </Text>
+          ) : null}
+          <DefilementEcran>
+            <CarteOffrePublique
+              {...modifications()}
+              prixCentimes={prixValide ? prixCentimes : null}
+            />
+          </DefilementEcran>
+          <Bouton
+            libelle="Revenir à l’édition"
+            variante="secondaire"
+            onPress={() => setApercuOuvert(false)}
+          />
+        </View>
+      }
+    >
+      {formulaire}
+    </FeuilleBasse>
   );
 }
