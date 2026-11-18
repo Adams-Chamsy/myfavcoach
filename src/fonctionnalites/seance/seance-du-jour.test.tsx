@@ -73,6 +73,40 @@ async function rendre(element: ReactElement, port: FauxPort) {
 }
 
 describe('L6-05 · Séance du jour', () => {
+  it('affiche le planning, la date limite et ouvre seulement la séance à rattraper', async () => {
+    const port = creerFauxPortDonnees();
+    const onOuvrir = jest.fn();
+    const commune = {
+      dureeMinutes: 42,
+      coachPrenom: PRENOM,
+      coachNom: NOM,
+    };
+    jest.spyOn(port, 'lireMonPlanningSeances').mockResolvedValue([
+      {
+        ...commune,
+        id: 'sp-retard',
+        titre: 'Séance à reprendre',
+        datePrevue: '2026-11-17',
+        aRattraperAvant: '2026-11-24',
+      },
+      {
+        ...commune,
+        id: 'sp-future',
+        titre: 'Séance de vendredi',
+        datePrevue: '2026-11-27',
+        aRattraperAvant: null,
+      },
+    ]);
+
+    await rendre(<EcranOngletSeance onOuvrir={onOuvrir} />, port);
+
+    expect(await screen.findByText('Rattrapable jusqu’au 24 novembre 2026')).toBeTruthy();
+    expect(screen.getByText('Séance de vendredi')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Séance de vendredi/ })).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Rattraper Séance à reprendre' }));
+    expect(onOuvrir).toHaveBeenCalledWith('sp-retard');
+  });
+
   it('le bloc de l’accueil : titre, exercices, durée, coach ; « Commencer » ouvre la séance', async () => {
     const port = creerFauxPortDonnees();
     seance(port);

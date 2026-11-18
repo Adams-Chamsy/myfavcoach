@@ -1270,6 +1270,39 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
       const { exercices: _e, nombreExercices: _n, duJour: _d, ...reste } = x;
       return reste;
     },
+    async lireMonPlanningSeances() {
+      if (etat.profilActif !== 'client' || !etat.clientExiste)
+        throw new Error('profil_client_requis');
+      const jour = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(
+        new Date(),
+      );
+      const decaler = (date: string, jours: number) => {
+        const resultat = new Date(date + 'T00:00:00Z');
+        resultat.setUTCDate(resultat.getUTCDate() + jours);
+        return resultat.toISOString().slice(0, 10);
+      };
+      const debut = decaler(jour, -7);
+      const fin = decaler(jour, 14);
+      return seancesClient
+        .filter(
+          ({ datePrevue, statut }) =>
+            (datePrevue > jour && datePrevue <= fin && statut === 'a_faire') ||
+            (datePrevue >= debut &&
+              datePrevue < jour &&
+              (statut === 'manquee' || statut === 'partielle')),
+        )
+        .sort((a, b) => a.datePrevue.localeCompare(b.datePrevue) || a.titre.localeCompare(b.titre))
+        .map(({ id, titre, dureeMinutes, datePrevue, coachPrenom, coachNom }) => ({
+          id,
+          titre,
+          dureeMinutes,
+          datePrevue,
+          coachPrenom,
+          coachNom,
+          aRattraperAvant: datePrevue < jour ? decaler(datePrevue, 7) : null,
+        }));
+    },
+
     async lireSeancesDuJour() {
       return seancesClient
         .filter((x) => x.duJour)

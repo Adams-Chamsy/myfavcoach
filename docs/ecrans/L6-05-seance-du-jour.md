@@ -23,6 +23,15 @@ Si le client a une séance programmée aujourd'hui (chez un coach auquel il a ac
 bouton « Commencer » (ou « Reprendre » si elle est en cours, « Faite » en libellé si elle est
 faite). Sinon, pas de carte : l'absence est l'état honnête, aucune carte de repli.
 
+## Le planning de l’onglet Séance
+
+Sous « Ta séance du jour », **À rattraper** affiche les séances manquées ou partielles qui
+peuvent encore être terminées, avec la date limite inclusive calculée à Paris. La liste
+ignore les jours où l’accès était fermé et les coachs auxquels le client n’a plus accès.
+**À venir** annonce les séances des quatorze prochains jours. Elles s’afficheront avec leur
+action de démarrage le jour prévu. Le planning est relu après une séance modifiée et au retour
+de l’application au premier plan.
+
 ## L'écran de la séance
 
 **Thème clair**, pas le fond sombre de la maquette : le mode sombre est hors périmètre au jalon 1 (`docs/perimetre.md` §3), et le thème est forcé en clair (`src/theme/fournisseur.tsx`). Décidé le 17 novembre 2026, à relire.

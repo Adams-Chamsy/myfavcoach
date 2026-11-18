@@ -347,6 +347,8 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0093_clients_coach_regles.sql',
       // 0094 nomme le rôle serveur uniquement pour révoquer ses accès au suivi.
       'supabase/migrations/0094_suivre_un_coach.sql',
+      // 0095 retire le droit d’appel au rôle serveur avant de l’accorder aux clients.
+      'supabase/migrations/0095_planning_seances_client.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

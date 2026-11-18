@@ -737,6 +737,11 @@ export type SeanceDuJour = {
   statut: StatutSeanceProgrammee;
 };
 
+export type SeancePlanning = Pick<
+  SeanceProgrammeeDetail,
+  'id' | 'titre' | 'dureeMinutes' | 'datePrevue' | 'coachPrenom' | 'coachNom'
+> & { aRattraperAvant: string | null };
+
 export type SeanceProgrammeeDetail = {
   id: string;
   titre: string;
@@ -1077,6 +1082,7 @@ export type PortDonnees = {
   // L6, séance du jour (écran 05), en espace client. Une séance d'un autre, ou sans accès :
   // la lecture lève (seance_introuvable, abonnement_sans_acces), l'écriture rend son refus.
   lireSeancesDuJour(): Promise<SeanceDuJour[]>;
+  lireMonPlanningSeances(): Promise<SeancePlanning[]>;
   lireSeanceProgrammee(id: string): Promise<SeanceProgrammeeDetail>;
   lireExercicesDeMaSeance(id: string): Promise<ExerciceDeSeance[]>;
   lireSeriesDeMaSeance(id: string): Promise<SerieSaisie[]>;

@@ -1811,6 +1811,30 @@ export const portDonneesSupabase: PortDonnees = {
     );
   },
 
+  async lireMonPlanningSeances() {
+    const { data, error } = await supabase.rpc('mon_planning_seances');
+    if (error) throw error;
+    return (
+      data as {
+        id: string;
+        titre: string;
+        duree_minutes: number;
+        date_prevue: string;
+        coach_prenom: string;
+        coach_nom: string;
+        a_rattraper_avant: string | null;
+      }[]
+    ).map((seance) => ({
+      id: seance.id,
+      titre: seance.titre,
+      dureeMinutes: seance.duree_minutes,
+      datePrevue: seance.date_prevue,
+      coachPrenom: seance.coach_prenom,
+      coachNom: seance.coach_nom,
+      aRattraperAvant: seance.a_rattraper_avant,
+    }));
+  },
+
   async lireSeancesDuJour() {
     const { data, error } = await supabase.rpc('mes_seances_du_jour');
     if (error) throw error;
