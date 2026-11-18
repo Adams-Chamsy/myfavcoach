@@ -1,6 +1,7 @@
+import * as Clipboard from 'expo-clipboard';
 import { useRouter, type Href } from 'expo-router';
 import { useEffect, useState, type ReactElement } from 'react';
-import { Text, View } from 'react-native';
+import { Platform, Share, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Badge } from '@/composants/badge';
@@ -31,6 +32,9 @@ export function CorpsProfilCoachPublic({ id }: { id: string | undefined }): Reac
   const { port, profils, chargement: donneesEnChargement } = useDonnees();
   const { retenirCoach } = useParcoursVisiteur();
   const [erreur, setErreur] = useState(false);
+  const [retourPartage, setRetourPartage] = useState<{ coachId: string; message: string } | null>(
+    null,
+  );
   const [tentative, setTentative] = useState(0);
   const { session, chargement: sessionEnChargement } = useSession();
   const router = useRouter();
@@ -111,6 +115,24 @@ export function CorpsProfilCoachPublic({ id }: { id: string | undefined }): Reac
     );
 
   const nom = `${profil.prenom} ${profil.nom}`;
+  const coachId = profil.id;
+  async function partagerProfil() {
+    const lien = `https://myfavcoach.fr/profil/${encodeURIComponent(coachId)}`;
+    setRetourPartage(null);
+    try {
+      if (Platform.OS === 'web') {
+        if (!(await Clipboard.setStringAsync(lien))) {
+          throw new Error('Copie indisponible');
+        }
+        setRetourPartage({ coachId, message: 'Lien du profil copié.' });
+      } else {
+        await Share.share({ message: `Découvre ${nom} sur MyFavCoach : ${lien}` });
+      }
+    } catch {
+      setRetourPartage({ coachId, message: 'Impossible de partager ce profil. Réessaie.' });
+    }
+  }
+
   const espaceCoach = Boolean(session?.emailVerifie && profils?.profilActif === 'coach');
   const clientPret = Boolean(
     session?.emailVerifie &&
@@ -215,6 +237,21 @@ export function CorpsProfilCoachPublic({ id }: { id: string | undefined }): Reac
                 Vérifié depuis le {new Date(profil.verifieeDepuisLe).toLocaleDateString('fr-FR')}
               </Text>
             ) : null}
+            <View style={{ alignItems: 'flex-start', gap: theme.espace[2] }}>
+              <Bouton
+                libelle={Platform.OS === 'web' ? 'Copier le lien du profil' : 'Partager le profil'}
+                variante="secondaire"
+                onPress={partagerProfil}
+              />
+              {retourPartage?.coachId === coachId ? (
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}
+                >
+                  {retourPartage.message}
+                </Text>
+              ) : null}
+            </View>
           </View>
         </View>
         <View
