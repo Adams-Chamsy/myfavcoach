@@ -341,6 +341,10 @@ describe('secrets interdits côté application', () => {
       // d'abonnement ; réaffirmation des droits des fonctions du suivi (convention de 0031).
       'supabase/migrations/0090_preparer_suivi.sql',
       'supabase/migrations/0091_suivi_regles.sql',
+      // 0092/0093 : revokes de service_role et grants pour le banc sur les notes privées ;
+      // réaffirmation des droits des fonctions du coach (convention de 0031).
+      'supabase/migrations/0092_preparer_clients_coach.sql',
+      'supabase/migrations/0093_clients_coach_regles.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

@@ -32,6 +32,10 @@ import type {
   ResultatStudio,
   MesMesures,
   MonSuivi,
+  MesClients,
+  AncienClient,
+  FicheClient,
+  Pilotage,
   SerieMesures,
   TypeMesure,
   SeanceProgrammeeDetail,
@@ -239,6 +243,12 @@ export type FauxPortDonnees = PortDonnees & {
     seance: SeanceProgrammeeDetail & { nombreExercices: number; duJour: boolean },
     exercices: ExerciceDeSeance[],
   ): void;
+  // L7, clients du coach : ce que le serveur rendrait (badges, compteurs et métriques sont
+  // calculés par lui, 0093). Les notes, elles, suivent les règles d'écriture du serveur.
+  definirMesClientsPourTest(valeur: MesClients): void;
+  definirAnciensClientsPourTest(valeur: AncienClient[]): void;
+  definirFicheClientPourTest(fiche: FicheClient): void;
+  definirPilotagePourTest(valeur: Pilotage): void;
   lireSeanceClientPourTest(id: string):
     | (SeanceProgrammeeDetail & {
         ressentiEffort: number | null;
@@ -392,6 +402,19 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
   let reponseVersement: ResultatServeur<{ statut: StatutVersement }> = { issue: 'sans_reponse' };
   let demandesVersement = 0;
   let revenus: RevenusMois[] = [];
+  let mesClients: MesClients = {
+    clients: [],
+    compteurs: { tous: 0, aRelancer: 0, nouveaux: 0, anciens: 0 },
+  };
+  let anciensClients: AncienClient[] = [];
+  const fichesClients = new Map<string, FicheClient>();
+  let pilotage: Pilotage = {
+    aucunClient: true,
+    clientsAvecAcces: 0,
+    assiduiteMoyenne: null,
+    aTraiterTotal: 0,
+    aTraiter: [],
+  };
   let factures: FactureResume[] = [];
   let detailsFactures: Record<string, FactureDetail> = {};
   let facturesCommission: FactureCommission[] = [];
@@ -1142,6 +1165,43 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
     },
     lireDemandesVersementPourTest() {
       return demandesVersement;
+    },
+    async lireMesClients() {
+      return mesClients;
+    },
+    definirMesClientsPourTest(valeur) {
+      mesClients = valeur;
+    },
+    async lireMesAnciensClients() {
+      return anciensClients;
+    },
+    definirAnciensClientsPourTest(valeur) {
+      anciensClients = valeur;
+    },
+    async lireFicheClient(profilClientId) {
+      const fiche = fichesClients.get(profilClientId);
+      if (!fiche) throw new Error('client_introuvable');
+      return fiche;
+    },
+    definirFicheClientPourTest(fiche) {
+      fichesClients.set(fiche.profilClientId, fiche);
+    },
+    // Mêmes règles que enregistrer_notes_client (0093).
+    async enregistrerNotesClient(profilClientId, texte) {
+      const force = refusForce();
+      if (force) return force;
+      const fiche = fichesClients.get(profilClientId);
+      if (!fiche) return refus('client_introuvable');
+      if (fiche.mode === 'ancien') return refus('client_ancien');
+      if (texte.length > 2000) return refus('notes_invalides');
+      fiche.notes = texte.trim() === '' ? null : texte;
+      return ok(null);
+    },
+    async lirePilotage() {
+      return pilotage;
+    },
+    definirPilotagePourTest(valeur) {
+      pilotage = valeur;
     },
     async lireRevenus() {
       return revenus;

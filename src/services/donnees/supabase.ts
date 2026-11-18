@@ -38,6 +38,14 @@ import type {
   ResultatStudio,
   MesMesures,
   MonSuivi,
+  MesClients,
+  AncienClient,
+  FicheClient,
+  Pilotage,
+  SeanceHistorique,
+  SemaineSuivi,
+  BadgeClient,
+  StatutAbonnementClient,
   SerieMesures,
   StatutSeanceProgrammee,
   StatutProgramme,
@@ -1953,6 +1961,183 @@ export const portDonneesSupabase: PortDonnees = {
       assiduite: lu.assiduite,
       serie: lu.serie,
       semaines: lu.semaines,
+    };
+  },
+
+  async lireMesClients(): Promise<MesClients> {
+    const { data, error } = await supabase.rpc('mes_clients');
+    if (error) throw error;
+    const lu = data as {
+      clients: {
+        profil_client_id: string;
+        prenom: string;
+        nom: string | null;
+        offre: string;
+        statut: StatutAbonnementClient;
+        badge: BadgeClient;
+        badge_n: number | null;
+        semaine: number;
+        semaine_en_cours: SemaineSuivi;
+        programme_en_cours: boolean;
+        pause_jusqu_le: string | null;
+        fin_acces_le: string | null;
+      }[];
+      compteurs: { tous: number; a_relancer: number; nouveaux: number; anciens: number };
+    };
+    return {
+      clients: lu.clients.map((c) => ({
+        profilClientId: c.profil_client_id,
+        prenom: c.prenom,
+        nom: c.nom,
+        offre: c.offre,
+        statut: c.statut,
+        badge: c.badge,
+        badgeN: c.badge_n,
+        semaine: c.semaine,
+        semaineEnCours: c.semaine_en_cours,
+        programmeEnCours: c.programme_en_cours,
+        pauseJusquLe: c.pause_jusqu_le,
+        finAccesLe: c.fin_acces_le,
+      })),
+      compteurs: {
+        tous: lu.compteurs.tous,
+        aRelancer: lu.compteurs.a_relancer,
+        nouveaux: lu.compteurs.nouveaux,
+        anciens: lu.compteurs.anciens,
+      },
+    };
+  },
+
+  async lireMesAnciensClients(): Promise<AncienClient[]> {
+    const { data, error } = await supabase.rpc('mes_anciens_clients');
+    if (error) throw error;
+    return (
+      data as {
+        profil_client_id: string;
+        prenom: string;
+        nom: string | null;
+        offre: string;
+        debute_le: string;
+        fin_acces_le: string;
+      }[]
+    ).map((a) => ({
+      profilClientId: a.profil_client_id,
+      prenom: a.prenom,
+      nom: a.nom,
+      offre: a.offre,
+      debuteLe: a.debute_le,
+      finAccesLe: a.fin_acces_le,
+    }));
+  },
+
+  // Les notes privées et les commentaires ne passent par aucun journal (L7-10).
+  async lireFicheClient(profilClientId: string): Promise<FicheClient> {
+    const { data, error } = await supabase.rpc('fiche_client', {
+      p_profil_client_id: profilClientId,
+    });
+    if (error) throw error;
+    type LigneHistorique = {
+      id: string;
+      titre: string;
+      date_prevue: string;
+      duree_minutes: number;
+      statut: StatutSeanceProgrammee;
+      rattrapee: boolean;
+      commentaire: string | null;
+    };
+    const historique = (lignes: LigneHistorique[]): SeanceHistorique[] =>
+      lignes.map((l) => ({
+        id: l.id,
+        titre: l.titre,
+        datePrevue: l.date_prevue,
+        dureeMinutes: l.duree_minutes,
+        statut: l.statut,
+        rattrapee: l.rattrapee,
+        commentaire: l.commentaire,
+      }));
+    const lu = data as {
+      mode: 'actuel' | 'ancien';
+      profil_client_id: string;
+      prenom: string;
+      nom: string | null;
+      offre: string;
+      debute_le: string;
+      seances_faites: number;
+      historique: LigneHistorique[];
+      fin_acces_le: string;
+      statut: StatutAbonnementClient;
+      prix_centimes: number;
+      badge: BadgeClient;
+      badge_n: number | null;
+      derniere_seance_le: string | null;
+      assiduite: number | null;
+      semaines: SemaineSuivi[];
+      programme: { id: string; titre: string; semaine: number; semaines: number } | null;
+      notes: string | null;
+    };
+    const commun = {
+      profilClientId: lu.profil_client_id,
+      prenom: lu.prenom,
+      nom: lu.nom,
+      offre: lu.offre,
+      debuteLe: lu.debute_le,
+      seancesFaites: lu.seances_faites,
+      historique: historique(lu.historique),
+    };
+    if (lu.mode === 'ancien') {
+      return { mode: 'ancien', ...commun, finAccesLe: lu.fin_acces_le };
+    }
+    return {
+      mode: 'actuel',
+      ...commun,
+      statut: lu.statut,
+      prixCentimes: lu.prix_centimes,
+      badge: lu.badge,
+      badgeN: lu.badge_n,
+      derniereSeanceLe: lu.derniere_seance_le,
+      assiduite: lu.assiduite,
+      semaines: lu.semaines,
+      programme: lu.programme,
+      notes: lu.notes,
+    };
+  },
+
+  enregistrerNotesClient(profilClientId, texte) {
+    return rpcStudio(
+      'enregistrer_notes_client',
+      { p_profil_client_id: profilClientId, p_texte: texte },
+      sansValeur,
+    );
+  },
+
+  async lirePilotage(): Promise<Pilotage> {
+    const { data, error } = await supabase.rpc('mon_pilotage');
+    if (error) throw error;
+    const lu = data as {
+      aucun_client: boolean;
+      clients_avec_acces: number;
+      assiduite_moyenne: number | null;
+      a_traiter_total: number;
+      a_traiter: {
+        profil_client_id: string;
+        prenom: string;
+        nom: string | null;
+        badge: 'paiement_ko' | 'inactive';
+        badge_n: number | null;
+      }[];
+    };
+    return {
+      aucunClient: lu.aucun_client,
+      clientsAvecAcces: lu.clients_avec_acces,
+      assiduiteMoyenne: lu.assiduite_moyenne,
+      aTraiterTotal: lu.a_traiter_total,
+      aTraiter: lu.a_traiter.map((l) => ({
+        profilClientId: l.profil_client_id,
+        prenom: l.prenom,
+        nom: l.nom,
+        badge: l.badge,
+        badgeN: l.badge_n,
+      })),
     };
   },
 

@@ -178,6 +178,11 @@ function creerPortDonneesEnAttente(promesse: Promise<EtatProfils>): PortDonnees 
     terminerSeance: jest.fn(),
     lireMesMesures: jest.fn(),
     lireMonSuivi: jest.fn(),
+    lireMesClients: jest.fn(),
+    lireMesAnciensClients: jest.fn(),
+    lireFicheClient: jest.fn(),
+    enregistrerNotesClient: jest.fn(),
+    lirePilotage: jest.fn(),
     enregistrerMesure: jest.fn(),
   };
 }
@@ -440,6 +445,11 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       terminerSeance: jest.fn(),
       lireMesMesures: jest.fn(),
       lireMonSuivi: jest.fn(),
+      lireMesClients: jest.fn(),
+      lireMesAnciensClients: jest.fn(),
+      lireFicheClient: jest.fn(),
+      enregistrerNotesClient: jest.fn(),
+      lirePilotage: jest.fn(),
       enregistrerMesure: jest.fn(),
     };
 

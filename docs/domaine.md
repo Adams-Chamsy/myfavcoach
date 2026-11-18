@@ -1035,6 +1035,11 @@ Précisé le 18 novembre 2026 (L7, décidé seul, à relire) :
   séance faite chez ce coach ; s'il n'en a fait aucune, toutes depuis sa première séance
   programmée. Dès qu'il termine une séance, le compte repart de zéro et le badge disparaît. Une
   semaine sans séance programmée et une séance encore rattrapable ne déclenchent rien.
+  Précisé au plan P7.3b, validé le 18 novembre 2026 (`0093_clients_coach_regles.sql`) : les
+  séances d'un jour sans accès (§5.2) n'y entrent pas ; un client sans accès aujourd'hui (en
+  pause) n'est jamais relancé, même pour des séances échues avant sa pause ; « Nouveau » se
+  compte depuis `actifDepuisLe` (moins de 14 jours), pas depuis `debuteLe` — un SEPA attend sa
+  confirmation ; le numéro de semaine de l'abonnement reste compté depuis `debuteLe`.
 
 ### 5.4 Délai de réponse d'un coach
 Médiane, sur 30 jours, du temps entre un message client et la première réponse du coach dans la

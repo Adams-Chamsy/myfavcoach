@@ -10897,3 +10897,695 @@ describe('suivi du client — L7 (0090, 0091)', () => {
     });
   });
 });
+
+// L7, P7.3b (0092, 0093) — les clients du coach : liste, anciens clients, fiche, notes privées,
+// pilotage (docs/ecrans/L7-08-pilotage.md, L7-09-clients.md, L7-10-fiche-client.md ;
+// docs/prompts/L7.md, décisions 1, 2, 6). Séances et historique de statuts posés en décor par le
+// rôle serveur ; les statuts d'abonnement ne bougent que par les fonctions du serveur (pause par
+// le client, échec de prélèvement, clôture du banc). Lectures et écritures : avec la session du
+// coach, comme l'application.
+describe('clients du coach — L7 (0092, 0093)', () => {
+  const rpc = (fonction: string, corps: Record<string, unknown>, session: Appelant) =>
+    appelRest(`/rest/v1/rpc/${fonction}`, { methode: 'POST', session, corps });
+  const basculer = async (session: Session, profil: 'coach' | 'client') => {
+    const bascule = await rpc('basculer_profil', { profil }, session);
+    if (bascule.statut >= 400) {
+      throw new Error(`Préparation du banc : bascule en ${profil} refusée (${bascule.statut})`);
+    }
+  };
+  const lire = async <T>(fonction: string, session: Session, corps = {}): Promise<T> => {
+    const r = await rpc(fonction, corps, session);
+    if (r.statut !== 200)
+      throw new Error(`${fonction} refusée (${r.statut}) : ${messageDe(r.corps)}`);
+    return r.corps as T;
+  };
+  type Client = {
+    profil_client_id: string;
+    prenom: string;
+    nom: string | null;
+    offre: string;
+    statut: string;
+    badge: string;
+    badge_n: number | null;
+    semaine: number;
+    semaine_en_cours: { lundi: string; faites: number; prevues: number };
+    programme_en_cours: boolean;
+    pause_jusqu_le: string | null;
+    fin_acces_le: string | null;
+  };
+  type Liste = {
+    clients: Client[];
+    compteurs: { tous: number; a_relancer: number; nouveaux: number; anciens: number };
+  };
+  type Fiche = Record<string, unknown> & {
+    mode: string;
+    historique: { statut: string; commentaire: string | null; date_prevue: string }[];
+    notes?: string | null;
+  };
+  const liste = (session: Session) => lire<Liste>('mes_clients', session);
+  const ligne = async (session: Session, profil: string) =>
+    (await liste(session)).clients.find((c) => c.profil_client_id === profil);
+  const fiche = (session: Session, profil: string) =>
+    lire<Fiche>('fiche_client', session, { p_profil_client_id: profil });
+  const noter = (session: Session, profil: string, texte: string | null) =>
+    rpc('enregistrer_notes_client', { p_profil_client_id: profil, p_texte: texte }, session);
+
+  const J = aujourdhuiParis();
+  const jour = (n: number) => plusJours(J, n);
+  const midi = (date: string) => `${date}T12:00:00+01:00`;
+
+  let K: Session; // le coach, qui a aussi un profil client
+  let L: Session; // un autre coach, qui partage le client A
+  let A: Session; // client de K et de L ; consent et saisit des données de santé
+  let B: Session; // client de K, passera en impayé
+  let N: Session; // client de K, nouveau
+  let P: Session; // client de K, en pause
+  let X: Session; // client de K, partira puis se réabonnera
+  let E: Session; // SEPA en attente de confirmation, puis annulé
+  const profil: Record<string, string> = {};
+  const abonnement: Record<string, string> = {};
+  let coachK: string;
+  let coachL: string;
+  let offreK: string;
+  let offreL: string;
+  const seancesDe: Record<string, { programme: string; seance: string }> = {};
+
+  type Pose = {
+    date: string;
+    statut: string;
+    rattrapee?: boolean;
+    terminee_le?: string;
+    commentaire?: string;
+    ressenti_effort?: number;
+  };
+  const poser = async (client: string, coach: string, poses: Pose[]) => {
+    await appelRest(
+      `/rest/v1/seances_programmees?profil_client_id=eq.${client}&profil_coach_id=eq.${coach}`,
+      { methode: 'DELETE', session: 'admin' },
+    );
+    if (poses.length === 0) return;
+    const { statut } = await appelRest('/rest/v1/seances_programmees', {
+      methode: 'POST',
+      session: 'admin',
+      corps: poses.map((p) => ({
+        seance_id: seancesDe[coach].seance,
+        programme_id: seancesDe[coach].programme,
+        profil_client_id: client,
+        profil_coach_id: coach,
+        date_prevue: p.date,
+        statut: p.statut,
+        rattrapee: p.rattrapee ?? false,
+        terminee_le: p.terminee_le ?? null,
+        commentaire: p.commentaire ?? null,
+        ressenti_effort: p.ressenti_effort ?? null,
+      })),
+    });
+    if (statut >= 400) throw new Error(`Préparation du banc : séances refusées (${statut})`);
+  };
+  const historique = async (id: string, lignes: { statut: string; depuis: string }[]) => {
+    await appelRest(`/rest/v1/historique_statuts_abonnement?abonnement_id=eq.${id}`, {
+      methode: 'DELETE',
+      session: 'admin',
+    });
+    const { statut } = await appelRest('/rest/v1/historique_statuts_abonnement', {
+      methode: 'POST',
+      session: 'admin',
+      corps: lignes.map((l) => ({ abonnement_id: id, ...l })),
+    });
+    if (statut >= 400) throw new Error(`Préparation du banc : historique refusé (${statut})`);
+  };
+  // Le rôle serveur peut reculer actif_depuis_le (0033, pour simuler une ancienneté).
+  const vieillir = async (id: string, jours: number) => {
+    const r = await appelRest(`/rest/v1/abonnements?id=eq.${id}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { actif_depuis_le: new Date(Date.now() - jours * 86_400_000).toISOString() },
+    });
+    if (r.statut >= 400) throw new Error(`Préparation du banc : ancienneté refusée (${r.statut})`);
+  };
+
+  const creerCoach = async (session: Session, prenom: string): Promise<[string, string]> => {
+    const cree = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { compte_id: session.compteId, prenom, nom: 'Clients', discipline: 'yoga' },
+    });
+    const id = (cree.corps as { id: string }[])[0].id;
+    await appelRest(`/rest/v1/profils_coach?id=eq.${id}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { statut_verification: 'verifiee' },
+    });
+    await preparerVendeur(id);
+    const offre = await appelRest('/rest/v1/offres', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        coach_id: id,
+        titre: `Suivi ${prenom}`,
+        prix_centimes: 4900,
+        benefices: ['a', 'b', 'c'],
+        engagement_humain: ['ajustement_hebdomadaire'],
+        publiee_le: new Date(Date.now() - 86_400_000).toISOString(),
+      },
+    });
+    const programme = await appelRest('/rest/v1/programmes', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { profil_coach_id: id, titre: 'Programme du banc', statut: 'publie' },
+    });
+    const programmeId = (programme.corps as { id: string }[])[0].id;
+    const seance = await appelRest('/rest/v1/seances', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        programme_id: programmeId,
+        titre: 'Haut du corps',
+        duree_minutes: 40,
+        jour_relatif: 1,
+      },
+    });
+    seancesDe[id] = { programme: programmeId, seance: (seance.corps as { id: string }[])[0].id };
+    return [id, (offre.corps as { id: string }[])[0].id];
+  };
+  let numeroSouscription = 0;
+  const souscrire = async (client: string, offre: string, moyen = 'carte'): Promise<string> => {
+    numeroSouscription += 1;
+    const r = await rpc(
+      'souscrire_abonnement',
+      {
+        p_profil_client_id: client,
+        p_offre_id: offre,
+        p_moyen: moyen,
+        p_reference_paiement: `banc-${SUFFIXE_COMPTE}-l7-clients-${numeroSouscription}`,
+        p_prix_fige_centimes: 4900,
+        p_intention_creee_le: new Date().toISOString(),
+      },
+      'admin',
+    );
+    if (r.statut !== 200)
+      throw new Error(`Préparation du banc : souscription refusée (${r.statut})`);
+    return r.corps as string;
+  };
+
+  beforeAll(async () => {
+    const meta = { date_naissance: '1990-01-01', cgu_version_acceptee: '2026-08-01' };
+    const email = (x: string) => `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-l7-cli-${x}@${DOMAINE_EMAIL}`;
+    [K, L, A, B, N, P, X, E] = await Promise.all(
+      ['k', 'l', 'a', 'b', 'n', 'p', 'x', 'e'].map((x) => creerCompteReel(email(x), meta)),
+    );
+    await creerProfilClientParLeServeur(K, 'Coach', 'Aussi client');
+    profil.A = await creerProfilClientParLeServeur(A, 'Alice', 'Martin');
+    profil.B = await creerProfilClientParLeServeur(B, 'Bruno', 'Petit');
+    profil.N = await creerProfilClientParLeServeur(N, 'Nina', 'Roux');
+    profil.P = await creerProfilClientParLeServeur(P, 'Paul', 'Moreau');
+    profil.X = await creerProfilClientParLeServeur(X, 'Xavier', 'Leroy');
+    profil.E = await creerProfilClientParLeServeur(E, 'Emma', 'Blanc');
+    [coachK, offreK] = await creerCoach(K, 'Karim');
+    [coachL, offreL] = await creerCoach(L, 'Lou');
+    for (const c of ['A', 'B', 'N', 'P', 'X']) abonnement[c] = await souscrire(profil[c], offreK);
+    abonnement.AL = await souscrire(profil.A, offreL);
+    abonnement.E = await souscrire(profil.E, offreK, 'sepa');
+    // Tous anciens de 60 jours, sauf N (nouveau).
+    for (const c of ['A', 'B', 'P', 'X', 'AL']) await vieillir(abonnement[c], 60);
+    await basculer(K, 'coach');
+    await basculer(L, 'coach');
+  }, 180_000);
+
+  afterAll(async () => {
+    for (const s of [K, L, A, B, N, P, X, E]) if (s) await supprimerCompteReel(s.compteId);
+  }, 60_000);
+
+  describe('badge et relance (décision 2, docs/domaine.md §5.3)', () => {
+    beforeEach(async () => {
+      await historique(abonnement.A, [{ statut: 'actif', depuis: midi(jour(-400)) }]);
+    });
+
+    it('sans séance, actif depuis 60 jours : « À jour », sans nombre', async () => {
+      await poser(profil.A, coachK, []);
+      expect(await ligne(K, profil.A)).toMatchObject({ badge: 'a_jour', badge_n: null });
+    });
+
+    it('une séance manquée encore rattrapable (J−7) ne déclenche rien ; échue (J−8), elle relance', async () => {
+      await poser(profil.A, coachK, [{ date: jour(-7), statut: 'manquee' }]);
+      expect((await ligne(K, profil.A))?.badge).toBe('a_jour');
+      await poser(profil.A, coachK, [{ date: jour(-8), statut: 'manquee' }]);
+      expect(await ligne(K, profil.A)).toMatchObject({ badge: 'inactive', badge_n: 1 });
+    });
+
+    it('une partielle échue compte dans la relance', async () => {
+      await poser(profil.A, coachK, [{ date: jour(-10), statut: 'partielle' }]);
+      expect(await ligne(K, profil.A)).toMatchObject({ badge: 'inactive', badge_n: 1 });
+    });
+
+    it('client qui n’a encore rien fait : toutes ses séances échues depuis la première comptent', async () => {
+      await poser(profil.A, coachK, [
+        { date: jour(-30), statut: 'manquee' },
+        { date: jour(-20), statut: 'manquee' },
+        { date: jour(-9), statut: 'partielle' },
+      ]);
+      expect(await ligne(K, profil.A)).toMatchObject({ badge: 'inactive', badge_n: 3 });
+    });
+
+    it('seules comptent les séances échues après le jour de la dernière séance faite', async () => {
+      await poser(profil.A, coachK, [
+        { date: jour(-30), statut: 'manquee' },
+        { date: jour(-25), statut: 'faite', terminee_le: midi(jour(-25)) },
+        { date: jour(-20), statut: 'manquee' },
+        { date: jour(-12), statut: 'partielle' },
+      ]);
+      expect(await ligne(K, profil.A)).toMatchObject({ badge: 'inactive', badge_n: 2 });
+    });
+
+    it('dès qu’il termine une séance (même rattrapée), le compte repart de zéro et le badge disparaît', async () => {
+      await poser(profil.A, coachK, [
+        { date: jour(-20), statut: 'manquee' },
+        { date: jour(-15), statut: 'manquee' },
+        { date: jour(-6), statut: 'faite', rattrapee: true, terminee_le: new Date().toISOString() },
+      ]);
+      expect((await ligne(K, profil.A))?.badge).toBe('a_jour');
+    });
+
+    it('une semaine de repos ne déclenche rien, quel que soit le temps écoulé', async () => {
+      await poser(profil.A, coachK, [
+        { date: jour(-45), statut: 'faite', terminee_le: midi(jour(-45)) },
+      ]);
+      expect((await ligne(K, profil.A))?.badge).toBe('a_jour');
+    });
+
+    it('30 jours de pause puis reprise : aucune séance de la pause ne relance ; témoin sans historique : elles relancent', async () => {
+      const poses = [-34, -28, -21, -14, -8].map((n) => ({ date: jour(n), statut: 'manquee' }));
+      await poser(profil.A, coachK, poses);
+      expect(await ligne(K, profil.A)).toMatchObject({ badge: 'inactive', badge_n: 5 });
+      await historique(abonnement.A, [
+        { statut: 'actif', depuis: midi(jour(-400)) },
+        { statut: 'en_pause', depuis: midi(jour(-36)) },
+        { statut: 'actif', depuis: midi(jour(-6)) },
+      ]);
+      expect(await ligne(K, profil.A)).toMatchObject({ badge: 'a_jour', badge_n: null });
+    });
+
+    it('nouveau : actif depuis moins de 14 jours ; une séance échue passe avant', async () => {
+      await poser(profil.N, coachK, []);
+      expect((await ligne(K, profil.N))?.badge).toBe('nouveau');
+      await poser(profil.N, coachK, [{ date: jour(-9), statut: 'manquee' }]);
+      expect(await ligne(K, profil.N)).toMatchObject({ badge: 'inactive', badge_n: 1 });
+      await poser(profil.N, coachK, []);
+    });
+
+    it('impayé (échec du prélèvement) : « paiement en échec », avant les séances non rattrapées', async () => {
+      await poser(profil.B, coachK, [{ date: jour(-10), statut: 'manquee' }]);
+      expect((await ligne(K, profil.B))?.badge).toBe('inactive');
+      const { corps } = await appelRest(
+        `/rest/v1/abonnements?id=eq.${abonnement.B}&select=prochain_prelevement_le`,
+        { session: 'admin' },
+      );
+      const E1 = (corps as { prochain_prelevement_le: string }[])[0].prochain_prelevement_le;
+      const ref = `pi_banc_${SUFFIXE_COMPTE}_l7_clients_b`;
+      const ouvert = await rpc(
+        'ouvrir_tentative',
+        {
+          p_abonnement_id: abonnement.B,
+          p_echeance_le: E1,
+          p_tentative_numero: 1,
+          p_reference: ref,
+          p_jour: E1,
+        },
+        'admin',
+      );
+      expect(ouvert.statut).toBe(200);
+      const conclu = await rpc(
+        'conclure_tentative',
+        { p_reference: ref, p_reussie: false, p_motif: 'fonds_insuffisants' },
+        'admin',
+      );
+      expect(conclu.statut).toBe(200);
+      expect(await ligne(K, profil.B)).toMatchObject({
+        statut: 'impaye',
+        badge: 'paiement_ko',
+        badge_n: null,
+      });
+    });
+
+    it('en pause : jamais relancé, même pour des séances échues avant la pause ; la date de reprise est rendue', async () => {
+      await poser(profil.P, coachK, [{ date: jour(-12), statut: 'manquee' }]);
+      expect((await ligne(K, profil.P))?.badge).toBe('inactive');
+      const pause = await rpc(
+        'demander_pause_jours',
+        { p_abonnement_id: abonnement.P, p_jours: 10 },
+        P,
+      );
+      expect(pause.statut).toBe(204);
+      expect(await ligne(K, profil.P)).toMatchObject({
+        statut: 'en_pause',
+        badge: 'a_jour',
+        badge_n: null,
+        pause_jusqu_le: jour(10),
+      });
+    });
+  });
+
+  describe('liste et pilotage : une seule règle', () => {
+    it('la liste suit l’ordre des badges, puis le nom ; ses compteurs en découlent', async () => {
+      await poser(profil.A, coachK, [{ date: jour(-9), statut: 'manquee' }]);
+      const { clients, compteurs } = await liste(K);
+      const rang: Record<string, number> = { paiement_ko: 1, inactive: 2, nouveau: 3, a_jour: 4 };
+      const rangs = clients.map((c) => rang[c.badge]);
+      expect(rangs).toEqual([...rangs].sort((a, b) => a - b));
+      expect(compteurs.tous).toBe(clients.length);
+      expect(compteurs.a_relancer).toBe(clients.filter((c) => rang[c.badge] <= 2).length);
+      expect(compteurs.nouveaux).toBe(clients.filter((c) => c.badge === 'nouveau').length);
+      // A (inactive), B (paiement_ko) ; N nouveau ; P en pause à jour ; X à jour. E nulle part.
+      expect(clients.map((c) => c.profil_client_id).sort()).toEqual(
+        [profil.A, profil.B, profil.N, profil.P, profil.X].sort(),
+      );
+    });
+
+    it('« À traiter » du pilotage = « À relancer » de la liste, mêmes clients, même ordre', async () => {
+      const { clients, compteurs } = await liste(K);
+      const pilotage = await lire<{
+        aucun_client: boolean;
+        clients_avec_acces: number;
+        assiduite_moyenne: number | null;
+        a_traiter_total: number;
+        a_traiter: { profil_client_id: string; badge: string; badge_n: number | null }[];
+      }>('mon_pilotage', K);
+      const aRelancer = clients.filter((c) => c.badge === 'paiement_ko' || c.badge === 'inactive');
+      expect(pilotage.a_traiter_total).toBe(compteurs.a_relancer);
+      expect(pilotage.a_traiter).toEqual(
+        aRelancer.slice(0, 5).map((c) => ({
+          profil_client_id: c.profil_client_id,
+          prenom: c.prenom,
+          nom: c.nom,
+          badge: c.badge,
+          badge_n: c.badge_n,
+        })),
+      );
+      // Avec accès : actif, résiliation programmée, impayé — pas la pause de P.
+      expect(pilotage.clients_avec_acces).toBe(
+        clients.filter((c) => ['actif', 'resiliation_programmee', 'impaye'].includes(c.statut))
+          .length,
+      );
+      expect(pilotage.aucun_client).toBe(false);
+    });
+
+    it('l’assiduité moyenne du pilotage est la moyenne des assiduités des fiches', async () => {
+      await poser(
+        profil.A,
+        coachK,
+        [-9, -7, -5, -3].map((n, i) => ({
+          date: jour(n),
+          statut: i < 3 ? 'faite' : 'manquee',
+          terminee_le: i < 3 ? midi(jour(n)) : undefined,
+        })),
+      );
+      await poser(
+        profil.X,
+        coachK,
+        [-8, -6, -4, -2].map((n, i) => ({
+          date: jour(n),
+          statut: i < 1 ? 'faite' : 'partielle',
+          terminee_le: i < 1 ? midi(jour(n)) : undefined,
+        })),
+      );
+      const assiduites: number[] = [];
+      for (const c of (await liste(K)).clients) {
+        const a = (await fiche(K, c.profil_client_id)).assiduite as number | null;
+        if (a !== null) assiduites.push(a);
+      }
+      // A : 3/4 = 75 ; X : 2,5/4 = 63 (62,5).
+      expect(assiduites.sort()).toEqual([63, 75]);
+      const pilotage = await lire<{ assiduite_moyenne: number }>('mon_pilotage', K);
+      expect(pilotage.assiduite_moyenne).toBe(69);
+      await poser(profil.X, coachK, []);
+    });
+  });
+
+  describe('fiche client (L7-10)', () => {
+    it('client actuel : en-tête, métriques de ce coach seul, dernière séance, programme en cours, historique', async () => {
+      await historique(abonnement.A, [{ statut: 'actif', depuis: midi(jour(-400)) }]);
+      await poser(profil.A, coachL, [{ date: jour(-3), statut: 'faite' }]);
+      const passees: Pose[] = Array.from({ length: 17 }, (_, i) => ({
+        date: jour(-1 - i),
+        statut: i % 3 === 0 ? 'manquee' : 'faite',
+        terminee_le: i % 3 === 0 ? undefined : midi(jour(-1 - i)),
+        commentaire: i === 1 ? 'Dur mais ça va.' : undefined,
+      }));
+      await poser(profil.A, coachK, [
+        ...passees,
+        { date: jour(2), statut: 'a_faire' },
+        { date: jour(9), statut: 'a_faire' },
+      ]);
+      const f = await fiche(K, profil.A);
+      expect(f).toMatchObject({
+        mode: 'actuel',
+        prenom: 'Alice',
+        nom: 'Martin',
+        offre: 'Suivi Karim',
+        prix_centimes: 4900,
+        statut: 'actif',
+        derniere_seance_le: jour(-2),
+        seances_faites: 11,
+        programme: { titre: 'Programme du banc', semaine: 3, semaines: 4 },
+        notes: null,
+      });
+      expect(f.historique).toHaveLength(15);
+      expect(f.historique[0]).toMatchObject({
+        date_prevue: jour(-1),
+        statut: 'manquee',
+        titre: 'Haut du corps',
+        duree_minutes: 40,
+      });
+      expect(f.historique[1]).toMatchObject({ statut: 'faite', commentaire: 'Dur mais ça va.' });
+      // seances_faites = 11 : la séance faite chez L (l'autre coach de A) n'est pas comptée (12).
+      await poser(profil.A, coachL, []);
+    });
+
+    it('l’historique écarte les séances non faites d’un jour sans accès', async () => {
+      await poser(profil.A, coachK, [
+        { date: jour(-10), statut: 'faite', terminee_le: midi(jour(-10)) },
+        { date: jour(-5), statut: 'manquee' },
+        { date: jour(-4), statut: 'faite', rattrapee: true, terminee_le: midi(jour(-1)) },
+      ]);
+      await historique(abonnement.A, [
+        { statut: 'actif', depuis: midi(jour(-400)) },
+        { statut: 'en_pause', depuis: midi(jour(-7)) },
+        { statut: 'actif', depuis: midi(jour(-2)) },
+      ]);
+      const f = await fiche(K, profil.A);
+      expect(f.historique.map((h) => [h.date_prevue, h.statut])).toEqual([
+        [jour(-4), 'faite'],
+        [jour(-10), 'faite'],
+      ]);
+      await historique(abonnement.A, [{ statut: 'actif', depuis: midi(jour(-400)) }]);
+    });
+
+    it('un client qui n’est pas le sien : client_introuvable', async () => {
+      const r = await rpc('fiche_client', { p_profil_client_id: profil.B }, L);
+      expect(r.statut).toBe(400);
+      expect(messageDe(r.corps)).toBe('client_introuvable');
+    });
+  });
+
+  describe('notes privées', () => {
+    it('le coach écrit sa note et la relit ; un texte vide l’efface', async () => {
+      expect((await noter(K, profil.A, 'Genou fragile, éviter les sauts.')).statut).toBe(204);
+      expect((await fiche(K, profil.A)).notes).toBe('Genou fragile, éviter les sauts.');
+      expect((await noter(K, profil.A, '   ')).statut).toBe(204);
+      expect((await fiche(K, profil.A)).notes).toBeNull();
+    });
+
+    it('2 000 caractères passent ; 2 001 sont refusés (notes_invalides)', async () => {
+      expect((await noter(K, profil.A, 'a'.repeat(2000))).statut).toBe(204);
+      const refus = await noter(K, profil.A, 'a'.repeat(2001));
+      expect(refus.statut).toBe(400);
+      expect(messageDe(refus.corps)).toBe('notes_invalides');
+      expect((await fiche(K, profil.A)).notes).toBe('a'.repeat(2000));
+    });
+
+    it('un autre coach du même client ne les lit pas, et ne peut pas écrire celles d’un client qui n’est pas le sien', async () => {
+      await noter(K, profil.A, 'Note de K.');
+      expect((await fiche(L, profil.A)).notes).toBeNull();
+      const refus = await noter(L, profil.B, 'Intrus.');
+      expect(refus.statut).toBe(400);
+      expect(messageDe(refus.corps)).toBe('client_introuvable');
+      expect((await fiche(K, profil.A)).notes).toBe('Note de K.');
+    });
+
+    it('le client ne les lit pas : ni par la table (42501), ni par la fiche (profil_coach_requis)', async () => {
+      for (const session of [A, K]) {
+        const { statut, corps } = await appelRest(
+          `/rest/v1/notes_clients?profil_client_id=eq.${profil.A}`,
+          { session },
+        );
+        expect(statut).toBe(403);
+        expect((corps as { code: string }).code).toBe('42501');
+      }
+      const r = await rpc('fiche_client', { p_profil_client_id: profil.A }, A);
+      expect(r.statut).toBe(400);
+      expect(messageDe(r.corps)).toBe('profil_coach_requis');
+    });
+  });
+
+  describe('anciens clients (décision 6) et réabonnement', () => {
+    it('X part : il quitte la liste et le pilotage, entre dans « Anciens clients » avec ses dates', async () => {
+      await poser(profil.X, coachK, [
+        { date: jour(-6), statut: 'faite', terminee_le: midi(jour(-6)), commentaire: 'Merci !' },
+        { date: jour(-4), statut: 'partielle' },
+        { date: jour(-2), statut: 'manquee' },
+      ]);
+      expect((await noter(K, profil.X, 'Objectif semi-marathon.')).statut).toBe(204);
+      const avant = await lire<{ a_traiter_total: number; clients_avec_acces: number }>(
+        'mon_pilotage',
+        K,
+      );
+      await rpc('clore_abonnements_banc', { p_profil_client_id: profil.X }, 'admin');
+
+      const apres = await liste(K);
+      expect(apres.clients.map((c) => c.profil_client_id)).not.toContain(profil.X);
+      expect(apres.compteurs.anciens).toBe(1);
+      const pilotage = await lire<{ clients_avec_acces: number }>('mon_pilotage', K);
+      expect(pilotage.clients_avec_acces).toBe(avant.clients_avec_acces - 1);
+      expect(await lire<unknown[]>('mes_anciens_clients', K)).toEqual([
+        {
+          profil_client_id: profil.X,
+          prenom: 'Xavier',
+          nom: 'Leroy',
+          offre: 'Suivi Karim',
+          debute_le: J,
+          fin_acces_le: J,
+        },
+      ]);
+    });
+
+    it('sa fiche est en lecture seule : séances réalisées seulement, ni notes ni commentaires', async () => {
+      const f = await fiche(K, profil.X);
+      expect(f.mode).toBe('ancien');
+      expect(f).not.toHaveProperty('notes');
+      expect(f).not.toHaveProperty('assiduite');
+      expect(f).toMatchObject({ seances_faites: 1, fin_acces_le: J });
+      expect(f.historique.map((h) => [h.statut, h.commentaire])).toEqual([
+        ['partielle', null],
+        ['faite', null],
+      ]);
+    });
+
+    it('écrire ses notes est refusé (client_ancien)', async () => {
+      const r = await noter(K, profil.X, 'Plus tard.');
+      expect(r.statut).toBe(400);
+      expect(messageDe(r.corps)).toBe('client_ancien');
+    });
+
+    it('réabonnement : X revient dans « Mes clients » ; ses anciennes notes et ses commentaires réapparaissent (comportement actuel, arbitrage ouvert)', async () => {
+      abonnement.X2 = await souscrire(profil.X, offreK);
+      expect((await liste(K)).clients.map((c) => c.profil_client_id)).toContain(profil.X);
+      expect(await lire<unknown[]>('mes_anciens_clients', K)).toEqual([]);
+      const f = await fiche(K, profil.X);
+      expect(f.mode).toBe('actuel');
+      expect(f.notes).toBe('Objectif semi-marathon.');
+      expect(f.historique.find((h) => h.statut === 'faite')?.commentaire).toBe('Merci !');
+      await poser(profil.X, coachK, []);
+    });
+
+    it('SEPA en attente, puis annulé : nulle part, et sa fiche est introuvable', async () => {
+      const verifier = async () => {
+        expect((await liste(K)).clients.map((c) => c.profil_client_id)).not.toContain(profil.E);
+        expect(
+          (await lire<{ profil_client_id: string }[]>('mes_anciens_clients', K)).map(
+            (c) => c.profil_client_id,
+          ),
+        ).not.toContain(profil.E);
+        const r = await rpc('fiche_client', { p_profil_client_id: profil.E }, K);
+        expect(messageDe(r.corps)).toBe('client_introuvable');
+      };
+      await verifier();
+      await rpc('clore_abonnements_banc', { p_profil_client_id: profil.E }, 'admin');
+      await verifier();
+    });
+  });
+
+  describe('cloisonnement et données de santé (décision 1)', () => {
+    it('un coach ne voit que ses clients : L ne voit que A ; K ne voit pas les clients de L', async () => {
+      expect((await liste(L)).clients.map((c) => c.profil_client_id)).toEqual([profil.A]);
+      const pilotageL = await lire<{ clients_avec_acces: number }>('mon_pilotage', L);
+      expect(pilotageL.clients_avec_acces).toBe(1);
+    });
+
+    it('un compte à deux profils, en espace client : les cinq fonctions du coach refusent (profil_coach_requis)', async () => {
+      await basculer(K, 'client');
+      for (const [fonction, corps] of [
+        ['mes_clients', {}],
+        ['mes_anciens_clients', {}],
+        ['mon_pilotage', {}],
+        ['fiche_client', { p_profil_client_id: profil.A }],
+        ['enregistrer_notes_client', { p_profil_client_id: profil.A, p_texte: 'x' }],
+      ] as const) {
+        const r = await rpc(fonction, corps, K);
+        expect(r.statut).toBe(400);
+        expect(messageDe(r.corps)).toBe('profil_coach_requis');
+      }
+      await basculer(K, 'coach');
+    });
+
+    it('A a consenti et saisi poids, tour de taille, poids de départ et ressenti : aucune lecture du coach n’en rend rien', async () => {
+      const consent = await appelRest('/rest/v1/consentements', {
+        methode: 'POST',
+        session: A,
+        corps: {
+          compte_id: A.compteId,
+          type: 'donneesSante',
+          accorde: true,
+          version: '2026-08-01',
+          origine: 'banc',
+        },
+      });
+      expect(consent.statut).toBeLessThan(300);
+      const depart = await appelRest(`/rest/v1/profils_client?compte_id=eq.${A.compteId}`, {
+        methode: 'PATCH',
+        session: A,
+        corps: { poids_depart_grammes: 71300, poids_cible_grammes: 65700 },
+      });
+      expect(depart.statut).toBeLessThan(300);
+      for (const [type, valeur] of [
+        ['poids', 68.4],
+        ['tour_de_taille', 74.2],
+      ] as const) {
+        const r = await rpc(
+          'enregistrer_mesure',
+          { p_type: type, p_valeur: valeur, p_cle: randomUUID() },
+          A,
+        );
+        expect(r.statut).toBe(200);
+      }
+      await poser(profil.A, coachK, [
+        { date: jour(-2), statut: 'faite', terminee_le: midi(jour(-2)), ressenti_effort: 7 },
+      ]);
+
+      const reponses = [
+        await lire('mes_clients', K),
+        await lire('mes_anciens_clients', K),
+        await lire('mon_pilotage', K),
+        await lire('fiche_client', K, { p_profil_client_id: profil.A }),
+      ];
+      const cles = new Set<string>();
+      const parcourir = (v: unknown) => {
+        if (Array.isArray(v)) v.forEach(parcourir);
+        else if (v && typeof v === 'object') {
+          for (const [k, w] of Object.entries(v)) {
+            cles.add(k);
+            parcourir(w);
+          }
+        }
+      };
+      reponses.forEach(parcourir);
+      expect([...cles].filter((k) => /ressenti|poids|tour|mesure|rpe/i.test(k))).toEqual([]);
+      const texte = JSON.stringify(reponses);
+      // Les valeurs décimales seules : un nombre entier pourrait se trouver dans un UUID.
+      for (const valeur of ['68.4', '74.2', '71.3', '65.7']) {
+        expect(texte).not.toContain(valeur);
+      }
+      // Le contrôle voit bien la séance : ce n'est pas une réponse vide qui passe.
+      expect((reponses[3] as Fiche).historique[0]).toMatchObject({ statut: 'faite' });
+    });
+  });
+});

@@ -53,7 +53,12 @@ ni dans l'assiduité moyenne, ni dans « À traiter ».
 
 ## Règles
 
-- Tout vient du serveur en une lecture (`mon_pilotage`) ; aucun calcul dans l'écran.
+- Tout vient du serveur en **deux lectures** (`mon_pilotage`, et `mes_revenus` de L5 pour le
+  bloc 1 : une seule définition du net des ventes) ; aucun calcul dans l'écran. Plan P7.3b,
+  validé le 18 novembre 2026.
+- **Revenu indisponible** (lecture de `mes_revenus` en échec, l'autre réussie) : la carte
+  « Revenus » affiche son propre `EtatErreur` avec « Réessayer », qui ne relit que le revenu ;
+  le reste du pilotage s'affiche normalement. Les deux en échec : l'`EtatErreur` de l'écran.
 - **Aucune donnée de santé** (décision 1) : ni poids, ni tour de taille, ni ressenti, **même
   agrégés** — la règle est appliquée par le serveur, pas par l'écran.
 - Le statut d'un client est toujours écrit en texte, jamais porté par la seule couleur.

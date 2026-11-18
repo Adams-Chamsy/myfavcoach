@@ -507,7 +507,23 @@ passent par des fonctions de base, jamais par une table : `enregistrer_mesure` (
 `mon_pilotage`, `mes_anciens_clients` (décision 6). `fiche_client` rend aussi un ancien client,
 en lecture seule ; `enregistrer_notes_client` le refuse. Badges : `a_jour` « À jour »,
 `inactive` « {n} séance(s) non rattrapée(s) » (règle révisée à la revue du 18 novembre, décision
-2 ; la clé reste `inactive`), `nouveau` « Nouveau », `paiement_ko` « Paiement en échec ».
+2 ; la clé reste `inactive`), `nouveau` « Nouveau », `paiement_ko` « Paiement en échec ». Les cinq fonctions du coach exigent l'espace coach (refus `profil_coach_requis`) :
+- `mes_clients()` → `{ clients, compteurs }` ; chaque client `{ profil_client_id, prenom, nom,
+  offre, statut, badge, badge_n, semaine, semaine_en_cours, programme_en_cours, pause_jusqu_le,
+  fin_acces_le }`, dans l'ordre des badges puis du nom ; `compteurs { tous, a_relancer, nouveaux,
+  anciens }`.
+- `mes_anciens_clients()` → `[{ profil_client_id, prenom, nom, offre, debute_le, fin_acces_le }]`,
+  du plus récemment parti au plus ancien.
+- `fiche_client(p_profil_client_id)` → `mode: 'actuel'` (en-tête, `badge`, `prix_centimes`,
+  `derniere_seance_le`, `seances_faites`, `assiduite`, `semaines`, `programme { id, titre,
+  semaine, semaines }` ou `null`, `historique` (quinze, avec `commentaire`), `notes`) ou
+  `mode: 'ancien'` (en-tête, `fin_acces_le`, `seances_faites`, `historique` des séances réalisées
+  sans commentaire ; ni notes ni métriques).
+- `enregistrer_notes_client(p_profil_client_id, p_texte)` : refus `client_introuvable`,
+  `client_ancien`, `notes_invalides` (plus de 2 000 caractères) ; un texte vide efface la note.
+- `mon_pilotage()` → `{ aucun_client, clients_avec_acces, assiduite_moyenne, a_traiter_total,
+  a_traiter }` (cinq lignes au plus, la règle du filtre « À relancer ») ; **sans revenu** :
+  l'écran lit `mes_revenus` (L5).
 `enregistrer_mesure(p_type, p_valeur, p_cle)` (kg ou cm, une décimale ; `p_cle` : UUID de
 réessai) rend l'identifiant de la mesure et ne refuse que les saisies invalides ; refus
 `profil_client_requis`, `consentement_sante_absent`, `mesure_invalide`,

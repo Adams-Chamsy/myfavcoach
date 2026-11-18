@@ -634,6 +634,96 @@ export type MonSuivi = {
   semaines: SemaineSuivi[];
 };
 
+// L7 — les clients du coach (docs/ecrans/L7-08-pilotage.md, L7-09-clients.md,
+// L7-10-fiche-client.md). Tout est calculé par le serveur, badge compris. AUCUNE donnée de
+// santé (docs/prompts/L7.md, décision 1). `badgeN` : le nombre de séances non rattrapées, pour
+// le seul badge `inactive`. Dates AAAA-MM-JJ, Europe/Paris.
+export type BadgeClient = 'paiement_ko' | 'inactive' | 'nouveau' | 'a_jour';
+export type StatutAbonnementClient =
+  'actif' | 'resiliation_programmee' | 'impaye' | 'suspendu' | 'en_pause';
+export type ClientDuCoach = {
+  profilClientId: string;
+  prenom: string;
+  nom: string | null;
+  offre: string;
+  statut: StatutAbonnementClient;
+  badge: BadgeClient;
+  badgeN: number | null;
+  semaine: number;
+  semaineEnCours: SemaineSuivi;
+  programmeEnCours: boolean;
+  pauseJusquLe: string | null;
+  finAccesLe: string | null;
+};
+export type MesClients = {
+  clients: ClientDuCoach[];
+  compteurs: { tous: number; aRelancer: number; nouveaux: number; anciens: number };
+};
+export type AncienClient = {
+  profilClientId: string;
+  prenom: string;
+  nom: string | null;
+  offre: string;
+  debuteLe: string;
+  finAccesLe: string;
+};
+export type SeanceHistorique = {
+  id: string;
+  titre: string;
+  datePrevue: string;
+  dureeMinutes: number;
+  statut: StatutSeanceProgrammee;
+  rattrapee: boolean;
+  // Toujours null pour un ancien client (arbitrage en attente, L7-10).
+  commentaire: string | null;
+};
+export type FicheClient =
+  | {
+      mode: 'actuel';
+      profilClientId: string;
+      prenom: string;
+      nom: string | null;
+      offre: string;
+      statut: StatutAbonnementClient;
+      prixCentimes: number;
+      debuteLe: string;
+      badge: BadgeClient;
+      badgeN: number | null;
+      derniereSeanceLe: string | null;
+      seancesFaites: number;
+      assiduite: number | null;
+      semaines: SemaineSuivi[];
+      programme: { id: string; titre: string; semaine: number; semaines: number } | null;
+      historique: SeanceHistorique[];
+      notes: string | null;
+    }
+  | {
+      mode: 'ancien';
+      profilClientId: string;
+      prenom: string;
+      nom: string | null;
+      offre: string;
+      debuteLe: string;
+      finAccesLe: string;
+      seancesFaites: number;
+      historique: SeanceHistorique[];
+    };
+export type LigneATraiter = {
+  profilClientId: string;
+  prenom: string;
+  nom: string | null;
+  badge: 'paiement_ko' | 'inactive';
+  badgeN: number | null;
+};
+// Sans revenu : l'écran lit lireRevenus (mes_revenus, L5), une seule définition du net.
+export type Pilotage = {
+  aucunClient: boolean;
+  clientsAvecAcces: number;
+  assiduiteMoyenne: number | null;
+  aTraiterTotal: number;
+  aTraiter: LigneATraiter[];
+};
+
 // L6 — la séance du jour du client (docs/ecrans/L6-05-seance-du-jour.md), en espace client.
 export type StatutSeanceProgrammee = 'a_faire' | 'en_cours' | 'faite' | 'partielle' | 'manquee';
 
@@ -1006,6 +1096,17 @@ export type PortDonnees = {
 
   // L7, suivi (écran 06), en espace client ; lève hors espace client (profil_client_requis).
   lireMonSuivi(): Promise<MonSuivi>;
+
+  // L7, clients du coach (écrans 08, 09, 10), en espace coach. Les lectures lèvent hors espace
+  // coach (profil_coach_requis) ; lireFicheClient lève client_introuvable pour un client qui
+  // n'est ni actuel ni ancien chez ce coach. enregistrerNotesClient rend son refus :
+  // client_introuvable, client_ancien (lecture seule), notes_invalides (plus de 2 000
+  // caractères). Un texte vide efface la note. Les notes ne passent jamais par un journal.
+  lireMesClients(): Promise<MesClients>;
+  lireMesAnciensClients(): Promise<AncienClient[]>;
+  lireFicheClient(profilClientId: string): Promise<FicheClient>;
+  enregistrerNotesClient(profilClientId: string, texte: string): Promise<ResultatStudio>;
+  lirePilotage(): Promise<Pilotage>;
   enregistrerMesure(type: TypeMesure, valeur: number, cle: string): Promise<ResultatStudio<string>>;
 };
 
