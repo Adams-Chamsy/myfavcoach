@@ -48,7 +48,9 @@ async function rendre(surcharges: Partial<EtatProfils> = {}, dernierExport: Dern
     </SafeAreaProvider>,
   );
 
-  await waitFor(() => expect(screen.queryByText('Ce que contient le fichier')).toBeTruthy());
+  await waitFor(() =>
+    expect(screen.queryByText('Selon ton activité, le fichier peut contenir')).toBeTruthy(),
+  );
   return { portDonnees };
 }
 

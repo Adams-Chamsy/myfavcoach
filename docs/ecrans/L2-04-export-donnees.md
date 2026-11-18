@@ -26,13 +26,14 @@ Titre serif : « Tout ce qu'on a sur toi. »
 | En préparation | Carte sombre : badge « EN PRÉPARATION », pas de bouton de téléchargement |
 | Prêt | Carte sombre : badge « PRÊT », taille et format (« 2,1 Mo · JSON »), date de l'export, date d'expiration du lien (« Disponible jusqu'au {date}, puis supprimé »), bouton « Télécharger » |
 
-**Ce que contient le fichier** : liste d'étiquettes — Compte et profil, Objectifs, Poids et
-mesures, Séances faites, Messages, Paiements, Tes autorisations. Reflète les tables réellement
-exportées ; s'étend au fil des lots (rien à ce jour sur séances/messages/paiements avant L6/L8/
-L4, l'étiquette n'apparaît que si la donnée existe pour ce compte).
+**Ce que le fichier peut contenir**, selon les profils et l'activité du compte :
+compte et profil, objectifs, poids et mesures sous consentement, séances,
+abonnements et factures, coachs suivis, factures de commission et versements,
+autorisations. Les notes privées du coach restent hors de l'export automatique
+en attendant l'arbitrage.
 
-Avertissement, si le fichier contient une donnée de santé : « Ce fichier contient ton poids et
-tes mesures. Le lien est personnel et expire au bout de 7 jours — ne le transfère à personne. »
+Avertissement pour un profil client : « Ce fichier peut contenir ton poids et tes
+mesures. Le lien est personnel et expire au bout de 7 jours — ne le transfère à personne. »
 
 Pied fixe : bouton contour « Demander un nouvel export » (ou « Demander mon export » à l'état
 initial) — **une fois par mois** (voir Règles).
@@ -42,8 +43,8 @@ initial) — **une fois par mois** (voir Règles).
 ## Règles
 
 - **Fonction distante**, pas PostgREST direct (`docs/api.md` §14) : l'export rassemble des
-  données de plusieurs tables et envoie un courriel avec un lien signé — hors de portée d'une
-  requête PostgREST unique, donc hors de portée d'un accès direct depuis l'écran.
+  données de plusieurs tables. L'écran affiche un lien à jeton temporaire réservé
+  au compte demandeur. Le courriel de notification reste à raccorder à un prestataire.
 - **Le lien de téléchargement expire 7 jours après la préparation de l'export.** Passé ce délai,
   le fichier est supprimé côté serveur — pas seulement un lien qui casse, une suppression réelle.
   Une donnée de santé exportée ne doit pas dormir indéfiniment derrière un lien permanent
@@ -55,8 +56,7 @@ initial) — **une fois par mois** (voir Règles).
   « Tu pourras en redemander un le mois prochain. ». Une règle du produit, dite comme telle :
   jamais sous le titre du repli serveur (« On a un souci de notre côté »), et sans « Réessayer »,
   qui mènerait au même refus.
-- Aucune donnée n'est affichée ni téléchargée **dans** l'application au-delà du bouton qui
-  déclenche l'envoi : le fichier part par lien signé, jamais par un flux géré côté client.
+- Le bouton « Télécharger » ouvre le lien temporaire dans le navigateur. L'application affiche uniquement l'état de l'export.
 - L'avertissement sur le contenu sensible est **explicite sur ce qu'il contient**, pas une
   formule générique — les gens transfèrent ce genre de lien sans y penser.
 
@@ -67,7 +67,7 @@ initial) — **une fois par mois** (voir Règles).
 | Transition | Déclencheur |
 |---|---|
 | Aucun export → En préparation | Bouton pressé |
-| En préparation → Prêt | Courriel reçu, ou rouverture de l'écran après coup |
+| En préparation → Prêt | Réouverture de l’écran après la préparation |
 | Prêt → Aucun export | 7 jours écoulés (le fichier n'existe plus) |
 | Erreur | Message d'erreur, l'état antérieur reste affiché |
 
@@ -79,9 +79,6 @@ initial) — **une fois par mois** (voir Règles).
   manuel (sondage à la réouverture ? notification ?) : non spécifié au-delà de « rouvrir
   l'écran », cohérent avec la règle « pas de sondage en boucle » déjà posée ailleurs (`L2-09`,
   `L1-03`).
-- La liste exacte des étiquettes de contenu qui apparaissent selon l'avancement des lots : la
-  maquette montre l'état final (tous les lots construits) ; à ce lot, seules « Compte et profil »,
-  « Objectifs », « Poids et mesures » et « Tes autorisations » ont une donnée réelle à exporter.
 
 ---
 
@@ -92,5 +89,5 @@ initial) — **une fois par mois** (voir Règles).
 2. Le bouton déclenche une demande unique par pression, sans double appel.
 3. Le lien de téléchargement n'est plus utilisable après 7 jours.
 4. Une nouvelle demande est refusée avant qu'un mois se soit écoulé depuis la précédente.
-5. Seules les étiquettes de contenu réellement disponibles à ce lot apparaissent.
+5. Les catégories affichées correspondent aux profils du compte et au périmètre du fichier.
 6. `npm run verif` passe.

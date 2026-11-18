@@ -28,7 +28,12 @@ type EtatExport = 'aucun' | 'en_preparation' | 'pret';
 // initial dès que expireLe est dépassé, jamais un état "Prêt" qui mentirait sur un lien mort.
 function etatDe(export_: DernierExport): EtatExport {
   if (!export_ || !export_.pretLe) return export_ ? 'en_preparation' : 'aucun';
-  if (export_.expireLe && new Date(export_.expireLe).getTime() < Date.now()) return 'aucun';
+  if (
+    !export_.urlTelechargement ||
+    (export_.expireLe && Date.parse(export_.expireLe) <= Date.now())
+  ) {
+    return 'aucun';
+  }
   return 'pret';
 }
 
@@ -41,10 +46,6 @@ function formaterTaille(octets: number | null): string {
   return `${(octets / (1024 * 1024)).toFixed(1)} Mo`;
 }
 
-// L2-04 (C-07). Aucune donnée n'est affichée ni téléchargée DANS l'application au-delà du
-// bouton qui déclenche l'envoi (fiche, Règles) : ce port ne fait que lire/écrire l'ÉTAT de la
-// demande, le fichier part par lien signé — d'où l'absence de tout composant de prévisualisation
-// ici, pas un oubli.
 export default function Export() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -82,25 +83,26 @@ export default function Export() {
   async function surDemander() {
     setErreur(null);
     setDemandeEnCours(true);
-    const resultat = await port.demanderExportDonnees();
-    if (!resultat.succes) {
+    try {
+      const resultat = await port.demanderExportDonnees();
+      if (!resultat.succes) {
+        setErreur(resultat.code === 'export_trop_recent' ? 'quota_mensuel' : 'serveur');
+        return;
+      }
+      setExport(await port.lireDernierExport());
+    } catch {
+      setErreur('serveur');
+    } finally {
       setDemandeEnCours(false);
-      setErreur(resultat.code === 'export_trop_recent' ? 'quota_mensuel' : 'serveur');
-      return;
     }
-    const nouveau = await port.lireDernierExport();
-    setExport(nouveau);
-    setDemandeEnCours(false);
   }
 
-  // Fiche, "Ce que contient le fichier" : reflète les tables réellement exportées, une étiquette
-  // n'apparaît que si la donnée existe pour ce compte. "Compte et profil" et "Tes autorisations"
-  // existent pour tout compte (L1) ; "Objectifs"/"Poids et mesures" n'ont de sens que pour un
-  // profil client (onboarding, L1). Séances/Messages/Paiements : aucune table avant L6/L8/L4,
-  // absentes ici — pas une omission.
   const etiquettes = [
     'Compte et profil',
-    ...(profils?.clientExiste ? ['Objectifs', 'Poids et mesures'] : []),
+    ...(profils?.clientExiste
+      ? ['Objectifs', 'Poids et mesures', 'Séances', 'Abonnements et factures', 'Coachs suivis']
+      : []),
+    ...(profils?.coachExiste ? ['Factures de commission et versements'] : []),
     'Tes autorisations',
   ];
 
@@ -137,7 +139,7 @@ export default function Export() {
           <>
             <View style={{ gap: theme.espace[2] }}>
               <Text style={{ ...theme.texte.label, color: theme.couleur.texte.attenue }}>
-                Ce que contient le fichier
+                Selon ton activité, le fichier peut contenir
               </Text>
               {etiquettes.map((etiquette) => (
                 <Text
@@ -151,15 +153,15 @@ export default function Export() {
 
             {profils?.clientExiste ? (
               <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-                Ce fichier contient ton poids et tes mesures. Le lien est personnel et expire au
-                bout de 7 jours — ne le transfère à personne.
+                Ce fichier peut contenir ton poids et tes mesures. Le lien est personnel et expire
+                au bout de 7 jours — ne le transfère à personne.
               </Text>
             ) : null}
 
             {etat === 'aucun' ? (
               <Text style={{ ...theme.texte.corps, color: theme.couleur.texte.secondaire }}>
-                Demande un export complet de tes données. Il te parviendra sous forme de lien à
-                télécharger, valable 7 jours.
+                Demande un export de tes données. Quand il sera prêt, tu trouveras ici un lien de
+                téléchargement valable 7 jours.
               </Text>
             ) : (
               <CarteExport etat={etat} export_={export_} />

@@ -25,10 +25,10 @@ Web, iOS et Android ainsi que les routes du serveur Expo de développement sont 
 
 ## Conditions de clôture
 
-- **Export des données.** C-07 enregistre la demande. Il reste à générer le
-  fichier, à le livrer via un lien privé valable sept jours et à supprimer
-  l'artefact expiré. Voir [la fiche d'export](ecrans/L2-04-export-donnees.md)
-  et [la dette C-07](dette.md).
+- **Export des données.** La migration 0096 prépare le JSON et supprime le fichier
+  expiré. L'écran Export donne accès au téléchargement pendant sept jours. Restent
+  le déploiement en dev, la recette de bout en bout et le courriel prévu par
+  [la fiche d'export](ecrans/L2-04-export-donnees.md).
 - **Notes privées.** Valider le périmètre de l'export et le traitement des
   demandes d'accès aux notes.
 - **Anciens clients.** Valider la durée de conservation et la visibilité des
@@ -38,3 +38,19 @@ Web, iOS et Android ainsi que les routes du serveur Expo de développement sont 
   Android, dont la navigation et la lecture d'écran.
 
 Les arbitrages ouverts figurent dans [les décisions en attente](decisions-en-attente.md).
+
+## Mise en service de l'export
+
+Déployer la migration 0096 et la fonction `telecharger-export`. Sur le projet de
+recette, renseigner dans Vault `url_telechargement_export` avec l'URL HTTPS de
+cette fonction (`/functions/v1/telecharger-export`, sans paramètres). Les demandes
+en attente sont alors préparées par lots de dix par le job `preparer-exports`.
+Le job `purger-exports` supprime chaque minute les fichiers expirés ou liés à un
+compte marqué supprimé. Le lien devient inutilisable dès l'expiration.
+
+Vérifier en recette avec des comptes fictifs : demande, quota, isolation des
+demandes, passage à « Prêt », téléchargement, retrait du consentement et purge.
+Le JSON contient le profil, les autorisations, les données de suivi du client et
+ses éléments de paiement, ainsi que les commissions et versements du coach
+concerné. Les mesures et le ressenti sont inclus sous consentement. Le retrait
+du consentement ou l'effacement des mesures révoque une copie déjà prête.
