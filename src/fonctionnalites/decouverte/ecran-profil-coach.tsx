@@ -13,9 +13,12 @@ import { EtatErreur } from '@/composants/etats/etat-erreur';
 import { textesRepliErreur } from '@/composants/etats/textes';
 import { useParcoursVisiteur } from '@/fonctionnalites/accueil/fournisseur-parcours-visiteur';
 import { EtatVide } from '@/composants/etats/etat-vide';
-import { Icone } from '@/composants/icones';
 import { Onglets } from '@/composants/onglets';
 import { Squelette } from '@/composants/squelette';
+import {
+  CarteOffrePublique,
+  montantOffreEnEuros,
+} from '@/fonctionnalites/offres/carte-offre-publique';
 import { OngletAvis } from '@/fonctionnalites/avis/onglet-avis';
 import { useDonnees } from '@/fonctionnalites/identite/fournisseur-donnees';
 import { useSession } from '@/fonctionnalites/identite/fournisseur-session';
@@ -124,7 +127,7 @@ export function CorpsProfilCoachPublic({ id }: { id: string | undefined }): Reac
         espaceCoach
           ? 'Ouvrir mon espace'
           : offres[0]
-            ? `S’abonner · ${(offres[0].prixCentimes / 100).toFixed(0)} €/mois`
+            ? `S’abonner · ${montantOffreEnEuros(offres[0].prixCentimes)} €/mois`
             : 'S’abonner'
       }
       variante="primaire"
@@ -308,35 +311,8 @@ function OngletOffres({ offres }: { offres: Offre[] }) {
     );
   return (
     <View style={{ gap: theme.espace[6] }}>
-      {offres.map((o) => (
-        <Carte key={o.id}>
-          <View style={{ padding: theme.espace[6], gap: theme.espace[4] }}>
-            {o.estMiseEnAvant ? <Badge statut="accent" libelle="LE PLUS CHOISI" /> : null}
-            <Text style={{ ...theme.texte.titre2, color: theme.couleur.texte.principal }}>
-              {o.titre}
-            </Text>
-            <Text style={{ ...theme.texte.display, color: theme.couleur.marque.primaire }}>
-              {(o.prixCentimes / 100).toFixed(0)} €
-              <Text style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire }}>
-                {' '}
-                / mois
-              </Text>
-            </Text>
-            {o.benefices.map((b) => (
-              <View
-                key={b}
-                style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.espace[3] }}
-              >
-                <Icone nom="valide" couleur={theme.couleur.marque.primaire} />
-                <Text
-                  style={{ ...theme.texte.petit, color: theme.couleur.texte.secondaire, flex: 1 }}
-                >
-                  {b}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </Carte>
+      {offres.map((offre) => (
+        <CarteOffrePublique key={offre.id} {...offre} />
       ))}
     </View>
   );

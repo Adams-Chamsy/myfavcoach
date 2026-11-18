@@ -39,8 +39,11 @@ droite. Sans la croix, le geste de retour était la seule sortie. En modificatio
 
 **Hiérarchie des actions** (maquette) : « Enregistrer » est un lien discret en en-tête —
 enregistrer un brouillon n'est pas l'action principale de cet écran, seulement un filet de
-sécurité. « Publier » est le seul bouton de pied, plein et proéminent : c'est l'action que cet
-écran existe pour produire.
+sécurité. « Publier » est l'action principale du pied. « Aperçu client » ouvre une feuille
+avec le contenu actuel du formulaire, même pour un brouillon incomplet ou non enregistré.
+La carte est celle du profil public et affiche le prix mensuel sans arrondir les centimes.
+Les formats renseignés sur le profil du coach sont indiqués dans la feuille. Revenir à
+l'édition conserve la saisie. L'aperçu n'enregistre et ne publie aucune modification.
 
 ---
 
