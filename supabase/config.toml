@@ -469,3 +469,7 @@ enabled = true
 # declarative_schema_path = "./schemas"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# Le téléchargement est autorisé par le jeton temporaire du fichier, remis au compte propriétaire.
+[functions.telecharger-export]
+verify_jwt = false

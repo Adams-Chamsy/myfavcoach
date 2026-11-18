@@ -26,6 +26,7 @@ const FONCTIONS = [
   'offre-publication/index.ts',
   'coach-identification/index.ts',
   'coach-versements/index.ts',
+  'telecharger-export/index.ts',
 ];
 
 function trouverDeno() {
