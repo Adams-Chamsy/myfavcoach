@@ -20,6 +20,7 @@ import type {
 } from '@/services/donnees/port';
 import { useTheme } from '@/theme/fournisseur';
 import { BandeauRefus } from './bandeau-refus';
+import { ApercuProgramme } from './apercu-programme';
 import { ecouterStudioModifie, signalerStudioModifie } from './studio-modifie';
 import {
   JOURS_COURTS,
@@ -62,7 +63,7 @@ export function EcranProgramme({
   const [titre, setTitre] = useState('');
   const [envoi, setEnvoi] = useState(false);
   const [refus, setRefus] = useState<TexteRefus | null>(null);
-  const [feuille, setFeuille] = useState(false);
+  const [feuille, setFeuille] = useState<'affectation' | 'apercu' | null>(null);
 
   const relire = useCallback(() => setCleTentative((c) => c + 1), []);
 
@@ -130,10 +131,17 @@ export function EcranProgramme({
 
   return (
     <FeuilleBasse
-      ouverte={feuille}
-      onFermer={() => setFeuille(false)}
+      ouverte={feuille !== null}
+      onFermer={() => setFeuille(null)}
       enfants={
-        programme ? (
+        feuille === 'apercu' && programme && donnees ? (
+          <ApercuProgramme
+            titre={titre}
+            semaines={programme.dureeSemaines}
+            seances={donnees.seances}
+            onFermer={() => setFeuille(null)}
+          />
+        ) : programme && feuille === 'affectation' ? (
           <FeuilleAffectation
             programmeId={programme.id}
             onAffecte={() => {
@@ -331,6 +339,12 @@ export function EcranProgramme({
               })}
 
               {refus ? <BandeauRefus refus={refus} /> : null}
+              <Bouton
+                libelle="Aperçu client"
+                variante="secondaire"
+                desactive={envoi}
+                onPress={() => setFeuille('apercu')}
+              />
               {programme.statut === 'brouillon' ? (
                 <Bouton
                   libelle={envoi ? 'Envoi en cours…' : 'Publier'}
@@ -344,7 +358,7 @@ export function EcranProgramme({
                   <Bouton
                     libelle="Affecter à un abonné"
                     variante="primaire"
-                    onPress={() => setFeuille(true)}
+                    onPress={() => setFeuille('affectation')}
                   />
                   <Bouton
                     libelle="Revenir en édition"

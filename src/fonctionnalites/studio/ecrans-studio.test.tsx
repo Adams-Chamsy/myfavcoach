@@ -55,6 +55,41 @@ async function programmeAvecSeance(port: FauxPort): Promise<{ programme: string;
 }
 
 describe('L6-11 · Studio', () => {
+  it('ouvre les exercices d’un brouillon en aperçu sans le publier ni l’affecter', async () => {
+    const port = creerFauxPortDonnees();
+    const { programme, seance } = await programmeAvecSeance(port);
+    await port.ajouterExercice(seance, {
+      nom: 'Squat',
+      series: 3,
+      repetitions: 8,
+      chargeGrammes: 12500,
+      consigne: 'Garde les talons au sol.',
+    });
+    const lireExercices = jest.spyOn(port, 'lireExercices');
+    await rendre(
+      <EcranProgramme programmeId={programme} onRetour={jest.fn()} onOuvrirSeance={jest.fn()} />,
+      port,
+    );
+
+    await fireEvent.press(await screen.findByRole('button', { name: 'Aperçu client' }));
+    expect(await screen.findByText('Remise en route')).toBeTruthy();
+    expect(lireExercices).not.toHaveBeenCalled();
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Semaine 1, jour 3 · Bas du corps · découverte' }),
+    );
+    expect(await screen.findByText('Squat')).toBeTruthy();
+    expect(screen.getByText('3 séries · 8 rép. · 12,5 kg')).toBeTruthy();
+    expect(screen.getByText('Garde les talons au sol.')).toBeTruthy();
+    expect(lireExercices).toHaveBeenCalledWith(seance);
+    expect(port.lireProgrammesPourTest()).toMatchObject([
+      { statut: 'brouillon', abonnesEnCours: 0 },
+    ]);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Toutes les séances' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Revenir au programme' }));
+    expect(await screen.findByRole('button', { name: 'Publier' })).toBeTruthy();
+  });
+
   it('« Mes programmes » vide : la phrase, et « Nouveau programme » crée un brouillon qu’il ouvre', async () => {
     const port = creerFauxPortDonnees();
     const onOuvrirProgramme = jest.fn();

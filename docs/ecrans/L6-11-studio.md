@@ -46,6 +46,11 @@ Contenu, de haut en bas (maquette) :
    - publié : « Affecter à un abonné » (principal), « Revenir en édition », « Archiver » ;
    - archivé : rien.
 
+**Aperçu client** ouvre une lecture du programme dans l’ordre des semaines et des jours.
+Le coach choisit une séance pour lire sa durée, ses exercices, les séries, les répétitions,
+la charge et les consignes. La présence d’une démonstration est indiquée si un média est joint.
+L’aperçu ne publie, n’affecte et ne modifie pas le programme.
+
 Les refus du serveur (`identite_non_verifiee`, `programme_vide`, `retour_edition_interdit`)
 s'affichent avec leur titre et leur détail, comme ailleurs.
 
@@ -89,7 +94,7 @@ boutons désactivés, « Envoi en cours… ».
 
 Tout ce qui n'est pas dans la maquette 11 : les quatre routes, les textes de vide et de refus,
 « Dupliquer » qui copie dans la semaine suivante, le formulaire d'exercice, la feuille
-d'affectation. Écartés de la maquette : « Importer », « Blocs réutilisables », « Aperçu client »
+d'affectation. Écartés de la maquette : « Importer », « Blocs réutilisables »
 (`docs/prompts/L6.md`, décision 9).
 
 ## Critères d'acceptation
