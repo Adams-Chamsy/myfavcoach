@@ -42,12 +42,19 @@ function traiterLienDemarrageAFroid(url: string | null) {
   if (!url) return;
 
   if (url.includes('auth/rappel')) {
-    portAuthSupabase.etablirSessionDepuisLien(url).catch(() => {
-      // Échec déjà traduit en ResultatAuth par le port — jamais un rejet en usage normal. Ce
-      // catch n'est qu'un filet pour une URL malformée (ex. new URL() qui lève) ; _layout.tsx
-      // n'a aucune interface pour afficher une erreur : l'utilisateur reste sur l'espace
-      // public, recommence depuis "Renvoyer l'e-mail" si besoin.
-    });
+    portAuthSupabase
+      .etablirSessionDepuisLien(url)
+      .then((resultat) => {
+        if (!resultat.succes && resultat.erreur.code === 'lien_expire') {
+          router.replace({
+            pathname: '/(public)/verification',
+            params: { lienExpire: '1' },
+          });
+        }
+      })
+      .catch(() => {
+        // Une URL malformée peut être rejetée avant d'obtenir un résultat du port.
+      });
     return;
   }
 

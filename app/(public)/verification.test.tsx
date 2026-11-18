@@ -9,7 +9,7 @@ import Verification from './verification';
 
 const mockRemplacer = jest.fn();
 const mockRetour = jest.fn();
-let mockParams: { email?: string } = { email: 'camille@exemple.fr' };
+let mockParams: { email?: string; lienExpire?: string } = { email: 'camille@exemple.fr' };
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: mockRemplacer, back: mockRetour }),
@@ -98,9 +98,22 @@ describe('Verification (docs/ecrans/L1-03-verification-email.md)', () => {
     expect(screen.getByText('M’en renvoyer un')).toBeTruthy();
   });
 
-  // Critère 4 (complément) : après retour arrière et correction, la nouvelle adresse reste
-  // celle affichée — ici vérifié en changeant simplement le paramètre reçu, ce que
-  // app/(public)/inscription.tsx produit réellement en repoussant vers cet écran.
+  it('au démarrage à froid, permet de saisir l’adresse et de renvoyer un lien', async () => {
+    mockParams = { lienExpire: '1' };
+    const port = creerFauxPortAuth();
+    await port.inscrire('camille@exemple.fr', 'un-mot-de-passe', '2000-01-01');
+    const renvoyer = jest.spyOn(port, 'renvoyerVerification');
+    await rendreVerification(port);
+
+    expect(screen.getByText('Ce lien a expiré')).toBeTruthy();
+    await fireEvent.press(screen.getByText('M’en renvoyer un'));
+    expect(renvoyer).not.toHaveBeenCalled();
+    await fireEvent.changeText(screen.getByLabelText('Adresse e-mail'), ' camille@exemple.fr ');
+    await fireEvent.press(screen.getByText('M’en renvoyer un'));
+    expect(renvoyer).toHaveBeenCalledWith('camille@exemple.fr');
+    expect(await screen.findByText('C’est reparti')).toBeTruthy();
+  });
+
   it("transition automatiquement à l'écran suivant une fois le lien profond établi", async () => {
     const port = creerFauxPortAuth();
     await port.inscrire('camille@exemple.fr', 'un-mot-de-passe', '2000-01-01');

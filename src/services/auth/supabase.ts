@@ -296,8 +296,14 @@ export const portAuthSupabase: PortAuth = {
   // implicite (jetons dans le FRAGMENT `#access_token=...&refresh_token=...`), ce code échouera
   // silencieusement — voir docs/dette.md.
   async etablirSessionDepuisLien(url) {
-    const code = new URL(url).searchParams.get('code');
+    const lien = new URL(url);
+    const code = lien.searchParams.get('code');
     if (!code) {
+      const erreur = lien.searchParams.get('error_code');
+      const erreurFragment = new URLSearchParams(lien.hash.slice(1)).get('error_code');
+      if (erreur === 'otp_expired' || erreurFragment === 'otp_expired') {
+        return { succes: false, erreur: { code: 'lien_expire', message: 'Ce lien a expiré.' } };
+      }
       return {
         succes: false,
         erreur: { code: 'serveur', message: 'On a un souci de notre côté. Ce n’est pas toi.' },
