@@ -79,7 +79,7 @@ describe('L5-13 · Revenus', () => {
     expect(screen.getByText('Commission plateforme')).toBeTruthy();
     expect(screen.getByText('−324,00 €')).toBeTruthy();
     expect(screen.getByText('Prochain transfert prévu le 5 septembre')).toBeTruthy();
-    expect(screen.getByText('Transféré à Stripe')).toBeTruthy();
+    expect(screen.getByText('Transféré au prestataire')).toBeTruthy();
     expect(screen.getByText('En cours')).toBeTruthy();
     const tout = textesLisibles(screen.container as unknown as NoeudHote).join(' ');
     expect(tout).not.toMatch(/séance|à l’unité|CIC|••|10 %/i);
@@ -159,8 +159,8 @@ describe('L5-13 · Revenus', () => {
 
   // Règles : la confirmation dit le montant, puis l'état rendu, et l'écran relit.
   it.each([
-    ['verse', 'Montant transféré sur ton compte Stripe.'],
-    ['en_cours', 'Transfert vers Stripe en cours.'],
+    ['verse', 'Montant transféré sur ton compte de versement.'],
+    ['en_cours', 'Transfert vers ton compte de versement en cours.'],
   ] as const)(
     'virement immédiat : affiche le montant, puis l’état %s et relit le solde',
     async (statut, message) => {

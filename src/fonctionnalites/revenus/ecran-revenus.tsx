@@ -70,7 +70,7 @@ function aujourdhuiParis(): string {
 export const LIBELLES_STATUT_VERSEMENT: Record<StatutVersement, string> = {
   prevu: 'Prévu',
   en_cours: 'En cours',
-  verse: 'Transféré à Stripe',
+  verse: 'Transféré au prestataire',
   echoue: 'Échoué',
 };
 
@@ -366,7 +366,7 @@ export function EcranRevenus({
           {texte('Derniers transferts', 'titre3')}
           {versements.some((v) => v.statut === 'verse')
             ? texte(
-                'Consulte ton espace Stripe pour suivre le virement vers ta banque.',
+                'Consulte ton espace chez le prestataire de paiement pour suivre le virement vers ta banque.',
                 'petit',
                 theme.couleur.texte.secondaire,
               )
@@ -490,9 +490,15 @@ function MessageVersement({ retour }: { retour: RetourVersement }) {
   );
   switch (retour.type) {
     case 'transfere':
-      return phrase('Montant transféré sur ton compte Stripe.', theme.couleur.etat.succesEncre);
+      return phrase(
+        'Montant transféré sur ton compte de versement.',
+        theme.couleur.etat.succesEncre,
+      );
     case 'en_cours':
-      return phrase('Transfert vers Stripe en cours.', theme.couleur.texte.principal);
+      return phrase(
+        'Transfert vers ton compte de versement en cours.',
+        theme.couleur.texte.principal,
+      );
     case 'demain':
       return phrase('Ton virement partira demain.', theme.couleur.texte.principal);
     case 'echoue':
