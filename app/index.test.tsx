@@ -177,6 +177,7 @@ function creerPortDonneesEnAttente(promesse: Promise<EtatProfils>): PortDonnees 
     enregistrerSerie: jest.fn(),
     terminerSeance: jest.fn(),
     lireMesMesures: jest.fn(),
+    lireMonSuivi: jest.fn(),
     enregistrerMesure: jest.fn(),
   };
 }
@@ -438,6 +439,7 @@ describe('Index (docs/ecrans/L0-04-demarrage.md)', () => {
       enregistrerSerie: jest.fn(),
       terminerSeance: jest.fn(),
       lireMesMesures: jest.fn(),
+      lireMonSuivi: jest.fn(),
       enregistrerMesure: jest.fn(),
     };
 

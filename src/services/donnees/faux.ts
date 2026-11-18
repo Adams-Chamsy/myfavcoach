@@ -31,6 +31,7 @@ import type {
   ProgrammeResume,
   ResultatStudio,
   MesMesures,
+  MonSuivi,
   SerieMesures,
   TypeMesure,
   SeanceProgrammeeDetail,
@@ -1269,6 +1270,51 @@ export function creerFauxPortDonnees(): FauxPortDonnees {
         poids: serieDe('poids'),
         tourDeTaille: serieDe('tour_de_taille'),
         seuils: { poids: { min: 20, max: 300 }, tour_de_taille: { min: 40, max: 200 } },
+      };
+    },
+    // Mêmes règles que metriques_seances (0091), sans historique d'accès : le faux n'a pas de
+    // pause, toutes ses séances comptent.
+    async lireMonSuivi(): Promise<MonSuivi> {
+      const jour = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(
+        new Date(),
+      );
+      const decaler = (date: string, jours: number) => {
+        const d = new Date(`${date}T00:00:00Z`);
+        d.setUTCDate(d.getUTCDate() + jours);
+        return d.toISOString().slice(0, 10);
+      };
+      const lundiDe = (date: string) =>
+        decaler(date, -((new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7));
+      const lundi = lundiDe(jour);
+      const fenetre = seancesClient.filter(
+        (x) => x.datePrevue >= decaler(jour, -28) && x.datePrevue <= decaler(jour, -1),
+      );
+      const poids = fenetre.reduce(
+        (n, x) => n + (x.statut === 'faite' ? 1 : x.statut === 'partielle' ? 0.5 : 0),
+        0,
+      );
+      const parSemaine = (l: string) => seancesClient.filter((x) => lundiDe(x.datePrevue) === l);
+      const faitesDe = (l: string) => parSemaine(l).filter((x) => x.statut === 'faite').length;
+      const semainesPassees = [...new Set(seancesClient.map((x) => lundiDe(x.datePrevue)))]
+        .filter((l) => l < lundi)
+        .sort()
+        .reverse();
+      let serie = faitesDe(lundi) > 0 ? 1 : 0;
+      for (const l of semainesPassees) {
+        const liste = parSemaine(l);
+        if (liste.some((x) => x.statut === 'faite')) serie += 1;
+        else if (!liste.some((x) => x.statut === 'partielle')) break;
+      }
+      const dates = seancesClient.map((x) => x.datePrevue).sort();
+      return {
+        seancesFaites: seancesClient.filter((x) => x.statut === 'faite').length,
+        depuis: dates[0] ?? null,
+        assiduite: fenetre.length < 4 ? null : Math.round((100 * poids) / fenetre.length),
+        serie,
+        semaines: [7, 6, 5, 4, 3, 2, 1, 0].map((k) => {
+          const l = decaler(lundi, -7 * k);
+          return { lundi: l, faites: faitesDe(l), prevues: parSemaine(l).length };
+        }),
       };
     },
     async enregistrerMesure(type, valeur, cle) {

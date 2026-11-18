@@ -1001,19 +1001,32 @@ Précisé le 18 novembre 2026 (L7, à relire) : « les 28 derniers jours » = le
 finissent hier, Europe/Paris (la séance d'aujourd'hui n'est pas encore manquée) ; seules les
 séances programmées chez des coachs auxquels le client a encore accès comptent pour le client,
 celles de ce coach seul pour le coach.
+**Séance prévue un jour sans accès** (revue du 18 novembre 2026, `0091_suivi_regles.sql`) : une
+séance dont le jour prévu (Europe/Paris) tombe entièrement dans une pause ou une suspension —
+aucun moment du jour où l'abonnement donnait accès (`actif`, `resiliation_programmee`,
+`impaye`) — n'est comptée ni dans l'assiduité, ni dans les huit semaines, ni dans la série, ni
+dans la relance, sauf si le client l'a faite quand même (rattrapée après sa reprise). L'accès se
+lit dans `historique_statuts_abonnement`, tenu par un déclencheur sur chaque changement de
+statut : le statut au moment où tourne la tâche du matin ne suffit pas (le client peut avoir
+repris entre-temps). Avant le premier statut connu (abonnements antérieurs à 0091), on ne sait
+pas : la séance compte, comme avant.
 
 ### 5.3 Progression hebdomadaire (« Semaine 3 · 3/5 faites »)
 Semaine = lundi 00:00 à dimanche 23:59, Europe/Paris. Numéro de semaine = rang depuis
 `debuteLe` de l'abonnement.
 Précisé le 18 novembre 2026 (L7, décidé seul, à relire) :
 - **Huit semaines** : les huit semaines qui finissent avec la semaine en cours ; pour chacune, les
-  séances faites (partielle 0,5, rattrapée 1, comptée dans la semaine où elle était programmée)
-  et les séances programmées. Mêmes séances comptées que l'assiduité (§5.2).
-- **Série en cours** : le nombre de semaines consécutives avec au moins une séance faite, en
-  remontant depuis la semaine dernière. Une semaine sans séance programmée conserve la série sans
-  l'allonger ; une semaine terminée avec au moins une séance programmée et aucune faite
-  l'interrompt. La semaine en cours l'allonge si elle compte déjà une séance faite, ne
-  l'interrompt jamais (revue du 18 novembre).
+  séances faites et les séances programmées, **en nombres entiers** (revue du 18 novembre) :
+  « faites » compte les séances terminées, rattrapées comprises, dans la semaine où elles étaient
+  programmées ; une partielle compte dans les programmées, pas dans les faites. Une faite et une
+  partielle sur trois : « 1 sur 3 » au graphique, 1,5 sur 3 pour l'assiduité. Mêmes séances
+  retenues que l'assiduité (§5.2).
+- **Série en cours** : en remontant depuis la semaine dernière, pour chaque semaine terminée
+  (revue du 18 novembre) : au moins une séance faite → +1 ; aucune faite mais au moins une
+  partielle, ou aucune séance programmée retenue (repos, pause) → série conservée sans
+  l'allonger ; des séances programmées retenues, aucune faite ni partielle → série interrompue.
+  La semaine en cours l'allonge si elle compte déjà une séance faite, ne l'interrompt jamais.
+  La série reconnaît l'effort commencé ; le badge du coach, lui, compte une partielle échue.
 - **Séance non rattrapée** (badge du coach, `docs/prompts/L7.md` décision 2, validée par le
   développeur le 18 novembre) : une séance de ce coach au statut `manquee` ou `partielle` dont
   l'échéance réelle de rattrapage de L6 est passée, soit `date_prevue < aujourd'hui − 7`
@@ -1081,7 +1094,7 @@ Le **net des ventes du mois** est la somme des encaissements du mois civil à Pa
 des commissions correspondantes (`mes_revenus`). Revenus et Pilotage utilisent ce montant.
 Le détail affiche les encaissements, la commission totale en euros et le net. Le **solde
 disponible** vient de `mon_solde` et tient compte des transferts en cours ou acceptés (§3.10).
-Les transferts acceptés sont indiqués « Transféré à Stripe » dans l'historique.
+Les transferts acceptés sont indiqués « Transféré au prestataire » dans l'historique.
 
 ---
 

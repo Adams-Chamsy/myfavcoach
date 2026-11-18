@@ -10378,3 +10378,522 @@ describe('mesures corporelles — L7 (0088, 0089)', () => {
     });
   });
 });
+
+// L7, P7.3a (0090, 0091) — le suivi du client : assiduité, huit semaines, série, séances faites
+// (docs/domaine.md §5.2, §5.3 ; docs/ecrans/L7-06-suivi.md). Les séances et l'historique des
+// statuts sont posés en décor par le rôle serveur ; la lecture passe par mon_suivi, avec la
+// session du client, comme l'application. Une séance prévue un jour où le client n'avait pas
+// accès (pause, suspension) n'est pas comptée (revue du 18 novembre 2026).
+describe('suivi du client — L7 (0090, 0091)', () => {
+  const rpc = (fonction: string, corps: Record<string, unknown>, session: Appelant) =>
+    appelRest(`/rest/v1/rpc/${fonction}`, { methode: 'POST', session, corps });
+  const basculer = async (session: Session, profil: 'coach' | 'client') => {
+    const bascule = await rpc('basculer_profil', { profil }, session);
+    if (bascule.statut >= 400) {
+      throw new Error(`Préparation du banc : bascule en ${profil} refusée (${bascule.statut})`);
+    }
+  };
+  type Semaine = { lundi: string; faites: number; prevues: number };
+  type Suivi = {
+    seances_faites: number;
+    depuis: string | null;
+    assiduite: number | null;
+    serie: number;
+    semaines: Semaine[];
+  };
+  const suivi = async (session: Session): Promise<Suivi> => {
+    const { statut, corps } = await rpc('mon_suivi', {}, session);
+    if (statut !== 200) throw new Error(`mon_suivi refusée (${statut}) : ${messageDe(corps)}`);
+    return corps as Suivi;
+  };
+  const prevuesSur8 = (s: Suivi) => s.semaines.reduce((n, w) => n + w.prevues, 0);
+
+  const J = aujourdhuiParis();
+  const jour = (n: number) => plusJours(J, n);
+  // Le lundi de la semaine en cours (Paris), puis le jour d de la semaine k avant (k=1 : la
+  // semaine dernière ; d=0 : lundi).
+  const lundiJ = plusJours(J, -((new Date(`${J}T12:00:00Z`).getUTCDay() + 6) % 7));
+  const semaine = (k: number, d = 0) => plusJours(lundiJ, -7 * k + d);
+  // Un instant de ce jour, vers midi à Paris (l'heure d'hiver ou d'été ne change pas le jour).
+  const midi = (date: string) => `${date}T12:00:00+01:00`;
+
+  let S: Session;
+  let T: Session;
+  let C1: Session;
+  let C2: Session;
+  let profilS: string;
+  let profilT: string;
+  let coach1: string;
+  let coach2: string;
+  let abonnementS1: string;
+  let abonnementS2: string;
+  let abonnementT1: string;
+  // Trois séances par coach : plusieurs séances le même jour restent possibles
+  // (unique (seance_id, profil_client_id, date_prevue)).
+  const seancesDe: Record<string, { programme: string; seances: string[] }> = {};
+
+  type Pose = { date: string; statut: string; coach?: 1 | 2; rattrapee?: boolean };
+  const poser = async (profil: string, poses: Pose[]) => {
+    await appelRest(`/rest/v1/seances_programmees?profil_client_id=eq.${profil}`, {
+      methode: 'DELETE',
+      session: 'admin',
+    });
+    if (poses.length === 0) return;
+    const rang: Record<string, number> = {};
+    const lignes = poses.map((p) => {
+      const coach = p.coach === 2 ? coach2 : coach1;
+      const cle = `${coach}-${p.date}`;
+      rang[cle] = (rang[cle] ?? -1) + 1;
+      return {
+        seance_id: seancesDe[coach].seances[rang[cle]],
+        programme_id: seancesDe[coach].programme,
+        profil_client_id: profil,
+        profil_coach_id: coach,
+        date_prevue: p.date,
+        statut: p.statut,
+        rattrapee: p.rattrapee ?? false,
+      };
+    });
+    const { statut } = await appelRest('/rest/v1/seances_programmees', {
+      methode: 'POST',
+      session: 'admin',
+      corps: lignes,
+    });
+    if (statut >= 400) throw new Error(`Préparation du banc : séances refusées (${statut})`);
+  };
+  const historique = async (abonnement: string, lignes: { statut: string; depuis: string }[]) => {
+    await appelRest(`/rest/v1/historique_statuts_abonnement?abonnement_id=eq.${abonnement}`, {
+      methode: 'DELETE',
+      session: 'admin',
+    });
+    const { statut } = await appelRest('/rest/v1/historique_statuts_abonnement', {
+      methode: 'POST',
+      session: 'admin',
+      corps: lignes.map((l) => ({ abonnement_id: abonnement, ...l })),
+    });
+    if (statut >= 400) throw new Error(`Préparation du banc : historique refusé (${statut})`);
+  };
+  const creerCoach = async (session: Session, prenom: string): Promise<[string, string]> => {
+    const profil = await appelRest('/rest/v1/profils_coach', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { compte_id: session.compteId, prenom, nom: 'Suivi', discipline: 'yoga' },
+    });
+    const id = (profil.corps as { id: string }[])[0].id;
+    await appelRest(`/rest/v1/profils_coach?id=eq.${id}`, {
+      methode: 'PATCH',
+      session: 'admin',
+      corps: { statut_verification: 'verifiee' },
+    });
+    await preparerVendeur(id);
+    const offre = await appelRest('/rest/v1/offres', {
+      methode: 'POST',
+      session: 'admin',
+      corps: {
+        coach_id: id,
+        titre: 'Suivi',
+        prix_centimes: 4900,
+        benefices: ['a', 'b', 'c'],
+        engagement_humain: ['ajustement_hebdomadaire'],
+        publiee_le: new Date(Date.now() - 86_400_000).toISOString(),
+      },
+    });
+    const programme = await appelRest('/rest/v1/programmes', {
+      methode: 'POST',
+      session: 'admin',
+      corps: { profil_coach_id: id, titre: 'Programme du banc', statut: 'publie' },
+    });
+    const programmeId = (programme.corps as { id: string }[])[0].id;
+    const seances = await appelRest('/rest/v1/seances', {
+      methode: 'POST',
+      session: 'admin',
+      corps: [1, 2, 3].map((j) => ({
+        programme_id: programmeId,
+        titre: `Séance ${j}`,
+        jour_relatif: j,
+      })),
+    });
+    seancesDe[id] = {
+      programme: programmeId,
+      seances: (seances.corps as { id: string }[]).map((s) => s.id),
+    };
+    return [id, (offre.corps as { id: string }[])[0].id];
+  };
+  const souscrire = async (profil: string, offre: string, ref: string): Promise<string> => {
+    const souscription = await rpc(
+      'souscrire_abonnement',
+      {
+        p_profil_client_id: profil,
+        p_offre_id: offre,
+        p_moyen: 'carte',
+        p_reference_paiement: `banc-${SUFFIXE_COMPTE}-l7-suivi-${ref}`,
+        p_prix_fige_centimes: 4900,
+        p_intention_creee_le: new Date().toISOString(),
+      },
+      'admin',
+    );
+    if (souscription.statut !== 200) {
+      throw new Error(`Préparation du banc : abonnement ${ref} refusé (${souscription.statut})`);
+    }
+    return souscription.corps as string;
+  };
+
+  beforeAll(async () => {
+    const meta = { date_naissance: '1990-01-01', cgu_version_acceptee: '2026-08-01' };
+    const email = (x: string) => `${PREFIXE_EMAIL}${SUFFIXE_COMPTE}-l7-suivi-${x}@${DOMAINE_EMAIL}`;
+    S = await creerCompteReel(email('s'), meta);
+    T = await creerCompteReel(email('t'), meta);
+    C1 = await creerCompteReel(email('c1'), meta);
+    C2 = await creerCompteReel(email('c2'), meta);
+    profilS = await creerProfilClientParLeServeur(S, 'Suivie', 'Client');
+    profilT = await creerProfilClientParLeServeur(T, 'Autre', 'Client');
+    // C1 a aussi un profil client : un compte à deux profils (CLAUDE.md §10).
+    await creerProfilClientParLeServeur(C1, 'Coach', 'Aussi client');
+    const [c1, offre1] = await creerCoach(C1, 'Coach un');
+    const [c2, offre2] = await creerCoach(C2, 'Coach deux');
+    coach1 = c1;
+    coach2 = c2;
+    abonnementS1 = await souscrire(profilS, offre1, 's1');
+    abonnementS2 = await souscrire(profilS, offre2, 's2');
+    abonnementT1 = await souscrire(profilT, offre1, 't1');
+  }, 120_000);
+
+  afterAll(async () => {
+    for (const s of [S, T, C1, C2]) if (s) await supprimerCompteReel(s.compteId);
+  }, 30_000);
+
+  // Par défaut : les abonnements de S connus comme actifs depuis longtemps. Le statut lui-même ne
+  // se pose pas en décor (le rôle serveur n'a que select sur abonnements, 0033) : il ne change
+  // que par les fonctions du serveur, comme dans l'application.
+  beforeEach(async () => {
+    for (const a of [abonnementS1, abonnementS2]) {
+      await historique(a, [{ statut: 'actif', depuis: midi(jour(-400)) }]);
+    }
+  }, 30_000);
+
+  describe('pause et suspension : l’accès au jour prévu', () => {
+    // Le premier test demandé à la revue : 30 jours de pause, puis la reprise.
+    const avantPause: Pose[] = [
+      { date: jour(-50), statut: 'faite' },
+      { date: jour(-45), statut: 'faite' },
+    ];
+    const pendantPause: Pose[] = [-33, -30, -26, -20, -15, -10, -6].map((n) => ({
+      date: jour(n),
+      statut: 'manquee',
+    }));
+    const apresReprise: Pose[] = [
+      { date: jour(-4), statut: 'faite' },
+      { date: jour(-3), statut: 'faite' },
+      { date: jour(-2), statut: 'faite' },
+      { date: jour(-1), statut: 'partielle' },
+    ];
+
+    it('30 jours de pause puis reprise : aucune séance de la pause ne compte, ni dans l’assiduité, ni dans les huit semaines, ni dans la série', async () => {
+      // Sans les séances de la pause : la référence.
+      await poser(profilS, [...avantPause, ...apresReprise]);
+      const reference = await suivi(S);
+
+      // Avec elles, prévues pendant la pause (actif → en pause du jour −35 au jour −4).
+      await poser(profilS, [...avantPause, ...pendantPause, ...apresReprise]);
+      await historique(abonnementS1, [
+        { statut: 'actif', depuis: midi(jour(-400)) },
+        { statut: 'en_pause', depuis: midi(jour(-35)) },
+        { statut: 'actif', depuis: midi(jour(-4)) },
+      ]);
+      const avecPause = await suivi(S);
+
+      expect(avecPause).toEqual(reference);
+      // 3 faites et une partielle sur 4 retenues entre J−28 et J−1 : 3,5 / 4 = 87,5 → 88.
+      expect(avecPause.assiduite).toBe(88);
+      expect(avecPause.seances_faites).toBe(5);
+      expect(prevuesSur8(avecPause)).toBe(
+        [...avantPause, ...apresReprise].filter((p) => p.date >= semaine(7)).length,
+      );
+    });
+
+    it('témoin : les mêmes séances sans historique de pause comptent toutes (le test précédent distingue bien les deux)', async () => {
+      await poser(profilS, [...avantPause, ...pendantPause, ...apresReprise]);
+      const s = await suivi(S);
+      // Entre J−28 et J−1 : J−26, −20, −15, −10, −6 manquées + les 4 d'après : 3,5 / 9 → 39.
+      expect(s.assiduite).toBe(39);
+    });
+
+    it('le client reprend avant le passage de la tâche du matin : la séance prévue pendant la pause devient manquée, et ne compte pas', async () => {
+      await poser(profilS, [
+        { date: jour(-25), statut: 'faite' },
+        { date: jour(-2), statut: 'a_faire' },
+      ]);
+      await historique(abonnementS1, [
+        { statut: 'actif', depuis: midi(jour(-400)) },
+        { statut: 'en_pause', depuis: midi(jour(-20)) },
+        { statut: 'actif', depuis: `${jour(-1)}T06:00:00+01:00` },
+      ]);
+      const matin = await rpc('appliquer_echeances', { p_jour: J }, 'admin');
+      expect(matin.statut).toBe(200);
+      const { corps } = await appelRest(
+        `/rest/v1/seances_programmees?profil_client_id=eq.${profilS}&date_prevue=eq.${jour(-2)}&select=statut`,
+        { session: 'admin' },
+      );
+      expect(corps).toEqual([{ statut: 'manquee' }]);
+      const s = await suivi(S);
+      expect(prevuesSur8(s)).toBe(1);
+      // La semaine du jour −2 ne la compte pas (le jour −25 est forcément dans une autre semaine).
+      const semaineDeLaSeance = s.semaines.find(
+        (w) => w.lundi <= jour(-2) && plusJours(w.lundi, 6) >= jour(-2),
+      );
+      expect(semaineDeLaSeance?.prevues).toBe(0);
+    });
+
+    it('le client est suspendu après une séance qu’il pouvait faire : elle compte ; celles du jour entièrement suspendu, non', async () => {
+      await poser(profilS, [
+        { date: jour(-10), statut: 'faite' },
+        { date: jour(-8), statut: 'faite' },
+        { date: jour(-4), statut: 'manquee' },
+        { date: jour(-3), statut: 'manquee' },
+        { date: jour(-2), statut: 'manquee' },
+      ]);
+      // Accès jusqu'au jour −3 à midi ; suspendu tout le jour −2 ; de nouveau actif le jour −1.
+      await historique(abonnementS1, [
+        { statut: 'actif', depuis: midi(jour(-400)) },
+        { statut: 'impaye', depuis: midi(jour(-9)) },
+        { statut: 'suspendu', depuis: midi(jour(-3)) },
+        { statut: 'actif', depuis: midi(jour(-1)) },
+      ]);
+      const s = await suivi(S);
+      // J−10, −8 faites ; J−4 (impayé : accès) et J−3 (accès le matin) manquées : 2 / 4 = 50.
+      expect(s.assiduite).toBe(50);
+      expect(prevuesSur8(s)).toBe(4);
+    });
+
+    it('une séance d’un jour sans accès que le client a terminée après sa reprise compte, une seule fois, au numérateur ET au dénominateur', async () => {
+      await poser(profilS, [
+        { date: jour(-10), statut: 'faite' },
+        { date: jour(-8), statut: 'manquee' },
+        { date: jour(-7), statut: 'faite' },
+        { date: jour(-3), statut: 'faite', rattrapee: true },
+      ]);
+      // Pause du jour −5 à midi au jour −1 à midi : le jour −3 est entièrement sans accès.
+      await historique(abonnementS1, [
+        { statut: 'actif', depuis: midi(jour(-400)) },
+        { statut: 'en_pause', depuis: midi(jour(-5)) },
+        { statut: 'actif', depuis: midi(jour(-1)) },
+      ]);
+      const s = await suivi(S);
+      // 3 / 4 = 75. Écartée : 2 / 3, et null (moins de 4) ; comptée deux fois : 4 / 5 = 80.
+      expect(s.assiduite).toBe(75);
+      expect(s.seances_faites).toBe(3);
+      expect(prevuesSur8(s)).toBe(4);
+    });
+
+    // La pause de S chez C2 reste pour la suite du banc (une pause par an, et rien ne la lève
+    // avant son terme hors tâche du matin) : les tests suivants n'utilisent que C1.
+    it('l’historique se tient seul : S met en pause son abonnement chez C2 (chemin de l’application) ; la pause est notée, et les séances de C2 sortent de son suivi', async () => {
+      await poser(profilS, [
+        { date: jour(-3), statut: 'faite', coach: 1 },
+        { date: jour(-2), statut: 'faite', coach: 2 },
+      ]);
+      expect((await suivi(S)).seances_faites).toBe(2);
+      const pause = await rpc(
+        'demander_pause_jours',
+        { p_abonnement_id: abonnementS2, p_jours: 7 },
+        S,
+      );
+      expect(pause.statut).toBe(204);
+      const { corps } = await appelRest(
+        `/rest/v1/historique_statuts_abonnement?abonnement_id=eq.${abonnementS2}&select=statut&order=depuis,id`,
+        { session: 'admin' },
+      );
+      expect(corps).toEqual([{ statut: 'actif' }, { statut: 'en_pause' }]);
+      // Sans accès aujourd'hui, C2 ne compte plus dans le suivi du client (§5.2) ; C1, si.
+      expect((await suivi(S)).seances_faites).toBe(1);
+    });
+
+    it('la souscription aussi est notée dans l’historique (insertion)', async () => {
+      const { corps } = await appelRest(
+        `/rest/v1/historique_statuts_abonnement?abonnement_id=eq.${abonnementT1}&select=statut&order=depuis,id`,
+        { session: 'admin' },
+      );
+      const statuts = (corps as { statut: string }[]).map((l) => l.statut);
+      expect(statuts.length).toBeGreaterThan(0);
+      expect(statuts[statuts.length - 1]).toBe('actif');
+    });
+  });
+
+  describe('assiduité (§5.2)', () => {
+    it('chaque statut a son poids : faite 1, rattrapée 1, partielle 0,5, manquée 0, encore « à faire » hier 0 ; aujourd’hui et J−29 hors fenêtre', async () => {
+      await poser(profilS, [
+        { date: jour(-29), statut: 'faite' },
+        { date: jour(-28), statut: 'faite' },
+        { date: jour(-20), statut: 'faite', rattrapee: true },
+        { date: jour(-10), statut: 'partielle' },
+        { date: jour(-5), statut: 'manquee' },
+        { date: jour(-1), statut: 'a_faire' },
+        { date: J, statut: 'faite' },
+      ]);
+      const s = await suivi(S);
+      // 2,5 sur 5.
+      expect(s.assiduite).toBe(50);
+      expect(s.seances_faites).toBe(4);
+      expect(s.depuis).toBe(jour(-29));
+    });
+
+    it('3 séances prévues : pas d’assiduité (null) ; 4 : un pourcentage', async () => {
+      const trois: Pose[] = [-6, -4, -2].map((n) => ({ date: jour(n), statut: 'faite' }));
+      await poser(profilS, trois);
+      expect((await suivi(S)).assiduite).toBeNull();
+      await poser(profilS, [...trois, { date: jour(-1), statut: 'manquee' }]);
+      expect((await suivi(S)).assiduite).toBe(75);
+    });
+
+    it('62,5 % s’arrondit à 63', async () => {
+      const statuts = [
+        'faite',
+        'faite',
+        'faite',
+        'faite',
+        'partielle',
+        'partielle',
+        'manquee',
+        'manquee',
+      ];
+      await poser(
+        profilS,
+        statuts.map((statut, i) => ({ date: jour(-2 - 3 * i), statut })),
+      );
+      expect((await suivi(S)).assiduite).toBe(63);
+    });
+
+    it('aucune séance : rien à afficher, sans erreur', async () => {
+      await poser(profilS, []);
+      const s = await suivi(S);
+      expect(s).toMatchObject({ seances_faites: 0, depuis: null, assiduite: null, serie: 0 });
+      expect(s.semaines).toHaveLength(8);
+    });
+  });
+
+  describe('huit semaines (§5.3)', () => {
+    it('huit lundis, du plus ancien à la semaine en cours ; « faites » en entiers : une faite, une rattrapée, une partielle, une manquée → 2/4', async () => {
+      await poser(profilS, [
+        { date: semaine(1, 0), statut: 'faite' },
+        { date: semaine(1, 1), statut: 'faite', rattrapee: true },
+        { date: semaine(1, 2), statut: 'partielle' },
+        { date: semaine(1, 3), statut: 'manquee' },
+        { date: semaine(8, 0), statut: 'faite' },
+      ]);
+      const s = await suivi(S);
+      expect(s.semaines.map((w) => w.lundi)).toEqual(
+        [7, 6, 5, 4, 3, 2, 1, 0].map((k) => semaine(k)),
+      );
+      expect(s.semaines[6]).toEqual({ lundi: semaine(1), faites: 2, prevues: 4 });
+      // La semaine de repos se lit 0/0 ; la neuvième semaine en arrière n'apparaît pas.
+      expect(s.semaines[5]).toEqual({ lundi: semaine(2), faites: 0, prevues: 0 });
+      expect(prevuesSur8(s)).toBe(4);
+    });
+  });
+
+  describe('série (§5.3, revue du 18 novembre)', () => {
+    it('une semaine de repos conserve la série sans l’allonger', async () => {
+      await poser(profilS, [
+        { date: semaine(3, 1), statut: 'faite' },
+        { date: semaine(1, 1), statut: 'faite' },
+      ]);
+      expect((await suivi(S)).serie).toBe(2);
+    });
+
+    it('une semaine terminée aux séances toutes manquées l’interrompt', async () => {
+      await poser(profilS, [
+        { date: semaine(3, 1), statut: 'faite' },
+        { date: semaine(2, 1), statut: 'manquee' },
+        { date: semaine(2, 3), statut: 'manquee' },
+        { date: semaine(1, 1), statut: 'faite' },
+      ]);
+      expect((await suivi(S)).serie).toBe(1);
+    });
+
+    it('une semaine avec seulement une partielle la conserve sans l’allonger', async () => {
+      await poser(profilS, [
+        { date: semaine(3, 1), statut: 'faite' },
+        { date: semaine(2, 1), statut: 'partielle' },
+        { date: semaine(2, 3), statut: 'manquee' },
+        { date: semaine(1, 1), statut: 'faite' },
+      ]);
+      expect((await suivi(S)).serie).toBe(2);
+    });
+
+    it('une semaine dont les séances tombaient pendant une pause la conserve', async () => {
+      await poser(profilS, [
+        { date: semaine(3, 1), statut: 'faite' },
+        { date: semaine(2, 1), statut: 'manquee' },
+        { date: semaine(2, 3), statut: 'manquee' },
+        { date: semaine(1, 1), statut: 'faite' },
+      ]);
+      await historique(abonnementS1, [
+        { statut: 'actif', depuis: midi(jour(-400)) },
+        { statut: 'en_pause', depuis: midi(plusJours(semaine(2), -1)) },
+        { statut: 'actif', depuis: midi(plusJours(semaine(2), 5)) },
+      ]);
+      expect((await suivi(S)).serie).toBe(2);
+    });
+
+    it('la semaine en cours l’allonge si une séance y est faite, ne l’interrompt jamais', async () => {
+      await poser(profilS, [
+        { date: semaine(1, 1), statut: 'faite' },
+        { date: J, statut: 'manquee' },
+      ]);
+      expect((await suivi(S)).serie).toBe(1);
+      await poser(profilS, [
+        { date: semaine(1, 1), statut: 'faite' },
+        { date: J, statut: 'faite' },
+      ]);
+      expect((await suivi(S)).serie).toBe(2);
+    });
+  });
+
+  describe('périmètre et cloisonnement', () => {
+    it('un client ne voit que ses séances : T lit les siennes, S ne les voit pas', async () => {
+      await poser(
+        profilT,
+        [-5, -4, -3].map((n) => ({ date: jour(n), statut: 'faite' })),
+      );
+      await poser(profilS, [{ date: jour(-2), statut: 'faite' }]);
+      expect((await suivi(T)).seances_faites).toBe(3);
+      expect((await suivi(S)).seances_faites).toBe(1);
+    });
+
+    it('un compte à deux profils : en espace coach, mon_suivi est refusé ; en espace client, il ne rend que son suivi', async () => {
+      await poser(profilS, [{ date: jour(-2), statut: 'faite' }]);
+      await basculer(C1, 'coach');
+      const refus = await rpc('mon_suivi', {}, C1);
+      expect(refus.statut).toBe(400);
+      expect(messageDe(refus.corps)).toBe('profil_client_requis');
+      await basculer(C1, 'client');
+      expect(await suivi(C1)).toMatchObject({ seances_faites: 0, assiduite: null, serie: 0 });
+    });
+
+    it('l’historique des statuts n’est lisible par aucun utilisateur : accès direct refusé (42501)', async () => {
+      for (const session of [S, C1]) {
+        const { statut, corps } = await appelRest(
+          `/rest/v1/historique_statuts_abonnement?abonnement_id=eq.${abonnementS1}`,
+          { session },
+        );
+        expect(statut).toBe(403);
+        expect((corps as { code: string }).code).toBe('42501');
+      }
+    });
+
+    it('les fonctions internes du calcul ne sont pas appelables par un utilisateur', async () => {
+      const appel = await rpc(
+        'metriques_seances',
+        { p_client: profilT, p_coach: null, p_jour: J },
+        S,
+      );
+      expect(appel.statut).toBeGreaterThanOrEqual(400);
+      const sansAcces = await rpc(
+        'jour_sans_acces',
+        { p_client: profilT, p_coach: coach1, p_jour: J },
+        S,
+      );
+      expect(sansAcces.statut).toBeGreaterThanOrEqual(400);
+    });
+  });
+});

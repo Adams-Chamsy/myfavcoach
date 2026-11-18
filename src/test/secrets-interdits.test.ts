@@ -337,6 +337,10 @@ describe('secrets interdits côté application', () => {
       'supabase/migrations/0088_preparer_mesures.sql',
       // 0089 : réaffirmation des droits des trois fonctions remplacées (convention de 0031).
       'supabase/migrations/0089_mesures_regles.sql',
+      // 0090/0091 : revokes de service_role et grants pour le banc sur l'historique des statuts
+      // d'abonnement ; réaffirmation des droits des fonctions du suivi (convention de 0031).
+      'supabase/migrations/0090_preparer_suivi.sql',
+      'supabase/migrations/0091_suivi_regles.sql',
       'supabase/functions/_partage/environnement.ts',
       'supabase/functions/_partage/postgres.ts',
       'docs/prompts/L3bis.md',

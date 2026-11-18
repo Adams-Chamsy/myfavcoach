@@ -37,6 +37,7 @@ import type {
   RappelCommission,
   ResultatStudio,
   MesMesures,
+  MonSuivi,
   SerieMesures,
   StatutSeanceProgrammee,
   StatutProgramme,
@@ -1934,6 +1935,25 @@ export const portDonneesSupabase: PortDonnees = {
       seuils: MesMesures['seuils'];
     };
     return { poids: lu.poids, tourDeTaille: lu.tour_de_taille, seuils: lu.seuils };
+  },
+
+  async lireMonSuivi(): Promise<MonSuivi> {
+    const { data, error } = await supabase.rpc('mon_suivi');
+    if (error) throw error;
+    const lu = data as {
+      seances_faites: number;
+      depuis: string | null;
+      assiduite: number | null;
+      serie: number;
+      semaines: MonSuivi['semaines'];
+    };
+    return {
+      seancesFaites: lu.seances_faites,
+      depuis: lu.depuis,
+      assiduite: lu.assiduite,
+      serie: lu.serie,
+      semaines: lu.semaines,
+    };
   },
 
   enregistrerMesure(type, valeur, cle) {

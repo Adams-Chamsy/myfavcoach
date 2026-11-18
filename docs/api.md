@@ -513,7 +513,11 @@ réessai) rend l'identifiant de la mesure et ne refuse que les saisies invalides
 `profil_client_requis`, `consentement_sante_absent`, `mesure_invalide`,
 `cle_idempotence_reutilisee`. `mes_mesures()` rend `{ poids, tour_de_taille, seuils }`, chaque
 série `{ premiere, derniere, ecart, nombre }` ou `null`, et lève sans consentement ;
-`effacer_mes_mesures()` est permise consentement retiré. Toutes trois exigent l'espace client. **Aucune lecture du coach ne rend de donnée de
+`effacer_mes_mesures()` est permise consentement retiré. `mon_suivi()` (espace client, refus
+`profil_client_requis`) rend `{ seances_faites, depuis, assiduite, serie, semaines }` —
+`assiduite` entier ou `null`, `semaines` : huit `{ lundi, faites, prevues }` entiers, la plus
+ancienne d'abord (`docs/domaine.md` §5.2, §5.3) ; aucun consentement requis, aucune donnée de
+santé. Toutes trois exigent l'espace client. **Aucune lecture du coach ne rend de donnée de
 santé** (poids, tour de taille, ressenti) : décision 1 de L7.
 
 ---

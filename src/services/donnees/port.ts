@@ -620,6 +620,20 @@ export type MesMesures = {
   seuils: Record<TypeMesure, { min: number; max: number }>;
 };
 
+// L7 — le suivi du client (docs/domaine.md §5.2, §5.3 ; docs/ecrans/L7-06-suivi.md), calculé par
+// le serveur sur les séances des coachs auxquels il a accès aujourd'hui. Aucune donnée de santé.
+// `assiduite` : pourcentage entier, null sous 4 séances prévues (« — »). `semaines` : huit, la
+// plus ancienne d'abord ; `lundi` AAAA-MM-JJ ; `faites` et `prevues` sont des entiers.
+// `depuis` : la première séance prévue, null sans séance.
+export type SemaineSuivi = { lundi: string; faites: number; prevues: number };
+export type MonSuivi = {
+  seancesFaites: number;
+  depuis: string | null;
+  assiduite: number | null;
+  serie: number;
+  semaines: SemaineSuivi[];
+};
+
 // L6 — la séance du jour du client (docs/ecrans/L6-05-seance-du-jour.md), en espace client.
 export type StatutSeanceProgrammee = 'a_faire' | 'en_cours' | 'faite' | 'partielle' | 'manquee';
 
@@ -989,6 +1003,9 @@ export type PortDonnees = {
   // cle_idempotence_reutilisee. `cle` : un UUID tiré à l'appui sur « Enregistrer » et RENVOYÉ
   // tel quel en cas de réessai — c'est lui qui empêche un doublon après une coupure réseau.
   lireMesMesures(): Promise<MesMesures>;
+
+  // L7, suivi (écran 06), en espace client ; lève hors espace client (profil_client_requis).
+  lireMonSuivi(): Promise<MonSuivi>;
   enregistrerMesure(type: TypeMesure, valeur: number, cle: string): Promise<ResultatStudio<string>>;
 };
 
