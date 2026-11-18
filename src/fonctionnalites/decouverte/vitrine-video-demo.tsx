@@ -1,4 +1,5 @@
-import * as Linking from 'expo-linking';
+import { useEventListener } from 'expo';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { useState } from 'react';
 import { Platform, Text, View } from 'react-native';
 
@@ -11,20 +12,6 @@ export function VitrineVideoDemo() {
   const theme = useTheme();
   const [erreur, setErreur] = useState(false);
   const [transcription, setTranscription] = useState(false);
-
-  async function ouvrirVideo() {
-    try {
-      const origine = process.env.EXPO_PUBLIC_ORIGINE_VITRINE_DEMO;
-      if (!origine) {
-        setErreur(true);
-        return;
-      }
-      await Linking.openURL(new URL(CHEMIN_VIDEO, origine).href);
-      setErreur(false);
-    } catch {
-      setErreur(true);
-    }
-  }
 
   return (
     <View style={{ gap: theme.espace[3] }}>
@@ -51,11 +38,7 @@ export function VitrineVideoDemo() {
           <source src={CHEMIN_VIDEO} type="video/mp4" />
         </video>
       ) : (
-        <Bouton
-          libelle="Lire la vidéo de démonstration"
-          variante="secondaire"
-          onPress={ouvrirVideo}
-        />
+        <LecteurVideoNatif onErreur={setErreur} />
       )}
       {erreur ? (
         <Text accessibilityLiveRegion="polite" style={{ color: theme.couleur.etat.erreurEncre }}>
@@ -76,5 +59,26 @@ export function VitrineVideoDemo() {
         </Text>
       ) : null}
     </View>
+  );
+}
+
+function LecteurVideoNatif({ onErreur }: { onErreur: (erreur: boolean) => void }) {
+  const theme = useTheme();
+  // Metro transforme la référence au MP4 en identifiant de ressource native.
+  const lecteur = useVideoPlayer(require('../../../public/demo/presentation-coach.mp4') as number);
+  useEventListener(lecteur, 'statusChange', ({ status }) => onErreur(status === 'error'));
+
+  return (
+    <VideoView
+      player={lecteur}
+      nativeControls
+      accessibilityLabel="Présentation du suivi en trois étapes"
+      style={{
+        width: '100%',
+        aspectRatio: 16 / 9,
+        borderRadius: theme.rayon.carte,
+        backgroundColor: theme.couleur.fond.inverse,
+      }}
+    />
   );
 }
